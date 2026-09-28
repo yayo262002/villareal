@@ -23,12 +23,12 @@ test("el enlace lleva el número y el mensaje codificado", () => {
 
 test("el recordatorio enumera las notas pendientes y lo que queda de cada una", () => {
   const texto = mensajeRecordatorio({
-    negocio: "Comercializadora Villareal",
+    negocio: "Comercializadora Villa Real",
     cliente: "Bodega Ana",
     saldo_usd: 18,
     pendientes: [{ fecha: "2026-09-15", total_usd: 23, pendiente_usd: 18 }],
   });
-  assert.match(texto, /^Hola Bodega Ana, le saluda Comercializadora Villareal\./);
+  assert.match(texto, /^Hola Bodega Ana, le saluda Comercializadora Villa Real\./);
   assert.match(texto, /Tiene pendiente USD 18,00:/);
   assert.match(texto, /• Nota del 15\/09\/2026: USD 23,00 \(quedan USD 18,00\)/);
   assert.match(texto, /Gracias/);
@@ -36,7 +36,7 @@ test("el recordatorio enumera las notas pendientes y lo que queda de cada una", 
 
 test("la nota de venta detalla las líneas, el total y el saldo", () => {
   const texto = mensajeNota({
-    negocio: "Comercializadora Villareal",
+    negocio: "Comercializadora Villa Real",
     cliente: "Bodega Ana",
     fecha: "2026-09-15",
     lineas: [

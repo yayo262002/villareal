@@ -6,7 +6,8 @@
  * la web no los muestra, y menos aún muestra uno falso.
  */
 export const negocio = {
-  nombre: "Comercializadora Villareal",
+  // Como en el logo bordado: «Villa Real», en dos palabras.
+  nombre: "Comercializadora Villa Real",
   lema: "Quesos al mayor y al detal",
   descripcion:
     "Vendemos queso amarillo, mozzarella y otros quesos para negocios y familias.",
