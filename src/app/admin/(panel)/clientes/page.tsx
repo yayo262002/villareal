@@ -7,19 +7,34 @@ import estilos from "../panel.module.css";
 
 export const metadata = { title: "Clientes" };
 
+/** Sin tildes ni mayúsculas, para que «jose» encuentre a «José». */
+function normalizar(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 export default async function PaginaClientes({
   searchParams,
 }: {
   searchParams: Promise<ParametrosAviso>;
 }) {
   const parametros = await searchParams;
-  const clientes = await listarClientes();
+  const busqueda = typeof parametros.q === "string" ? parametros.q.trim() : "";
+  const todos = await listarClientes();
+  const clave = normalizar(busqueda);
+  const clientes = clave
+    ? todos.filter((c) =>
+        [c.nombre, c.telefono, c.cedula_rif, c.direccion, c.nota].some((campo) => normalizar(campo).includes(clave)),
+      )
+    : todos;
 
   return (
     <>
       <div className={estilos.encabezado}>
         <h1 className={estilos.titulo}>Clientes</h1>
-        {clientes.length > 0 && (
+        {todos.length > 0 && (
           <a href="/admin/clientes/exportar" download className="boton boton--secundario">
             Descargar lista (Excel)
           </a>
@@ -72,8 +87,32 @@ export default async function PaginaClientes({
 
         <section className="tarjeta">
           <h2 className={estilos.subtitulo}>Todos los clientes</h2>
-          {clientes.length === 0 ? (
+          {todos.length > 0 && (
+            <form method="get" action="/admin/clientes" className={estilos.buscador} role="search">
+              <label htmlFor="buscar" className="visualmente-oculto">
+                Buscar cliente
+              </label>
+              <input
+                id="buscar"
+                name="q"
+                type="search"
+                placeholder="Buscar por nombre, teléfono o cédula"
+                defaultValue={busqueda}
+              />
+              <button type="submit" className="boton boton--secundario">
+                Buscar
+              </button>
+              {busqueda && (
+                <Link href="/admin/clientes" className={estilos.limpiar}>
+                  Ver todos
+                </Link>
+              )}
+            </form>
+          )}
+          {todos.length === 0 ? (
             <p className="vacio">Todavía no hay clientes registrados.</p>
+          ) : clientes.length === 0 ? (
+            <p className="vacio">Ningún cliente coincide con «{busqueda}».</p>
           ) : (
             <div className="tabla-envoltorio">
               <table className="tabla">
@@ -102,6 +141,11 @@ export default async function PaginaClientes({
                   ))}
                 </tbody>
               </table>
+              {busqueda && (
+                <p className={estilos.ayuda}>
+                  {clientes.length} de {todos.length} clientes.
+                </p>
+              )}
             </div>
           )}
         </section>

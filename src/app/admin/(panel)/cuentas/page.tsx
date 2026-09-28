@@ -3,6 +3,8 @@ import { listarClientes } from "@/lib/clientes";
 import { listarVentas, type Venta } from "@/lib/ventas";
 import { NOMBRE_ESTADO, aplicarPagos, type CuentaDeVenta } from "@/lib/cuentas";
 import { fechaCorta, redondear, usd } from "@/lib/dinero";
+import { negocio } from "@/config/negocio";
+import { enlaceWhatsappA, mensajeRecordatorio } from "@/lib/whatsapp";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Cuentas" };
@@ -34,6 +36,22 @@ export default async function PaginaCuentas() {
   const porPagar = cuentas.filter((c) => c.estado !== "pagada").sort(ordenar);
   const pagadas = cuentas.filter((c) => c.estado === "pagada").sort(ordenar);
   const totalPendiente = redondear(porPagar.reduce((s, c) => s + c.pendiente_usd, 0));
+
+  // Un recordatorio por cliente con todas sus notas pendientes.
+  const recordatorios = new Map<number, string | null>();
+  for (const cliente of clientes) {
+    if (cliente.saldo_usd <= 0) continue;
+    const pendientes = porPagar
+      .filter((c) => c.cliente_id === cliente.id)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+    recordatorios.set(
+      cliente.id,
+      enlaceWhatsappA(
+        cliente.telefono,
+        mensajeRecordatorio({ negocio: negocio.nombre, cliente: cliente.nombre, saldo_usd: cliente.saldo_usd, pendientes }),
+      ),
+    );
+  }
 
   return (
     <>
@@ -72,6 +90,9 @@ export default async function PaginaCuentas() {
                   <th className="numero">Total</th>
                   <th className="numero">Pendiente</th>
                   <th>Estado</th>
+                  <th>
+                    <span className="visualmente-oculto">Recordar</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -87,6 +108,15 @@ export default async function PaginaCuentas() {
                       <span className={`${estilos.estado} ${estilos[`estado--${c.estado}`]}`}>
                         {NOMBRE_ESTADO[c.estado]}
                       </span>
+                    </td>
+                    <td>
+                      {recordatorios.get(c.cliente_id) ? (
+                        <a href={recordatorios.get(c.cliente_id)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                          Recordar
+                        </a>
+                      ) : (
+                        <span className="ayuda">Sin teléfono</span>
+                      )}
                     </td>
                   </tr>
                 ))}

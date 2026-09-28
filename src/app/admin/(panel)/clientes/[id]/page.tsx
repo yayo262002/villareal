@@ -10,6 +10,8 @@ import { METODOS_PAGO, cantidad, fechaCorta, formatearMonto, usd } from "@/lib/d
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
 import { EntradaFoto } from "@/components/entrada-foto";
+import { negocio } from "@/config/negocio";
+import { enlaceWhatsappA, mensajeNota, mensajeRecordatorio } from "@/lib/whatsapp";
 import estilos from "../../panel.module.css";
 
 export default async function PaginaCliente({
@@ -33,6 +35,28 @@ export default async function PaginaCliente({
   const cuentas = aplicarPagos(ventas, cliente.total_pagado_usd);
   const ventaDeAdjunto = new Map(ventas.map((v) => [v.id, v]));
 
+  // Enlaces de WhatsApp: recordar la deuda y mandar cada nota. Solo si hay teléfono.
+  const pendientes = cuentas.filter((c) => c.pendiente_usd > 0).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const recordatorio =
+    cliente.saldo_usd > 0
+      ? enlaceWhatsappA(
+          cliente.telefono,
+          mensajeRecordatorio({ negocio: negocio.nombre, cliente: cliente.nombre, saldo_usd: cliente.saldo_usd, pendientes }),
+        )
+      : null;
+  const enlaceNota = (v: (typeof cuentas)[number]) =>
+    enlaceWhatsappA(
+      cliente.telefono,
+      mensajeNota({
+        negocio: negocio.nombre,
+        cliente: cliente.nombre,
+        fecha: v.fecha,
+        lineas: v.lineas,
+        total_usd: v.total_usd,
+        saldo_usd: cliente.saldo_usd,
+      }),
+    );
+
   const claseSaldo =
     cliente.saldo_usd > 0 ? estilos.deuda : cliente.saldo_usd < 0 ? estilos.favor : estilos.saldado;
   const textoSaldo =
@@ -51,10 +75,23 @@ export default async function PaginaCliente({
           </p>
           <h1 className={estilos.titulo}>{cliente.nombre}</h1>
         </div>
-        <Link href={`/admin/ventas?cliente=${cliente.id}`} className="boton boton--secundario">
-          Nueva venta
-        </Link>
+        <div className={estilos.accionesFila}>
+          {recordatorio && (
+            <a href={recordatorio} target="_blank" rel="noopener" className="boton boton--acento">
+              Recordar deuda por WhatsApp
+            </a>
+          )}
+          <Link href={`/admin/ventas?cliente=${cliente.id}`} className="boton boton--secundario">
+            Nueva venta
+          </Link>
+        </div>
       </div>
+      {cliente.saldo_usd > 0 && !recordatorio && (
+        <p className={estilos.ayuda}>
+          Pon un teléfono venezolano completo (por ejemplo 0412-1234567) para poder recordarle la deuda
+          por WhatsApp.
+        </p>
+      )}
       <Avisos parametros={parametros} />
 
       <dl className={estilos.cifras}>
@@ -168,7 +205,12 @@ export default async function PaginaCliente({
                       </span>
                     </td>
                     <td>{v.nota || "—"}</td>
-                    <td>
+                    <td className={estilos.accionesFila}>
+                      {enlaceNota(v) && (
+                        <a href={enlaceNota(v)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                          Enviar nota
+                        </a>
+                      )}
                       <Link href={`/admin/ventas/${v.id}/eliminar`} className="enlace-fila">
                         Eliminar
                       </Link>

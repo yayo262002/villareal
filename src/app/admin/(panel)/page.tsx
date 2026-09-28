@@ -3,24 +3,38 @@ import { listarClientes, resumenDeudas } from "@/lib/clientes";
 import { listarPagos, totalCobradoUsd } from "@/lib/pagos";
 import { listarVentas, totalVendidoUsd } from "@/lib/ventas";
 import { METODOS_PAGO, fechaCorta, formatearMonto, usd } from "@/lib/dinero";
+import { listarCopiasNube } from "@/lib/copias-nube";
+import { negocio } from "@/config/negocio";
+import { enlaceWhatsappA, mensajeRecordatorio } from "@/lib/whatsapp";
+import { copiarAhora } from "@/lib/acciones";
+import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "./panel.module.css";
 
 export const metadata = { title: "Resumen" };
 
-export default async function PaginaResumen() {
-  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado] = await Promise.all([
+export default async function PaginaResumen({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  const parametros = await searchParams;
+  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube] = await Promise.all([
     listarClientes(),
     resumenDeudas(),
     listarVentas(5),
     listarPagos(5),
     totalVendidoUsd(),
     totalCobradoUsd(),
+    listarCopiasNube(),
   ]);
   const deudores = clientes.filter((c) => c.saldo_usd > 0).sort((a, b) => b.saldo_usd - a.saldo_usd);
+  // Recordatorio corto (solo el saldo); el detalle de las notas está en la ficha.
+  const recordatorio = (c: (typeof deudores)[number]) =>
+    enlaceWhatsappA(
+      c.telefono,
+      mensajeRecordatorio({ negocio: negocio.nombre, cliente: c.nombre, saldo_usd: c.saldo_usd, pendientes: [] }),
+    );
 
   return (
     <>
       <h1 className={estilos.titulo}>Resumen</h1>
+      <Avisos parametros={parametros} />
 
       <dl className={estilos.cifras}>
         <div className={estilos.cifra}>
@@ -53,6 +67,9 @@ export default async function PaginaResumen() {
                   <tr>
                     <th>Cliente</th>
                     <th className="numero">Debe</th>
+                    <th>
+                      <span className="visualmente-oculto">Recordar</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -62,6 +79,13 @@ export default async function PaginaResumen() {
                         <Link href={`/admin/clientes/${c.id}`}>{c.nombre}</Link>
                       </td>
                       <td className={`numero ${estilos.deuda}`}>{usd(c.saldo_usd)}</td>
+                      <td>
+                        {recordatorio(c) && (
+                          <a href={recordatorio(c)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                            Recordar
+                          </a>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -143,14 +167,36 @@ export default async function PaginaResumen() {
       </section>
 
       <section className="tarjeta">
-        <h2 className={estilos.subtitulo}>Copia de seguridad</h2>
+        <h2 className={estilos.subtitulo}>Copias de seguridad</h2>
         <p className={estilos.ayuda}>
-          Todo lo que registras, fotos incluidas, vive en un solo archivo. Descárgalo de vez en cuando
-          y guárdalo en Drive o en otro teléfono: con este archivo se recupera todo.
+          Todo lo que registras, fotos incluidas, cabe en un solo archivo. Cada noche se guarda una
+          copia en la nube (se conservan las últimas 14). Descarga una de vez en cuando y guárdala en
+          Drive o en otro teléfono: con ese archivo se recupera todo.
         </p>
-        <a href="/admin/copia" download className="boton boton--secundario">
-          Descargar copia
-        </a>
+        <div className={estilos.accionesFila}>
+          <a href="/admin/copia" download className="boton boton--secundario">
+            Descargar copia de ahora
+          </a>
+          <form action={copiarAhora}>
+            <button type="submit" className="boton boton--secundario">
+              Guardar copia en la nube
+            </button>
+          </form>
+        </div>
+        {copiasNube.length > 0 && (
+          <ul className={estilos.copias}>
+            {copiasNube.map((c) => (
+              <li key={c.id}>
+                <span>
+                  {fechaCorta(c.creado_en)} {c.creado_en.slice(11, 16)} · {Math.round(c.tamano / 1024)} KB
+                </span>
+                <a href={`/admin/copias/${c.id}`} download>
+                  Descargar
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </>
   );

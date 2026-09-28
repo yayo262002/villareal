@@ -8,6 +8,7 @@ import { actualizarPrecio, cambiarActivo, crearProducto, type Unidad } from "./p
 import { buscarVenta, crearVenta, eliminarVenta, type LineaVenta } from "./ventas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { buscarAdjunto, eliminarAdjunto, guardarAdjunto } from "./adjuntos";
+import { guardarCopiaNube } from "./copias-nube";
 import { esMetodoPago, monedaDelMetodo } from "./dinero";
 import { FILAS_VENTA } from "./constantes";
 
@@ -221,6 +222,19 @@ export async function borrarPago(datos: FormData): Promise<void> {
 
   await eliminarPago(id);
   volverConExito(`/admin/clientes/${pago.cliente_id}`, "Pago eliminado.");
+}
+
+// ---------- Copias ----------
+
+export async function copiarAhora(): Promise<void> {
+  await exigirSesion();
+  let tamano = 0;
+  try {
+    tamano = (await guardarCopiaNube()).tamano;
+  } catch (error) {
+    volverConError("/admin", mensajeDe(error));
+  }
+  volverConExito("/admin", `Copia guardada en la nube (${Math.round(tamano / 1024)} KB).`);
 }
 
 // ---------- Adjuntos (fotos de las notas) ----------

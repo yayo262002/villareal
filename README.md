@@ -51,8 +51,16 @@ desde la carpeta del proyecto):
 schtasks /create /tn "Copia Villareal" /sc daily /st 20:00 /tr "cmd /c cd /d $PWD && npm run copia"
 ```
 
-Desde el teléfono: en el Resumen del panel hay un botón «Descargar copia»
-que baja el mismo archivo.
+Desde el teléfono: en el Resumen del panel hay un botón «Descargar copia de
+ahora» que baja el mismo archivo.
+
+**Copias automáticas.** En Vercel, cada noche a las 4:00 UTC (medianoche en
+Venezuela) se llama a `/api/copia-automatica` (cron en `vercel.json`), que
+guarda una copia completa en la tabla `copias_automaticas` de la propia base.
+Se conservan las 14 últimas y se descargan desde el Resumen. La llamada del
+cron lleva la variable `CRON_SECRET`; el botón «Guardar copia en la nube»
+hace lo mismo a mano. Estas copias protegen de borrar algo por error, no de
+perder la cuenta de Turso: por eso conviene bajar el archivo de vez en cuando.
 
 Para restaurar en local, para el servidor y sustituye `datos/villareal.db`
 por la copia (borra también `villareal.db-wal` y `villareal.db-shm` si
@@ -73,6 +81,7 @@ tiene plan gratuito. Solo hay que poner dos variables; el código no cambia.
    - `ADMIN_CLAVE`: la clave del panel.
    - `TURSO_DATABASE_URL`: la URL de Turso.
    - `TURSO_AUTH_TOKEN`: el token de Turso.
+   - `CRON_SECRET`: un texto largo al azar, para la copia automática.
 4. Despliega. La primera visita crea las tablas y los dos quesos sin precio.
 
 Para pasar lo que ya tengas en el archivo local a Turso, instala la CLI de
@@ -96,6 +105,9 @@ src/lib/ventas.ts         Ventas con sus líneas de producto
 src/lib/pagos.ts          Pagos: método, moneda, tasa, equivalente en USD
 src/lib/cuentas.ts        Qué ventas están pagadas y cuáles por pagar
 src/lib/adjuntos.ts       Fotos de las notas de entrega
+src/lib/whatsapp.ts       Mensajes de cobro y de nota para WhatsApp
+src/lib/copias-nube.ts    Copias automáticas guardadas en la base
+src/app/api/copia-automatica/  Lo que llama el cron de Vercel cada noche
 src/lib/dinero.ts         Conversión y formato de dólares y bolívares
 src/lib/acciones.ts       Lo que hacen los formularios del panel
 src/lib/copias.ts         Copias de seguridad de la base de datos
@@ -128,6 +140,12 @@ datos/                    La base de datos (fuera de Git)
   fotografía desde la ficha del cliente y queda guardada en la base, unida
   al cliente y, si se elige, a la venta. El teléfono reduce la foto antes de
   subirla para que pese poco.
+- **WhatsApp al cliente.** En la ficha de quien debe hay «Recordar deuda por
+  WhatsApp», que abre WhatsApp con el mensaje escrito (saldo y notas
+  pendientes); en cada nota, «Enviar nota» manda el detalle de esa venta.
+  Solo aparecen si el cliente tiene un teléfono venezolano completo. El
+  mensaje se revisa y se envía desde el teléfono del dueño; la web no envía
+  nada sola.
 - **Lista de clientes para publicidad.** En Clientes, «Descargar lista
   (Excel)» baja un CSV con nombre, teléfono, tipo, cuánto compra y cuándo
   compró por última vez.
@@ -152,6 +170,5 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - Poner precios reales a los productos desde el panel.
 - Crear la cuenta de Turso y el proyecto en Vercel (ver «Publicar en
   Vercel»). El código ya está preparado.
-- Fotos de los productos.
-- Programar `npm run copia` para que la copia salga sola cada día.
+- Fotos de los productos en la web.
 - Facturación, cuando el negocio empiece a facturar.

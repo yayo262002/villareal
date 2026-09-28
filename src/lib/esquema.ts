@@ -74,6 +74,16 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- Copias automáticas: cada noche se guarda aquí una copia completa de las
+  -- tablas de arriba (un archivo SQLite en un blob). No entra en TABLAS,
+  -- así una copia nunca contiene a las anteriores.
+  create table if not exists copias_automaticas (
+    id integer primary key autoincrement,
+    creado_en text not null default (datetime('now')),
+    tamano integer not null,
+    datos blob not null
+  );
+
   create index if not exists ventas_cliente on ventas(cliente_id);
   create index if not exists pagos_cliente on pagos(cliente_id);
   create index if not exists adjuntos_cliente on adjuntos(cliente_id);

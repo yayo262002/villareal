@@ -13,7 +13,9 @@ import estilos from "./page.module.css";
 export default async function PaginaInicio() {
   const productos = await listarProductos(true);
   const whatsapp = enlaceWhatsapp("Hola, quiero información sobre sus quesos.");
-  const hayContacto = Boolean(whatsapp || negocio.direccion || negocio.ciudad || negocio.horario);
+  const hayContacto = Boolean(
+    whatsapp || negocio.correo || negocio.direccion || negocio.ciudad || negocio.horario,
+  );
 
   return (
     <>
@@ -78,6 +80,14 @@ export default async function PaginaInicio() {
                     <a href={whatsapp} target="_blank" rel="noopener">
                       {whatsappLegible()}
                     </a>
+                  </dd>
+                </div>
+              )}
+              {negocio.correo && (
+                <div>
+                  <dt>Correo</dt>
+                  <dd>
+                    <a href={`mailto:${negocio.correo}`}>{negocio.correo}</a>
                   </dd>
                 </div>
               )}

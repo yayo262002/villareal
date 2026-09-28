@@ -13,6 +13,7 @@ export const negocio = {
 
   // Con código de país y sin el cero inicial: 0424-5541749 → 58424...
   whatsapp: "584245541749",
+  correo: "comercializadoravillareal@gmail.com",
 
   // Domicilio fiscal según el RIF (SENIAT, 2016).
   ciudad: "Barquisimeto, estado Lara",

@@ -272,3 +272,48 @@
 .miniaturaTexto strong {
   color: var(--color-texto);
 }
+
+/* Buscador de clientes. */
+.buscador {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-2);
+  margin-bottom: var(--espacio-4);
+}
+.buscador input {
+  flex: 1 1 200px;
+  min-height: 44px;
+  padding: 0 var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+.limpiar {
+  font-size: 14px;
+}
+
+/* Enlace de WhatsApp en tablas y cabeceras. */
+.whatsapp {
+  color: var(--color-exito);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Copias automáticas en el resumen. */
+.copias {
+  list-style: none;
+  padding: 0;
+  margin: var(--espacio-4) 0 0;
+  display: grid;
+  gap: var(--espacio-2);
+  font-size: 15px;
+}
+.copias li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--espacio-2);
+  padding-bottom: var(--espacio-2);
+  border-bottom: 1px solid var(--color-borde);
+}
