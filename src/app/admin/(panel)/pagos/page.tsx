@@ -14,8 +14,7 @@ export default async function PaginaPagos({
   searchParams: Promise<ParametrosAviso>;
 }) {
   const parametros = await searchParams;
-  const clientes = listarClientes();
-  const pagos = listarPagos(100);
+  const [clientes, pagos, tasa] = await Promise.all([listarClientes(), listarPagos(100), ultimaTasa()]);
 
   return (
     <>
@@ -29,7 +28,7 @@ export default async function PaginaPagos({
             Primero <Link href="/admin/clientes">registra un cliente</Link>.
           </p>
         ) : (
-          <FormularioPago clientes={clientes} ultimaTasa={ultimaTasa()} volverA="/admin/pagos" />
+          <FormularioPago clientes={clientes} ultimaTasa={tasa} volverA="/admin/pagos" />
         )}
       </section>
 

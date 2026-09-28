@@ -43,3 +43,6 @@ next-env.d.ts
 # base de datos local
 /datos/*.db
 /datos/*.db-*
+
+# copias de seguridad hechas con npm run copia
+/copias/

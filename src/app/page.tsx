@@ -1,115 +1,101 @@
 import Link from "next/link";
-import { enlaceWhatsapp, negocio } from "@/config/negocio";
+import { enlaceWhatsapp, negocio, whatsappLegible } from "@/config/negocio";
 import { listarProductos } from "@/lib/productos";
 import { usd } from "@/lib/dinero";
 import estilos from "./page.module.css";
 
 /**
- * La web pública. Muestra lo que hay en la base y lo que está configurado
- * en `negocio.ts`; lo que falta (teléfono, dirección, precios) no se
+ * La web pública, pensada para abrirse en el teléfono desde un mensaje de
+ * WhatsApp: el nombre, los productos con su precio y el botón para pedir,
+ * sin nada antes. Lo que no está configurado (teléfono, precios) no se
  * inventa: se omite o se dice que está pendiente.
  */
-export default function PaginaInicio() {
-  const productos = listarProductos(true);
-  const whatsapp = enlaceWhatsapp(`Hola, quiero información sobre sus quesos.`);
-  const hayContacto = Boolean(whatsapp || negocio.direccion || negocio.ciudad);
+export default async function PaginaInicio() {
+  const productos = await listarProductos(true);
+  const whatsapp = enlaceWhatsapp("Hola, quiero información sobre sus quesos.");
+  const hayContacto = Boolean(whatsapp || negocio.direccion || negocio.ciudad || negocio.horario);
 
   return (
     <>
       <header className={estilos.cabecera}>
         <div className={estilos.contenido}>
-          <span className={estilos.logo}>{negocio.nombre}</span>
-          <nav aria-label="Principal" className={estilos.nav}>
-            <a href="#productos">Productos</a>
-            <a href="#contacto">Contacto</a>
-          </nav>
+          <div>
+            <p className={estilos.logo}>{negocio.nombre}</p>
+            <p className={estilos.lema}>{negocio.lema}</p>
+          </div>
+          {whatsapp && (
+            <a className="boton boton--acento" href={whatsapp} target="_blank" rel="noopener">
+              WhatsApp
+            </a>
+          )}
         </div>
       </header>
 
-      <main>
-        <section className={estilos.portada}>
-          <div className={estilos.contenido}>
-            <p className={estilos.etiqueta}>{negocio.lema}</p>
-            <h1 className={estilos.titulo}>{negocio.nombre}</h1>
-            <p className={estilos.subtitulo}>{negocio.descripcion}</p>
-            <div className={estilos.acciones}>
-              {whatsapp ? (
-                <a className="boton boton--acento" href={whatsapp} target="_blank" rel="noopener">
-                  Pedir por WhatsApp
-                </a>
-              ) : (
-                <a className="boton boton--acento" href="#productos">
-                  Ver productos
-                </a>
+      <main className={estilos.contenido}>
+        <section className={estilos.seccion} aria-labelledby="titulo-precios">
+          <h1 id="titulo-precios" className={estilos.titulo}>
+            Precios de hoy
+          </h1>
+          {productos.length === 0 ? (
+            <p className="vacio">Todavía no hay productos publicados.</p>
+          ) : (
+            <ul className={estilos.productos}>
+              {productos.map((p) => (
+                <li key={p.id} className={estilos.producto}>
+                  <span className={estilos.nombre}>{p.nombre}</span>
+                  {p.precio_usd === null ? (
+                    <span className={estilos.precioPendiente}>Consulta el precio del día</span>
+                  ) : (
+                    <span className={estilos.precio}>
+                      {usd(p.precio_usd)} <small>/ {p.unidad}</small>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className={estilos.notaPrecios}>
+            Precios en dólares. Puedes pagar en bolívares a la tasa del día por pago móvil,
+            transferencia o efectivo.
+          </p>
+          {whatsapp && (
+            <a className={`boton boton--acento ${estilos.botonGrande}`} href={whatsapp} target="_blank" rel="noopener">
+              Pedir por WhatsApp
+            </a>
+          )}
+        </section>
+
+        {hayContacto && (
+          <section className={estilos.seccion} aria-labelledby="titulo-contacto">
+            <h2 id="titulo-contacto" className={estilos.subtitulo}>
+              Dónde estamos
+            </h2>
+            <dl className={estilos.contacto}>
+              {whatsapp && (
+                <div>
+                  <dt>WhatsApp</dt>
+                  <dd>
+                    <a href={whatsapp} target="_blank" rel="noopener">
+                      {whatsappLegible()}
+                    </a>
+                  </dd>
+                </div>
               )}
-              <a className="boton boton--secundario" href="#contacto">
-                Cómo llegar
-              </a>
-            </div>
-          </div>
-        </section>
-
-        <section id="productos" className={estilos.seccion}>
-          <div className={estilos.contenido}>
-            <h2 className={estilos.tituloSeccion}>Productos</h2>
-            {productos.length === 0 ? (
-              <p className="vacio">Todavía no hay productos publicados.</p>
-            ) : (
-              <ul className={estilos.productos}>
-                {productos.map((p) => (
-                  <li key={p.id} className={estilos.producto}>
-                    <h3>{p.nombre}</h3>
-                    {p.precio_usd === null ? (
-                      <p className={estilos.precioPendiente}>Consulta el precio del día</p>
-                    ) : (
-                      <p className={estilos.precio}>
-                        {usd(p.precio_usd)} <span>por {p.unidad}</span>
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className={estilos.notaPrecios}>
-              Los precios están en dólares y puedes pagar en bolívares a la tasa del día, por pago
-              móvil, transferencia o efectivo.
-            </p>
-          </div>
-        </section>
-
-        <section id="contacto" className={`${estilos.seccion} ${estilos.seccionSuave}`}>
-          <div className={estilos.contenido}>
-            <h2 className={estilos.tituloSeccion}>Contacto</h2>
-            {hayContacto ? (
-              <dl className={estilos.contacto}>
-                {whatsapp && (
-                  <div>
-                    <dt>WhatsApp</dt>
-                    <dd>
-                      <a href={whatsapp} target="_blank" rel="noopener">
-                        Escríbenos
-                      </a>
-                    </dd>
-                  </div>
-                )}
-                {(negocio.direccion || negocio.ciudad) && (
-                  <div>
-                    <dt>Dirección</dt>
-                    <dd>{[negocio.direccion, negocio.ciudad].filter(Boolean).join(", ")}</dd>
-                  </div>
-                )}
-                {negocio.horario && (
-                  <div>
-                    <dt>Horario</dt>
-                    <dd>{negocio.horario}</dd>
-                  </div>
-                )}
-              </dl>
-            ) : (
-              <p className="vacio">Pronto publicaremos el teléfono y la dirección del local.</p>
-            )}
-          </div>
-        </section>
+              {(negocio.direccion || negocio.ciudad) && (
+                <div>
+                  <dt>Dirección</dt>
+                  <dd>{[negocio.direccion, negocio.ciudad].filter(Boolean).join(", ")}</dd>
+                </div>
+              )}
+              {negocio.horario && (
+                <div>
+                  <dt>Horario</dt>
+                  <dd>{negocio.horario}</dd>
+                </div>
+              )}
+            </dl>
+          </section>
+        )}
       </main>
 
       <footer className={estilos.pie}>

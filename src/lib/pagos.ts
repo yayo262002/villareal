@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "./db";
+import { ejecutar, fila, filas } from "./db";
 import { aDolares, redondear, type MetodoPago, type Moneda } from "./dinero";
 
 export type Pago = {
@@ -34,32 +34,36 @@ const CONSULTA_PAGOS = `
   join clientes c on c.id = p.cliente_id
 `;
 
-export function listarPagos(limite = 100): Pago[] {
-  return db()
-    .prepare(`${CONSULTA_PAGOS} order by p.fecha desc, p.id desc limit ?`)
-    .all(limite) as Pago[];
+export async function listarPagos(limite = 100): Promise<Pago[]> {
+  return filas<Pago>(`${CONSULTA_PAGOS} order by p.fecha desc, p.id desc limit ?`, [limite]);
 }
 
-export function listarPagosDeCliente(clienteId: number): Pago[] {
-  return db()
-    .prepare(`${CONSULTA_PAGOS} where p.cliente_id = ? order by p.fecha desc, p.id desc`)
-    .all(clienteId) as Pago[];
+export async function listarPagosDeCliente(clienteId: number): Promise<Pago[]> {
+  return filas<Pago>(`${CONSULTA_PAGOS} where p.cliente_id = ? order by p.fecha desc, p.id desc`, [clienteId]);
+}
+
+export async function buscarPago(id: number): Promise<Pago | null> {
+  return fila<Pago>(`${CONSULTA_PAGOS} where p.id = ?`, [id]);
+}
+
+/** Borra un pago. Devuelve false si no existía. */
+export async function eliminarPago(id: number): Promise<boolean> {
+  const r = await ejecutar("delete from pagos where id = ?", [id]);
+  return r.cambios > 0;
 }
 
 /**
  * El equivalente en dólares se calcula al guardar y se conserva junto a la
  * tasa. Así el saldo del cliente no se mueve si la tasa de mañana es otra.
  */
-export function registrarPago(datos: DatosPago): number {
+export async function registrarPago(datos: DatosPago): Promise<number> {
   if (!(datos.monto > 0)) throw new Error("El monto tiene que ser mayor que cero.");
   const montoUsd = aDolares(datos.monto, datos.moneda, datos.tasa);
 
-  const resultado = db()
-    .prepare(
-      `insert into pagos (cliente_id, fecha, metodo, moneda, monto, tasa, monto_usd, referencia, nota)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
+  const r = await ejecutar(
+    `insert into pagos (cliente_id, fecha, metodo, moneda, monto, tasa, monto_usd, referencia, nota)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
       datos.cliente_id,
       datos.fecha,
       datos.metodo,
@@ -69,19 +73,20 @@ export function registrarPago(datos: DatosPago): number {
       montoUsd,
       datos.referencia,
       datos.nota,
-    );
-  return Number(resultado.lastInsertRowid);
+    ],
+  );
+  return r.ultimoId;
 }
 
-export function totalCobradoUsd(): number {
-  const fila = db().prepare("select coalesce(sum(monto_usd), 0) as t from pagos").get() as { t: number };
-  return redondear(fila.t);
+export async function totalCobradoUsd(): Promise<number> {
+  const f = await fila<{ t: number }>("select coalesce(sum(monto_usd), 0) as t from pagos");
+  return redondear(Number(f?.t ?? 0));
 }
 
 /** La última tasa que se usó en un pago en bolívares, para sugerirla en el formulario. */
-export function ultimaTasa(): number | null {
-  const fila = db()
-    .prepare("select tasa from pagos where moneda = 'VES' and tasa is not null order by fecha desc, id desc limit 1")
-    .get() as { tasa: number } | undefined;
-  return fila?.tasa ?? null;
+export async function ultimaTasa(): Promise<number | null> {
+  const f = await fila<{ tasa: number }>(
+    "select tasa from pagos where moneda = 'VES' and tasa is not null order by fecha desc, id desc limit 1",
+  );
+  return f?.tasa ?? null;
 }

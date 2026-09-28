@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { listarClientes } from "@/lib/clientes";
 import { guardarCliente } from "@/lib/acciones";
-import { usd } from "@/lib/dinero";
+import { fechaCorta, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
 
@@ -13,11 +13,18 @@ export default async function PaginaClientes({
   searchParams: Promise<ParametrosAviso>;
 }) {
   const parametros = await searchParams;
-  const clientes = listarClientes();
+  const clientes = await listarClientes();
 
   return (
     <>
-      <h1 className={estilos.titulo}>Clientes</h1>
+      <div className={estilos.encabezado}>
+        <h1 className={estilos.titulo}>Clientes</h1>
+        {clientes.length > 0 && (
+          <a href="/admin/clientes/exportar" download className="boton boton--secundario">
+            Descargar lista (Excel)
+          </a>
+        )}
+      </div>
       <Avisos parametros={parametros} />
 
       <div className={estilos.dosColumnas}>
@@ -75,6 +82,7 @@ export default async function PaginaClientes({
                     <th>Nombre</th>
                     <th>Teléfono</th>
                     <th>Tipo</th>
+                    <th>Última compra</th>
                     <th className="numero">Saldo</th>
                   </tr>
                 </thead>
@@ -86,6 +94,7 @@ export default async function PaginaClientes({
                       </td>
                       <td>{c.telefono || "—"}</td>
                       <td>{c.tipo === "mayor" ? "Mayor" : "Detal"}</td>
+                      <td>{c.ultima_compra ? fechaCorta(c.ultima_compra) : "—"}</td>
                       <td className={`numero ${c.saldo_usd > 0 ? estilos.deuda : estilos.saldado}`}>
                         {c.saldo_usd > 0 ? `Debe ${usd(c.saldo_usd)}` : "Al día"}
                       </td>

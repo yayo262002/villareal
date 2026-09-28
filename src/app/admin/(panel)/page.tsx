@@ -7,11 +7,15 @@ import estilos from "./panel.module.css";
 
 export const metadata = { title: "Resumen" };
 
-export default function PaginaResumen() {
-  const clientes = listarClientes();
-  const deudas = resumenDeudas();
-  const ultimasVentas = listarVentas(5);
-  const ultimosPagos = listarPagos(5);
+export default async function PaginaResumen() {
+  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado] = await Promise.all([
+    listarClientes(),
+    resumenDeudas(),
+    listarVentas(5),
+    listarPagos(5),
+    totalVendidoUsd(),
+    totalCobradoUsd(),
+  ]);
   const deudores = clientes.filter((c) => c.saldo_usd > 0).sort((a, b) => b.saldo_usd - a.saldo_usd);
 
   return (
@@ -25,14 +29,14 @@ export default function PaginaResumen() {
         </div>
         <div className={estilos.cifra}>
           <dt>Vendido</dt>
-          <dd>{usd(totalVendidoUsd())}</dd>
+          <dd>{usd(vendido)}</dd>
         </div>
         <div className={estilos.cifra}>
           <dt>Cobrado</dt>
-          <dd>{usd(totalCobradoUsd())}</dd>
+          <dd>{usd(cobrado)}</dd>
         </div>
         <div className={`${estilos.cifra} ${deudas.total_por_cobrar_usd > 0 ? estilos["cifra--alerta"] : ""}`}>
-          <dt>Por cobrar</dt>
+          <dt>Por pagar</dt>
           <dd>{usd(deudas.total_por_cobrar_usd)}</dd>
         </div>
       </dl>
@@ -62,6 +66,11 @@ export default function PaginaResumen() {
                   ))}
                 </tbody>
               </table>
+              {deudores.length > 8 && (
+                <p className={estilos.ayuda}>
+                  <Link href="/admin/cuentas">Ver todas las cuentas por pagar</Link>
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -131,6 +140,17 @@ export default function PaginaResumen() {
             </table>
           </div>
         )}
+      </section>
+
+      <section className="tarjeta">
+        <h2 className={estilos.subtitulo}>Copia de seguridad</h2>
+        <p className={estilos.ayuda}>
+          Todo lo que registras, fotos incluidas, vive en un solo archivo. Descárgalo de vez en cuando
+          y guárdalo en Drive o en otro teléfono: con este archivo se recupera todo.
+        </p>
+        <a href="/admin/copia" download className="boton boton--secundario">
+          Descargar copia
+        </a>
       </section>
     </>
   );

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { listarClientes } from "@/lib/clientes";
 import { listarProductos } from "@/lib/productos";
-import { listarVentas, lineasDeVenta } from "@/lib/ventas";
+import { conLineas, listarVentas } from "@/lib/ventas";
 import { guardarVenta } from "@/lib/acciones";
 import { FILAS_VENTA } from "@/lib/constantes";
 import { cantidad, fechaCorta, hoy, usd } from "@/lib/dinero";
@@ -17,9 +17,11 @@ export default async function PaginaVentas({
 }) {
   const parametros = await searchParams;
   const clientePreseleccionado = typeof parametros.cliente === "string" ? parametros.cliente : "";
-  const clientes = listarClientes();
-  const productos = listarProductos(true);
-  const ventas = listarVentas(50).map((v) => ({ ...v, lineas: lineasDeVenta(v.id) }));
+  const [clientes, productos, ventas] = await Promise.all([
+    listarClientes(),
+    listarProductos(true),
+    listarVentas(50).then(conLineas),
+  ]);
 
   return (
     <>

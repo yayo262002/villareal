@@ -11,7 +11,7 @@ export default async function PaginaProductos({
   searchParams: Promise<ParametrosAviso>;
 }) {
   const parametros = await searchParams;
-  const productos = listarProductos();
+  const productos = await listarProductos();
   const sinPrecio = productos.filter((p) => p.activo && p.precio_usd === null);
 
   return (

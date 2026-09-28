@@ -11,6 +11,8 @@ const SECCIONES = [
   { ruta: "/admin/clientes", nombre: "Clientes" },
   { ruta: "/admin/ventas", nombre: "Ventas" },
   { ruta: "/admin/pagos", nombre: "Pagos" },
+  { ruta: "/admin/cuentas", nombre: "Cuentas" },
+  { ruta: "/admin/informe", nombre: "Informe" },
   { ruta: "/admin/productos", nombre: "Productos" },
 ] as const;
 

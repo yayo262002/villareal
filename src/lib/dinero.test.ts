@@ -4,6 +4,8 @@ import {
   aDolares,
   esMetodoPago,
   fechaCorta,
+  fechaIso,
+  mesLegible,
   monedaDelMetodo,
   redondear,
 } from "./dinero.ts";
@@ -42,6 +44,18 @@ test("solo se reconocen los métodos definidos", () => {
 test("redondear deja dos decimales sin arrastrar errores de coma flotante", () => {
   assert.equal(redondear(0.1 + 0.2), 0.3);
   assert.equal(redondear(2.675), 2.68);
+});
+
+test("la fecha del formulario es la local, aunque en UTC ya sea mañana", () => {
+  // Las 21:30 del 28 de septiembre en hora local. En Venezuela (UTC-4) son
+  // la 01:30 UTC del 29, y toISOString() daría 2026-09-29.
+  assert.equal(fechaIso(new Date(2026, 8, 28, 21, 30)), "2026-09-28");
+  assert.equal(fechaIso(new Date(2026, 0, 5, 0, 0)), "2026-01-05");
+});
+
+test("el mes del informe se escribe con nombre", () => {
+  assert.equal(mesLegible("2026-09"), "Septiembre 2026");
+  assert.equal(mesLegible("2026-01"), "Enero 2026");
 });
 
 test("las fechas se muestran día/mes/año", () => {

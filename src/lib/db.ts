@@ -1,105 +1,96 @@
 import "server-only";
-import { DatabaseSync } from "node:sqlite";
+import { createClient, type Client, type InValue, type Transaction } from "@libsql/client";
 import path from "node:path";
 import fs from "node:fs";
+import { ESQUEMA, PRODUCTOS_INICIALES } from "./esquema";
 
 /**
- * SQLite con el módulo integrado de Node 24: no hay que instalar nada ni
- * crear cuentas en ningún servicio. El archivo vive en `datos/` y está
- * fuera de Git. Si el día de mañana la web se aloja fuera del local,
- * cambiar a Turso o Postgres solo toca este archivo.
+ * Conexión a la base de datos con el cliente de libsql, que habla el mismo
+ * SQLite en dos sitios:
+ *
+ * - Sin configurar nada: un archivo en `datos/villareal.db`. Para el local
+ *   o un servidor propio.
+ * - Con `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN`: una base en Turso, que
+ *   es lo que hace falta en Vercel porque allí no hay disco que persista.
+ *
+ * Todas las funciones son asíncronas por eso: contra Turso cada consulta
+ * viaja por la red.
  */
 
-const RUTA_DB =
-  process.env.RUTA_BASE_DATOS ?? path.join(process.cwd(), "datos", "villareal.db");
+export type { InValue, Transaction };
 
-const ESQUEMA = `
-  create table if not exists clientes (
-    id integer primary key autoincrement,
-    nombre text not null,
-    telefono text not null default '',
-    cedula_rif text not null default '',
-    direccion text not null default '',
-    tipo text not null default 'detal' check (tipo in ('detal', 'mayor')),
-    nota text not null default '',
-    creado_en text not null default (datetime('now'))
-  );
+function esRemota(): boolean {
+  return Boolean(process.env.TURSO_DATABASE_URL);
+}
 
-  create table if not exists productos (
-    id integer primary key autoincrement,
-    nombre text not null,
-    unidad text not null default 'kg' check (unidad in ('kg', 'unidad')),
-    precio_usd real,
-    activo integer not null default 1,
-    creado_en text not null default (datetime('now'))
-  );
+export function urlBaseDeDatos(): string {
+  if (esRemota()) return process.env.TURSO_DATABASE_URL!;
+  const ruta = process.env.RUTA_BASE_DATOS ?? path.join(process.cwd(), "datos", "villareal.db");
+  fs.mkdirSync(path.dirname(ruta), { recursive: true });
+  return "file:" + ruta.replace(/\\/g, "/");
+}
 
-  create table if not exists ventas (
-    id integer primary key autoincrement,
-    cliente_id integer not null references clientes(id),
-    fecha text not null,
-    total_usd real not null,
-    nota text not null default '',
-    creado_en text not null default (datetime('now'))
-  );
-
-  create table if not exists venta_lineas (
-    id integer primary key autoincrement,
-    venta_id integer not null references ventas(id) on delete cascade,
-    producto_id integer not null references productos(id),
-    cantidad real not null,
-    precio_unitario_usd real not null,
-    subtotal_usd real not null
-  );
-
-  create table if not exists pagos (
-    id integer primary key autoincrement,
-    cliente_id integer not null references clientes(id),
-    fecha text not null,
-    metodo text not null check (metodo in (
-      'pago_movil', 'transferencia', 'efectivo_bs', 'efectivo_usd',
-      'zelle', 'binance', 'otro'
-    )),
-    moneda text not null check (moneda in ('USD', 'VES')),
-    monto real not null,
-    tasa real,
-    monto_usd real not null,
-    referencia text not null default '',
-    nota text not null default '',
-    creado_en text not null default (datetime('now'))
-  );
-
-  create index if not exists ventas_cliente on ventas(cliente_id);
-  create index if not exists pagos_cliente on pagos(cliente_id);
-`;
-
-// Los dos quesos con los que abre el local. Sin precio: el precio real lo
-// pone el dueño desde el panel, nunca lo inventa el código.
-const PRODUCTOS_INICIALES = [
-  { nombre: "Queso amarillo", unidad: "kg" },
-  { nombre: "Queso mozzarella", unidad: "kg" },
-];
-
-function abrir(): DatabaseSync {
-  fs.mkdirSync(path.dirname(RUTA_DB), { recursive: true });
-  const db = new DatabaseSync(RUTA_DB);
-  db.exec("pragma journal_mode = wal");
-  db.exec("pragma foreign_keys = on");
-  db.exec(ESQUEMA);
-
-  const hayProductos = db.prepare("select count(*) as n from productos").get() as { n: number };
-  if (hayProductos.n === 0) {
-    const insertar = db.prepare("insert into productos (nombre, unidad) values (?, ?)");
-    for (const p of PRODUCTOS_INICIALES) insertar.run(p.nombre, p.unidad);
+async function abrir(): Promise<Client> {
+  const cliente = createClient({
+    url: urlBaseDeDatos(),
+    authToken: esRemota() ? process.env.TURSO_AUTH_TOKEN : undefined,
+  });
+  if (!esRemota()) {
+    await cliente.execute("pragma journal_mode = wal");
+    await cliente.execute("pragma foreign_keys = on");
   }
-  return db;
+  await cliente.executeMultiple(ESQUEMA);
+
+  const hay = await cliente.execute("select count(*) as n from productos");
+  if (Number(hay.rows[0].n) === 0) {
+    for (const p of PRODUCTOS_INICIALES) {
+      await cliente.execute({ sql: "insert into productos (nombre, unidad) values (?, ?)", args: [p.nombre, p.unidad] });
+    }
+  }
+  return cliente;
 }
 
 // En desarrollo Next recarga los módulos a cada cambio; guardar la conexión
-// en globalThis evita abrir decenas de conexiones al mismo archivo.
-const global = globalThis as unknown as { __dbVillareal?: DatabaseSync };
+// en globalThis evita abrir decenas de conexiones a la misma base.
+const global = globalThis as unknown as { __dbVillareal?: Promise<Client> };
 
-export function db(): DatabaseSync {
-  if (!global.__dbVillareal) global.__dbVillareal = abrir();
+export function db(): Promise<Client> {
+  if (!global.__dbVillareal) {
+    global.__dbVillareal = abrir().catch((error) => {
+      global.__dbVillareal = undefined;
+      throw error;
+    });
+  }
   return global.__dbVillareal;
+}
+
+/** Todas las filas de una consulta, como objetos con el nombre de cada columna. */
+export async function filas<T>(sql: string, args: InValue[] = []): Promise<T[]> {
+  const resultado = await (await db()).execute({ sql, args });
+  return resultado.rows as unknown as T[];
+}
+
+/** La primera fila, o null si no hay ninguna. */
+export async function fila<T>(sql: string, args: InValue[] = []): Promise<T | null> {
+  const [primera] = await filas<T>(sql, args);
+  return primera ?? null;
+}
+
+/** Un insert, update o delete. Devuelve cuántas filas tocó y el último id insertado. */
+export async function ejecutar(sql: string, args: InValue[] = []): Promise<{ cambios: number; ultimoId: number }> {
+  const resultado = await (await db()).execute({ sql, args });
+  return { cambios: resultado.rowsAffected, ultimoId: Number(resultado.lastInsertRowid ?? 0) };
+}
+
+/** Varias escrituras que entran todas o ninguna. */
+export async function transaccion<T>(cuerpo: (tx: Transaction) => Promise<T>): Promise<T> {
+  const tx = await (await db()).transaction("write");
+  try {
+    const valor = await cuerpo(tx);
+    await tx.commit();
+    return valor;
+  } catch (error) {
+    await tx.rollback();
+    throw error;
+  }
 }

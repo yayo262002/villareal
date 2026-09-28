@@ -79,6 +79,19 @@ textarea {
 .boton--acento:hover {
   background: #e6b930;
 }
+.boton--peligro {
+  background: var(--color-error);
+  color: var(--color-marca-texto);
+}
+.boton--peligro:hover {
+  background: var(--color-error-oscuro);
+}
+/* Enlace discreto para acciones de fila: borrar, editar. */
+.enlace-fila {
+  font-size: 14px;
+  color: var(--color-error);
+  white-space: nowrap;
+}
 
 /* Formularios */
 .campo {

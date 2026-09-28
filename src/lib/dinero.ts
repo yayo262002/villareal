@@ -69,12 +69,43 @@ export function cantidad(n: number, unidad: string): string {
   return `${num} ${unidad}`;
 }
 
-/** Fecha de hoy en formato YYYY-MM-DD, para rellenar los formularios. */
+/**
+ * Fecha en formato YYYY-MM-DD usando la hora local, no UTC. Venezuela va
+ * cuatro horas por detrás de UTC: con `toISOString()` una venta anotada a
+ * las nueve de la noche saldría con la fecha de mañana.
+ */
+export function fechaIso(fecha: Date): string {
+  const a = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, "0");
+  const d = String(fecha.getDate()).padStart(2, "0");
+  return `${a}-${m}-${d}`;
+}
+
+/** Fecha de hoy para rellenar los formularios. */
 export function hoy(): string {
-  return new Date().toISOString().slice(0, 10);
+  return fechaIso(new Date());
 }
 
 export function fechaCorta(iso: string): string {
   const [a, m, d] = iso.slice(0, 10).split("-");
   return `${d}/${m}/${a}`;
+}
+
+const MESES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+/** «2026-09» → «Septiembre 2026». Para el estudio de ventas. */
+export function mesLegible(mes: string): string {
+  const [a, m] = mes.split("-");
+  const nombre = MESES[Number(m) - 1] ?? mes;
+  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${a}`;
+}
+
+/** Fecha de hace `dias` días, en YYYY-MM-DD, para filtrar «los últimos 30 días». */
+export function hace(dias: number): string {
+  const f = new Date();
+  f.setDate(f.getDate() - dias);
+  return fechaIso(f);
 }

@@ -186,3 +186,89 @@
   width: 100%;
   max-width: 380px;
 }
+
+.ayuda {
+  color: var(--color-texto-suave);
+  margin-bottom: var(--espacio-4);
+  max-width: 60ch;
+}
+
+/* Ficha de un registro (venta o pago) en la pantalla de confirmación. */
+.detalle {
+  display: grid;
+  gap: var(--espacio-3);
+  margin-bottom: var(--espacio-4);
+}
+.detalle > div {
+  display: grid;
+  gap: var(--espacio-1);
+}
+.detalle dt {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+.detalle dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Estado de una cuenta (venta): pagada, abonada o por pagar. */
+.estado {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.estado--pagada {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+.estado--parcial {
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso);
+}
+.estado--por_pagar {
+  background: var(--color-error-fondo);
+  color: var(--color-error);
+}
+
+/* Fotos de las notas de entrega. */
+.miniaturas {
+  list-style: none;
+  padding: 0;
+  margin: var(--espacio-5) 0 0;
+  display: grid;
+  gap: var(--espacio-4);
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.miniatura {
+  display: grid;
+  gap: var(--espacio-2);
+}
+.miniatura img,
+.miniaturaPdf {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+.miniaturaPdf {
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: var(--color-texto-suave);
+}
+.miniaturaTexto {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+.miniaturaTexto strong {
+  color: var(--color-texto);
+}
