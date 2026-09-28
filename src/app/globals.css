@@ -1,0 +1,207 @@
+@import "../styles/tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--fuente);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-texto);
+  background: var(--color-fondo);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--color-marca);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Botones táctiles: mínimo 44px de alto, que casi todo se usa desde el teléfono. */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espacio-2);
+  min-height: 44px;
+  padding: 0 var(--espacio-5);
+  border: 1px solid transparent;
+  border-radius: var(--radio);
+  background: var(--color-marca);
+  color: var(--color-marca-texto);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.boton:hover {
+  background: var(--color-marca-oscuro);
+}
+.boton:focus-visible {
+  outline: 3px solid var(--color-acento);
+  outline-offset: 2px;
+}
+.boton--secundario {
+  background: transparent;
+  color: var(--color-marca);
+  border-color: var(--color-marca);
+}
+.boton--secundario:hover {
+  background: var(--color-superficie-suave);
+}
+.boton--acento {
+  background: var(--color-acento);
+  color: var(--color-acento-texto);
+}
+.boton--acento:hover {
+  background: #e6b930;
+}
+
+/* Formularios */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+}
+.campo label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.campo input,
+.campo select,
+.campo textarea {
+  min-height: 44px;
+  padding: var(--espacio-2) var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+.campo textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.campo input:focus-visible,
+.campo select:focus-visible,
+.campo textarea:focus-visible {
+  outline: 3px solid var(--color-acento);
+  outline-offset: 1px;
+}
+.campo .ayuda {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+.formulario {
+  display: grid;
+  gap: var(--espacio-4);
+}
+.formulario__fila {
+  display: grid;
+  gap: var(--espacio-4);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+  .formulario__fila {
+    grid-template-columns: 1fr 1fr;
+  }
+  .formulario__fila--3 {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+}
+
+/* Tarjetas y tablas */
+/* min-width: 0 evita que una tabla ancha estire la tarjeta más allá de la
+   pantalla: un hijo de grid no se encoge por debajo de su contenido, y el
+   desplazamiento horizontal se lo debe quedar la envoltura de la tabla. */
+.tarjeta {
+  min-width: 0;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-grande);
+  padding: var(--espacio-5);
+  box-shadow: var(--sombra);
+}
+.tabla-envoltorio {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.tabla th,
+.tabla td {
+  text-align: left;
+  padding: var(--espacio-3) var(--espacio-2);
+  border-bottom: 1px solid var(--color-borde);
+  white-space: nowrap;
+}
+.tabla th {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-texto-suave);
+}
+.tabla td.numero,
+.tabla th.numero {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Avisos */
+.aviso {
+  padding: var(--espacio-3) var(--espacio-4);
+  border-radius: var(--radio);
+  font-size: 15px;
+}
+.aviso--exito {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+.aviso--aviso {
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso);
+}
+.aviso--error {
+  background: var(--color-error-fondo);
+  color: var(--color-error);
+}
+
+.vacio {
+  padding: var(--espacio-5);
+  text-align: center;
+  color: var(--color-texto-suave);
+}
+
+.visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

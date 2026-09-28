@@ -1,0 +1,48 @@
+/*
+ * Todos los colores y medidas del proyecto. Ningún componente escribe un
+ * color suelto: si hace falta uno nuevo, se añade aquí con nombre.
+ *
+ * La paleta sale del producto: crema y amarillo del queso, verde oscuro
+ * para el texto y los botones, que contrasta bien sobre fondos claros.
+ */
+:root {
+  color-scheme: light;
+
+  --color-fondo: #fffdf7;
+  --color-superficie: #ffffff;
+  --color-superficie-suave: #fdf6e3;
+  --color-borde: #e8e0cc;
+
+  --color-texto: #1f2a1f;
+  --color-texto-suave: #5c665c;
+
+  --color-marca: #1f5f3a;
+  --color-marca-oscuro: #163f28;
+  --color-marca-texto: #ffffff;
+
+  --color-acento: #f3c84b;
+  --color-acento-texto: #3a2f00;
+
+  --color-exito: #1f7a3e;
+  --color-exito-fondo: #e6f4ea;
+  --color-aviso: #8a5a00;
+  --color-aviso-fondo: #fff4d6;
+  --color-error: #a52a2a;
+  --color-error-fondo: #fbe9e9;
+
+  --radio: 10px;
+  --radio-grande: 16px;
+  --sombra: 0 1px 3px rgba(31, 42, 31, 0.08), 0 4px 16px rgba(31, 42, 31, 0.06);
+
+  --espacio-1: 4px;
+  --espacio-2: 8px;
+  --espacio-3: 12px;
+  --espacio-4: 16px;
+  --espacio-5: 24px;
+  --espacio-6: 32px;
+  --espacio-7: 48px;
+
+  --ancho-contenido: 1040px;
+
+  --fuente: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
