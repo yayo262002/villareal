@@ -4,6 +4,7 @@ import { listarPagos, totalCobradoUsd } from "@/lib/pagos";
 import { listarVentas, totalVendidoUsd } from "@/lib/ventas";
 import { METODOS_PAGO, fechaCorta, formatearMonto, usd } from "@/lib/dinero";
 import { listarCopiasNube } from "@/lib/copias-nube";
+import { leerTasa } from "@/lib/ajustes";
 import { negocio } from "@/config/negocio";
 import { enlaceWhatsappA, mensajeRecordatorio } from "@/lib/whatsapp";
 import { copiarAhora } from "@/lib/acciones";
@@ -14,7 +15,7 @@ export const metadata = { title: "Resumen" };
 
 export default async function PaginaResumen({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
-  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube] = await Promise.all([
+  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, tasa] = await Promise.all([
     listarClientes(),
     resumenDeudas(),
     listarVentas(5),
@@ -22,13 +23,14 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
     totalVendidoUsd(),
     totalCobradoUsd(),
     listarCopiasNube(),
+    leerTasa(),
   ]);
   const deudores = clientes.filter((c) => c.saldo_usd > 0).sort((a, b) => b.saldo_usd - a.saldo_usd);
   // Recordatorio corto (solo el saldo); el detalle de las notas está en la ficha.
   const recordatorio = (c: (typeof deudores)[number]) =>
     enlaceWhatsappA(
       c.telefono,
-      mensajeRecordatorio({ negocio: negocio.nombre, cliente: c.nombre, saldo_usd: c.saldo_usd, pendientes: [] }),
+      mensajeRecordatorio({ negocio: negocio.nombre, cliente: c.nombre, saldo_usd: c.saldo_usd, pendientes: [], tasa: tasa?.valor }),
     );
 
   return (

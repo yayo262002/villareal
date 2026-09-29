@@ -41,7 +41,7 @@ export default async function PaginaCliente({
     cliente.saldo_usd > 0
       ? enlaceWhatsappA(
           cliente.telefono,
-          mensajeRecordatorio({ negocio: negocio.nombre, cliente: cliente.nombre, saldo_usd: cliente.saldo_usd, pendientes }),
+          mensajeRecordatorio({ negocio: negocio.nombre, cliente: cliente.nombre, saldo_usd: cliente.saldo_usd, pendientes, tasa }),
         )
       : null;
   const enlaceNota = (v: (typeof cuentas)[number]) =>
@@ -54,6 +54,7 @@ export default async function PaginaCliente({
         lineas: v.lineas,
         total_usd: v.total_usd,
         saldo_usd: cliente.saldo_usd,
+        tasa,
       }),
     );
 

@@ -5,6 +5,7 @@ import { NOMBRE_ESTADO, aplicarPagos, type CuentaDeVenta } from "@/lib/cuentas";
 import { fechaCorta, redondear, usd } from "@/lib/dinero";
 import { negocio } from "@/config/negocio";
 import { enlaceWhatsappA, mensajeRecordatorio } from "@/lib/whatsapp";
+import { leerTasa } from "@/lib/ajustes";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Cuentas" };
@@ -18,7 +19,7 @@ const PAGADAS_A_MOSTRAR = 50;
  * del cliente ya la cubren.
  */
 export default async function PaginaCuentas() {
-  const [clientes, ventas] = await Promise.all([listarClientes(), listarVentas(5000)]);
+  const [clientes, ventas, tasa] = await Promise.all([listarClientes(), listarVentas(5000), leerTasa()]);
 
   const pagadoPorCliente = new Map(clientes.map((c) => [c.id, c.total_pagado_usd]));
   const ventasPorCliente = new Map<number, Venta[]>();
@@ -48,7 +49,7 @@ export default async function PaginaCuentas() {
       cliente.id,
       enlaceWhatsappA(
         cliente.telefono,
-        mensajeRecordatorio({ negocio: negocio.nombre, cliente: cliente.nombre, saldo_usd: cliente.saldo_usd, pendientes }),
+        mensajeRecordatorio({ negocio: negocio.nombre, cliente: cliente.nombre, saldo_usd: cliente.saldo_usd, pendientes, tasa: tasa?.valor }),
       ),
     );
   }

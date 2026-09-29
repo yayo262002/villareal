@@ -1,4 +1,10 @@
-import { fechaCorta, nombreUnidad, usd } from "./dinero.ts";
+import { aBolivares, bs, fechaCorta, nombreUnidad, usd } from "./dinero.ts";
+
+/** «USD 18,00 (Bs 657,00)» si hay tasa; solo dólares si no. */
+function dolaresYBolivares(monto: number, tasa: number | null | undefined): string {
+  const enBs = aBolivares(monto, tasa ?? null);
+  return enBs === null ? usd(monto) : `${usd(monto)} (${bs(enBs)})`;
+}
 
 /**
  * Mensajes de WhatsApp al cliente: recordar lo que debe y mandarle la nota
@@ -34,14 +40,20 @@ export function mensajeRecordatorio(datos: {
   cliente: string;
   saldo_usd: number;
   pendientes: Pendiente[];
+  /** Tasa del día; con ella el saldo va también en bolívares. */
+  tasa?: number | null;
 }): string {
   const lineas = [`Hola ${datos.cliente}, le saluda ${datos.negocio}.`];
-  lineas.push(`Tiene pendiente ${usd(datos.saldo_usd)}:`);
+  lineas.push(`Tiene pendiente ${dolaresYBolivares(datos.saldo_usd, datos.tasa)}:`);
   for (const p of datos.pendientes) {
     const parte = p.pendiente_usd < p.total_usd ? ` (quedan ${usd(p.pendiente_usd)})` : "";
     lineas.push(`• Nota del ${fechaCorta(p.fecha)}: ${usd(p.total_usd)}${parte}`);
   }
-  lineas.push("Puede pagar en dólares o en bolívares a la tasa del día. ¡Gracias!");
+  lineas.push(
+    datos.tasa
+      ? `Puede pagar en dólares o en bolívares a ${bs(datos.tasa)} por dólar. ¡Gracias!`
+      : "Puede pagar en dólares o en bolívares a la tasa del día. ¡Gracias!",
+  );
   return lineas.join("\n");
 }
 
@@ -55,13 +67,14 @@ export function mensajeNota(datos: {
   lineas: Linea[];
   total_usd: number;
   saldo_usd: number;
+  tasa?: number | null;
 }): string {
   const lineas = [`${datos.negocio} · Nota del ${fechaCorta(datos.fecha)}`, `Cliente: ${datos.cliente}`, ""];
   for (const l of datos.lineas) {
     lineas.push(`${formatearCantidad(l.cantidad)} ${nombreUnidad(l.unidad)} ${l.producto_nombre} × ${usd(l.precio_unitario_usd)} = ${usd(l.subtotal_usd)}`);
   }
-  lineas.push("", `Total: ${usd(datos.total_usd)}`);
-  if (datos.saldo_usd > 0) lineas.push(`Saldo pendiente: ${usd(datos.saldo_usd)}`);
+  lineas.push("", `Total: ${dolaresYBolivares(datos.total_usd, datos.tasa)}`);
+  if (datos.saldo_usd > 0) lineas.push(`Saldo pendiente: ${dolaresYBolivares(datos.saldo_usd, datos.tasa)}`);
   else if (datos.saldo_usd < 0) lineas.push(`Saldo a su favor: ${usd(-datos.saldo_usd)}`);
   else lineas.push("Cuenta al día. ¡Gracias!");
   return lineas.join("\n");

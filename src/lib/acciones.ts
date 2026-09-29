@@ -199,10 +199,18 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   for (let i = 0; i < FILAS_VENTA; i++) {
     const productoId = numero(datos, `producto_${i}`);
     const cantidad = numero(datos, `cantidad_${i}`);
-    const precio = numero(datos, `precio_${i}`);
+    let precio = numero(datos, `precio_${i}`);
     if (!productoId && cantidad === null && precio === null) continue;
-    if (!productoId || cantidad === null || precio === null) {
-      volverConError("/admin/ventas", `La fila ${i + 1} está incompleta: producto, cantidad y precio.`);
+    if (!productoId || cantidad === null) {
+      volverConError("/admin/ventas", `La fila ${i + 1} está incompleta: producto y cantidad.`);
+    }
+    // Sin precio escrito se cobra al precio de venta del producto.
+    if (precio === null) {
+      const producto = await buscarProducto(productoId);
+      precio = producto?.precio_usd ?? null;
+      if (precio === null) {
+        volverConError("/admin/ventas", `La fila ${i + 1} no tiene precio y el producto tampoco: escríbelo.`);
+      }
     }
     lineas.push({ producto_id: productoId, cantidad, precio_unitario_usd: precio });
   }

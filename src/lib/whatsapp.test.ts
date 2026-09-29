@@ -34,6 +34,20 @@ test("el recordatorio enumera las notas pendientes y lo que queda de cada una", 
   assert.match(texto, /Gracias/);
 });
 
+test("con tasa, el recordatorio y la nota llevan el monto en bolívares", () => {
+  const recordatorio = mensajeRecordatorio({
+    negocio: "Villa Real",
+    cliente: "Ana",
+    saldo_usd: 18,
+    pendientes: [],
+    tasa: 36.5,
+  });
+  assert.match(recordatorio, /Tiene pendiente USD 18,00 \(Bs 657,00\):/);
+  assert.match(recordatorio, /a Bs 36,50 por dólar/);
+  const nota = mensajeNota({ negocio: "X", cliente: "Y", fecha: "2026-09-15", lineas: [], total_usd: 23, saldo_usd: 0, tasa: 36.5 });
+  assert.match(nota, /Total: USD 23,00 \(Bs 839,50\)/);
+});
+
 test("la nota de venta detalla las líneas, el total y el saldo", () => {
   const texto = mensajeNota({
     negocio: "Comercializadora Villa Real",

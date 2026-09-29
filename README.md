@@ -134,7 +134,10 @@ datos/                    La base de datos (fuera de Git)
 - Cada producto lleva sus **ventajas** (una por línea), que la web enseña
   debajo del precio, y un botón para pedirlo por WhatsApp.
 - Las cuentas internas siguen en **dólares**.
-- Cada venta suma al saldo del cliente. Cada pago resta.
+- Cada venta suma al saldo del cliente. Cada pago resta. Si al anotar una
+  venta se deja el precio vacío, se cobra al precio de venta del producto.
+- Los mensajes de WhatsApp (recordatorio y nota) dicen el monto en dólares y,
+  si hay tasa del día, también en bolívares.
 - Un pago en bolívares se guarda con la **tasa del día** que se escribió al
   registrarlo, y se convierte a dólares en ese momento. Si la tasa cambia
   mañana, el pago de hoy no se mueve.
