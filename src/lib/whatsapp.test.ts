@@ -1,8 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { bs, usd } from "./dinero.ts";
 import {
   enlaceWhatsappA,
   esSoloUnTelefono,
+  mensajeAbono,
+  mensajeEnCamino,
   mensajeNota,
   mensajeRecordatorio,
   mismoTelefono,
@@ -101,4 +104,76 @@ test("la nota de venta detalla las líneas, el total y el saldo", () => {
 
   const alDia = mensajeNota({ negocio: "X", cliente: "Y", fecha: "2026-09-15", lineas: [], total_usd: 0, saldo_usd: 0 });
   assert.match(alDia, /Cuenta al día/);
+});
+
+test("el recibo de un abono en bolívares dice el monto, la tasa y cómo queda la cuenta", () => {
+  const texto = mensajeAbono({
+    negocio: "Villa Real",
+    cliente: "Bodega Ana",
+    fecha: "2026-09-20",
+    metodo: "Pago móvil",
+    monto: 146,
+    moneda: "VES",
+    tasa: 36.5,
+    monto_usd: 4,
+    referencia: "1234",
+    saldo_usd: 6,
+    tasaDelDia: 40,
+  });
+  assert.deepEqual(texto.split("\n"), [
+    "Hola Bodega Ana, le saluda Villa Real.",
+    "Recibimos su abono del 20/09/2026.",
+    `Monto: ${bs(146)} (${usd(4)} a ${bs(36.5)} por dólar)`,
+    "Método: Pago móvil",
+    "Referencia: 1234",
+    `Saldo pendiente a hoy: ${usd(6)} (${bs(240)})`,
+    "¡Gracias!",
+  ]);
+});
+
+test("el recibo de un abono en dólares, sin referencia, con la cuenta al día o a favor", () => {
+  const abono = {
+    negocio: "Villa Real",
+    cliente: "0412-1234567",
+    fecha: "2026-09-20",
+    metodo: "Zelle",
+    monto: 20,
+    moneda: "USD" as const,
+    tasa: null,
+    monto_usd: 20,
+    referencia: "",
+  };
+  assert.deepEqual(mensajeAbono({ ...abono, saldo_usd: 0 }).split("\n"), [
+    "Hola, le saluda Villa Real.",
+    "Recibimos su abono del 20/09/2026.",
+    `Monto: ${usd(20)}`,
+    "Método: Zelle",
+    "Su cuenta queda al día.",
+    "¡Gracias!",
+  ]);
+  assert.ok(mensajeAbono({ ...abono, saldo_usd: -5 }).includes(`Queda a su favor: ${usd(5)}`));
+});
+
+test("el aviso de que el pedido va en camino dice lo que se lleva", () => {
+  const texto = mensajeEnCamino({
+    negocio: "Villa Real",
+    cliente: "Pizzería La Esquina",
+    lineas: [
+      { cantidad: 5, unidad: "kg", producto_nombre: "Queso mozzarella" },
+      { cantidad: 2, unidad: "carton", producto_nombre: "Huevos" },
+    ],
+    total_usd: 50,
+    tasa: 40,
+  });
+  assert.deepEqual(texto.split("\n"), [
+    "Hola Pizzería La Esquina, le saluda Villa Real.",
+    "Vamos en camino con su pedido:",
+    "• 5 kg Queso mozzarella",
+    "• 2 cartón Huevos",
+    `Total: ${usd(50)} (${bs(2000)})`,
+  ]);
+  assert.equal(
+    mensajeEnCamino({ negocio: "Villa Real", cliente: "Ana", lineas: [], total_usd: 0 }),
+    "Hola Ana, le saluda Villa Real.\nVamos en camino con su pedido.",
+  );
 });

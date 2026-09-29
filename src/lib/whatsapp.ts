@@ -110,6 +110,59 @@ export function mensajeNota(datos: {
   return lineas.join("\n");
 }
 
+/** El recibo de un abono: lo que se recibió y cómo queda la cuenta hoy. */
+export function mensajeAbono(datos: {
+  negocio: string;
+  cliente: string;
+  fecha: string;
+  /** El método como se lee: «Pago móvil», «Zelle». */
+  metodo: string;
+  monto: number;
+  moneda: "USD" | "VES";
+  /** La tasa con la que se guardó el abono, si fue en bolívares. */
+  tasa: number | null;
+  monto_usd: number;
+  referencia: string;
+  /** El saldo del cliente hoy, con este abono ya contado. */
+  saldo_usd: number;
+  tasaDelDia?: number | null;
+}): string {
+  const lineas = [`${saludo(datos.cliente)}, le saluda ${datos.negocio}.`, `Recibimos su abono del ${fechaCorta(datos.fecha)}.`];
+  lineas.push(
+    datos.moneda === "VES" && datos.tasa
+      ? `Monto: ${bs(datos.monto)} (${usd(datos.monto_usd)} a ${bs(datos.tasa)} por dólar)`
+      : `Monto: ${usd(datos.monto_usd)}`,
+  );
+  lineas.push(`Método: ${datos.metodo}`);
+  if (datos.referencia) lineas.push(`Referencia: ${datos.referencia}`);
+  if (datos.saldo_usd > 0) lineas.push(`Saldo pendiente a hoy: ${dolaresYBolivares(datos.saldo_usd, datos.tasaDelDia)}`);
+  else if (datos.saldo_usd < 0) lineas.push(`Queda a su favor: ${usd(-datos.saldo_usd)}`);
+  else lineas.push("Su cuenta queda al día.");
+  lineas.push("¡Gracias!");
+  return lineas.join("\n");
+}
+
+/** El aviso de que el pedido va en camino, con lo que se le lleva. */
+export function mensajeEnCamino(datos: {
+  negocio: string;
+  cliente: string;
+  lineas: Pick<Linea, "cantidad" | "unidad" | "producto_nombre">[];
+  total_usd: number;
+  tasa?: number | null;
+}): string {
+  const lineas = [`${saludo(datos.cliente)}, le saluda ${datos.negocio}.`];
+  if (datos.lineas.length === 0) {
+    lineas.push("Vamos en camino con su pedido.");
+    return lineas.join("\n");
+  }
+  lineas.push("Vamos en camino con su pedido:");
+  for (const l of datos.lineas) {
+    lineas.push(`• ${formatearCantidad(l.cantidad)} ${nombreUnidad(l.unidad)} ${l.producto_nombre}`);
+  }
+  lineas.push(`Total: ${dolaresYBolivares(datos.total_usd, datos.tasa)}`);
+  return lineas.join("\n");
+}
+
 function formatearCantidad(n: number): string {
   return new Intl.NumberFormat("es-VE", { maximumFractionDigits: 3 }).format(n);
 }

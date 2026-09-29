@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aplicarPagos } from "./cuentas.ts";
+import { aplicarPagos, movimientosDeCuenta } from "./cuentas.ts";
 
 const ventas = [
   { id: 3, fecha: "2026-09-20", total_usd: 30 },
@@ -41,6 +41,37 @@ test("lo pendiente suma exactamente el saldo del cliente", () => {
   const cuentas = aplicarPagos(ventas, 12.34);
   const pendiente = cuentas.reduce((s, v) => s + v.pendiente_usd, 0);
   assert.equal(Math.round(pendiente * 100) / 100, 60 - 12.34);
+});
+
+test("estado de cuenta: cada movimiento en su orden, con el saldo que deja", () => {
+  const abonos = [
+    { id: 2, fecha: "2026-09-20", monto_usd: 25 },
+    { id: 1, fecha: "2026-09-05", monto_usd: 4 },
+  ];
+  assert.deepEqual(
+    movimientosDeCuenta(ventas, abonos).map((m) => [m.tipo, m.id, m.cargo_usd, m.abono_usd, m.saldo_usd]),
+    [
+      ["venta", 1, 10, 0, 10],
+      ["abono", 1, 0, 4, 6],
+      ["venta", 2, 20, 0, 26],
+      // El mismo día, primero la venta y después el abono.
+      ["venta", 3, 30, 0, 56],
+      ["abono", 2, 0, 25, 31],
+    ],
+  );
+});
+
+test("estado de cuenta: el último saldo es lo comprado menos lo abonado", () => {
+  const abonos = [{ id: 1, fecha: "2026-09-02", monto_usd: 12.34 }];
+  const movimientos = movimientosDeCuenta(ventas, abonos);
+  assert.equal(movimientos.at(-1)?.saldo_usd, 47.66);
+  assert.equal(aplicarPagos(ventas, 12.34).reduce((s, v) => s + v.pendiente_usd, 0).toFixed(2), "47.66");
+});
+
+test("estado de cuenta: quien paga de más queda con saldo a favor", () => {
+  const movimientos = movimientosDeCuenta([{ id: 1, fecha: "2026-09-01", total_usd: 10 }], [{ id: 1, fecha: "2026-09-01", monto_usd: 15 }]);
+  assert.deepEqual(movimientos.map((m) => m.saldo_usd), [10, -5]);
+  assert.deepEqual(movimientosDeCuenta([], []), []);
 });
 
 test("el orden de entrada se respeta y el resultado no modifica las ventas originales", () => {

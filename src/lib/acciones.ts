@@ -29,7 +29,8 @@ import {
   entradaBloqueada,
   olvidarEntradasFallidas,
 } from "./intentos";
-import { buscarVenta, crearVenta, eliminarVenta, type LineaVenta } from "./ventas";
+import { buscarVenta, crearVenta, eliminarVenta, marcarEntrega, type LineaVenta } from "./ventas";
+import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { buscarAdjunto, eliminarAdjunto, guardarAdjunto } from "./adjuntos";
 import { guardarCopiaNube } from "./copias-nube";
@@ -58,14 +59,29 @@ function numero(datos: FormData, campo: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** La ruta con el aviso añadido, tenga ya parámetros o no. */
+function conAviso(ruta: string, clave: "ok" | "error", mensaje: string): string {
+  return `${ruta}${ruta.includes("?") ? "&" : "?"}${clave}=${encodeURIComponent(mensaje)}`;
+}
+
 function volverConError(ruta: string, mensaje: string): never {
-  redirect(`${ruta}?error=${encodeURIComponent(mensaje)}`);
+  redirect(conAviso(ruta, "error", mensaje));
 }
 
 function volverConExito(ruta: string, mensaje: string): never {
   // Todo lo público sale de la base: la portada y la página de cada producto.
   revalidatePath("/", "layout");
-  redirect(`${ruta}?ok=${encodeURIComponent(mensaje)}`);
+  redirect(conAviso(ruta, "ok", mensaje));
+}
+
+/**
+ * A dónde volver después de una acción, cuando lo dice el formulario. Solo
+ * se aceptan páginas del panel: un formulario manipulado no puede mandar
+ * a otra web.
+ */
+function volverA(datos: FormData, porDefecto: string): string {
+  const ruta = texto(datos, "volver_a");
+  return /^\/admin(\/|\?|$)/.test(ruta) && !ruta.includes("//") && !ruta.includes("\\") ? ruta : porDefecto;
 }
 
 function mensajeDe(error: unknown): string {
@@ -300,15 +316,40 @@ export async function guardarVenta(datos: FormData): Promise<void> {
     lineas.push({ producto_id: productoId, cantidad, precio_unitario_usd: precio });
   }
 
+  // Lo que se lleva al cliente queda por entregar y entra en el despacho.
+  const porEntregar = texto(datos, "entrega") === "despacho";
   let ventaId = 0;
   try {
     const tasa = await leerTasa();
-    ventaId = await crearVenta(clienteId, fecha, lineas, texto(datos, "nota"), tasa?.valor ?? null);
+    ventaId = await crearVenta(clienteId, fecha, lineas, texto(datos, "nota"), tasa?.valor ?? null, porEntregar);
   } catch (error) {
     volverConError("/admin/ventas", mensajeDe(error));
   }
   // A la nota de entrega, para mandarla o imprimirla en el momento.
-  volverConExito(`/admin/ventas/${ventaId}/nota`, "Venta registrada.");
+  volverConExito(
+    `/admin/ventas/${ventaId}/nota`,
+    porEntregar ? "Venta registrada. Queda por entregar: ya está en el despacho." : "Venta registrada.",
+  );
+}
+
+/**
+ * Marca un pedido como entregado, o lo devuelve al despacho si se marcó
+ * por error. Se llama desde la ruta de despacho y desde la nota.
+ */
+export async function cambiarEntrega(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const venta = id ? await buscarVenta(id) : null;
+  if (!id || !venta) volverConError("/admin/despacho", "No se encontró la venta.");
+
+  const entregada = texto(datos, "entregada") === "1";
+  await marcarEntrega(id, entregada);
+  volverConExito(
+    volverA(datos, `/admin/ventas/${id}/nota`),
+    entregada
+      ? `Nota ${numeroDeNota(id)} entregada a ${venta.cliente_nombre}.`
+      : `La nota ${numeroDeNota(id)} vuelve a estar por entregar.`,
+  );
 }
 
 /**
@@ -330,21 +371,21 @@ export async function borrarVenta(datos: FormData): Promise<void> {
 
 export async function guardarPago(datos: FormData): Promise<void> {
   await exigirSesion();
-  const volverA = texto(datos, "volver_a") || "/admin/pagos";
+  const origen = volverA(datos, "/admin/pagos");
   const clienteId = numero(datos, "cliente_id");
   const fecha = texto(datos, "fecha");
   const metodo = texto(datos, "metodo");
   const monto = numero(datos, "monto");
   const tasa = numero(datos, "tasa");
 
-  if (!clienteId) volverConError(volverA, "Elige un cliente.");
-  if (!fecha) volverConError(volverA, "Falta la fecha.");
-  if (!esMetodoPago(metodo)) volverConError(volverA, "Elige el método de pago.");
-  if (monto === null || monto <= 0) volverConError(volverA, "El monto tiene que ser mayor que cero.");
+  if (!clienteId) volverConError(origen, "Elige un cliente.");
+  if (!fecha) volverConError(origen, "Falta la fecha.");
+  if (!esMetodoPago(metodo)) volverConError(origen, "Elige el método de pago.");
+  if (monto === null || monto <= 0) volverConError(origen, "El monto tiene que ser mayor que cero.");
 
   const moneda = monedaDelMetodo(metodo);
   if (moneda === "VES" && (tasa === null || tasa <= 0)) {
-    volverConError(volverA, "Un pago en bolívares necesita la tasa del día (Bs por dólar).");
+    volverConError(origen, "Un pago en bolívares necesita la tasa del día (Bs por dólar).");
   }
 
   try {
@@ -359,9 +400,9 @@ export async function guardarPago(datos: FormData): Promise<void> {
       nota: texto(datos, "nota"),
     });
   } catch (error) {
-    volverConError(volverA, mensajeDe(error));
+    volverConError(origen, mensajeDe(error));
   }
-  volverConExito(`/admin/clientes/${clienteId}`, "Abono registrado.");
+  volverConExito(`/admin/clientes/${clienteId}`, "Abono registrado. Abajo, en Abonos, puedes mandarle el recibo.");
 }
 
 /** Igual que `borrarVenta`: la confirmación está en `/admin/pagos/[id]/eliminar`. */
@@ -395,15 +436,15 @@ export async function subirAdjunto(datos: FormData): Promise<void> {
   const clienteId = numero(datos, "cliente_id");
   const cliente = clienteId ? await buscarCliente(clienteId) : null;
   if (!clienteId || !cliente) volverConError("/admin/clientes", "No se encontró el cliente.");
-  const volverA = `/admin/clientes/${clienteId}`;
+  const ficha = `/admin/clientes/${clienteId}`;
 
   const archivo = datos.get("archivo");
-  if (!(archivo instanceof File) || archivo.size === 0) volverConError(volverA, "Elige una foto de la nota.");
+  if (!(archivo instanceof File) || archivo.size === 0) volverConError(ficha, "Elige una foto de la nota.");
 
   const ventaId = numero(datos, "venta_id");
   const venta = ventaId ? await buscarVenta(ventaId) : null;
   if (ventaId && (!venta || venta.cliente_id !== clienteId)) {
-    volverConError(volverA, "Esa venta no es de este cliente.");
+    volverConError(ficha, "Esa venta no es de este cliente.");
   }
 
   try {
@@ -415,9 +456,9 @@ export async function subirAdjunto(datos: FormData): Promise<void> {
       contenido: new Uint8Array(await archivo.arrayBuffer()),
     });
   } catch (error) {
-    volverConError(volverA, mensajeDe(error));
+    volverConError(ficha, mensajeDe(error));
   }
-  volverConExito(volverA, "Foto guardada.");
+  volverConExito(ficha, "Foto guardada.");
 }
 
 export async function borrarAdjunto(datos: FormData): Promise<void> {

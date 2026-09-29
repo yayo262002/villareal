@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { listarClientes, resumenDeudas } from "@/lib/clientes";
 import { listarPagos, totalCobradoUsd } from "@/lib/pagos";
-import { listarVentas, totalVendidoUsd } from "@/lib/ventas";
-import { METODOS_PAGO, fechaCorta, formatearMonto, usd } from "@/lib/dinero";
+import { contarVentasPorEntregar, listarVentas, totalVendidoUsd, vendidoDesde } from "@/lib/ventas";
+import { numeroDeNota } from "@/lib/entregas";
+import { METODOS_PAGO, fechaCorta, formatearMonto, hoy, mesLegible, usd } from "@/lib/dinero";
 import { listarCopiasNube } from "@/lib/copias-nube";
 import { leerTasa } from "@/lib/ajustes";
 import { negocio } from "@/config/negocio";
@@ -15,16 +16,20 @@ export const metadata = { title: "Resumen" };
 
 export default async function PaginaResumen({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
-  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, tasa] = await Promise.all([
-    listarClientes(),
-    resumenDeudas(),
-    listarVentas(5),
-    listarPagos(5),
-    totalVendidoUsd(),
-    totalCobradoUsd(),
-    listarCopiasNube(),
-    leerTasa(),
-  ]);
+  const mes = hoy().slice(0, 7);
+  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, tasa, porEntregar, vendidoEsteMes] =
+    await Promise.all([
+      listarClientes(),
+      resumenDeudas(),
+      listarVentas(5),
+      listarPagos(5),
+      totalVendidoUsd(),
+      totalCobradoUsd(),
+      listarCopiasNube(),
+      leerTasa(),
+      contarVentasPorEntregar(),
+      vendidoDesde(`${mes}-01`),
+    ]);
   const deudores = clientes.filter((c) => c.saldo_usd > 0).sort((a, b) => b.saldo_usd - a.saldo_usd);
   // Recordatorio corto (solo el saldo); el detalle de las notas está en la ficha.
   const recordatorio = (c: (typeof deudores)[number]) =>
@@ -38,13 +43,40 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
       <h1 className={estilos.titulo}>Resumen</h1>
       <Avisos parametros={parametros} />
 
-      <dl className={estilos.cifras}>
+      <nav aria-label="Lo que más se hace" className={estilos.atajos}>
+        <Link href="/admin/clientes" className="boton">
+          Cliente nuevo
+        </Link>
+        <Link href="/admin/ventas" className="boton">
+          Anotar venta
+        </Link>
+        <Link href="/admin/pagos" className="boton">
+          Registrar abono
+        </Link>
+        <Link href="/admin/despacho" className="boton boton--acento">
+          Ruta de despacho
+        </Link>
+      </nav>
+
+      <dl className={`${estilos.cifras} ${estilos["cifras--seis"]}`}>
         <div className={estilos.cifra}>
           <dt>Clientes</dt>
-          <dd>{clientes.length}</dd>
+          <dd>
+            <Link href="/admin/clientes">{clientes.length}</Link>
+          </dd>
+        </div>
+        <div className={`${estilos.cifra} ${porEntregar > 0 ? estilos["cifra--alerta"] : ""}`}>
+          <dt>Pedidos por entregar</dt>
+          <dd>
+            <Link href="/admin/despacho">{porEntregar}</Link>
+          </dd>
         </div>
         <div className={estilos.cifra}>
-          <dt>Vendido</dt>
+          <dt>Vendido en {mesLegible(mes).toLowerCase()}</dt>
+          <dd>{usd(vendidoEsteMes)}</dd>
+        </div>
+        <div className={estilos.cifra}>
+          <dt>Vendido en total</dt>
           <dd>{usd(vendido)}</dd>
         </div>
         <div className={estilos.cifra}>
@@ -147,6 +179,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
             <table className="tabla">
               <thead>
                 <tr>
+                  <th>Nota</th>
                   <th>Fecha</th>
                   <th>Cliente</th>
                   <th className="numero">Total</th>
@@ -155,6 +188,9 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
               <tbody>
                 {ultimasVentas.map((v) => (
                   <tr key={v.id}>
+                    <td>
+                      <Link href={`/admin/ventas/${v.id}/nota`}>{numeroDeNota(v.id)}</Link>
+                    </td>
                     <td>{fechaCorta(v.fecha)}</td>
                     <td>
                       <Link href={`/admin/clientes/${v.cliente_id}`}>{v.cliente_nombre}</Link>

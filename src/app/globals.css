@@ -94,10 +94,13 @@ textarea {
 }
 
 /* Formularios */
+/* min-width: 0 en cada nivel: un desplegable mide lo que su opción más larga
+   y, sin esto, empuja el formulario fuera de la pantalla del teléfono. */
 .campo {
   display: flex;
   flex-direction: column;
   gap: var(--espacio-1);
+  min-width: 0;
 }
 .campo label {
   font-size: 14px;
@@ -106,6 +109,8 @@ textarea {
 .campo input,
 .campo select,
 .campo textarea {
+  width: 100%;
+  min-width: 0;
   min-height: 44px;
   padding: var(--espacio-2) var(--espacio-3);
   border: 1px solid var(--color-borde);
@@ -129,18 +134,19 @@ textarea {
 .formulario {
   display: grid;
   gap: var(--espacio-4);
+  grid-template-columns: minmax(0, 1fr);
 }
 .formulario__fila {
   display: grid;
   gap: var(--espacio-4);
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 @media (min-width: 640px) {
   .formulario__fila {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .formulario__fila--3 {
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
@@ -156,7 +162,11 @@ textarea {
   padding: var(--espacio-5);
   box-shadow: var(--sombra);
 }
+/* position: relative para que los títulos ocultos de las columnas (que van
+   en posición absoluta) se queden dentro: sin esto, el de la última columna
+   de una tabla ancha estira la página entera hacia la derecha. */
 .tabla-envoltorio {
+  position: relative;
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;

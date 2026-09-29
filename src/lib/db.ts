@@ -74,8 +74,14 @@ async function migrar(cliente: Client): Promise<void> {
     await añadirColumna(cliente, "productos", "margen_mayor_pct real");
     await añadirColumna(cliente, "productos", "precio_mayor_usd real");
   }
-  if (!/\btasa\b/.test(await definicionDe(cliente, "ventas"))) {
+  const ventas = await definicionDe(cliente, "ventas");
+  if (!/\btasa\b/.test(ventas)) {
     await añadirColumna(cliente, "ventas", "tasa real");
+  }
+  // Las ventas anteriores quedan como entregadas: ninguna aparece de golpe en el despacho.
+  if (!ventas.includes("por_entregar")) {
+    await añadirColumna(cliente, "ventas", "por_entregar integer not null default 0");
+    await añadirColumna(cliente, "ventas", "entregada_en text");
   }
 }
 

@@ -1,5 +1,5 @@
 import "server-only";
-import { fila, filas, transaccion } from "./db";
+import { ejecutar, fila, filas, transaccion } from "./db";
 import { redondear } from "./dinero";
 
 export type LineaVenta = {
@@ -25,6 +25,10 @@ export type Venta = {
   nota: string;
   /** La tasa del día cuando se anotó, o null en las ventas anteriores a guardarla. */
   tasa: number | null;
+  /** 1 mientras el pedido está por llevar al cliente; 0 cuando ya lo tiene. */
+  por_entregar: number;
+  /** Cuándo se marcó entregada (en UTC). Vacío si se la llevó del local o si sigue pendiente. */
+  entregada_en: string | null;
   creado_en: string;
 };
 
@@ -42,6 +46,27 @@ export async function listarVentas(limite = 100): Promise<Venta[]> {
 
 export async function listarVentasDeCliente(clienteId: number): Promise<Venta[]> {
   return filas<Venta>(`${CONSULTA_VENTAS} where v.cliente_id = ? order by v.fecha desc, v.id desc`, [clienteId]);
+}
+
+/** Los pedidos que faltan por llevar, del más antiguo al más nuevo. */
+export async function listarVentasPorEntregar(): Promise<Venta[]> {
+  return filas<Venta>(`${CONSULTA_VENTAS} where v.por_entregar = 1 order by v.fecha, v.id`);
+}
+
+export async function contarVentasPorEntregar(): Promise<number> {
+  const f = await fila<{ n: number }>("select count(*) as n from ventas where por_entregar = 1");
+  return Number(f?.n ?? 0);
+}
+
+/** Marca una venta como entregada, o la devuelve a la lista de por entregar. */
+export async function marcarEntrega(id: number, entregada: boolean): Promise<boolean> {
+  const r = await ejecutar(
+    entregada
+      ? "update ventas set por_entregar = 0, entregada_en = datetime('now') where id = ?"
+      : "update ventas set por_entregar = 1, entregada_en = null where id = ?",
+    [id],
+  );
+  return r.cambios > 0;
 }
 
 export async function lineasDeVenta(ventaId: number): Promise<LineaVentaGuardada[]> {
@@ -98,6 +123,7 @@ export async function crearVenta(
   lineas: LineaVenta[],
   nota: string,
   tasa: number | null = null,
+  porEntregar = false,
 ): Promise<number> {
   if (lineas.length === 0) throw new Error("Una venta necesita al menos un producto.");
   for (const l of lineas) {
@@ -109,8 +135,9 @@ export async function crearVenta(
 
   return transaccion(async (tx) => {
     const venta = await tx.execute({
-      sql: "insert into ventas (cliente_id, fecha, total_usd, nota, tasa) values (?, ?, ?, ?, ?) returning id",
-      args: [clienteId, fecha, total, nota, tasa && tasa > 0 ? tasa : null],
+      sql: `insert into ventas (cliente_id, fecha, total_usd, nota, tasa, por_entregar)
+            values (?, ?, ?, ?, ?, ?) returning id`,
+      args: [clienteId, fecha, total, nota, tasa && tasa > 0 ? tasa : null, porEntregar ? 1 : 0],
     });
     const ventaId = Number(venta.rows[0].id);
     for (const l of lineas) {
@@ -148,6 +175,12 @@ export async function totalVendidoUsd(): Promise<number> {
 export type VentasPorMes = { mes: string; ventas: number; vendido_usd: number; cobrado_usd: number };
 export type VentasPorProducto = { producto: string; unidad: string; cantidad: number; vendido_usd: number };
 export type VentasPorCliente = { cliente_id: number; cliente: string; ventas: number; vendido_usd: number };
+
+/** Lo vendido desde una fecha (YYYY-MM-DD), para «este mes» en el resumen. */
+export async function vendidoDesde(desde: string): Promise<number> {
+  const f = await fila<{ t: number }>("select coalesce(sum(total_usd), 0) as t from ventas where fecha >= ?", [desde]);
+  return redondear(Number(f?.t ?? 0));
+}
 
 /** Vendido y cobrado por mes (YYYY-MM), del más reciente al más antiguo. */
 export async function ventasPorMes(): Promise<VentasPorMes[]> {

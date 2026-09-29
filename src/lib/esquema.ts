@@ -49,6 +49,11 @@ export const ESQUEMA = `
     -- La tasa del día al anotar la venta, para que la nota de entrega diga
     -- los bolívares de ese día y no los de hoy. Vacía en las ventas viejas.
     tasa real,
+    -- Una venta que se lleva al cliente queda por entregar hasta que se marca
+    -- entregada; con ellas se arma el despacho. La que se despacha en el
+    -- mostrador nace entregada.
+    por_entregar integer not null default 0,
+    entregada_en text,
     creado_en text not null default (datetime('now'))
   );
 

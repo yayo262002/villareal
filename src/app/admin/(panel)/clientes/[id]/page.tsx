@@ -6,14 +6,16 @@ import { listarPagosDeCliente, ultimaTasa } from "@/lib/pagos";
 import { listarAdjuntosDeCliente } from "@/lib/adjuntos";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { editarCliente, subirAdjunto } from "@/lib/acciones";
-import { METODOS_PAGO, cantidad, fechaCorta, fechaDeLaBase, formatearMonto, usd } from "@/lib/dinero";
+import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
+import { leerTasa } from "@/lib/ajustes";
+import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { negocio } from "@/config/negocio";
 import { enlaceAlMapa } from "@/lib/despacho";
 import { explicarMotivo, leerDireccion } from "@/lib/direcciones";
-import { enlaceWhatsappA, mensajeNota, mensajeRecordatorio } from "@/lib/whatsapp";
+import { enlaceWhatsappA, mensajeAbono, mensajeNota, mensajeRecordatorio } from "@/lib/whatsapp";
 import estilos from "../../panel.module.css";
 
 export default async function PaginaCliente({
@@ -28,11 +30,12 @@ export default async function PaginaCliente({
   const cliente = await buscarCliente(Number(id));
   if (!cliente) notFound();
 
-  const [ventas, pagos, adjuntos, tasa] = await Promise.all([
+  const [ventas, pagos, adjuntos, tasa, tasaDelDia] = await Promise.all([
     listarVentasDeCliente(cliente.id).then(conLineas),
     listarPagosDeCliente(cliente.id),
     listarAdjuntosDeCliente(cliente.id),
     ultimaTasa(),
+    leerTasa(),
   ]);
   const cuentas = aplicarPagos(ventas, cliente.total_pagado_usd);
   const ubicacion = leerDireccion(cliente.direccion);
@@ -62,6 +65,25 @@ export default async function PaginaCliente({
       }),
     );
 
+  // El recibo de cada abono, con el saldo como está hoy.
+  const enlaceRecibo = (p: (typeof pagos)[number]) =>
+    enlaceWhatsappA(
+      cliente.telefono,
+      mensajeAbono({
+        negocio: negocio.nombre,
+        cliente: cliente.nombre,
+        fecha: p.fecha,
+        metodo: METODOS_PAGO[p.metodo],
+        monto: p.monto,
+        moneda: p.moneda,
+        tasa: p.tasa,
+        monto_usd: p.monto_usd,
+        referencia: p.referencia,
+        saldo_usd: cliente.saldo_usd,
+        tasaDelDia: tasaDelDia?.valor,
+      }),
+    );
+
   const claseSaldo =
     cliente.saldo_usd > 0 ? estilos.deuda : cliente.saldo_usd < 0 ? estilos.favor : estilos.saldado;
   const textoSaldo =
@@ -80,7 +102,7 @@ export default async function PaginaCliente({
           </p>
           <h1 className={estilos.titulo}>{cliente.nombre}</h1>
         </div>
-        <div className={estilos.accionesFila}>
+        <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
           {recordatorio && (
             <a href={recordatorio} target="_blank" rel="noopener" className="boton boton--acento">
               Recordar deuda por WhatsApp
@@ -89,6 +111,11 @@ export default async function PaginaCliente({
           <Link href={`/admin/ventas?cliente=${cliente.id}`} className="boton boton--secundario">
             Nueva venta
           </Link>
+          {(ventas.length > 0 || pagos.length > 0) && (
+            <Link href={`/admin/clientes/${cliente.id}/estado`} className="boton boton--secundario">
+              Estado de cuenta
+            </Link>
+          )}
         </div>
       </div>
       {cliente.saldo_usd > 0 && !recordatorio && (
@@ -201,12 +228,13 @@ export default async function PaginaCliente({
             <table className="tabla">
               <thead>
                 <tr>
+                  <th>Nota</th>
                   <th>Fecha</th>
                   <th>Productos</th>
                   <th className="numero">Total</th>
                   <th className="numero">Pendiente</th>
                   <th>Estado</th>
-                  <th>Nota</th>
+                  <th>Observación</th>
                   <th>
                     <span className="visualmente-oculto">Acciones</span>
                   </th>
@@ -215,18 +243,25 @@ export default async function PaginaCliente({
               <tbody>
                 {cuentas.map((v) => (
                   <tr key={v.id}>
-                    <td>{fechaCorta(v.fecha)}</td>
                     <td>
-                      {v.lineas
-                        .map((l) => `${cantidad(l.cantidad, l.unidad)} ${l.producto_nombre}`)
-                        .join(" · ")}
+                      <Link href={`/admin/ventas/${v.id}/nota`}>{numeroDeNota(v.id)}</Link>
                     </td>
+                    <td>{fechaCorta(v.fecha)}</td>
+                    <td>{resumenDeLineas(v.lineas)}</td>
                     <td className="numero">{usd(v.total_usd)}</td>
                     <td className="numero">{v.pendiente_usd > 0 ? usd(v.pendiente_usd) : "—"}</td>
                     <td>
                       <span className={`${estilos.estado} ${estilos[`estado--${v.estado}`]}`}>
                         {NOMBRE_ESTADO[v.estado]}
                       </span>
+                      {v.por_entregar ? (
+                        <>
+                          {" "}
+                          <Link href="/admin/despacho" className={`${estilos.estado} ${estilos["estado--parcial"]}`}>
+                            Por entregar
+                          </Link>
+                        </>
+                      ) : null}
                     </td>
                     <td>{v.nota || "—"}</td>
                     <td className={estilos.accionesFila}>
@@ -277,7 +312,12 @@ export default async function PaginaCliente({
                     <td className="numero">{p.tasa ? p.tasa.toFixed(2) : "—"}</td>
                     <td className="numero">{usd(p.monto_usd)}</td>
                     <td>{p.referencia || "—"}</td>
-                    <td>
+                    <td className={estilos.accionesFila}>
+                      {enlaceRecibo(p) && (
+                        <a href={enlaceRecibo(p)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                          Enviar recibo
+                        </a>
+                      )}
                       <Link href={`/admin/pagos/${p.id}/eliminar`} className="enlace-fila">
                         Eliminar
                       </Link>

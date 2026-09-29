@@ -1,22 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { negocio, whatsappLegible } from "@/config/negocio";
+import { negocio } from "@/config/negocio";
 import { buscarCliente } from "@/lib/clientes";
 import { buscarVenta, listarVentasDeCliente } from "@/lib/ventas";
 import { leerTasa } from "@/lib/ajustes";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
-import { aBolivares, bs, cantidad, fechaCorta, usd } from "@/lib/dinero";
-import { enlaceWhatsappA, esSoloUnTelefono, mensajeNota } from "@/lib/whatsapp";
+import { cambiarEntrega } from "@/lib/acciones";
+import { numeroDeNota } from "@/lib/entregas";
+import { aBolivares, bs, cantidad, fechaCorta, fechaDeLaBase, usd } from "@/lib/dinero";
+import { enlaceWhatsappA, mensajeNota } from "@/lib/whatsapp";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { BotonImprimir } from "@/components/boton-imprimir";
+import { DatosDelCliente, Membrete } from "../../../membrete";
 import estilos from "../../../panel.module.css";
 
 type Parametros = { params: Promise<{ id: string }>; searchParams: Promise<ParametrosAviso> };
-
-/** «000012»: el número de la nota es el de la venta, con ceros delante. */
-function numeroDeNota(id: number): string {
-  return String(id).padStart(6, "0");
-}
 
 export async function generateMetadata({ params }: Parametros) {
   const { id } = await params;
@@ -74,53 +72,37 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
             Otra venta
           </Link>
         </div>
+
+        {/* La entrega: si va al despacho, si ya se llevó, y el botón para cambiarlo. */}
+        <form action={cambiarEntrega} className={estilos.entrega}>
+          <input type="hidden" name="id" value={venta.id} />
+          <input type="hidden" name="entregada" value={venta.por_entregar ? "1" : "0"} />
+          <input type="hidden" name="volver_a" value={`/admin/ventas/${venta.id}/nota`} />
+          {venta.por_entregar ? (
+            <>
+              <span className={`${estilos.estado} ${estilos["estado--parcial"]}`}>Por entregar</span>
+              <span>
+                Está en la <Link href="/admin/despacho">ruta de despacho</Link>.
+              </span>
+              <button type="submit" className={`boton ${estilos.botonPequeno}`}>
+                Marcar entregada
+              </button>
+            </>
+          ) : (
+            <>
+              <span className={`${estilos.estado} ${estilos["estado--pagada"]}`}>Entregada</span>
+              {venta.entregada_en && <span>el {fechaCorta(fechaDeLaBase(venta.entregada_en))}</span>}
+              <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                Mandar al despacho
+              </button>
+            </>
+          )}
+        </form>
       </div>
 
       <article className={estilos.nota}>
-        <header className={estilos.notaCabecera}>
-          <div className={estilos.notaEmisor}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/marca/leon.svg" alt="" width={38} height={60} />
-            <div>
-              <strong>{negocio.razonSocial || negocio.nombre}</strong>
-              {negocio.rif && <span>RIF {negocio.rif}</span>}
-              <span>
-                {negocio.direccion}, {negocio.ciudad}
-              </span>
-              {negocio.whatsapp && <span>Teléfono {whatsappLegible()}</span>}
-            </div>
-          </div>
-          <div className={estilos.notaNumero}>
-            <span>Nota de entrega</span>
-            <strong>N.º {numeroDeNota(venta.id)}</strong>
-            <span>{fechaCorta(venta.fecha)}</span>
-          </div>
-        </header>
-
-        <dl className={estilos.notaCliente}>
-          <div>
-            <dt>Cliente</dt>
-            <dd>{esSoloUnTelefono(cliente.nombre) ? "Sin nombre registrado" : cliente.nombre}</dd>
-          </div>
-          {cliente.telefono && (
-            <div>
-              <dt>Teléfono</dt>
-              <dd>{cliente.telefono}</dd>
-            </div>
-          )}
-          {cliente.cedula_rif && (
-            <div>
-              <dt>Cédula o RIF</dt>
-              <dd>{cliente.cedula_rif}</dd>
-            </div>
-          )}
-          {cliente.direccion && (
-            <div>
-              <dt>Dirección</dt>
-              <dd>{cliente.direccion}</dd>
-            </div>
-          )}
-        </dl>
+        <Membrete titulo="Nota de entrega" numero={<>N.º {numeroDeNota(venta.id)}</>} fecha={fechaCorta(venta.fecha)} />
+        <DatosDelCliente cliente={cliente} />
 
         <div className="tabla-envoltorio">
           <table className="tabla">

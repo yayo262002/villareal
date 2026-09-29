@@ -99,6 +99,20 @@ async function pagina(ruta, conCookie = cookie) {
   };
 }
 
+/**
+ * La portada se guarda hecha y se rehace al cambiar un precio o la tasa.
+ * Rehacerla tarda un instante: quien la pida en ese mismo momento recibe
+ * la anterior. Aquí se espera a que enseñe lo nuevo, como mucho 5 segundos.
+ */
+async function portadaCon(texto) {
+  let ultima = await pagina("/", "");
+  for (let i = 0; i < 20 && !ultima.html.includes(texto); i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    ultima = await pagina("/", "");
+  }
+  return ultima;
+}
+
 /** El identificador de la acción del formulario que contiene `marca`. */
 function accionDe(html, marca) {
   const formulario = (html.match(/<form[\s\S]*?<\/form>/g) ?? []).find((f) => f.includes(marca));
@@ -269,7 +283,8 @@ async function probarPrecios() {
   });
   comprobar("un precio escrito a mano se acepta", r.destino.includes("guardado"), r.destino);
 
-  const web = (await pagina("/", "")).html;
+  // Bs 255,50 es el último cambio: la mozzarella a USD 7 con la tasa a 36,50.
+  const web = (await portadaCon("Bs 255,50")).html;
   comprobar("web: los dos precios del queso amarillo en bolívares", web.includes("Al detal") && web.includes("Al mayor") && web.includes("Bs 310,25") && web.includes("Bs 273,02"));
   comprobar("web: dólares y tasa", web.includes(usd("8,50")) && web.includes(usd("7,48")) && web.includes("36,50"));
   comprobar("web: un solo precio se llama «Precio»", web.includes(">Precio<") && web.includes("Bs 255,50"));
@@ -302,8 +317,11 @@ async function probarNegocio() {
 
     r = await enviar("/admin/ventas", 'name="producto_0"', {
       cliente_id: String(clienteId), fecha: "2026-09-01", producto_0: productoId, cantidad_0: "2", precio_0: "5", nota: "primera",
+      entrega: "despacho",
     });
     comprobar(`venta con precio escrito (${r.ms} ms)`, r.destino.includes("Venta registrada") && cerca((await cuentasDe(clienteId)).ventas, 10));
+    const pedidoId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+    comprobar("la venta que se lleva al cliente queda por entregar", r.destino.includes("Queda por entregar") && pedidoId > 0, r.destino);
 
     let esperado = 10;
     if (!enProduccion) {
@@ -325,6 +343,13 @@ async function probarNegocio() {
         cliente_id: String(clienteId), fecha: "2026-09-15", producto_0: "3", cantidad_0: "1", precio_0: "",
       });
       comprobar("un producto sin precio no se vende sin escribirlo", r.destino.includes("no tiene precio"), r.destino);
+
+      // Un pedido largo: la primera fila y la última, que está en «Más productos».
+      r = await enviar("/admin/ventas", 'name="producto_0"', {
+        cliente_id: String(detalId), fecha: "2026-09-16", producto_0: "1", cantidad_0: "1", precio_0: "",
+        producto_5: "2", cantidad_5: "0.5", precio_5: "",
+      });
+      comprobar("una venta con productos en la última fila (8,50 + medio kilo a 7)", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
     }
 
     r = await enviar(`/admin/clientes/${clienteId}`, 'name="monto"', {
@@ -359,6 +384,62 @@ async function probarNegocio() {
     );
     const soloEste = await pagina(`/admin/despacho?c=${clienteId}`);
     comprobar("ruta con un solo cliente elegido: 1 parada, 49 cuadras de ida y vuelta", /: <!-- -->1<!-- --> <!-- -->parada/.test(soloEste.html) && soloEste.html.includes("49 cuadras"), soloEste.html.match(/Los clientes elegidos[^<]*(<!-- -->[^<]*)*/)?.[0]);
+
+    // Los pedidos por entregar: salen en el despacho con lo que hay que cargar.
+    const numeroDelPedido = String(pedidoId).padStart(6, "0");
+    const entregas = await pagina("/admin/despacho?solo=entregas");
+    const textoEntregas = legible(entregas.html);
+    comprobar(
+      `el despacho enseña el pedido por entregar (${entregas.ms} ms)`,
+      textoEntregas.includes("Pedidos por entregar") && textoEntregas.includes(nombre) &&
+        textoEntregas.includes(`Nota ${numeroDelPedido}`) && textoEntregas.includes(">Entregado<"),
+    );
+    // Lo que hay que cargar se mira con el cliente solo: en la web puede haber pedidos de verdad.
+    comprobar(
+      "y lo que hay que cargar para llevárselo",
+      legible(soloEste.html).includes("Para cargar") && /<strong>2 (kg|cartón|unidad)<\/strong>/.test(legible(soloEste.html)) &&
+        legible(soloEste.html).includes("1 pedido por entregar"),
+    );
+    comprobar("el aviso de «vamos en camino» lleva el pedido", decodeURIComponent(entregas.html.match(/wa\.me\/584120000000\?text=([^"]+)"/)?.[1] ?? "").includes("Vamos en camino con su pedido:"));
+    comprobar("la cartera dice quién tiene un pedido esperando", (await pagina("/admin/clientes")).html.includes("1 pedido por entregar"));
+    comprobar("el resumen cuenta los pedidos por entregar", legible((await pagina("/admin")).html).includes("Pedidos por entregar"));
+
+    const marca = `name="id" value="${pedidoId}"`;
+    r = await enviar("/admin/despacho?solo=entregas", marca, { id: String(pedidoId), entregada: "1", volver_a: "/admin/despacho?solo=entregas" });
+    let [entrega] = await consultar("select por_entregar, entregada_en from ventas where id = ?", [pedidoId]);
+    comprobar(
+      `marcar el pedido como entregado (${r.ms} ms)`,
+      r.destino.startsWith("/admin/despacho?solo=entregas&ok=") && r.destino.includes(`Nota ${numeroDelPedido} entregada`) &&
+        Number(entrega.por_entregar) === 0 && Boolean(entrega.entregada_en),
+      r.destino,
+    );
+    const notaEntregada = await pagina(`/admin/ventas/${pedidoId}/nota`);
+    comprobar("la nota dice que ya se entregó", notaEntregada.html.includes(">Entregada<") && notaEntregada.html.includes("Mandar al despacho"));
+    r = await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "0", volver_a: "https://example.com/admin" });
+    [entrega] = await consultar("select por_entregar, entregada_en from ventas where id = ?", [pedidoId]);
+    comprobar(
+      "devolverla al despacho, y un destino de fuera del panel no se acepta",
+      r.destino.startsWith(`/admin/ventas/${pedidoId}/nota?ok=`) && Number(entrega.por_entregar) === 1 && entrega.entregada_en === null,
+      r.destino,
+    );
+    await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "1", volver_a: "" });
+
+    // El estado de cuenta y el recibo del abono.
+    const estado = await pagina(`/admin/clientes/${clienteId}/estado`);
+    const textoEstado = legible(estado.html);
+    comprobar(
+      `estado de cuenta (${estado.ms} ms)`,
+      estado.status === 200 && textoEstado.includes("Estado de cuenta") && textoEstado.includes(`Nota ${numeroDelPedido}`) &&
+        textoEstado.includes("Abono · Pago móvil") && textoEstado.includes("Saldo por pagar") && textoEstado.includes(usd("4,00")),
+    );
+    comprobar("el estado de cuenta de un cliente que no existe da 404", (await pagina("/admin/clientes/999999/estado")).status === 404);
+    const recibo = decodeURIComponent(ficha.match(/href="https:\/\/wa\.me\/584120000000\?text=([^"]*Recibimos[^"]*)"/)?.[1] ?? "");
+    comprobar(
+      "ficha: estado de cuenta y recibo del abono por WhatsApp",
+      ficha.includes(`/admin/clientes/${clienteId}/estado`) && ficha.includes(">Enviar recibo<") &&
+        recibo.includes("Recibimos su abono del 20/09/2026.") && recibo.includes("Método: Pago móvil") && recibo.includes("Saldo pendiente a hoy"),
+      recibo,
+    );
 
     const cuentas = await pagina("/admin/cuentas");
     comprobar(`cuentas por pagar (${cuentas.ms} ms)`, cuentas.html.includes(nombre) && cuentas.html.includes(">Recordar</a>"));
@@ -470,6 +551,9 @@ async function probarCartera() {
 
   const busca = await pagina("/admin/clientes?q=esquina");
   comprobar("la cartera se busca por nombre", busca.html.includes("Pizzería La Esquina") && busca.html.includes("1 de "));
+
+  const sinPedidos = legible((await pagina("/admin/despacho?solo=entregas")).html);
+  comprobar("sin pedidos por entregar, el despacho lo dice", sinPedidos.includes("Por entregar (0)") && sinPedidos.includes("No hay pedidos por entregar"));
 
   const despacho = (await pagina("/admin/despacho")).html;
   comprobar(

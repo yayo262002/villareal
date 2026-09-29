@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { negocio } from "@/config/negocio";
 import { haySesion } from "@/lib/sesion";
 import { salir } from "@/lib/acciones";
+import { NavPanel } from "@/components/nav-panel";
 import estilos from "./panel.module.css";
 
 const SECCIONES = [
@@ -38,13 +39,7 @@ export default async function LayoutPanel({ children }: { children: ReactNode })
             </button>
           </form>
         </div>
-        <nav aria-label="Secciones del panel" className={estilos.nav}>
-          {SECCIONES.map((s) => (
-            <Link key={s.ruta} href={s.ruta}>
-              {s.nombre}
-            </Link>
-          ))}
-        </nav>
+        <NavPanel secciones={SECCIONES} className={estilos.nav} />
       </header>
       <main className={estilos.contenido}>{children}</main>
     </div>

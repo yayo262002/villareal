@@ -224,6 +224,14 @@ export default async function PaginaClientes({
                         {c.telefono && c.telefono !== c.nombre ? `${c.telefono} · ` : ""}
                         {c.tipo === "mayor" ? "Al mayor" : "Al detal"}
                         {c.ultima_compra ? ` · compró el ${fechaCorta(c.ultima_compra)}` : ""}
+                        {c.por_entregar > 0 && (
+                          <>
+                            {" · "}
+                            <Link href="/admin/despacho" className={estilos.deuda}>
+                              {c.por_entregar === 1 ? "1 pedido por entregar" : `${c.por_entregar} pedidos por entregar`}
+                            </Link>
+                          </>
+                        )}
                       </p>
                       <div className={estilos.carteraAcciones}>
                         <Link href={`/admin/ventas?cliente=${c.id}`}>Venta</Link>

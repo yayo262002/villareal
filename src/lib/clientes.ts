@@ -22,6 +22,8 @@ export type ClienteConSaldo = Cliente & {
   total_pagado_usd: number;
   saldo_usd: number;
   ultima_compra: string | null;
+  /** Cuántos pedidos suyos faltan por entregar. */
+  por_entregar: number;
 };
 
 export type DatosCliente = Omit<Cliente, "id" | "creado_en">;
@@ -31,7 +33,8 @@ const CONSULTA_CON_SALDO = `
     c.*,
     coalesce((select sum(total_usd) from ventas v where v.cliente_id = c.id), 0) as total_comprado_usd,
     coalesce((select sum(monto_usd) from pagos p where p.cliente_id = c.id), 0) as total_pagado_usd,
-    (select max(fecha) from ventas v where v.cliente_id = c.id) as ultima_compra
+    (select max(fecha) from ventas v where v.cliente_id = c.id) as ultima_compra,
+    (select count(*) from ventas v where v.cliente_id = c.id and v.por_entregar = 1) as por_entregar
   from clientes c
 `;
 
@@ -43,6 +46,7 @@ function conSaldo(f: ClienteConSaldo): ClienteConSaldo {
     total_comprado_usd: comprado,
     total_pagado_usd: pagado,
     saldo_usd: redondear(comprado - pagado),
+    por_entregar: Number(f.por_entregar),
   };
 }
 

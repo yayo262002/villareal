@@ -1,43 +1,122 @@
 import Link from "next/link";
 import { negocio } from "@/config/negocio";
 import { listarClientes } from "@/lib/clientes";
+import { conLineas, listarVentasPorEntregar, type VentaConLineas } from "@/lib/ventas";
+import { leerTasa } from "@/lib/ajustes";
+import { cambiarEntrega } from "@/lib/acciones";
 import { enlaceAlMapa, planDeDespacho } from "@/lib/despacho";
 import { describirUbicacion, explicarMotivo } from "@/lib/direcciones";
+import { cargaDe, numeroDeNota, pedidosPorCliente, resumenDeLineas } from "@/lib/entregas";
 import { distanciaLegible } from "@/lib/ruta";
-import { redondear, usd } from "@/lib/dinero";
-import { enlaceWhatsappA } from "@/lib/whatsapp";
+import { cantidad, redondear, usd } from "@/lib/dinero";
+import { enlaceWhatsappA, mensajeEnCamino } from "@/lib/whatsapp";
 import { BotonImprimir } from "@/components/boton-imprimir";
-import type { ParametrosAviso } from "@/components/avisos";
+import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Ruta de despacho" };
 
 const CIUDAD = `${negocio.localidad}, ${negocio.estado}, Venezuela`;
 
+const MODOS = {
+  entregas: "Pedidos por entregar",
+  todos: "Todos los clientes",
+  deben: "Los clientes que deben",
+  elegidos: "Los clientes elegidos",
+} as const;
+type Modo = keyof typeof MODOS;
+
+/** Los pedidos que se le llevan a un cliente, cada uno con su botón de «Entregado». */
+function Pedidos({ pedidos, volverA }: { pedidos: VentaConLineas[] | undefined; volverA: string }) {
+  if (!pedidos || pedidos.length === 0) return null;
+  return (
+    <ul className={estilos.pedidos}>
+      {pedidos.map((p) => (
+        <li key={p.id}>
+          <p>
+            <Link href={`/admin/ventas/${p.id}/nota`}>Nota {numeroDeNota(p.id)}</Link>
+            {" · "}
+            {resumenDeLineas(p.lineas)}
+            {" · "}
+            <strong>{usd(p.total_usd)}</strong>
+          </p>
+          <form action={cambiarEntrega} className={estilos.noImprimir}>
+            <input type="hidden" name="id" value={p.id} />
+            <input type="hidden" name="entregada" value="1" />
+            <input type="hidden" name="volver_a" value={volverA} />
+            <button type="submit" className={`boton ${estilos.botonPequeno}`}>
+              Entregado
+            </button>
+          </form>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
- * La ruta de despacho: se eligen los clientes del día y sale el orden en
- * que conviene visitarlos, saliendo de la tienda y volviendo a ella. La
- * selección viaja en la dirección de la página (`?c=3&c=8`), así la ruta
- * se puede guardar en favoritos o mandar a quien reparte.
+ * La ruta de despacho: sale el orden en que conviene visitar a los
+ * clientes, saliendo de la tienda y volviendo a ella. Si hay pedidos por
+ * entregar, la ruta es la de esos pedidos, con lo que hay que cargar.
+ * También se puede hacer con todos los clientes, con los que deben o con
+ * los que se elijan; la selección viaja en la dirección de la página
+ * (`?c=3&c=8`), así la ruta se puede guardar o mandar a quien reparte.
  */
 export default async function PaginaDespacho({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
   const elegidos = new Set(
     (Array.isArray(parametros.c) ? parametros.c : parametros.c ? [parametros.c] : []).map(Number).filter((n) => n > 0),
   );
-  const soloDeudores = parametros.solo === "deben";
 
-  const todos = await listarClientes();
-  const delDia = todos.filter((c) => (elegidos.size > 0 ? elegidos.has(c.id) : soloDeudores ? c.saldo_usd > 0 : true));
+  const [todos, porEntregar, tasa] = await Promise.all([
+    listarClientes(),
+    listarVentasPorEntregar().then(conLineas),
+    leerTasa(),
+  ]);
+  const pedidos = pedidosPorCliente(porEntregar);
+
+  const solo = typeof parametros.solo === "string" ? parametros.solo : "";
+  const modo: Modo =
+    elegidos.size > 0
+      ? "elegidos"
+      : solo === "deben" || solo === "todos" || solo === "entregas"
+        ? solo
+        : porEntregar.length > 0
+          ? "entregas"
+          : "todos";
+  const estaPagina =
+    modo === "elegidos"
+      ? `/admin/despacho?${[...elegidos].map((id) => `c=${id}`).join("&")}`
+      : `/admin/despacho?solo=${modo}`;
+
+  const delDia = todos.filter((c) =>
+    modo === "elegidos" ? elegidos.has(c.id) : modo === "deben" ? c.saldo_usd > 0 : modo === "entregas" ? pedidos.has(c.id) : true,
+  );
   const plan = planDeDespacho({ direccion: negocio.direccion, ciudad: CIUDAD }, delDia);
   const porCobrar = redondear(delDia.reduce((s, c) => s + Math.max(0, c.saldo_usd), 0));
+
+  // Lo que se lleva en esta salida: los pedidos de los clientes de la ruta y de los que quedaron fuera.
+  const pedidosDelDia = delDia.flatMap((c) => pedidos.get(c.id) ?? []);
+  const carga = cargaDe(pedidosDelDia);
+  const totalDeLosPedidos = redondear(pedidosDelDia.reduce((s, p) => s + p.total_usd, 0));
 
   // En la lista para elegir, los clientes van en el orden de la ruta completa: los vecinos quedan juntos.
   const planCompleto = planDeDespacho({ direccion: negocio.direccion, ciudad: CIUDAD }, todos);
   const paraElegir = [...planCompleto.ruta.paradas.map((p) => p.dato), ...planCompleto.sinUbicar.map((s) => s.cliente)];
 
-  const titulo =
-    elegidos.size > 0 ? "Los clientes elegidos" : soloDeudores ? "Los clientes que deben" : "Todos los clientes";
+  const avisar = (c: (typeof todos)[number]) => {
+    const suyos = pedidos.get(c.id) ?? [];
+    return enlaceWhatsappA(
+      c.telefono,
+      mensajeEnCamino({
+        negocio: negocio.nombre,
+        cliente: c.nombre,
+        lineas: suyos.flatMap((p) => p.lineas),
+        total_usd: redondear(suyos.reduce((s, p) => s + p.total_usd, 0)),
+        tasa: tasa?.valor,
+      }),
+    );
+  };
 
   return (
     <>
@@ -51,6 +130,9 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
         {plan.ruta.paradas.length > 0 && (
           <BotonImprimir className={`boton boton--secundario ${estilos.noImprimir}`}>Imprimir la ruta</BotonImprimir>
         )}
+      </div>
+      <div className={estilos.noImprimir}>
+        <Avisos parametros={parametros} />
       </div>
 
       {!plan.tienda && (
@@ -69,11 +151,58 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
         </section>
       ) : (
         <>
+          <nav aria-label="Qué ruta hacer" className={`${estilos.pestanas} ${estilos.noImprimir}`} style={{ marginBottom: 0 }}>
+            <Link href="/admin/despacho?solo=entregas" aria-current={modo === "entregas" ? "true" : undefined}>
+              Por entregar ({porEntregar.length})
+            </Link>
+            <Link href="/admin/despacho?solo=todos" aria-current={modo === "todos" ? "true" : undefined}>
+              Todos los clientes
+            </Link>
+            <Link href="/admin/despacho?solo=deben" aria-current={modo === "deben" ? "true" : undefined}>
+              Los que deben
+            </Link>
+            {modo === "elegidos" && (
+              <Link href={estaPagina} aria-current="true">
+                Elegidos ({delDia.length})
+              </Link>
+            )}
+          </nav>
+
+          {carga.length > 0 && (
+            <section className="tarjeta">
+              <h2 className={estilos.subtitulo}>Para cargar</h2>
+              <ul className={estilos.carga}>
+                {carga.map((c) => (
+                  <li key={c.producto_id}>
+                    <strong>{cantidad(c.cantidad, c.unidad)}</strong> {c.producto}
+                  </li>
+                ))}
+              </ul>
+              <p className={estilos.ayuda} style={{ marginTop: "var(--espacio-3)", marginBottom: 0 }}>
+                {pedidosDelDia.length} {pedidosDelDia.length === 1 ? "pedido" : "pedidos"} por entregar, que suman{" "}
+                <strong>{usd(totalDeLosPedidos)}</strong>.
+              </p>
+            </section>
+          )}
+
           <section className="tarjeta">
             <h2 className={estilos.subtitulo}>
-              {titulo}: {plan.ruta.paradas.length} {plan.ruta.paradas.length === 1 ? "parada" : "paradas"}
+              {MODOS[modo]}: {plan.ruta.paradas.length} {plan.ruta.paradas.length === 1 ? "parada" : "paradas"}
             </h2>
-            {plan.ruta.paradas.length === 0 ? (
+            {delDia.length === 0 ? (
+              <p className="vacio">
+                {modo === "entregas" ? (
+                  <>
+                    No hay pedidos por entregar. Al <Link href="/admin/ventas">anotar una venta</Link>, elige «Por
+                    entregar» y saldrá aquí.
+                  </>
+                ) : modo === "deben" ? (
+                  "Nadie debe nada."
+                ) : (
+                  "Ninguno de los clientes elegidos existe ya."
+                )}
+              </p>
+            ) : plan.ruta.paradas.length === 0 ? (
               <p className="vacio">
                 Ninguno de estos clientes tiene una dirección con calle y carrera. Están más abajo, con lo que le falta
                 a cada uno.
@@ -103,7 +232,7 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
                 <ol className={estilos.ruta}>
                   {plan.ruta.paradas.map((parada, i) => {
                     const c = parada.dato;
-                    const whatsapp = enlaceWhatsappA(c.telefono, `Hola, le saluda ${negocio.nombre}. Vamos en camino con su pedido.`);
+                    const whatsapp = avisar(c);
                     const mapa = enlaceAlMapa(c.direccion, CIUDAD);
                     return (
                       <li key={c.id} className={estilos.parada}>
@@ -123,6 +252,7 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
                               : `a ${distanciaLegible(parada.cuadrasDesdeLaAnterior)} de ${i === 0 ? "la tienda" : "la anterior"}`}
                             {c.nota ? ` · ${c.nota}` : ""}
                           </p>
+                          <Pedidos pedidos={pedidos.get(c.id)} volverA={estaPagina} />
                           <div className={`${estilos.carteraAcciones} ${estilos.noImprimir}`}>
                             <Link href={`/admin/ventas?cliente=${c.id}`}>Venta</Link>
                             <Link href={`/admin/clientes/${c.id}#abono`}>Abono</Link>
@@ -179,6 +309,7 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
                       <p className={estilos.carteraDato}>
                         <span className="ayuda">{explicarMotivo(motivo)}</span>
                       </p>
+                      <Pedidos pedidos={pedidos.get(c.id)} volverA={estaPagina} />
                       <div className={`${estilos.carteraAcciones} ${estilos.noImprimir}`}>
                         <Link href={`/admin/clientes/${c.id}#datos`}>Corregir la dirección</Link>
                         {mapa && (
@@ -195,27 +326,25 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
           )}
 
           <section className={`tarjeta ${estilos.noImprimir}`}>
-            <h2 className={estilos.subtitulo}>¿A quién le despachas hoy?</h2>
+            <h2 className={estilos.subtitulo}>Elegir a quién se visita</h2>
             <p className={estilos.ayuda}>
-              Marca los clientes del día y pulsa el botón. Van en el orden de la ruta, así los vecinos quedan juntos.
+              Marca los clientes y pulsa el botón. Van en el orden de la ruta, así los vecinos quedan juntos.
             </p>
-            <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginBottom: "var(--espacio-4)" }}>
-              <Link href="/admin/despacho" className={`boton boton--secundario ${estilos.botonPequeno}`}>
-                Todos
-              </Link>
-              <Link href="/admin/despacho?solo=deben" className={`boton boton--secundario ${estilos.botonPequeno}`}>
-                Solo los que deben
-              </Link>
-            </div>
             <form method="get" action="/admin/despacho" className="formulario">
               <ul className={estilos.eleccion}>
                 {paraElegir.map((c) => (
                   <li key={c.id}>
                     <label>
-                      <input type="checkbox" name="c" value={c.id} defaultChecked={elegidos.has(c.id)} />
+                      <input
+                        type="checkbox"
+                        name="c"
+                        value={c.id}
+                        defaultChecked={modo === "elegidos" ? elegidos.has(c.id) : modo === "entregas" && pedidos.has(c.id)}
+                      />
                       <span>
                         <strong>{c.nombre}</strong>
                         <span className="ayuda"> {c.direccion || "sin dirección"}</span>
+                        {c.por_entregar > 0 && <span className={estilos.deuda}> · por entregar</span>}
                       </span>
                     </label>
                   </li>

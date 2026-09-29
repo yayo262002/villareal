@@ -11,9 +11,10 @@ Tiene dos partes:
 - **El panel** (`/admin`): la cartera de clientes, con alta rápida por
   teléfono y dirección; las ventas, cada una con su nota de entrega para
   imprimir o mandar; los abonos en dólares o en bolívares con la tasa del
-  día; las cuentas por pagar y pagadas; la ruta de despacho, que ordena a
-  los clientes desde la tienda; la foto de cada nota en papel, y un informe
-  de cuánto se vende, de qué y a quién.
+  día, con su recibo por WhatsApp; las cuentas por pagar y pagadas y el
+  estado de cuenta de cada cliente; los pedidos por entregar y la ruta de
+  despacho, que los ordena desde la tienda y dice qué cargar; la foto de
+  cada nota en papel, y un informe de cuánto se vende, de qué y a quién.
 
 ## Arrancar
 
@@ -120,8 +121,9 @@ src/lib/cuentas.ts        Qué ventas están pagadas y cuáles por pagar
 src/lib/direcciones.ts    Lee una dirección y la sitúa en la cuadrícula
 src/lib/ruta.ts           El orden en que conviene visitar a los clientes
 src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho
+src/lib/entregas.ts       Pedidos por entregar: qué lleva cada cliente y qué cargar
 src/lib/adjuntos.ts       Fotos de las notas de entrega
-src/lib/whatsapp.ts       Mensajes de cobro y de nota para WhatsApp
+src/lib/whatsapp.ts       Mensajes para WhatsApp: cobro, nota, recibo de abono, en camino
 src/lib/copias-nube.ts    Copias automáticas guardadas en la base
 src/app/api/tarea-diaria/ Lo que Vercel hace solo cada mañana: tasa y copia
 src/app/api/copia-automatica/  Solo la copia, para lanzarla aparte
@@ -141,6 +143,7 @@ src/app/robots.ts, sitemap.ts, manifest.ts  Lo que leen los buscadores y el tel�
 src/app/not-found.tsx, error.tsx  Página no encontrada y página de fallo
 src/lib/enlaces.ts        La dirección de la página de cada producto
 src/components/entrada-foto.tsx  Reduce la foto en el teléfono antes de subirla
+src/components/nav-panel.tsx     El menú del panel, con la sección abierta marcada
 src/app/admin/            El panel
 datos/                    La base de datos (fuera de Git)
 ```
@@ -220,12 +223,27 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   formulario, para registrar el siguiente.
 - **Abonos.** Lo que el cliente paga, sea todo o una parte. Se anotan desde
   su ficha o desde Abonos y se aplican a sus notas más antiguas primero.
+  En la ficha, cada abono tiene «Enviar recibo»: abre WhatsApp con lo que
+  se recibió (en bolívares, con su tasa) y cómo queda la cuenta hoy.
+- **Estado de cuenta.** En la ficha del cliente, «Estado de cuenta»
+  (`/admin/clientes/7/estado`): cada compra y cada abono en su orden, con
+  el saldo que deja cada uno (`movimientosDeCuenta` en `src/lib/cuentas.ts`).
+  Se imprime o se guarda como PDF. En el teléfono cada movimiento es una
+  ficha; en papel, una fila con sus columnas.
 - **Nota de entrega.** Cada venta tiene la suya, numerada con el número de
   la venta (`/admin/ventas/12/nota`): datos del negocio y del cliente, lo
   entregado, el total en dólares y en bolívares a la tasa del día de la
   venta, lo abonado y lo que queda. Se imprime, se guarda como PDF o se
   manda por WhatsApp. **No es una factura fiscal** y lo dice: una factura
   legal en Venezuela necesita un formato autorizado por el SENIAT.
+- **Pedidos por entregar.** Al anotar una venta se elige la entrega: «Ya
+  entregada» (se la lleva del local, lo normal) o «Por entregar». Las que
+  quedan por entregar salen en Despacho con su ruta, con lo que lleva cada
+  cliente y con la suma de lo que hay que cargar (`src/lib/entregas.ts`).
+  En cada parada, «Entregado» la quita de la lista; desde la nota se puede
+  devolver al despacho si se marcó por error. «Avisar» abre WhatsApp con
+  «vamos en camino» y el pedido. Las ventas anteriores a este cambio
+  cuentan como entregadas.
 - **Ruta de despacho.** El centro de Barquisimeto es una cuadrícula de
   calles y carreras numeradas. De cada dirección se lee el número de la
   calle y el de la carrera (`src/lib/direcciones.ts`) y con eso se cuenta
@@ -239,8 +257,12 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     motivo, para que el dueño la complete.
   - No sabe del sentido de las calles ni del tráfico. Para eso la ruta se
     abre en Google Maps con las paradas ya ordenadas, en tramos de nueve.
-  - La selección de clientes viaja en la dirección de la página, así una
-    ruta se puede guardar o mandar a quien reparte.
+  - La ruta se hace con los pedidos por entregar, con todos los clientes,
+    con los que deben o con los que se elijan. La selección viaja en la
+    dirección de la página, así una ruta se puede guardar o mandar a quien
+    reparte.
+- **El formulario de venta** tiene seis filas de producto: dos a la vista y
+  cuatro más en «Más productos». Son fijas porque no lleva JavaScript.
 
 ## La web hacia fuera
 

@@ -48,3 +48,42 @@ export function aplicarPagos<V extends VentaMinima>(ventas: V[], totalPagado: nu
 
   return ventas.map((v) => porId.get(v.id)!);
 }
+
+/**
+ * El estado de cuenta: cada venta y cada abono en el orden en que pasaron,
+ * con el saldo que dejó cada uno. El último saldo es el del cliente.
+ */
+export type Movimiento = {
+  tipo: "venta" | "abono";
+  id: number;
+  fecha: string;
+  /** Lo que el movimiento suma a la deuda: el total de una venta. */
+  cargo_usd: number;
+  /** Lo que resta: el monto de un abono, ya en dólares. */
+  abono_usd: number;
+  /** Lo que debe el cliente después de este movimiento. Negativo si queda a su favor. */
+  saldo_usd: number;
+};
+
+type AbonoMinimo = { id: number; fecha: string; monto_usd: number };
+
+/**
+ * Ordena por fecha. El mismo día van primero las ventas y después los
+ * abonos: lo normal es comprar y pagar, no pagar y comprar.
+ */
+export function movimientosDeCuenta(ventas: VentaMinima[], abonos: AbonoMinimo[]): Movimiento[] {
+  const movimientos = [
+    ...ventas.map((v) => ({ tipo: "venta" as const, id: v.id, fecha: v.fecha, cargo_usd: redondear(Number(v.total_usd)), abono_usd: 0 })),
+    ...abonos.map((a) => ({ tipo: "abono" as const, id: a.id, fecha: a.fecha, cargo_usd: 0, abono_usd: redondear(Number(a.monto_usd)) })),
+  ].sort(
+    (a, b) =>
+      a.fecha.slice(0, 10).localeCompare(b.fecha.slice(0, 10)) ||
+      (a.tipo === b.tipo ? a.id - b.id : a.tipo === "venta" ? -1 : 1),
+  );
+
+  let saldo = 0;
+  return movimientos.map((m) => {
+    saldo = redondear(saldo + m.cargo_usd - m.abono_usd);
+    return { ...m, saldo_usd: saldo };
+  });
+}
