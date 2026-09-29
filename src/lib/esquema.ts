@@ -143,7 +143,8 @@ export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion:
   {
     nombre: "Queso mozzarella",
     unidad: "kg",
-    descripcion: "Gratina muy bien\nPerfecta para pizza\nAl rebanar no se desborona\nMuy buen gusto",
+    descripcion:
+      "Perfecta para rallar\nGratina dorado y no se quema\nAl rebanar no se desborona\nPerfecta para pizza\nMuy buen gusto",
   },
   { nombre: "Huevos", unidad: "carton", descripcion: "" },
   { nombre: "Queso pecorino", unidad: "kg", descripcion: "" },
