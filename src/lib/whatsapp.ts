@@ -1,4 +1,4 @@
-import { fechaCorta, usd } from "./dinero.ts";
+import { fechaCorta, nombreUnidad, usd } from "./dinero.ts";
 
 /**
  * Mensajes de WhatsApp al cliente: recordar lo que debe y mandarle la nota
@@ -58,7 +58,7 @@ export function mensajeNota(datos: {
 }): string {
   const lineas = [`${datos.negocio} · Nota del ${fechaCorta(datos.fecha)}`, `Cliente: ${datos.cliente}`, ""];
   for (const l of datos.lineas) {
-    lineas.push(`${formatearCantidad(l.cantidad)} ${l.unidad} ${l.producto_nombre} × ${usd(l.precio_unitario_usd)} = ${usd(l.subtotal_usd)}`);
+    lineas.push(`${formatearCantidad(l.cantidad)} ${nombreUnidad(l.unidad)} ${l.producto_nombre} × ${usd(l.precio_unitario_usd)} = ${usd(l.subtotal_usd)}`);
   }
   lineas.push("", `Total: ${usd(datos.total_usd)}`);
   if (datos.saldo_usd > 0) lineas.push(`Saldo pendiente: ${usd(datos.saldo_usd)}`);

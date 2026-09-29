@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { enlaceWhatsapp, negocio, whatsappLegible } from "@/config/negocio";
 import { listarProductos } from "@/lib/productos";
-import { usd } from "@/lib/dinero";
+import { leerTasa } from "@/lib/ajustes";
+import { aBolivares, bs, fechaCorta, nombreUnidad, usd } from "@/lib/dinero";
 import estilos from "./page.module.css";
 
 /**
  * La web pública, pensada para abrirse en el teléfono desde un mensaje de
- * WhatsApp: el nombre, los productos con su precio y el botón para pedir,
- * sin nada antes. Lo que no está configurado (teléfono, precios) no se
- * inventa: se omite o se dice que está pendiente.
+ * WhatsApp: el nombre, los productos con su precio en bolívares y el botón
+ * para pedir, sin nada antes. Lo que no está configurado (tasa, precios) no
+ * se inventa: se omite o se dice que está pendiente.
  */
 export default async function PaginaInicio() {
-  const productos = await listarProductos(true);
-  const whatsapp = enlaceWhatsapp("Hola, quiero información sobre sus quesos.");
+  const [productos, tasa] = await Promise.all([listarProductos(true), leerTasa()]);
+  const whatsapp = enlaceWhatsapp("Hola, quiero información sobre sus productos.");
   const hayContacto = Boolean(
     whatsapp || negocio.correo || negocio.direccion || negocio.ciudad || negocio.horario,
   );
@@ -22,7 +23,7 @@ export default async function PaginaInicio() {
       <header className={estilos.cabecera}>
         <div className={estilos.contenido}>
           <div className={estilos.marca}>
-            {/* El león coronado de la marca, calcado del bordado de las camisas. */}
+            {/* El león coronado de la marca. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/marca/leon.svg" alt="" className={estilos.leon} />
             <div>
@@ -40,30 +41,67 @@ export default async function PaginaInicio() {
 
       <main className={estilos.contenido}>
         <section className={estilos.seccion} aria-labelledby="titulo-precios">
-          <h1 id="titulo-precios" className={estilos.titulo}>
-            Precios de hoy
-          </h1>
+          <div className={estilos.encabezadoPrecios}>
+            <h1 id="titulo-precios" className={estilos.titulo}>
+              Precios de hoy
+            </h1>
+            {tasa && (
+              <p className={estilos.tasa}>
+                Tasa: {bs(tasa.valor)} por dólar · {fechaCorta(tasa.actualizada_en)}
+              </p>
+            )}
+          </div>
+
           {productos.length === 0 ? (
             <p className="vacio">Todavía no hay productos publicados.</p>
           ) : (
             <ul className={estilos.productos}>
-              {productos.map((p) => (
-                <li key={p.id} className={estilos.producto}>
-                  <span className={estilos.nombre}>{p.nombre}</span>
-                  {p.precio_usd === null ? (
-                    <span className={estilos.precioPendiente}>Consulta el precio del día</span>
-                  ) : (
-                    <span className={estilos.precio}>
-                      {usd(p.precio_usd)} <small>/ {p.unidad}</small>
-                    </span>
-                  )}
-                </li>
-              ))}
+              {productos.map((p) => {
+                const enBs = p.precio_usd !== null ? aBolivares(p.precio_usd, tasa?.valor ?? null) : null;
+                const ventajas = (p.descripcion ?? "").split(/\r?\n/).map((v) => v.trim()).filter(Boolean);
+                const pedir = enlaceWhatsapp(`Hola, quiero pedir ${p.nombre.toLowerCase()}.`);
+                return (
+                  <li key={p.id} className={estilos.producto}>
+                    <div className={estilos.productoCabecera}>
+                      <h2 className={estilos.nombre}>{p.nombre}</h2>
+                      <div className={estilos.precioBloque}>
+                        {p.precio_usd === null ? (
+                          <span className={estilos.precioPendiente}>Consulta el precio del día</span>
+                        ) : enBs !== null ? (
+                          <>
+                            <span className={estilos.precio}>
+                              {bs(enBs)} <small>/ {nombreUnidad(p.unidad)}</small>
+                            </span>
+                            <span className={estilos.precioUsd}>{usd(p.precio_usd)}</span>
+                          </>
+                        ) : (
+                          <span className={estilos.precio}>
+                            {usd(p.precio_usd)} <small>/ {nombreUnidad(p.unidad)}</small>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {ventajas.length > 0 && (
+                      <ul className={estilos.ventajas}>
+                        {ventajas.map((v) => (
+                          <li key={v}>{v}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {pedir && (
+                      <a className={estilos.pedir} href={pedir} target="_blank" rel="noopener">
+                        Pedir {p.nombre.toLowerCase()} por WhatsApp
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
           <p className={estilos.notaPrecios}>
-            Precios en dólares. Puedes pagar en bolívares a la tasa del día por pago móvil,
-            transferencia o efectivo.
+            {tasa
+              ? "Precios en bolívares a la tasa del día. También puedes pagar en dólares, Zelle o Binance."
+              : "Precios en dólares. Puedes pagar en bolívares a la tasa del día por pago móvil, transferencia o efectivo."}
           </p>
           {whatsapp && (
             <a className={`boton boton--acento ${estilos.botonGrande}`} href={whatsapp} target="_blank" rel="noopener">

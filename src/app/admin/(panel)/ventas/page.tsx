@@ -4,7 +4,7 @@ import { listarProductos } from "@/lib/productos";
 import { conLineas, listarVentas } from "@/lib/ventas";
 import { guardarVenta } from "@/lib/acciones";
 import { FILAS_VENTA } from "@/lib/constantes";
-import { cantidad, fechaCorta, hoy, usd } from "@/lib/dinero";
+import { cantidad, fechaCorta, hoy, nombreUnidad, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
 
@@ -66,7 +66,7 @@ export default async function PaginaVentas({
                     {productos.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nombre}
-                        {p.precio_usd !== null ? ` · ${usd(p.precio_usd)}/${p.unidad}` : ""}
+                        {p.precio_usd !== null ? ` · ${usd(p.precio_usd)}/${nombreUnidad(p.unidad)}` : ""}
                       </option>
                     ))}
                   </select>

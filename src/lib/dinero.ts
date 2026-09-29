@@ -34,6 +34,22 @@ export function redondear(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/**
+ * Precio de venta en dólares: el costo más el margen del dueño. Con costo
+ * 6,80 y margen 25 % sale 8,50. Si falta el costo o el margen no hay precio.
+ */
+export function precioDeVenta(costoUsd: number | null, margenPct: number | null): number | null {
+  if (costoUsd === null || margenPct === null) return null;
+  if (!(costoUsd >= 0) || !(margenPct >= 0)) return null;
+  return redondear(costoUsd * (1 + margenPct / 100));
+}
+
+/** Un precio en dólares pasado a bolívares con la tasa del día, o null si no hay tasa. */
+export function aBolivares(usd: number, tasa: number | null): number | null {
+  if (!tasa || tasa <= 0) return null;
+  return redondear(usd * tasa);
+}
+
 /** Convierte un monto a USD. En bolívares exige una tasa mayor que cero. */
 export function aDolares(monto: number, moneda: Moneda, tasa: number | null): number {
   if (moneda === "USD") return redondear(monto);
@@ -64,9 +80,21 @@ export function formatearMonto(monto: number, moneda: Moneda): string {
   return moneda === "USD" ? usd(monto) : bs(monto);
 }
 
+export const UNIDADES = { kg: "kg", unidad: "unidad", carton: "cartón" } as const;
+export type Unidad = keyof typeof UNIDADES;
+
+export function esUnidad(valor: string): valor is Unidad {
+  return valor in UNIDADES;
+}
+
+/** «cartón», «kg», «unidad»: el nombre que se enseña de cada unidad. */
+export function nombreUnidad(unidad: string): string {
+  return (UNIDADES as Record<string, string>)[unidad] ?? unidad;
+}
+
 export function cantidad(n: number, unidad: string): string {
   const num = new Intl.NumberFormat("es-VE", { maximumFractionDigits: 3 }).format(n);
-  return `${num} ${unidad}`;
+  return `${num} ${nombreUnidad(unidad)}`;
 }
 
 /**

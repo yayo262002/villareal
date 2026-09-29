@@ -4,12 +4,21 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { cerrarSesion, claveEsCorrecta, exigirSesion, iniciarSesion } from "./sesion";
 import { actualizarCliente, buscarCliente, crearCliente, type TipoCliente } from "./clientes";
-import { actualizarPrecio, cambiarActivo, crearProducto, type Unidad } from "./productos";
+import {
+  actualizarPrecio,
+  actualizarProducto,
+  buscarProducto,
+  cambiarActivo,
+  crearProducto,
+  type DatosProducto,
+  type Unidad,
+} from "./productos";
+import { guardarTasa } from "./ajustes";
 import { buscarVenta, crearVenta, eliminarVenta, type LineaVenta } from "./ventas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { buscarAdjunto, eliminarAdjunto, guardarAdjunto } from "./adjuntos";
 import { guardarCopiaNube } from "./copias-nube";
-import { esMetodoPago, monedaDelMetodo } from "./dinero";
+import { esMetodoPago, esUnidad, monedaDelMetodo } from "./dinero";
 import { FILAS_VENTA } from "./constantes";
 
 /**
@@ -100,15 +109,34 @@ export async function editarCliente(datos: FormData): Promise<void> {
 
 // ---------- Productos ----------
 
+/**
+ * Costo, margen y precio de un formulario de producto. Si están costo y
+ * margen, el precio de venta sale de ahí; si no, vale el precio escrito.
+ */
+function leerPrecios(datos: FormData): Pick<DatosProducto, "costo_usd" | "margen_pct" | "precio_usd"> {
+  const costo = numero(datos, "costo_usd");
+  const margen = numero(datos, "margen_pct");
+  const precio = numero(datos, "precio_usd");
+  if (costo !== null && costo < 0) volverConError("/admin/productos", "El costo no puede ser negativo.");
+  if (margen !== null && margen < 0) volverConError("/admin/productos", "El margen no puede ser negativo.");
+  if (precio !== null && precio < 0) volverConError("/admin/productos", "El precio no puede ser negativo.");
+  if ((costo === null) !== (margen === null)) {
+    volverConError("/admin/productos", "Pon el costo y el margen juntos, o solo el precio de venta.");
+  }
+  return { costo_usd: costo, margen_pct: margen, precio_usd: precio };
+}
+
+function leerUnidad(datos: FormData): Unidad {
+  const valor = texto(datos, "unidad");
+  return esUnidad(valor) ? valor : "kg";
+}
+
 export async function guardarProducto(datos: FormData): Promise<void> {
   await exigirSesion();
   const nombre = texto(datos, "nombre");
   if (!nombre) volverConError("/admin/productos", "El nombre es obligatorio.");
-  const unidad: Unidad = texto(datos, "unidad") === "unidad" ? "unidad" : "kg";
-  const precio = numero(datos, "precio_usd");
-  if (precio !== null && precio < 0) volverConError("/admin/productos", "El precio no puede ser negativo.");
 
-  await crearProducto(nombre, unidad, precio);
+  await crearProducto({ nombre, unidad: leerUnidad(datos), descripcion: texto(datos, "descripcion"), ...leerPrecios(datos) });
   volverConExito("/admin/productos", "Producto creado.");
 }
 
@@ -116,11 +144,38 @@ export async function cambiarPrecio(datos: FormData): Promise<void> {
   await exigirSesion();
   const id = numero(datos, "id");
   if (!id) volverConError("/admin/productos", "No se encontró el producto.");
-  const precio = numero(datos, "precio_usd");
-  if (precio !== null && precio < 0) volverConError("/admin/productos", "El precio no puede ser negativo.");
 
-  await actualizarPrecio(id, precio);
+  await actualizarPrecio(id, leerPrecios(datos));
   volverConExito("/admin/productos", "Precio actualizado.");
+}
+
+export async function editarProducto(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const producto = id ? await buscarProducto(id) : null;
+  if (!id || !producto) volverConError("/admin/productos", "No se encontró el producto.");
+  const nombre = texto(datos, "nombre");
+  if (!nombre) volverConError("/admin/productos", "El nombre es obligatorio.");
+
+  await actualizarProducto(id, {
+    nombre,
+    unidad: leerUnidad(datos),
+    descripcion: texto(datos, "descripcion"),
+    costo_usd: producto.costo_usd,
+    margen_pct: producto.margen_pct,
+    precio_usd: producto.precio_usd,
+  });
+  volverConExito("/admin/productos", "Producto guardado.");
+}
+
+// ---------- Tasa del día ----------
+
+export async function cambiarTasa(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const tasa = numero(datos, "tasa");
+  if (tasa === null || tasa <= 0) volverConError("/admin/productos", "Escribe la tasa: bolívares por dólar.");
+  await guardarTasa(tasa);
+  volverConExito("/admin/productos", "Tasa del día guardada. La web ya muestra los precios en bolívares con ella.");
 }
 
 export async function alternarProducto(datos: FormData): Promise<void> {

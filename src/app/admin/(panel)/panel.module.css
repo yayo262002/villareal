@@ -317,3 +317,21 @@
   padding-bottom: var(--espacio-2);
   border-bottom: 1px solid var(--color-borde);
 }
+
+/* Productos: precio en bolívares y filas ocultas de la web. */
+.precioBs {
+  font-weight: 700;
+  color: var(--color-marca);
+}
+.filaApagada td {
+  color: var(--color-texto-suave);
+}
+.listaProductos {
+  display: grid;
+  gap: var(--espacio-4);
+}
+.productoEditar {
+  padding: var(--espacio-4);
+  border: 1px dashed var(--color-borde);
+  border-radius: var(--radio);
+}

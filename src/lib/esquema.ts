@@ -16,13 +16,25 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- El precio de venta en dólares sale del costo más el margen del dueño; la
+  -- web lo muestra en bolívares con la tasa del día (tabla ajustes).
   create table if not exists productos (
     id integer primary key autoincrement,
     nombre text not null,
-    unidad text not null default 'kg' check (unidad in ('kg', 'unidad')),
+    unidad text not null default 'kg' check (unidad in ('kg', 'unidad', 'carton')),
+    costo_usd real,
+    margen_pct real,
     precio_usd real,
+    descripcion text not null default '',
     activo integer not null default 1,
     creado_en text not null default (datetime('now'))
+  );
+
+  -- Ajustes sueltos del negocio, como la tasa del día.
+  create table if not exists ajustes (
+    clave text primary key,
+    valor text not null,
+    actualizado_en text not null default (datetime('now'))
   );
 
   create table if not exists ventas (
@@ -90,11 +102,43 @@ export const ESQUEMA = `
 `;
 
 /** Las tablas en orden de dependencias, para copiar o restaurar en orden. */
-export const TABLAS = ["clientes", "productos", "ventas", "venta_lineas", "pagos", "adjuntos"] as const;
+export const TABLAS = ["clientes", "productos", "ventas", "venta_lineas", "pagos", "adjuntos", "ajustes"] as const;
 
-// Los dos quesos con los que abre el local. Sin precio: el precio real lo
-// pone el dueño desde el panel, nunca lo inventa el código.
-export const PRODUCTOS_INICIALES = [
-  { nombre: "Queso amarillo", unidad: "kg" },
-  { nombre: "Queso mozzarella", unidad: "kg" },
+/**
+ * Cambio para bases creadas antes de que productos tuviera costo, margen y
+ * descripción. SQLite no puede cambiar una columna ni un `check`, así que
+ * la tabla se reconstruye. Lo aplica `migrar` en db.ts solo si hace falta.
+ */
+export const RECONSTRUIR_PRODUCTOS = `
+  begin;
+  create table productos_nueva (
+    id integer primary key autoincrement,
+    nombre text not null,
+    unidad text not null default 'kg' check (unidad in ('kg', 'unidad', 'carton')),
+    costo_usd real,
+    margen_pct real,
+    precio_usd real,
+    descripcion text not null default '',
+    activo integer not null default 1,
+    creado_en text not null default (datetime('now'))
+  );
+  insert into productos_nueva (id, nombre, unidad, precio_usd, activo, creado_en)
+    select id, nombre, unidad, precio_usd, activo, creado_en from productos;
+  drop table productos;
+  alter table productos_nueva rename to productos;
+  commit;
+`;
+
+// Los productos con los que abre el local. Sin precio: el precio real lo
+// pone el dueño desde el panel, nunca lo inventa el código. Se crean solo
+// los que falten (por nombre), así se pueden añadir más aquí sin duplicar.
+// La descripción de la mozzarella son palabras del dueño; una ventaja por línea.
+export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion: string }[] = [
+  { nombre: "Queso amarillo", unidad: "kg", descripcion: "" },
+  {
+    nombre: "Queso mozzarella",
+    unidad: "kg",
+    descripcion: "Gratina muy bien\nPerfecta para pizza\nAl rebanar no se desborona\nMuy buen gusto",
+  },
+  { nombre: "Huevos", unidad: "carton", descripcion: "" },
 ];

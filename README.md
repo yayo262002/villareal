@@ -82,7 +82,8 @@ tiene plan gratuito. Solo hay que poner dos variables; el código no cambia.
    - `TURSO_DATABASE_URL`: la URL de Turso.
    - `TURSO_AUTH_TOKEN`: el token de Turso.
    - `CRON_SECRET`: un texto largo al azar, para la copia automática.
-4. Despliega. La primera visita crea las tablas y los dos quesos sin precio.
+4. Despliega. La primera visita crea las tablas y los productos iniciales
+   (queso amarillo, mozzarella y huevos) sin precio.
 
 Para pasar lo que ya tengas en el archivo local a Turso, instala la CLI de
 Turso y ejecuta `turso db shell villareal < copia.sql`, donde `copia.sql`
@@ -103,6 +104,7 @@ src/lib/conexion.ts       Dónde está la base, según el entorno
 src/lib/clientes.ts       Clientes y su saldo
 src/lib/ventas.ts         Ventas con sus líneas de producto
 src/lib/pagos.ts          Pagos: método, moneda, tasa, equivalente en USD
+src/lib/ajustes.ts        La tasa del día
 src/lib/cuentas.ts        Qué ventas están pagadas y cuáles por pagar
 src/lib/adjuntos.ts       Fotos de las notas de entrega
 src/lib/whatsapp.ts       Mensajes de cobro y de nota para WhatsApp
@@ -122,7 +124,16 @@ datos/                    La base de datos (fuera de Git)
 
 ## Cómo funcionan las cuentas
 
-- Los precios se fijan en **dólares**.
+- Cada producto tiene un **costo en dólares** (lo que paga el negocio) y
+  un **margen** en porcentaje. El precio de venta en dólares sale de ahí:
+  costo 6,80 con margen 25 % vende a 8,50. Si se prefiere, se escribe el
+  precio de venta directamente.
+- La web publica los precios en **bolívares** con la **tasa del día**, que
+  el dueño escribe en Productos. Al cambiar la tasa cambian todos los
+  precios en bolívares a la vez. Sin tasa, la web muestra dólares.
+- Cada producto lleva sus **ventajas** (una por línea), que la web enseña
+  debajo del precio, y un botón para pedirlo por WhatsApp.
+- Las cuentas internas siguen en **dólares**.
 - Cada venta suma al saldo del cliente. Cada pago resta.
 - Un pago en bolívares se guarda con la **tasa del día** que se escribió al
   registrarlo, y se convierte a dólares en ese momento. Si la tasa cambia

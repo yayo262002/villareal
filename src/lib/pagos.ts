@@ -1,6 +1,7 @@
 import "server-only";
 import { ejecutar, fila, filas } from "./db";
 import { aDolares, redondear, type MetodoPago, type Moneda } from "./dinero";
+import { leerTasa } from "./ajustes";
 
 export type Pago = {
   id: number;
@@ -83,8 +84,13 @@ export async function totalCobradoUsd(): Promise<number> {
   return redondear(Number(f?.t ?? 0));
 }
 
-/** La última tasa que se usó en un pago en bolívares, para sugerirla en el formulario. */
+/**
+ * La tasa que se propone en el formulario de pago: la del día si el dueño
+ * la puso en Productos; si no, la del último pago en bolívares.
+ */
 export async function ultimaTasa(): Promise<number | null> {
+  const delDia = await leerTasa();
+  if (delDia) return delDia.valor;
   const f = await fila<{ tasa: number }>(
     "select tasa from pagos where moneda = 'VES' and tasa is not null order by fecha desc, id desc limit 1",
   );

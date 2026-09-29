@@ -2,7 +2,7 @@ import "server-only";
 import { createClient, type Client, type InValue, type Transaction } from "@libsql/client";
 import path from "node:path";
 import fs from "node:fs";
-import { ESQUEMA, PRODUCTOS_INICIALES } from "./esquema";
+import { ESQUEMA, PRODUCTOS_INICIALES, RECONSTRUIR_PRODUCTOS } from "./esquema";
 
 /**
  * Conexión a la base de datos con el cliente de libsql, que habla el mismo
@@ -40,14 +40,32 @@ async function abrir(): Promise<Client> {
     await cliente.execute("pragma foreign_keys = on");
   }
   await cliente.executeMultiple(ESQUEMA);
+  await migrar(cliente);
+  await sembrar(cliente);
+  return cliente;
+}
 
-  const hay = await cliente.execute("select count(*) as n from productos");
-  if (Number(hay.rows[0].n) === 0) {
-    for (const p of PRODUCTOS_INICIALES) {
-      await cliente.execute({ sql: "insert into productos (nombre, unidad) values (?, ?)", args: [p.nombre, p.unidad] });
+/** Bases creadas antes de que productos tuviera costo, margen y descripción. */
+async function migrar(cliente: Client): Promise<void> {
+  const def = await cliente.execute("select sql from sqlite_master where type = 'table' and name = 'productos'");
+  const sql = String(def.rows[0]?.sql ?? "");
+  if (sql.includes("costo_usd") && sql.includes("'carton'")) return;
+  await cliente.executeMultiple(RECONSTRUIR_PRODUCTOS);
+}
+
+/** Crea los productos iniciales que falten y pone la descripción del dueño si está vacía. */
+async function sembrar(cliente: Client): Promise<void> {
+  for (const p of PRODUCTOS_INICIALES) {
+    const hay = await cliente.execute({ sql: "select id, descripcion from productos where nombre = ?", args: [p.nombre] });
+    if (hay.rows.length === 0) {
+      await cliente.execute({
+        sql: "insert into productos (nombre, unidad, descripcion) values (?, ?, ?)",
+        args: [p.nombre, p.unidad, p.descripcion],
+      });
+    } else if (p.descripcion && !String(hay.rows[0].descripcion ?? "")) {
+      await cliente.execute({ sql: "update productos set descripcion = ? where id = ?", args: [p.descripcion, hay.rows[0].id] });
     }
   }
-  return cliente;
 }
 
 // En desarrollo Next recarga los módulos a cada cambio; guardar la conexión

@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  aBolivares,
   aDolares,
+  precioDeVenta,
   esMetodoPago,
   fechaCorta,
   fechaIso,
@@ -56,6 +58,21 @@ test("la fecha del formulario es la local, aunque en UTC ya sea mañana", () => 
 test("el mes del informe se escribe con nombre", () => {
   assert.equal(mesLegible("2026-09"), "Septiembre 2026");
   assert.equal(mesLegible("2026-01"), "Enero 2026");
+});
+
+test("el precio de venta es el costo más el margen", () => {
+  assert.equal(precioDeVenta(6.8, 25), 8.5);
+  assert.equal(precioDeVenta(6.8, 0), 6.8);
+  assert.equal(precioDeVenta(10, 33.333), 13.33);
+  assert.equal(precioDeVenta(null, 25), null);
+  assert.equal(precioDeVenta(6.8, null), null);
+  assert.equal(precioDeVenta(-1, 25), null);
+});
+
+test("el precio en bolívares usa la tasa del día", () => {
+  assert.equal(aBolivares(8.5, 36.5), 310.25);
+  assert.equal(aBolivares(8.5, null), null);
+  assert.equal(aBolivares(8.5, 0), null);
 });
 
 test("las fechas se muestran día/mes/año", () => {
