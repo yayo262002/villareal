@@ -45,9 +45,18 @@ async function abrir(): Promise<Client> {
   return cliente;
 }
 
-async function definicionDeProductos(cliente: Client): Promise<string> {
-  const def = await cliente.execute("select sql from sqlite_master where type = 'table' and name = 'productos'");
+async function definicionDe(cliente: Client, tabla: string): Promise<string> {
+  const def = await cliente.execute({ sql: "select sql from sqlite_master where type = 'table' and name = ?", args: [tabla] });
   return String(def.rows[0]?.sql ?? "");
+}
+
+/** Añade una columna a una tabla que ya existe. Si otro proceso se adelantó, no es un error. */
+async function añadirColumna(cliente: Client, tabla: string, columna: string): Promise<void> {
+  try {
+    await cliente.execute(`alter table ${tabla} add column ${columna}`);
+  } catch (error) {
+    if (!/duplicate column/i.test(String(error))) throw error;
+  }
 }
 
 /**
@@ -56,19 +65,17 @@ async function definicionDeProductos(cliente: Client): Promise<string> {
  * una columna que ya está no es un error.
  */
 async function migrar(cliente: Client): Promise<void> {
-  let sql = await definicionDeProductos(cliente);
+  let sql = await definicionDe(cliente, "productos");
   if (!(sql.includes("costo_usd") && sql.includes("'carton'"))) {
     await cliente.executeMultiple(RECONSTRUIR_PRODUCTOS);
-    sql = await definicionDeProductos(cliente);
+    sql = await definicionDe(cliente, "productos");
   }
   if (!sql.includes("precio_mayor_usd")) {
-    for (const columna of ["margen_mayor_pct real", "precio_mayor_usd real"]) {
-      try {
-        await cliente.execute(`alter table productos add column ${columna}`);
-      } catch (error) {
-        if (!/duplicate column/i.test(String(error))) throw error;
-      }
-    }
+    await añadirColumna(cliente, "productos", "margen_mayor_pct real");
+    await añadirColumna(cliente, "productos", "precio_mayor_usd real");
+  }
+  if (!/\btasa\b/.test(await definicionDe(cliente, "ventas"))) {
+    await añadirColumna(cliente, "ventas", "tasa real");
   }
 }
 

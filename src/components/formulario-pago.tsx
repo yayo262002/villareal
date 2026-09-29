@@ -68,7 +68,7 @@ export function FormularioPago({ clientes, clienteFijo, ultimaTasa, volverA }: P
             min="0.01"
             required
           />
-          <span className="ayuda">En la moneda del método: bolívares o dólares.</span>
+          <span className="ayuda">Lo que paga ahora, sea todo o una parte. En la moneda del método.</span>
         </div>
         <div className="campo">
           <label htmlFor="pago-tasa">Tasa del día (Bs por dólar)</label>
@@ -98,7 +98,7 @@ export function FormularioPago({ clientes, clienteFijo, ultimaTasa, volverA }: P
 
       <div>
         <button type="submit" className="boton">
-          Registrar pago
+          Registrar abono
         </button>
       </div>
     </form>

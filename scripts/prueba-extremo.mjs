@@ -80,6 +80,9 @@ async function cuentasDe(clienteId) {
 
 const cerca = (a, b) => Math.abs(a - b) < 0.005;
 
+/** React parte los textos con comentarios vacíos; sin ellos se lee como lo ve la gente. */
+const legible = (html) => html.replaceAll("<!-- -->", "");
+
 // ---------- La web ----------
 
 let cookie = `villareal_sesion=${createHmac("sha256", env.ADMIN_CLAVE).update("panel-villareal-v1").digest("hex")}`;
@@ -285,9 +288,11 @@ async function probarPrecios() {
 /** Alta de cliente, ventas, pago, cuentas, foto, descargas y borrados. */
 async function probarNegocio() {
   const nombre = enProduccion ? "Prueba Vercel (borrar)" : "Bodega Prueba";
-  let r = await enviar("/admin/clientes", 'name="cedula_rif"', { nombre, telefono: "0412-0000000", tipo: "mayor" });
-  const clienteId = Number(r.destino.match(/clientes\/(\d+)/)?.[1]);
-  comprobar(`alta de cliente mayorista (${r.ms} ms)`, r.destino.includes("Cliente registrado") && clienteId > 0, r.destino);
+  let r = await enviar("/admin/clientes", 'name="cedula_rif"', {
+    nombre, telefono: "0412-0000000", direccion: "Carrera 19 con calle 25", tipo: "mayor",
+  });
+  const clienteId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
+  comprobar(`alta de cliente mayorista (${r.ms} ms)`, r.destino.includes("Cliente guardado") && clienteId > 0, r.destino);
   if (!clienteId) throw new Error("Sin cliente no se puede seguir");
   const limpiar = [clienteId];
 
@@ -309,7 +314,7 @@ async function probarNegocio() {
       comprobar("al mayorista, sin precio escrito, se le cobra al mayor (2 × 7,48)", cerca((await cuentasDe(clienteId)).ventas, esperado), JSON.stringify(await cuentasDe(clienteId)));
 
       r = await enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "Cliente Detal", telefono: "", tipo: "detal" });
-      const detalId = Number(r.destino.match(/clientes\/(\d+)/)?.[1]);
+      const detalId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
       limpiar.push(detalId);
       r = await enviar("/admin/ventas", 'name="producto_0"', {
         cliente_id: String(detalId), fecha: "2026-09-15", producto_0: "1", cantidad_0: "2", precio_0: "",
@@ -326,11 +331,34 @@ async function probarNegocio() {
       cliente_id: String(clienteId), fecha: "2026-09-20", metodo: "pago_movil", monto: "146", tasa: "36.5",
       volver_a: `/admin/clientes/${clienteId}`,
     });
-    comprobar(`pago en bolívares con tasa: Bs 146 = USD 4 (${r.ms} ms)`, r.destino.includes("Pago registrado") && cerca((await cuentasDe(clienteId)).pagos, 4));
+    comprobar(`pago en bolívares con tasa: Bs 146 = USD 4 (${r.ms} ms)`, r.destino.includes("Abono registrado") && cerca((await cuentasDe(clienteId)).pagos, 4));
 
     const ficha = (await pagina(`/admin/clientes/${clienteId}`)).html;
     comprobar("ficha: la primera nota queda abonada con USD 6 pendientes", ficha.includes(">Abonada<") && ficha.includes(usd("6,00")));
     comprobar("ficha: recordar deuda y enviar nota por WhatsApp", ficha.includes("Recordar deuda por WhatsApp") && ficha.includes(">Enviar nota<") && ficha.includes("wa.me/584120000000"));
+    comprobar("ficha: la dirección entra en la ruta y tiene mapa", ficha.includes("Entra en la ruta de despacho") && ficha.includes("google.com/maps/search"));
+
+    // La nota de entrega de la primera venta.
+    const notaId = Math.min(...[...ficha.matchAll(/\/admin\/ventas\/(\d+)\/nota/g)].map((m) => Number(m[1])));
+    const nota = await pagina(`/admin/ventas/${notaId}/nota`);
+    comprobar(
+      `nota de entrega (${nota.ms} ms)`,
+      nota.status === 200 && nota.html.includes("Nota de entrega") && legible(nota.html).includes(`N.º ${String(notaId).padStart(6, "0")}`) &&
+        nota.html.includes(nombre) && nota.html.includes("0412-0000000") && nota.html.includes("Carrera 19 con calle 25") &&
+        nota.html.includes(usd("10,00")) && nota.html.includes("No es una factura"),
+    );
+    comprobar("la nota dice lo abonado y lo que queda", nota.html.includes(usd("4,00")) && nota.html.includes(usd("6,00")) && nota.html.includes("Abonada"));
+    comprobar("una nota que no existe da 404", (await pagina("/admin/ventas/999999/nota")).status === 404);
+
+    // La ruta de despacho.
+    const despacho = await pagina("/admin/despacho");
+    comprobar(
+      `ruta de despacho (${despacho.ms} ms)`,
+      despacho.status === 200 && despacho.html.includes(nombre) && despacho.html.includes("Vuelta a la tienda") &&
+        despacho.html.includes("google.com/maps/dir/") && despacho.html.includes("Hacer la ruta"),
+    );
+    const soloEste = await pagina(`/admin/despacho?c=${clienteId}`);
+    comprobar("ruta con un solo cliente elegido: 1 parada, 49 cuadras de ida y vuelta", /: <!-- -->1<!-- --> <!-- -->parada/.test(soloEste.html) && soloEste.html.includes("49 cuadras"), soloEste.html.match(/Los clientes elegidos[^<]*(<!-- -->[^<]*)*/)?.[0]);
 
     const cuentas = await pagina("/admin/cuentas");
     comprobar(`cuentas por pagar (${cuentas.ms} ms)`, cuentas.html.includes(nombre) && cuentas.html.includes(">Recordar</a>"));
@@ -390,11 +418,73 @@ async function probarNegocio() {
     comprobar("borrar una venta", r.destino.includes("Venta eliminada"));
     const pagoId = Number(ficha.match(/\/admin\/pagos\/(\d+)\/eliminar/)?.[1]);
     r = await enviar(`/admin/pagos/${pagoId}/eliminar`, 'name="id"', { id: String(pagoId) });
-    comprobar("borrar un pago", r.destino.includes("Pago eliminado") && cerca((await cuentasDe(clienteId)).pagos, 0));
+    comprobar("borrar un pago", r.destino.includes("Abono eliminado") && cerca((await cuentasDe(clienteId)).pagos, 0));
     comprobar("una venta ya borrada da 404", (await pagina(`/admin/ventas/${ventaId}/eliminar`)).status === 404);
   } finally {
     if (enProduccion) await borrarDeLaNube(limpiar);
   }
+}
+
+/** Solo en local: el alta rápida, los repetidos y el orden de la ruta. */
+async function probarCartera() {
+  const alta = (campos) => enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "", telefono: "", direccion: "", tipo: "detal", ...campos });
+
+  let r = await alta({ telefono: "0414 555 0101", direccion: "Calle 38 con carrera 28" });
+  const cercaId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
+  comprobar("alta rápida: solo teléfono y dirección", r.destino.includes("Cliente guardado: 0414-5550101.") && !r.destino.includes("Ojo") && cercaId > 0, r.destino);
+
+  r = await alta({ telefono: "04245550102", direccion: "Carrera 22 entre calles 30 y 31", nombre: "Pizzería La Esquina" });
+  comprobar("alta con nombre", r.destino.includes("Cliente guardado: Pizzería La Esquina."), r.destino);
+
+  r = await alta({ telefono: "0416-5550103", direccion: "Urb. Del Este, casa 4" });
+  comprobar("una dirección fuera de la cuadrícula se guarda, con aviso", r.destino.includes("Cliente guardado") && r.destino.includes("Ojo: queda fuera de la ruta de despacho. La dirección parece una urbanización"), r.destino);
+
+  r = await alta({ telefono: "+58 414 5550101", direccion: "Otra dirección" });
+  comprobar("el mismo teléfono escrito de otra forma no se registra dos veces", r.destino.includes(`/admin/clientes/${cercaId}?error=`) && r.destino.includes("ya es de este cliente"), r.destino);
+
+  r = await alta({ direccion: "Calle 30 con carrera 20" });
+  comprobar("sin teléfono ni nombre no se registra", r.destino.includes("Escribe al menos el teléfono o el nombre"), r.destino);
+
+  const guardados = await consultar("select nombre, telefono from clientes where telefono like '04%5550%' order by telefono");
+  comprobar(
+    "los teléfonos se guardan escritos igual",
+    JSON.stringify(guardados) === JSON.stringify([
+      { nombre: "0414-5550101", telefono: "0414-5550101" },
+      { nombre: "0416-5550103", telefono: "0416-5550103" },
+      { nombre: "Pizzería La Esquina", telefono: "0424-5550102" },
+    ]),
+    JSON.stringify(guardados),
+  );
+
+  // La cartera ordenada por la ruta: del más cercano a la tienda al más lejano, y al final los que no se ubican.
+  const cartera = (await pagina("/admin/clientes?orden=ruta")).html;
+  const lista = cartera.slice(cartera.indexOf("Por ruta desde la tienda"));
+  const posicion = (texto) => lista.indexOf(`>${texto}</a>`);
+  const orden = ["0414-5550101", "Pizzería La Esquina", "Bodega Prueba", "0416-5550103"].map(posicion);
+  comprobar(
+    "cartera ordenada por la ruta desde la tienda",
+    orden.every((p) => p > 0) && orden.join() === [...orden].sort((a, b) => a - b).join(),
+    orden.join(),
+  );
+  comprobar("la cartera dice quién queda fuera de la ruta y por qué", legible(cartera).includes("Fuera de la ruta. La dirección parece una urbanización"));
+
+  const busca = await pagina("/admin/clientes?q=esquina");
+  comprobar("la cartera se busca por nombre", busca.html.includes("Pizzería La Esquina") && busca.html.includes("1 de "));
+
+  const despacho = (await pagina("/admin/despacho")).html;
+  comprobar(
+    "despacho de todos: tres paradas en orden y los demás aparte",
+    /: <!-- -->3<!-- --> <!-- -->paradas/.test(despacho) && despacho.includes("Fuera de la ruta") && despacho.includes("49 cuadras"),
+  );
+  const mapa = decodeURIComponent(despacho.match(/href="(https:\/\/www\.google\.com\/maps\/dir\/[^"]+)"/)?.[1].replace(/&amp;/g, "&").replace(/\+/g, " ") ?? "");
+  comprobar(
+    "el enlace de Google Maps lleva las paradas en el orden de la ruta",
+    mapa.includes("origin=Calle 38 con Carrera 30, Barquisimeto") &&
+      mapa.includes("waypoints=Calle 38 con Carrera 28, Barquisimeto, Lara, Venezuela|Calle 30 con Carrera 22, Barquisimeto, Lara, Venezuela|Calle 25 con Carrera 19, Barquisimeto, Lara, Venezuela"),
+    mapa,
+  );
+  const deudores = (await pagina("/admin/despacho?solo=deben")).html;
+  comprobar("despacho solo de los que deben", deudores.includes("Los clientes que deben"));
 }
 
 /** El panel no borra clientes: los de prueba se quitan directamente de Turso. */
@@ -433,6 +523,7 @@ try {
   if (!enProduccion) await probarPrecios();
   await probarNegocio();
   if (!enProduccion) {
+    await probarCartera();
     await probarTareaDiaria();
     await probarFreno();
   }

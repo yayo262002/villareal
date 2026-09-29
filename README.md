@@ -8,10 +8,12 @@ Tiene dos partes:
 
 - **La web pública** (`/`): qué se vende, precios si están puestos, y cómo
   contactar. Pensada para el teléfono.
-- **El panel** (`/admin`): registrar clientes, anotar ventas, registrar pagos
-  en dólares o en bolívares con la tasa del día, ver las cuentas por pagar
-  y pagadas, guardar la foto de cada nota de entrega, y un informe de
-  cuánto se vende, de qué y a quién.
+- **El panel** (`/admin`): la cartera de clientes, con alta rápida por
+  teléfono y dirección; las ventas, cada una con su nota de entrega para
+  imprimir o mandar; los abonos en dólares o en bolívares con la tasa del
+  día; las cuentas por pagar y pagadas; la ruta de despacho, que ordena a
+  los clientes desde la tienda; la foto de cada nota en papel, y un informe
+  de cuánto se vende, de qué y a quién.
 
 ## Arrancar
 
@@ -115,6 +117,9 @@ src/lib/dibujos.ts        El dibujo de cada producto, en SVG
 src/lib/imagen-social.tsx La imagen que sale al compartir un enlace
 src/assets/fuentes/       Las fuentes de esas imágenes, con su licencia
 src/lib/cuentas.ts        Qué ventas están pagadas y cuáles por pagar
+src/lib/direcciones.ts    Lee una dirección y la sitúa en la cuadrícula
+src/lib/ruta.ts           El orden en que conviene visitar a los clientes
+src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho
 src/lib/adjuntos.ts       Fotos de las notas de entrega
 src/lib/whatsapp.ts       Mensajes de cobro y de nota para WhatsApp
 src/lib/copias-nube.ts    Copias automáticas guardadas en la base
@@ -206,6 +211,37 @@ datos/                    La base de datos (fuera de Git)
 Métodos de pago que reconoce: pago móvil, transferencia, efectivo en
 bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 
+## Cartera, notas y despacho
+
+- **Alta rápida.** En Clientes basta el teléfono y la dirección. El nombre
+  es opcional: quien no lo tiene lleva el teléfono como nombre. El teléfono
+  se guarda siempre escrito igual (`0412-1234567`) y no se puede registrar
+  dos veces, se escriba como se escriba. Tras guardar se vuelve al mismo
+  formulario, para registrar el siguiente.
+- **Abonos.** Lo que el cliente paga, sea todo o una parte. Se anotan desde
+  su ficha o desde Abonos y se aplican a sus notas más antiguas primero.
+- **Nota de entrega.** Cada venta tiene la suya, numerada con el número de
+  la venta (`/admin/ventas/12/nota`): datos del negocio y del cliente, lo
+  entregado, el total en dólares y en bolívares a la tasa del día de la
+  venta, lo abonado y lo que queda. Se imprime, se guarda como PDF o se
+  manda por WhatsApp. **No es una factura fiscal** y lo dice: una factura
+  legal en Venezuela necesita un formato autorizado por el SENIAT.
+- **Ruta de despacho.** El centro de Barquisimeto es una cuadrícula de
+  calles y carreras numeradas. De cada dirección se lee el número de la
+  calle y el de la carrera (`src/lib/direcciones.ts`) y con eso se cuenta
+  a cuántas cuadras está un cliente de otro. La ruta sale de la tienda,
+  pasa por los clientes elegidos y vuelve, andando lo menos posible
+  (`src/lib/ruta.ts`); a igualdad de cuadras, primero el más cercano.
+  - Entiende «Calle 38 entre carreras 30 y 31», «Carrera 19 con calle 25»,
+    «Cra 21 esq 33», «Av. 20 con calle 28» (la avenida 20 es la carrera 20).
+  - Lo que no entiende no lo adivina: una urbanización, un barrio o una
+    dirección sin calle o sin carrera quedan «fuera de la ruta», con el
+    motivo, para que el dueño la complete.
+  - No sabe del sentido de las calles ni del tráfico. Para eso la ruta se
+    abre en Google Maps con las paradas ya ordenadas, en tramos de nueve.
+  - La selección de clientes viaja en la dirección de la página, así una
+    ruta se puede guardar o mandar a quien reparte.
+
 ## La web hacia fuera
 
 - **Al compartir un enlace** por WhatsApp sale una vista previa con imagen:
@@ -249,4 +285,7 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - Confirmar si el pecorino rallado se vende por kilo.
 - Fotos reales de los productos: hoy llevan un dibujo.
 - Un dominio propio.
-- Facturación, cuando el negocio empiece a facturar.
+- Facturación fiscal, cuando el negocio empiece a facturar. Hoy hay notas
+  de entrega, que no son facturas.
+- Las avenidas con nombre (Venezuela, Vargas, Morán…) no están en la
+  cuadrícula de la ruta: hay que escribir la calle y la carrera.

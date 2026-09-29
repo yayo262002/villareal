@@ -23,6 +23,8 @@ export type Venta = {
   fecha: string;
   total_usd: number;
   nota: string;
+  /** La tasa del día cuando se anotó, o null en las ventas anteriores a guardarla. */
+  tasa: number | null;
   creado_en: string;
 };
 
@@ -95,6 +97,7 @@ export async function crearVenta(
   fecha: string,
   lineas: LineaVenta[],
   nota: string,
+  tasa: number | null = null,
 ): Promise<number> {
   if (lineas.length === 0) throw new Error("Una venta necesita al menos un producto.");
   for (const l of lineas) {
@@ -106,8 +109,8 @@ export async function crearVenta(
 
   return transaccion(async (tx) => {
     const venta = await tx.execute({
-      sql: "insert into ventas (cliente_id, fecha, total_usd, nota) values (?, ?, ?, ?) returning id",
-      args: [clienteId, fecha, total, nota],
+      sql: "insert into ventas (cliente_id, fecha, total_usd, nota, tasa) values (?, ?, ?, ?, ?) returning id",
+      args: [clienteId, fecha, total, nota, tasa && tasa > 0 ? tasa : null],
     });
     const ventaId = Number(venta.rows[0].id);
     for (const l of lineas) {

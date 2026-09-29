@@ -46,6 +46,9 @@ export const ESQUEMA = `
     fecha text not null,
     total_usd real not null,
     nota text not null default '',
+    -- La tasa del día al anotar la venta, para que la nota de entrega diga
+    -- los bolívares de ese día y no los de hoy. Vacía en las ventas viejas.
+    tasa real,
     creado_en text not null default (datetime('now'))
   );
 

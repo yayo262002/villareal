@@ -11,6 +11,8 @@ import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { negocio } from "@/config/negocio";
+import { enlaceAlMapa } from "@/lib/despacho";
+import { explicarMotivo, leerDireccion } from "@/lib/direcciones";
 import { enlaceWhatsappA, mensajeNota, mensajeRecordatorio } from "@/lib/whatsapp";
 import estilos from "../../panel.module.css";
 
@@ -33,6 +35,8 @@ export default async function PaginaCliente({
     ultimaTasa(),
   ]);
   const cuentas = aplicarPagos(ventas, cliente.total_pagado_usd);
+  const ubicacion = leerDireccion(cliente.direccion);
+  const mapa = enlaceAlMapa(cliente.direccion, `${negocio.localidad}, ${negocio.estado}, Venezuela`);
   const ventaDeAdjunto = new Map(ventas.map((v) => [v.id, v]));
 
   // Enlaces de WhatsApp: recordar la deuda y mandar cada nota. Solo si hay teléfono.
@@ -101,7 +105,7 @@ export default async function PaginaCliente({
           <dd>{usd(cliente.total_comprado_usd)}</dd>
         </div>
         <div className={estilos.cifra}>
-          <dt>Pagado</dt>
+          <dt>Abonado</dt>
           <dd>{usd(cliente.total_pagado_usd)}</dd>
         </div>
         <div className={estilos.cifra}>
@@ -115,8 +119,8 @@ export default async function PaginaCliente({
       </dl>
 
       <div className={estilos.dosColumnas}>
-        <section className="tarjeta">
-          <h2 className={estilos.subtitulo}>Registrar pago</h2>
+        <section className="tarjeta" id="abono">
+          <h2 className={estilos.subtitulo}>Registrar abono</h2>
           <FormularioPago
             clientes={[cliente]}
             clienteFijo={cliente.id}
@@ -125,18 +129,31 @@ export default async function PaginaCliente({
           />
         </section>
 
-        <section className="tarjeta">
+        <section className="tarjeta" id="datos">
           <h2 className={estilos.subtitulo}>Datos</h2>
+          {cliente.direccion && (
+            <p className={estilos.ayuda}>
+              {ubicacion.ubicada ? "Entra en la ruta de despacho." : `Fuera de la ruta de despacho. ${explicarMotivo(ubicacion.motivo)}`}
+              {mapa && (
+                <>
+                  {" "}
+                  <a href={mapa} target="_blank" rel="noopener">
+                    Ver en el mapa
+                  </a>
+                </>
+              )}
+            </p>
+          )}
           <form action={editarCliente} className="formulario">
             <input type="hidden" name="id" value={cliente.id} />
             <div className="campo">
               <label htmlFor="nombre">Nombre o negocio</label>
-              <input id="nombre" name="nombre" type="text" required defaultValue={cliente.nombre} />
+              <input id="nombre" name="nombre" type="text" defaultValue={cliente.nombre} />
             </div>
             <div className="formulario__fila">
               <div className="campo">
                 <label htmlFor="telefono">Teléfono</label>
-                <input id="telefono" name="telefono" type="tel" defaultValue={cliente.telefono} />
+                <input id="telefono" name="telefono" type="tel" inputMode="tel" defaultValue={cliente.telefono} />
               </div>
               <div className="campo">
                 <label htmlFor="cedula_rif">Cédula o RIF</label>
@@ -145,7 +162,13 @@ export default async function PaginaCliente({
             </div>
             <div className="campo">
               <label htmlFor="direccion">Dirección</label>
-              <input id="direccion" name="direccion" type="text" defaultValue={cliente.direccion} />
+              <input
+                id="direccion"
+                name="direccion"
+                type="text"
+                defaultValue={cliente.direccion}
+                placeholder="Carrera 19 con calle 25"
+              />
             </div>
             <div className="formulario__fila">
               <div className="campo">
@@ -207,6 +230,7 @@ export default async function PaginaCliente({
                     </td>
                     <td>{v.nota || "—"}</td>
                     <td className={estilos.accionesFila}>
+                      <Link href={`/admin/ventas/${v.id}/nota`}>Ver nota</Link>
                       {enlaceNota(v) && (
                         <a href={enlaceNota(v)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
                           Enviar nota
@@ -225,9 +249,9 @@ export default async function PaginaCliente({
       </section>
 
       <section className="tarjeta">
-        <h2 className={estilos.subtitulo}>Pagos</h2>
+        <h2 className={estilos.subtitulo}>Abonos</h2>
         {pagos.length === 0 ? (
-          <p className="vacio">Sin pagos todavía.</p>
+          <p className="vacio">Sin abonos todavía.</p>
         ) : (
           <div className="tabla-envoltorio">
             <table className="tabla">

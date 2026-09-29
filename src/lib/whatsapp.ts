@@ -26,6 +26,36 @@ export function numeroWhatsapp(telefono: string): string | null {
   return null;
 }
 
+/**
+ * El teléfono como se escribe en Venezuela, «0412-1234567», para guardarlo
+ * siempre igual. Si no es un número venezolano completo se deja como vino,
+ * sin espacios de más: no se inventan cifras.
+ */
+export function telefonoLegible(telefono: string): string {
+  const numero = numeroWhatsapp(telefono);
+  if (!numero) return telefono.trim().replace(/\s+/g, " ");
+  return `0${numero.slice(2, 5)}-${numero.slice(5)}`;
+}
+
+/** Dos teléfonos son el mismo si tienen las mismas cifras, se escriban como se escriban. */
+export function mismoTelefono(a: string, b: string): boolean {
+  const cifras = (t: string) => numeroWhatsapp(t) ?? t.replace(/\D/g, "");
+  const ca = cifras(a);
+  return ca.length >= 7 && ca === cifras(b);
+}
+
+/**
+ * Un cliente registrado solo con su teléfono lleva el teléfono como nombre.
+ * A ese no se le saluda por el nombre: «Hola 0412-1234567» no es un saludo.
+ */
+export function esSoloUnTelefono(nombre: string): boolean {
+  return !/\p{L}/u.test(nombre);
+}
+
+function saludo(cliente: string): string {
+  return esSoloUnTelefono(cliente) ? "Hola" : `Hola ${cliente}`;
+}
+
 export function enlaceWhatsappA(telefono: string, mensaje: string): string | null {
   const numero = numeroWhatsapp(telefono);
   if (!numero) return null;
@@ -43,7 +73,7 @@ export function mensajeRecordatorio(datos: {
   /** Tasa del día; con ella el saldo va también en bolívares. */
   tasa?: number | null;
 }): string {
-  const lineas = [`Hola ${datos.cliente}, le saluda ${datos.negocio}.`];
+  const lineas = [`${saludo(datos.cliente)}, le saluda ${datos.negocio}.`];
   lineas.push(`Tiene pendiente ${dolaresYBolivares(datos.saldo_usd, datos.tasa)}:`);
   for (const p of datos.pendientes) {
     const parte = p.pendiente_usd < p.total_usd ? ` (quedan ${usd(p.pendiente_usd)})` : "";

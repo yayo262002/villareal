@@ -218,3 +218,16 @@ textarea {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Al imprimir: papel blanco y tinta negra, sin sombras. */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .tarjeta {
+    box-shadow: none;
+    border: none;
+    padding: 0;
+  }
+}

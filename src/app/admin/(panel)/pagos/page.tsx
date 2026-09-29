@@ -6,7 +6,7 @@ import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
 import estilos from "../panel.module.css";
 
-export const metadata = { title: "Pagos" };
+export const metadata = { title: "Abonos" };
 
 export default async function PaginaPagos({
   searchParams,
@@ -18,11 +18,11 @@ export default async function PaginaPagos({
 
   return (
     <>
-      <h1 className={estilos.titulo}>Pagos</h1>
+      <h1 className={estilos.titulo}>Abonos</h1>
       <Avisos parametros={parametros} />
 
       <section className="tarjeta">
-        <h2 className={estilos.subtitulo}>Registrar pago</h2>
+        <h2 className={estilos.subtitulo}>Registrar abono</h2>
         {clientes.length === 0 ? (
           <p className="aviso aviso--aviso">
             Primero <Link href="/admin/clientes">registra un cliente</Link>.
@@ -33,9 +33,9 @@ export default async function PaginaPagos({
       </section>
 
       <section className="tarjeta">
-        <h2 className={estilos.subtitulo}>Últimos pagos</h2>
+        <h2 className={estilos.subtitulo}>Últimos abonos</h2>
         {pagos.length === 0 ? (
-          <p className="vacio">Todavía no hay pagos.</p>
+          <p className="vacio">Todavía no hay abonos.</p>
         ) : (
           <div className="tabla-envoltorio">
             <table className="tabla">

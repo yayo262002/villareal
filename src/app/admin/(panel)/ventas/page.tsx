@@ -125,6 +125,9 @@ export default async function PaginaVentas({
                   <th>Cliente</th>
                   <th>Productos</th>
                   <th className="numero">Total</th>
+                  <th>
+                    <span className="visualmente-oculto">Nota</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -140,6 +143,9 @@ export default async function PaginaVentas({
                         .join(" · ")}
                     </td>
                     <td className="numero">{usd(v.total_usd)}</td>
+                    <td>
+                      <Link href={`/admin/ventas/${v.id}/nota`}>Ver nota</Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -5,7 +5,7 @@ import { borrarPago } from "@/lib/acciones";
 import { METODOS_PAGO, fechaCorta, formatearMonto, usd } from "@/lib/dinero";
 import estilos from "../../../panel.module.css";
 
-export const metadata = { title: "Eliminar pago" };
+export const metadata = { title: "Eliminar abono" };
 
 /** Confirmación antes de borrar un pago. Ver `ventas/[id]/eliminar`. */
 export default async function PaginaEliminarPago({ params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +21,7 @@ export default async function PaginaEliminarPago({ params }: { params: Promise<{
         <p>
           <Link href={volver}>← {pago.cliente_nombre}</Link>
         </p>
-        <h1 className={estilos.titulo}>¿Eliminar este pago?</h1>
+        <h1 className={estilos.titulo}>¿Eliminar este abono?</h1>
       </div>
 
       <section className="tarjeta">

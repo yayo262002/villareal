@@ -397,3 +397,307 @@
   padding: 0 var(--espacio-2);
   font-weight: 700;
 }
+
+/* ---------- Cartera de clientes y ruta de despacho ---------- */
+
+.masDatos summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-marca);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+/* Las formas de ordenar la lista. */
+.pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+  margin-bottom: var(--espacio-4);
+}
+.pestanas a {
+  padding: var(--espacio-2) var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--color-texto);
+}
+.pestanas a[aria-current="true"] {
+  background: var(--color-marca);
+  border-color: var(--color-marca);
+  color: var(--color-marca-texto);
+}
+
+/* Cada cliente es una ficha pequeña: cabe entera en el teléfono, sin desplazar a los lados. */
+.cartera {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--espacio-3);
+}
+.carteraCliente {
+  min-width: 0;
+  display: grid;
+  gap: var(--espacio-1);
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+.carteraCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--espacio-1) var(--espacio-3);
+}
+.carteraNombre {
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.carteraOrden {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  margin-right: var(--espacio-2);
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-marca);
+  color: var(--color-marca-texto);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.carteraDato {
+  font-size: 15px;
+  color: var(--color-texto);
+  overflow-wrap: anywhere;
+}
+.carteraAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-1) var(--espacio-4);
+  margin-top: var(--espacio-1);
+  font-size: 15px;
+  font-weight: 600;
+}
+.carteraAcciones a {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* La ruta: una parada detrás de otra, con su número. */
+.ruta {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--espacio-3);
+}
+.parada {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--espacio-3);
+  align-items: start;
+  padding: var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  break-inside: avoid;
+}
+.paradaNumero {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-marca);
+  color: var(--color-marca-texto);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.paradaDatos {
+  min-width: 0;
+  display: grid;
+  gap: var(--espacio-1);
+}
+.paradaFinal {
+  background: var(--color-superficie-suave);
+}
+.paradaFinal .paradaNumero {
+  background: var(--color-exito);
+}
+
+/* Elegir a quién se despacha: una casilla por cliente, fácil de tocar. */
+.eleccion {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--espacio-1);
+}
+.eleccion label {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  min-height: 44px;
+  padding: var(--espacio-1) var(--espacio-2);
+  border-radius: var(--radio);
+  cursor: pointer;
+}
+.eleccion label:hover {
+  background: var(--color-superficie-suave);
+}
+.eleccion input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  accent-color: var(--color-marca);
+}
+
+/* ---------- Nota de entrega ---------- */
+
+.nota {
+  display: grid;
+  gap: var(--espacio-5);
+  padding: var(--espacio-5);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie);
+}
+.notaCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+  padding-bottom: var(--espacio-4);
+  border-bottom: 2px solid var(--color-marca-oscuro);
+}
+.notaEmisor {
+  display: flex;
+  gap: var(--espacio-3);
+  align-items: flex-start;
+  min-width: 0;
+}
+.notaEmisor img {
+  flex: none;
+}
+.notaEmisor div {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+.notaEmisor strong {
+  font-size: 17px;
+  color: var(--color-marca-oscuro);
+}
+.notaNumero {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  text-align: right;
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+.notaNumero strong {
+  font-size: 22px;
+  color: var(--color-texto);
+  font-variant-numeric: tabular-nums;
+}
+.notaCliente {
+  margin: 0;
+  display: grid;
+  gap: var(--espacio-3);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.notaCliente dt,
+.notaTotales dt {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+.notaCliente dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.notaTotales {
+  margin: 0;
+  display: grid;
+  gap: var(--espacio-2);
+  justify-self: end;
+  width: 100%;
+  max-width: 360px;
+}
+.notaTotales div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--espacio-4);
+}
+.notaTotales dd {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.notaTotal {
+  padding-bottom: var(--espacio-2);
+  border-bottom: 1px solid var(--color-borde);
+}
+.notaTotal dd {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-marca-oscuro);
+}
+.notaObservacion {
+  font-size: 15px;
+}
+.notaFirmas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--espacio-6);
+  margin-top: var(--espacio-7);
+}
+.notaFirmas span {
+  padding-top: var(--espacio-2);
+  border-top: 1px solid var(--color-texto-suave);
+  font-size: 13px;
+  color: var(--color-texto-suave);
+  text-align: center;
+}
+.notaPie {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+  text-align: center;
+}
+
+/* ---------- Al imprimir: solo el papel ---------- */
+
+@media print {
+  .cabecera,
+  .noImprimir {
+    display: none !important;
+  }
+  .contenido {
+    max-width: none;
+    padding: 0;
+  }
+  .nota,
+  .parada,
+  .carteraCliente {
+    border-color: #999;
+    box-shadow: none;
+  }
+  .nota {
+    border: none;
+    padding: 0;
+  }
+}

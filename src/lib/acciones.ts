@@ -3,7 +3,15 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { cerrarSesion, claveEsCorrecta, exigirSesion, iniciarSesion } from "./sesion";
-import { actualizarCliente, buscarCliente, crearCliente, type TipoCliente } from "./clientes";
+import {
+  actualizarCliente,
+  buscarCliente,
+  buscarClientePorTelefono,
+  crearCliente,
+  type TipoCliente,
+} from "./clientes";
+import { explicarMotivo, leerDireccion } from "./direcciones";
+import { telefonoLegible } from "./whatsapp";
 import {
   actualizarProducto,
   buscarProducto,
@@ -12,7 +20,7 @@ import {
   type PreciosProducto,
   type Unidad,
 } from "./productos";
-import { guardarTasa, ponerAvisoTasa, ponerTasaAutomatica, quitarPreciosDeEjemplo } from "./ajustes";
+import { guardarTasa, leerTasa, ponerAvisoTasa, ponerTasaAutomatica, quitarPreciosDeEjemplo } from "./ajustes";
 import { actualizarTasaOficial } from "./tasa-oficial";
 import {
   VENTANA_MINUTOS,
@@ -91,9 +99,11 @@ export async function salir(): Promise<void> {
 function leerCliente(datos: FormData) {
   const nombre = texto(datos, "nombre");
   const tipo = texto(datos, "tipo") === "mayor" ? "mayor" : ("detal" as TipoCliente);
+  const telefono = telefonoLegible(texto(datos, "telefono"));
   return {
-    nombre,
-    telefono: texto(datos, "telefono"),
+    // Quien se registra solo con el teléfono lleva el teléfono como nombre.
+    nombre: nombre || telefono,
+    telefono,
     cedula_rif: texto(datos, "cedula_rif"),
     direccion: texto(datos, "direccion"),
     tipo,
@@ -101,13 +111,32 @@ function leerCliente(datos: FormData) {
   };
 }
 
+/** Lo que hay que decirle al dueño sobre la dirección: si sirve o no para la ruta. */
+function avisoDeDireccion(direccion: string): string {
+  const lectura = leerDireccion(direccion);
+  if (lectura.ubicada) return "";
+  return ` Ojo: queda fuera de la ruta de despacho. ${explicarMotivo(lectura.motivo)}`;
+}
+
+/**
+ * Alta rápida: basta el teléfono y la dirección. Vuelve a la cartera, no a
+ * la ficha, para poder registrar el siguiente sin más toques.
+ */
 export async function guardarCliente(datos: FormData): Promise<void> {
   await exigirSesion();
   const cliente = leerCliente(datos);
-  if (!cliente.nombre) volverConError("/admin/clientes", "El nombre es obligatorio.");
+  if (!cliente.nombre) volverConError("/admin/clientes", "Escribe al menos el teléfono o el nombre.");
+
+  const repetido = await buscarClientePorTelefono(cliente.telefono);
+  if (repetido) {
+    volverConError(`/admin/clientes/${repetido.id}`, "Ese teléfono ya es de este cliente. No se registró otra vez.");
+  }
 
   const id = await crearCliente(cliente);
-  volverConExito(`/admin/clientes/${id}`, "Cliente registrado.");
+  revalidatePath("/admin", "layout");
+  redirect(
+    `/admin/clientes?ok=${encodeURIComponent(`Cliente guardado: ${cliente.nombre}.${avisoDeDireccion(cliente.direccion)}`)}&nuevo=${id}`,
+  );
 }
 
 export async function editarCliente(datos: FormData): Promise<void> {
@@ -115,10 +144,15 @@ export async function editarCliente(datos: FormData): Promise<void> {
   const id = numero(datos, "id");
   if (!id) volverConError("/admin/clientes", "No se encontró el cliente.");
   const cliente = leerCliente(datos);
-  if (!cliente.nombre) volverConError(`/admin/clientes/${id}`, "El nombre es obligatorio.");
+  if (!cliente.nombre) volverConError(`/admin/clientes/${id}`, "Escribe al menos el teléfono o el nombre.");
+
+  const repetido = await buscarClientePorTelefono(cliente.telefono, id);
+  if (repetido) {
+    volverConError(`/admin/clientes/${id}`, `Ese teléfono ya es de otro cliente: ${repetido.nombre}.`);
+  }
 
   await actualizarCliente(id, cliente);
-  volverConExito(`/admin/clientes/${id}`, "Datos guardados.");
+  volverConExito(`/admin/clientes/${id}`, `Datos guardados.${avisoDeDireccion(cliente.direccion)}`);
 }
 
 // ---------- Productos ----------
@@ -266,12 +300,15 @@ export async function guardarVenta(datos: FormData): Promise<void> {
     lineas.push({ producto_id: productoId, cantidad, precio_unitario_usd: precio });
   }
 
+  let ventaId = 0;
   try {
-    await crearVenta(clienteId, fecha, lineas, texto(datos, "nota"));
+    const tasa = await leerTasa();
+    ventaId = await crearVenta(clienteId, fecha, lineas, texto(datos, "nota"), tasa?.valor ?? null);
   } catch (error) {
     volverConError("/admin/ventas", mensajeDe(error));
   }
-  volverConExito(`/admin/clientes/${clienteId}`, "Venta registrada.");
+  // A la nota de entrega, para mandarla o imprimirla en el momento.
+  volverConExito(`/admin/ventas/${ventaId}/nota`, "Venta registrada.");
 }
 
 /**
@@ -324,7 +361,7 @@ export async function guardarPago(datos: FormData): Promise<void> {
   } catch (error) {
     volverConError(volverA, mensajeDe(error));
   }
-  volverConExito(`/admin/clientes/${clienteId}`, "Pago registrado.");
+  volverConExito(`/admin/clientes/${clienteId}`, "Abono registrado.");
 }
 
 /** Igual que `borrarVenta`: la confirmación está en `/admin/pagos/[id]/eliminar`. */
@@ -335,7 +372,7 @@ export async function borrarPago(datos: FormData): Promise<void> {
   if (!id || !pago) volverConError("/admin/pagos", "No se encontró el pago.");
 
   await eliminarPago(id);
-  volverConExito(`/admin/clientes/${pago.cliente_id}`, "Pago eliminado.");
+  volverConExito(`/admin/clientes/${pago.cliente_id}`, "Abono eliminado.");
 }
 
 // ---------- Copias ----------

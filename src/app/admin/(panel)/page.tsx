@@ -102,10 +102,10 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
         </section>
 
         <section className="tarjeta">
-          <h2 className={estilos.subtitulo}>Últimos pagos</h2>
+          <h2 className={estilos.subtitulo}>Últimos abonos</h2>
           {ultimosPagos.length === 0 ? (
             <p className="vacio">
-              Todavía no hay pagos. <Link href="/admin/pagos">Registrar el primero</Link>.
+              Todavía no hay abonos. <Link href="/admin/pagos">Registrar el primero</Link>.
             </p>
           ) : (
             <div className="tabla-envoltorio">

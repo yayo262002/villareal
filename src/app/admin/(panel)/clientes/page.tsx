@@ -1,11 +1,24 @@
 import Link from "next/link";
-import { listarClientes } from "@/lib/clientes";
+import { negocio } from "@/config/negocio";
+import { listarClientes, type ClienteConSaldo } from "@/lib/clientes";
 import { guardarCliente } from "@/lib/acciones";
-import { fechaCorta, usd } from "@/lib/dinero";
+import { enlaceAlMapa, planDeDespacho } from "@/lib/despacho";
+import { explicarMotivo } from "@/lib/direcciones";
+import { fechaCorta, redondear, usd } from "@/lib/dinero";
+import { enlaceWhatsappA } from "@/lib/whatsapp";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Clientes" };
+
+const CIUDAD = `${negocio.localidad}, ${negocio.estado}, Venezuela`;
+
+const ORDENES = {
+  nombre: "Por nombre",
+  ruta: "Por ruta desde la tienda",
+  deuda: "Los que más deben",
+} as const;
+type Orden = keyof typeof ORDENES;
 
 /** Sin tildes ni mayúsculas, para que «jose» encuentre a «José». */
 function normalizar(texto: string): string {
@@ -15,6 +28,11 @@ function normalizar(texto: string): string {
     .toLowerCase();
 }
 
+/**
+ * La cartera de clientes. Arriba, el alta rápida: con el teléfono y la
+ * dirección basta. Debajo, todos los clientes con su saldo, ordenados por
+ * nombre, por la ruta de despacho o por lo que deben.
+ */
 export default async function PaginaClientes({
   searchParams,
 }: {
@@ -22,72 +40,134 @@ export default async function PaginaClientes({
 }) {
   const parametros = await searchParams;
   const busqueda = typeof parametros.q === "string" ? parametros.q.trim() : "";
+  const orden: Orden = typeof parametros.orden === "string" && parametros.orden in ORDENES ? (parametros.orden as Orden) : "nombre";
+  const nuevoId = typeof parametros.nuevo === "string" ? Number(parametros.nuevo) : 0;
+
   const todos = await listarClientes();
+  const nuevo = todos.find((c) => c.id === nuevoId);
   const clave = normalizar(busqueda);
-  const clientes = clave
+  const filtrados = clave
     ? todos.filter((c) =>
         [c.nombre, c.telefono, c.cedula_rif, c.direccion, c.nota].some((campo) => normalizar(campo).includes(clave)),
       )
     : todos;
 
+  // El orden de la ruta sirve también para saber quién no está ubicado.
+  const plan = planDeDespacho({ direccion: negocio.direccion, ciudad: CIUDAD }, filtrados);
+  const motivo = new Map(plan.sinUbicar.map((s) => [s.cliente.id, s.motivo]));
+  let clientes: ClienteConSaldo[];
+  if (orden === "ruta") clientes = [...plan.ruta.paradas.map((p) => p.dato), ...plan.sinUbicar.map((s) => s.cliente)];
+  else if (orden === "deuda") clientes = [...filtrados].sort((a, b) => b.saldo_usd - a.saldo_usd);
+  else clientes = filtrados;
+
+  const porPagar = redondear(todos.reduce((s, c) => s + Math.max(0, c.saldo_usd), 0));
+  const enlaceOrden = (o: Orden) => {
+    const p = new URLSearchParams();
+    if (busqueda) p.set("q", busqueda);
+    if (o !== "nombre") p.set("orden", o);
+    const cola = p.toString();
+    return `/admin/clientes${cola ? `?${cola}` : ""}`;
+  };
+
   return (
     <>
       <div className={estilos.encabezado}>
-        <h1 className={estilos.titulo}>Clientes</h1>
-        {todos.length > 0 && (
-          <a href="/admin/clientes/exportar" download className="boton boton--secundario">
-            Descargar lista (Excel)
-          </a>
-        )}
+        <h1 className={estilos.titulo}>Cartera de clientes</h1>
+        <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
+          <Link href="/admin/despacho" className="boton">
+            Ruta de despacho
+          </Link>
+          {todos.length > 0 && (
+            <a href="/admin/clientes/exportar" download className="boton boton--secundario">
+              Descargar lista (Excel)
+            </a>
+          )}
+        </div>
       </div>
       <Avisos parametros={parametros} />
+      {nuevo && (
+        <p className={estilos.ayuda} style={{ marginBottom: 0 }}>
+          <Link href={`/admin/clientes/${nuevo.id}`}>Abrir la ficha de {nuevo.nombre}</Link> para anotarle una venta o un
+          abono.
+        </p>
+      )}
 
-      <div className={estilos.dosColumnas}>
-        <section className="tarjeta">
-          <h2 className={estilos.subtitulo}>Registrar cliente</h2>
-          <form action={guardarCliente} className="formulario">
+      <dl className={estilos.cifras}>
+        <div className={estilos.cifra}>
+          <dt>Clientes</dt>
+          <dd>{todos.length}</dd>
+        </div>
+        <div className={`${estilos.cifra} ${porPagar > 0 ? estilos["cifra--alerta"] : ""}`}>
+          <dt>Por pagar</dt>
+          <dd>{usd(porPagar)}</dd>
+        </div>
+      </dl>
+
+      <section className="tarjeta">
+        <h2 className={estilos.subtitulo}>Cliente nuevo</h2>
+        <form action={guardarCliente} className="formulario">
+          <div className="formulario__fila">
             <div className="campo">
-              <label htmlFor="nombre">Nombre o negocio</label>
-              <input id="nombre" name="nombre" type="text" required autoComplete="off" />
-            </div>
-            <div className="formulario__fila">
-              <div className="campo">
-                <label htmlFor="telefono">Teléfono</label>
-                <input id="telefono" name="telefono" type="tel" inputMode="tel" placeholder="0412-1234567" />
-              </div>
-              <div className="campo">
-                <label htmlFor="cedula_rif">Cédula o RIF</label>
-                <input id="cedula_rif" name="cedula_rif" type="text" placeholder="V-12345678" />
-              </div>
+              <label htmlFor="telefono">Teléfono</label>
+              {/* Tras guardar uno, el cursor vuelve aquí para registrar el siguiente. */}
+              <input
+                id="telefono"
+                name="telefono"
+                type="tel"
+                inputMode="tel"
+                autoComplete="off"
+                placeholder="0412-1234567"
+                autoFocus={Boolean(nuevo)}
+              />
             </div>
             <div className="campo">
               <label htmlFor="direccion">Dirección</label>
-              <input id="direccion" name="direccion" type="text" />
+              <input id="direccion" name="direccion" type="text" autoComplete="off" placeholder="Carrera 19 con calle 25" />
+              <span className="ayuda">Con la calle y la carrera entra en la ruta de despacho.</span>
             </div>
-            <div className="formulario__fila">
-              <div className="campo">
-                <label htmlFor="tipo">Tipo</label>
-                <select id="tipo" name="tipo" defaultValue="detal">
-                  <option value="detal">Detal</option>
-                  <option value="mayor">Mayor</option>
-                </select>
+          </div>
+          <div className="campo">
+            <label htmlFor="nombre">Nombre o negocio (opcional)</label>
+            <input id="nombre" name="nombre" type="text" autoComplete="off" />
+          </div>
+          <details className={estilos.masDatos}>
+            <summary>Más datos</summary>
+            <div className="formulario" style={{ marginTop: "var(--espacio-3)" }}>
+              <div className="formulario__fila">
+                <div className="campo">
+                  <label htmlFor="cedula_rif">Cédula o RIF</label>
+                  <input id="cedula_rif" name="cedula_rif" type="text" placeholder="V-12345678" />
+                </div>
+                <div className="campo">
+                  <label htmlFor="tipo">Le vendes</label>
+                  <select id="tipo" name="tipo" defaultValue="detal">
+                    <option value="detal">Al detal</option>
+                    <option value="mayor">Al mayor</option>
+                  </select>
+                </div>
               </div>
               <div className="campo">
                 <label htmlFor="nota">Nota</label>
-                <input id="nota" name="nota" type="text" />
+                <input id="nota" name="nota" type="text" placeholder="Portón azul, preguntar por María" />
               </div>
             </div>
-            <div>
-              <button type="submit" className="boton">
-                Registrar
-              </button>
-            </div>
-          </form>
-        </section>
+          </details>
+          <div>
+            <button type="submit" className="boton">
+              Guardar cliente
+            </button>
+          </div>
+        </form>
+      </section>
 
-        <section className="tarjeta">
-          <h2 className={estilos.subtitulo}>Todos los clientes</h2>
-          {todos.length > 0 && (
+      <section className="tarjeta">
+        <h2 className={estilos.subtitulo}>
+          {busqueda ? `${clientes.length} de ${todos.length} clientes` : `Clientes (${todos.length})`}
+        </h2>
+        {todos.length === 0 ? (
+          <p className="vacio">Todavía no hay clientes. Registra el primero arriba.</p>
+        ) : (
+          <>
             <form method="get" action="/admin/clientes" className={estilos.buscador} role="search">
               <label htmlFor="buscar" className="visualmente-oculto">
                 Buscar cliente
@@ -96,60 +176,77 @@ export default async function PaginaClientes({
                 id="buscar"
                 name="q"
                 type="search"
-                placeholder="Buscar por nombre, teléfono o cédula"
+                placeholder="Buscar por nombre, teléfono o dirección"
                 defaultValue={busqueda}
               />
+              {orden !== "nombre" && <input type="hidden" name="orden" value={orden} />}
               <button type="submit" className="boton boton--secundario">
                 Buscar
               </button>
               {busqueda && (
-                <Link href="/admin/clientes" className={estilos.limpiar}>
+                <Link href={orden === "nombre" ? "/admin/clientes" : `/admin/clientes?orden=${orden}`} className={estilos.limpiar}>
                   Ver todos
                 </Link>
               )}
             </form>
-          )}
-          {todos.length === 0 ? (
-            <p className="vacio">Todavía no hay clientes registrados.</p>
-          ) : clientes.length === 0 ? (
-            <p className="vacio">Ningún cliente coincide con «{busqueda}».</p>
-          ) : (
-            <div className="tabla-envoltorio">
-              <table className="tabla">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Teléfono</th>
-                    <th>Tipo</th>
-                    <th>Última compra</th>
-                    <th className="numero">Saldo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clientes.map((c) => (
-                    <tr key={c.id}>
-                      <td>
-                        <Link href={`/admin/clientes/${c.id}`}>{c.nombre}</Link>
-                      </td>
-                      <td>{c.telefono || "—"}</td>
-                      <td>{c.tipo === "mayor" ? "Mayor" : "Detal"}</td>
-                      <td>{c.ultima_compra ? fechaCorta(c.ultima_compra) : "—"}</td>
-                      <td className={`numero ${c.saldo_usd > 0 ? estilos.deuda : estilos.saldado}`}>
-                        {c.saldo_usd > 0 ? `Debe ${usd(c.saldo_usd)}` : "Al día"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {busqueda && (
-                <p className={estilos.ayuda}>
-                  {clientes.length} de {todos.length} clientes.
-                </p>
-              )}
-            </div>
-          )}
-        </section>
-      </div>
+            <nav aria-label="Orden de la lista" className={estilos.pestanas}>
+              {(Object.keys(ORDENES) as Orden[]).map((o) => (
+                <Link key={o} href={enlaceOrden(o)} aria-current={o === orden ? "true" : undefined}>
+                  {ORDENES[o]}
+                </Link>
+              ))}
+            </nav>
+
+            {clientes.length === 0 ? (
+              <p className="vacio">Ningún cliente coincide con «{busqueda}».</p>
+            ) : (
+              <ul className={estilos.cartera}>
+                {clientes.map((c, i) => {
+                  const whatsapp = enlaceWhatsappA(c.telefono, "Hola, le saluda " + negocio.nombre + ".");
+                  const mapa = enlaceAlMapa(c.direccion, CIUDAD);
+                  const sinUbicar = motivo.get(c.id);
+                  return (
+                    <li key={c.id} className={estilos.carteraCliente}>
+                      <div className={estilos.carteraCabecera}>
+                        <Link href={`/admin/clientes/${c.id}`} className={estilos.carteraNombre}>
+                          {orden === "ruta" && !sinUbicar && <span className={estilos.carteraOrden}>{i + 1}</span>}
+                          {c.nombre}
+                        </Link>
+                        <span className={c.saldo_usd > 0 ? estilos.deuda : estilos.saldado}>
+                          {c.saldo_usd > 0 ? `Debe ${usd(c.saldo_usd)}` : c.saldo_usd < 0 ? `A favor ${usd(-c.saldo_usd)}` : "Al día"}
+                        </span>
+                      </div>
+                      <p className={estilos.carteraDato}>
+                        {c.direccion || <span className="ayuda">Sin dirección</span>}
+                        {sinUbicar && c.direccion && <span className="ayuda"> · Fuera de la ruta. {explicarMotivo(sinUbicar)}</span>}
+                      </p>
+                      <p className={estilos.carteraDato}>
+                        {c.telefono && c.telefono !== c.nombre ? `${c.telefono} · ` : ""}
+                        {c.tipo === "mayor" ? "Al mayor" : "Al detal"}
+                        {c.ultima_compra ? ` · compró el ${fechaCorta(c.ultima_compra)}` : ""}
+                      </p>
+                      <div className={estilos.carteraAcciones}>
+                        <Link href={`/admin/ventas?cliente=${c.id}`}>Venta</Link>
+                        <Link href={`/admin/clientes/${c.id}#abono`}>Abono</Link>
+                        {whatsapp && (
+                          <a href={whatsapp} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                            WhatsApp
+                          </a>
+                        )}
+                        {mapa && (
+                          <a href={mapa} target="_blank" rel="noopener">
+                            Mapa
+                          </a>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
+        )}
+      </section>
     </>
   );
 }

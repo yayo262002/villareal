@@ -1,6 +1,40 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { enlaceWhatsappA, mensajeNota, mensajeRecordatorio, numeroWhatsapp } from "./whatsapp.ts";
+import {
+  enlaceWhatsappA,
+  esSoloUnTelefono,
+  mensajeNota,
+  mensajeRecordatorio,
+  mismoTelefono,
+  numeroWhatsapp,
+  telefonoLegible,
+} from "./whatsapp.ts";
+
+test("el teléfono se guarda siempre escrito igual", () => {
+  assert.equal(telefonoLegible("04121234567"), "0412-1234567");
+  assert.equal(telefonoLegible("+58 412 123.45.67"), "0412-1234567");
+  assert.equal(telefonoLegible("412 1234567"), "0412-1234567");
+  // Un fijo o un número a medias se deja como vino.
+  assert.equal(telefonoLegible("  564 8335 "), "564 8335");
+  assert.equal(telefonoLegible(""), "");
+});
+
+test("dos teléfonos con las mismas cifras son el mismo", () => {
+  assert.equal(mismoTelefono("0412-1234567", "+58 412 1234567"), true);
+  assert.equal(mismoTelefono("0412-1234567", "04121234567"), true);
+  assert.equal(mismoTelefono("0412-1234567", "0412-1234568"), false);
+  assert.equal(mismoTelefono("5648335", "564-8335"), true);
+  assert.equal(mismoTelefono("", ""), false);
+  assert.equal(mismoTelefono("123", "123"), false);
+});
+
+test("al cliente sin nombre no se le saluda por el teléfono", () => {
+  assert.equal(esSoloUnTelefono("0412-1234567"), true);
+  assert.equal(esSoloUnTelefono("Bodega Ana"), false);
+  assert.equal(esSoloUnTelefono("Pizzería 2000"), false);
+  const texto = mensajeRecordatorio({ negocio: "Villa Real", cliente: "0412-1234567", saldo_usd: 5, pendientes: [] });
+  assert.match(texto, /^Hola, le saluda Villa Real\./);
+});
 
 test("los teléfonos venezolanos se normalizan al formato de wa.me", () => {
   assert.equal(numeroWhatsapp("0412-1234567"), "584121234567");

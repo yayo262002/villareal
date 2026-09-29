@@ -1,6 +1,7 @@
 import "server-only";
 import { ejecutar, fila, filas } from "./db";
 import { redondear } from "./dinero";
+import { mismoTelefono } from "./whatsapp";
 
 export type TipoCliente = "detal" | "mayor";
 
@@ -53,6 +54,16 @@ export async function listarClientes(): Promise<ClienteConSaldo[]> {
 export async function buscarCliente(id: number): Promise<ClienteConSaldo | null> {
   const f = await fila<ClienteConSaldo>(`${CONSULTA_CON_SALDO} where c.id = ?`, [id]);
   return f ? conSaldo(f) : null;
+}
+
+/**
+ * El cliente que ya tiene ese teléfono, se escriba como se escriba. Evita
+ * registrar dos veces al mismo al dar de alta deprisa.
+ */
+export async function buscarClientePorTelefono(telefono: string, salvoId?: number): Promise<Cliente | null> {
+  if (!telefono.trim()) return null;
+  const conTelefono = await filas<Cliente>("select * from clientes where telefono <> ''");
+  return conTelefono.find((c) => c.id !== salvoId && mismoTelefono(c.telefono, telefono)) ?? null;
 }
 
 export async function crearCliente(datos: DatosCliente): Promise<number> {
