@@ -12,7 +12,7 @@ import {
   type PreciosProducto,
   type Unidad,
 } from "./productos";
-import { guardarTasa } from "./ajustes";
+import { guardarTasa, quitarPreciosDeEjemplo } from "./ajustes";
 import { buscarVenta, crearVenta, eliminarVenta, type LineaVenta } from "./ventas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { buscarAdjunto, eliminarAdjunto, guardarAdjunto } from "./adjuntos";
@@ -168,6 +168,12 @@ export async function editarProducto(datos: FormData): Promise<void> {
     precio_mayor_usd: precios.precio_mayor_usd,
   });
   volverConExito("/admin/productos", `«${nombre}» guardado. La web ya lo muestra así.`);
+}
+
+export async function confirmarPrecios(): Promise<void> {
+  await exigirSesion();
+  await quitarPreciosDeEjemplo();
+  volverConExito("/admin/productos", "Hecho. Los precios publicados se dan por tuyos.");
 }
 
 // ---------- Tasa del día ----------

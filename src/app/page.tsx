@@ -64,36 +64,57 @@ export default async function PaginaInicio() {
                 ].filter((x): x is { nombre: string; usd: number } => x.usd !== null);
                 const ventajas = (p.descripcion ?? "").split(/\r?\n/).map((v) => v.trim()).filter(Boolean);
                 const pedir = enlaceWhatsapp(`Hola, quiero pedir ${p.nombre.toLowerCase()}.`);
-                return (
-                  <li key={p.id} className={estilos.producto}>
+                // Lo que se ve siempre: el nombre y los precios. Va con <span> y no
+                // con <dl> porque en los productos con detalles vive dentro de un
+                // <summary>, que solo admite texto y encabezados.
+                const cabecera = (
+                  <>
                     <h2 className={estilos.nombre}>{p.nombre}</h2>
                     {precios.length === 0 ? (
-                      <p className={estilos.precioPendiente}>Consulta el precio del día</p>
+                      <span className={estilos.precioPendiente}>Consulta el precio del día</span>
                     ) : (
-                      <dl className={`${estilos.precios} ${precios.length === 1 ? estilos.preciosUno : ""}`}>
+                      <span className={`${estilos.precios} ${precios.length === 1 ? estilos.preciosUno : ""}`}>
                         {precios.map((precio) => {
                           const enBs = aBolivares(precio.usd, tasa?.valor ?? null);
                           return (
-                            <div
+                            <span
                               key={precio.nombre}
                               className={`${estilos.precioCaja} ${precio.nombre === "Al mayor" ? estilos.precioCajaMayor : ""}`}
                             >
-                              <dt>{precios.length === 1 ? "Precio" : precio.nombre}</dt>
-                              <dd className={estilos.precio}>{enBs !== null ? bs(enBs) : usd(precio.usd)}</dd>
-                              <dd className={estilos.precioUsd}>
+                              <span className={estilos.precioEtiqueta}>
+                                {precios.length === 1 ? "Precio" : precio.nombre}
+                              </span>
+                              <span className={estilos.precio}>{enBs !== null ? bs(enBs) : usd(precio.usd)}</span>
+                              <span className={estilos.precioUsd}>
                                 {enBs !== null ? `${usd(precio.usd)} ` : ""}por {nombreUnidad(p.unidad)}
-                              </dd>
-                            </div>
+                              </span>
+                            </span>
                           );
                         })}
-                      </dl>
+                      </span>
                     )}
-                    {ventajas.length > 0 && (
-                      <ul className={estilos.ventajas}>
-                        {ventajas.map((v) => (
-                          <li key={v}>{v}</li>
-                        ))}
-                      </ul>
+                  </>
+                );
+                return (
+                  <li key={p.id} className={estilos.producto}>
+                    {/* Los detalles se abren al tocar el producto. Es HTML puro, sin JavaScript. */}
+                    {ventajas.length > 0 ? (
+                      <details className={estilos.detalles}>
+                        <summary className={estilos.resumen}>
+                          {cabecera}
+                          <span className={estilos.verDetalles}>
+                            <span className={estilos.textoAbrir}>Ver detalles</span>
+                            <span className={estilos.textoCerrar}>Ocultar detalles</span>
+                          </span>
+                        </summary>
+                        <ul className={estilos.ventajas}>
+                          {ventajas.map((v) => (
+                            <li key={v}>{v}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    ) : (
+                      <div className={estilos.resumen}>{cabecera}</div>
                     )}
                     {pedir && (
                       <a className={estilos.pedir} href={pedir} target="_blank" rel="noopener">

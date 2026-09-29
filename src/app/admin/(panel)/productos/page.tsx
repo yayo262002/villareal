@@ -1,6 +1,12 @@
 import { listarProductos } from "@/lib/productos";
-import { leerTasa } from "@/lib/ajustes";
-import { alternarProducto, cambiarTasa, editarProducto, guardarProducto } from "@/lib/acciones";
+import { hayPreciosDeEjemplo, leerTasa } from "@/lib/ajustes";
+import {
+  alternarProducto,
+  cambiarTasa,
+  confirmarPrecios,
+  editarProducto,
+  guardarProducto,
+} from "@/lib/acciones";
 import { UNIDADES, aBolivares, bs, fechaCorta, nombreUnidad, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
@@ -115,7 +121,7 @@ export default async function PaginaProductos({
   searchParams: Promise<ParametrosAviso>;
 }) {
   const parametros = await searchParams;
-  const [productos, tasa] = await Promise.all([listarProductos(), leerTasa()]);
+  const [productos, tasa, deEjemplo] = await Promise.all([listarProductos(), leerTasa(), hayPreciosDeEjemplo()]);
   const sinPrecio = productos.filter((p) => p.activo && p.precio_usd === null && p.precio_mayor_usd === null);
   const tasaValor = tasa?.valor ?? null;
 
@@ -129,6 +135,21 @@ export default async function PaginaProductos({
     <>
       <h1 className={estilos.titulo}>Productos y precios</h1>
       <Avisos parametros={parametros} />
+
+      {deEjemplo && (
+        <div className="aviso aviso--error">
+          <p>
+            <strong>Los precios publicados son de ejemplo.</strong> Se pusieron para que la web no saliera vacía y
+            cualquiera puede verlos. Cambia el costo y los márgenes de cada producto por los tuyos y después pulsa el
+            botón.
+          </p>
+          <form action={confirmarPrecios} style={{ marginTop: "var(--espacio-3)" }}>
+            <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+              Ya puse mis precios
+            </button>
+          </form>
+        </div>
+      )}
 
       <section className="tarjeta">
         <h2 className={estilos.subtitulo}>Tasa del día</h2>

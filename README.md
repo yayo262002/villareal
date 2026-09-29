@@ -140,8 +140,14 @@ datos/                    La base de datos (fuera de Git)
 - La web publica los precios en **bolívares** con la **tasa del día**, que
   el dueño escribe en Productos. Al cambiar la tasa cambian todos los
   precios en bolívares a la vez. Sin tasa, la web muestra dólares.
-- Cada producto lleva sus **ventajas** (una por línea), que la web enseña
-  debajo del precio, y un botón para pedirlo por WhatsApp.
+- Cada producto lleva sus **ventajas** (una por línea). En la web están
+  plegadas: se ven al tocar el producto («Ver detalles»). Lo que siempre
+  está a la vista es el nombre, los precios y el botón para pedirlo por
+  WhatsApp.
+- **Precios de ejemplo.** Si en `ajustes` está la clave
+  `precios_de_ejemplo`, el panel avisa en rojo arriba de Productos de que
+  los precios publicados no son los del dueño. Se quita con el botón «Ya
+  puse mis precios».
 - Las cuentas internas siguen en **dólares**.
 - Cada venta suma al saldo del cliente. Cada pago resta.
 - Los mensajes de WhatsApp (recordatorio y nota) dicen el monto en dólares y,
