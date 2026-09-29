@@ -91,6 +91,7 @@ export default async function PaginaVentas({
                     inputMode="decimal"
                     step="0.01"
                     min="0"
+                    placeholder="Vacío = precio del producto"
                   />
                 </div>
               </fieldset>
