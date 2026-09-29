@@ -335,3 +335,27 @@
   border: 1px dashed var(--color-borde);
   border-radius: var(--radio);
 }
+
+/* Ficha de producto: costo, margen y precio en una fila en pantallas anchas. */
+.filaTres {
+  display: grid;
+  gap: var(--espacio-3);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 560px) {
+  .filaTres {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+.precioResumen {
+  margin-bottom: var(--espacio-4);
+  font-size: 17px;
+}
+.tarjetaApagada {
+  opacity: 0.75;
+}
+.alternar {
+  margin-top: var(--espacio-4);
+  padding-top: var(--espacio-4);
+  border-top: 1px solid var(--color-borde);
+}

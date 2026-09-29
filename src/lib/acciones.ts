@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { cerrarSesion, claveEsCorrecta, exigirSesion, iniciarSesion } from "./sesion";
 import { actualizarCliente, buscarCliente, crearCliente, type TipoCliente } from "./clientes";
 import {
-  actualizarPrecio,
   actualizarProducto,
   buscarProducto,
   cambiarActivo,
@@ -140,32 +139,29 @@ export async function guardarProducto(datos: FormData): Promise<void> {
   volverConExito("/admin/productos", "Producto creado.");
 }
 
-export async function cambiarPrecio(datos: FormData): Promise<void> {
-  await exigirSesion();
-  const id = numero(datos, "id");
-  if (!id) volverConError("/admin/productos", "No se encontró el producto.");
-
-  await actualizarPrecio(id, leerPrecios(datos));
-  volverConExito("/admin/productos", "Precio actualizado.");
-}
-
+/**
+ * Guarda la ficha entera de un producto. Los campos que el formulario no
+ * traiga se dejan como estaban, así el mismo destino sirve para cambiar
+ * solo el precio.
+ */
 export async function editarProducto(datos: FormData): Promise<void> {
   await exigirSesion();
   const id = numero(datos, "id");
   const producto = id ? await buscarProducto(id) : null;
   if (!id || !producto) volverConError("/admin/productos", "No se encontró el producto.");
-  const nombre = texto(datos, "nombre");
+  const nombre = datos.has("nombre") ? texto(datos, "nombre") : producto.nombre;
   if (!nombre) volverConError("/admin/productos", "El nombre es obligatorio.");
 
+  const precios = datos.has("costo_usd") || datos.has("precio_usd") ? leerPrecios(datos) : producto;
   await actualizarProducto(id, {
     nombre,
-    unidad: leerUnidad(datos),
-    descripcion: texto(datos, "descripcion"),
-    costo_usd: producto.costo_usd,
-    margen_pct: producto.margen_pct,
-    precio_usd: producto.precio_usd,
+    unidad: datos.has("unidad") ? leerUnidad(datos) : producto.unidad,
+    descripcion: datos.has("descripcion") ? texto(datos, "descripcion") : producto.descripcion,
+    costo_usd: precios.costo_usd,
+    margen_pct: precios.margen_pct,
+    precio_usd: precios.precio_usd,
   });
-  volverConExito("/admin/productos", "Producto guardado.");
+  volverConExito("/admin/productos", `«${nombre}» guardado. La web ya lo muestra así.`);
 }
 
 // ---------- Tasa del día ----------

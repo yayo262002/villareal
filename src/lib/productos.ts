@@ -64,18 +64,6 @@ export async function actualizarProducto(id: number, datos: DatosProducto): Prom
   );
 }
 
-/** Solo el precio: costo y margen, o un precio a mano. */
-export async function actualizarPrecio(
-  id: number,
-  datos: Pick<DatosProducto, "costo_usd" | "margen_pct" | "precio_usd">,
-): Promise<void> {
-  await ejecutar("update productos set costo_usd = ?, margen_pct = ?, precio_usd = ? where id = ?", [
-    datos.costo_usd,
-    datos.margen_pct,
-    resolverPrecio(datos),
-    id,
-  ]);
-}
 
 export async function cambiarActivo(id: number, activo: boolean): Promise<void> {
   await ejecutar("update productos set activo = ? where id = ?", [activo ? 1 : 0, id]);
