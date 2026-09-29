@@ -24,7 +24,7 @@ export default async function PaginaInicio() {
           <div className={estilos.marca}>
             {/* El león coronado de la marca, calcado del bordado de las camisas. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/marca/leon-cabecera.svg" alt="" className={estilos.leon} />
+            <img src="/marca/leon.svg" alt="" className={estilos.leon} />
             <div>
               <p className={estilos.logo}>{negocio.nombre}</p>
               <p className={estilos.lema}>{negocio.lema}</p>
