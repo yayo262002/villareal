@@ -2,14 +2,18 @@ import Link from "next/link";
 import { enlaceWhatsapp, negocio, whatsappLegible } from "@/config/negocio";
 import { listarProductos } from "@/lib/productos";
 import { leerTasa } from "@/lib/ajustes";
-import { aBolivares, bs, fechaCorta, nombreUnidad, usd } from "@/lib/dinero";
+import { bs, fechaCorta } from "@/lib/dinero";
+import { rutaProducto } from "@/lib/enlaces";
+import { CabeceraPublica, PiePublico, PreciosProducto } from "@/components/publico";
+import { IlustracionProducto } from "@/components/ilustracion-producto";
 import estilos from "./page.module.css";
 
 /**
  * La web pública, pensada para abrirse en el teléfono desde un mensaje de
- * WhatsApp: el nombre, los productos con su precio en bolívares y el botón
- * para pedir, sin nada antes. Lo que no está configurado (tasa, precios) no
- * se inventa: se omite o se dice que está pendiente.
+ * WhatsApp: los productos con su dibujo y su precio en bolívares, y nada
+ * antes. Los detalles de cada uno están en su propia página. Lo que no está
+ * configurado (tasa, precios) no se inventa: se omite o se dice que está
+ * pendiente.
  */
 export default async function PaginaInicio() {
   const [productos, tasa] = await Promise.all([listarProductos(true), leerTasa()]);
@@ -20,24 +24,7 @@ export default async function PaginaInicio() {
 
   return (
     <>
-      <header className={estilos.cabecera}>
-        <div className={estilos.contenido}>
-          <div className={estilos.marca}>
-            {/* El león coronado de la marca. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/marca/leon.svg" alt="" className={estilos.leon} />
-            <div>
-              <p className={estilos.logo}>{negocio.nombre}</p>
-              <p className={estilos.lema}>{negocio.lema}</p>
-            </div>
-          </div>
-          {whatsapp && (
-            <a className="boton boton--acento" href={whatsapp} target="_blank" rel="noopener">
-              WhatsApp
-            </a>
-          )}
-        </div>
-      </header>
+      <CabeceraPublica />
 
       <main className={estilos.contenido}>
         <section className={estilos.seccion} aria-labelledby="titulo-precios">
@@ -57,70 +44,25 @@ export default async function PaginaInicio() {
           ) : (
             <ul className={estilos.productos}>
               {productos.map((p) => {
-                // Los precios que tiene el producto. Con uno solo no hace falta decir cuál es.
-                const precios = [
-                  { nombre: "Al detal", usd: p.precio_usd },
-                  { nombre: "Al mayor", usd: p.precio_mayor_usd },
-                ].filter((x): x is { nombre: string; usd: number } => x.usd !== null);
-                const ventajas = (p.descripcion ?? "").split(/\r?\n/).map((v) => v.trim()).filter(Boolean);
+                const ruta = rutaProducto(p);
                 const pedir = enlaceWhatsapp(`Hola, quiero pedir ${p.nombre.toLowerCase()}.`);
-                // Lo que se ve siempre: el nombre y los precios. Va con <span> y no
-                // con <dl> porque en los productos con detalles vive dentro de un
-                // <summary>, que solo admite texto y encabezados.
-                const cabecera = (
-                  <>
-                    <h2 className={estilos.nombre}>{p.nombre}</h2>
-                    {precios.length === 0 ? (
-                      <span className={estilos.precioPendiente}>Consulta el precio del día</span>
-                    ) : (
-                      <span className={`${estilos.precios} ${precios.length === 1 ? estilos.preciosUno : ""}`}>
-                        {precios.map((precio) => {
-                          const enBs = aBolivares(precio.usd, tasa?.valor ?? null);
-                          return (
-                            <span
-                              key={precio.nombre}
-                              className={`${estilos.precioCaja} ${precio.nombre === "Al mayor" ? estilos.precioCajaMayor : ""}`}
-                            >
-                              <span className={estilos.precioEtiqueta}>
-                                {precios.length === 1 ? "Precio" : precio.nombre}
-                              </span>
-                              <span className={estilos.precio}>{enBs !== null ? bs(enBs) : usd(precio.usd)}</span>
-                              <span className={estilos.precioUsd}>
-                                {enBs !== null ? `${usd(precio.usd)} ` : ""}por {nombreUnidad(p.unidad)}
-                              </span>
-                            </span>
-                          );
-                        })}
-                      </span>
-                    )}
-                  </>
-                );
                 return (
                   <li key={p.id} className={estilos.producto}>
-                    {/* Los detalles se abren al tocar el producto. Es HTML puro, sin JavaScript. */}
-                    {ventajas.length > 0 ? (
-                      <details className={estilos.detalles}>
-                        <summary className={estilos.resumen}>
-                          {cabecera}
-                          <span className={estilos.verDetalles}>
-                            <span className={estilos.textoAbrir}>Ver detalles</span>
-                            <span className={estilos.textoCerrar}>Ocultar detalles</span>
-                          </span>
-                        </summary>
-                        <ul className={estilos.ventajas}>
-                          {ventajas.map((v) => (
-                            <li key={v}>{v}</li>
-                          ))}
-                        </ul>
-                      </details>
-                    ) : (
-                      <div className={estilos.resumen}>{cabecera}</div>
-                    )}
-                    {pedir && (
-                      <a className={estilos.pedir} href={pedir} target="_blank" rel="noopener">
-                        Pedir {p.nombre.toLowerCase()} por WhatsApp
-                      </a>
-                    )}
+                    <Link href={ruta} className={estilos.productoCabecera}>
+                      <IlustracionProducto nombre={p.nombre} className={estilos.dibujo} />
+                      <h2 className={estilos.nombre}>{p.nombre}</h2>
+                    </Link>
+                    <PreciosProducto producto={p} tasa={tasa?.valor ?? null} />
+                    <div className={estilos.acciones}>
+                      <Link href={ruta} className="boton boton--secundario">
+                        Ver detalles
+                      </Link>
+                      {pedir && (
+                        <a className="boton" href={pedir} target="_blank" rel="noopener">
+                          Pedir
+                        </a>
+                      )}
+                    </div>
                   </li>
                 );
               })}
@@ -181,15 +123,7 @@ export default async function PaginaInicio() {
         )}
       </main>
 
-      <footer className={estilos.pie}>
-        <div className={estilos.contenido}>
-          <p>
-            {negocio.razonSocial || negocio.nombre}
-            {negocio.rif && ` · RIF ${negocio.rif}`}
-          </p>
-          <Link href="/admin">Panel</Link>
-        </div>
-      </footer>
+      <PiePublico />
     </>
   );
 }

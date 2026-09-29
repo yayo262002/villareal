@@ -47,8 +47,8 @@ function volverConError(ruta: string, mensaje: string): never {
 }
 
 function volverConExito(ruta: string, mensaje: string): never {
-  revalidatePath("/admin", "layout");
-  revalidatePath("/");
+  // Todo lo público sale de la base: la portada y la página de cada producto.
+  revalidatePath("/", "layout");
   redirect(`${ruta}?ok=${encodeURIComponent(mensaje)}`);
 }
 

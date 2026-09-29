@@ -137,15 +137,29 @@ export const RECONSTRUIR_PRODUCTOS = `
 // Los productos con los que abre el local. Sin precio: el precio real lo
 // pone el dueño desde el panel, nunca lo inventa el código. Se crean solo
 // los que falten (por nombre), así se pueden añadir más aquí sin duplicar.
-// La descripción de la mozzarella son palabras del dueño; una ventaja por línea.
+// La descripción de la mozzarella son palabras del dueño; una ventaja por
+// línea. Las de los demás describen para qué se usa el producto, sin
+// prometer nada que no se sepa. Solo se ponen si el producto no tiene ninguna.
 export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion: string }[] = [
-  { nombre: "Queso amarillo", unidad: "kg", descripcion: "" },
+  {
+    nombre: "Queso amarillo",
+    unidad: "kg",
+    descripcion: "Para sándwiches, arepas y hamburguesas\nFunde bien al calentar\nSe vende por kilo, al detal y al mayor",
+  },
   {
     nombre: "Queso mozzarella",
     unidad: "kg",
     descripcion:
       "Perfecta para rallar\nGratina dorado y no se quema\nAl rebanar no se desborona\nPerfecta para pizza\nMuy buen gusto",
   },
-  { nombre: "Huevos", unidad: "carton", descripcion: "" },
-  { nombre: "Queso pecorino", unidad: "kg", descripcion: "" },
+  {
+    nombre: "Huevos",
+    unidad: "carton",
+    descripcion: "Se venden por cartón\nPara negocios y para la casa\nAl detal y al mayor",
+  },
+  {
+    nombre: "Queso pecorino",
+    unidad: "kg",
+    descripcion: "Queso curado de sabor intenso\nPara rallar sobre pastas y ensaladas\nSe vende por kilo, al detal y al mayor",
+  },
 ];

@@ -169,7 +169,7 @@ async function probarPrecios() {
 
   r = await enviar("/admin/productos", 'id="precio-1"', {
     id: "1", nombre: "Queso amarillo", unidad: "kg", costo_usd: "6.8",
-    margen_pct: "25", precio_usd: "", margen_mayor_pct: "10", precio_mayor_usd: "", descripcion: "",
+    margen_pct: "25", precio_usd: "", margen_mayor_pct: "10", precio_mayor_usd: "",
   });
   comprobar("costo 6,80 con 25 % y 10 %", r.destino.includes("guardado"), r.destino);
 
@@ -195,7 +195,14 @@ async function probarPrecios() {
   comprobar("web: los dos precios del queso amarillo en bolívares", web.includes("Al detal") && web.includes("Al mayor") && web.includes("Bs 310,25") && web.includes("Bs 273,02"));
   comprobar("web: dólares y tasa", web.includes(usd("8,50")) && web.includes(usd("7,48")) && web.includes("36,50"));
   comprobar("web: un solo precio se llama «Precio»", web.includes(">Precio<") && web.includes("Bs 255,50"));
-  comprobar("web: ventajas de la mozzarella", web.includes("Gratina muy bien") && web.includes("no se desborona"));
+  comprobar("portada: cada producto con su dibujo y su enlace a los detalles", (web.match(/href="\/producto\/\d+-[a-z-]+"/g) ?? []).length >= 8 && (web.match(/aria-label="Dibujo de /g) ?? []).length === 4);
+  comprobar("portada: los detalles ya no están en la portada", !web.includes("no se desborona"));
+  const ficha = await pagina("/producto/2-queso-mozzarella", "");
+  comprobar("página de la mozzarella: ventajas, precio y pedir", ficha.status === 200 && ficha.html.includes("Perfecta para rallar") && ficha.html.includes("no se desborona") && ficha.html.includes("Bs 255,50") && ficha.html.includes("quiero%20pedir%20queso%20mozzarella"));
+  const fichaAmarillo = await pagina("/producto/1-cualquier-nombre", "");
+  comprobar("página del queso amarillo: los dos precios y sus detalles", fichaAmarillo.html.includes("Bs 310,25") && fichaAmarillo.html.includes("Bs 273,02") && fichaAmarillo.html.includes("Por qué elegirlo") && fichaAmarillo.html.includes("Otros productos"));
+  comprobar("todos los productos tienen detalles", (await Promise.all([3, 4].map((id) => pagina(`/producto/${id}`, "")))).every((p) => p.status === 200 && p.html.includes("Por qué elegirlo")));
+  comprobar("un producto que no existe da 404", (await pagina("/producto/999-nada", "")).status === 404 && (await pagina("/producto/queso", "")).status === 404);
   comprobar("web: huevos y pecorino, sin precio inventado", web.includes("Huevos") && web.includes("Queso pecorino") && web.includes("Consulta el precio del día"));
   comprobar("web: pedir cada producto por WhatsApp", web.includes("quiero%20pedir%20queso%20amarillo"));
 }
@@ -341,6 +348,10 @@ try {
 
   const web = await pagina("/", "");
   comprobar(`web pública (${web.ms} ms)`, web.status === 200 && web.html.includes("Precios de hoy") && web.html.includes("wa.me/584245541749"));
+
+  const primera = web.html.match(/href="(\/producto\/\d+[a-z0-9-]*)"/)?.[1];
+  const detalle = primera ? await pagina(primera, "") : null;
+  comprobar("la página de un producto abre desde la portada", Boolean(detalle) && detalle.status === 200 && detalle.html.includes("Cómo comprar") && detalle.html.includes("Todos los productos"), String(primera));
 
   await probarEntrada();
   if (!enProduccion) await probarPrecios();

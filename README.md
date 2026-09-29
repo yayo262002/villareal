@@ -120,7 +120,11 @@ scripts/copia.ts          npm run copia
 scripts/prueba-extremo.mjs  La prueba de extremo a extremo, en local o contra la web
 src/lib/sesion.ts         La clave del panel y la cookie
 src/proxy.ts              Corta el paso a /admin sin sesión
-src/app/page.tsx          La web pública
+src/app/page.tsx          La portada de la web pública
+src/app/producto/         La página de cada producto
+src/components/publico.tsx  Cabecera, pie y cajas de precio de la web pública
+src/components/ilustracion-producto.tsx  El dibujo de cada producto
+src/lib/enlaces.ts        La dirección de la página de cada producto
 src/components/entrada-foto.tsx  Reduce la foto en el teléfono antes de subirla
 src/app/admin/            El panel
 datos/                    La base de datos (fuera de Git)
@@ -140,10 +144,14 @@ datos/                    La base de datos (fuera de Git)
 - La web publica los precios en **bolívares** con la **tasa del día**, que
   el dueño escribe en Productos. Al cambiar la tasa cambian todos los
   precios en bolívares a la vez. Sin tasa, la web muestra dólares.
-- Cada producto lleva sus **ventajas** (una por línea). En la web están
-  plegadas: se ven al tocar el producto («Ver detalles»). Lo que siempre
-  está a la vista es el nombre, los precios y el botón para pedirlo por
-  WhatsApp.
+- Cada producto lleva sus **ventajas** (una por línea) y tiene su **propia
+  página** en la web, `/producto/2-queso-mozzarella`: dibujo grande,
+  precios, ventajas, cómo se paga y dónde está la tienda. En la portada
+  cada tarjeta enseña el dibujo, el nombre y los precios, con dos botones:
+  «Ver detalles», que lleva a esa página, y «Pedir», que abre WhatsApp.
+- El **dibujo** de cada producto se elige por su nombre (queso, mozzarella,
+  pecorino, huevos) en `src/components/ilustracion-producto.tsx`. Un
+  producto que no encaje lleva un dibujo genérico.
 - **Precios de ejemplo.** Si en `ajustes` está la clave
   `precios_de_ejemplo`, el panel avisa en rojo arriba de Productos de que
   los precios publicados no son los del dueño. Se quita con el botón «Ya
