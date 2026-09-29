@@ -9,7 +9,7 @@ import {
   buscarProducto,
   cambiarActivo,
   crearProducto,
-  type DatosProducto,
+  type PreciosProducto,
   type Unidad,
 } from "./productos";
 import { guardarTasa } from "./ajustes";
@@ -17,7 +17,7 @@ import { buscarVenta, crearVenta, eliminarVenta, type LineaVenta } from "./venta
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { buscarAdjunto, eliminarAdjunto, guardarAdjunto } from "./adjuntos";
 import { guardarCopiaNube } from "./copias-nube";
-import { esMetodoPago, esUnidad, monedaDelMetodo } from "./dinero";
+import { esMetodoPago, esUnidad, monedaDelMetodo, precioParaCliente } from "./dinero";
 import { FILAS_VENTA } from "./constantes";
 
 /**
@@ -112,17 +112,21 @@ export async function editarCliente(datos: FormData): Promise<void> {
  * Costo, margen y precio de un formulario de producto. Si están costo y
  * margen, el precio de venta sale de ahí; si no, vale el precio escrito.
  */
-function leerPrecios(datos: FormData): Pick<DatosProducto, "costo_usd" | "margen_pct" | "precio_usd"> {
-  const costo = numero(datos, "costo_usd");
-  const margen = numero(datos, "margen_pct");
-  const precio = numero(datos, "precio_usd");
-  if (costo !== null && costo < 0) volverConError("/admin/productos", "El costo no puede ser negativo.");
-  if (margen !== null && margen < 0) volverConError("/admin/productos", "El margen no puede ser negativo.");
-  if (precio !== null && precio < 0) volverConError("/admin/productos", "El precio no puede ser negativo.");
-  if ((costo === null) !== (margen === null)) {
-    volverConError("/admin/productos", "Pon el costo y el margen juntos, o solo el precio de venta.");
+function leerPrecios(datos: FormData): PreciosProducto {
+  const precios: PreciosProducto = {
+    costo_usd: numero(datos, "costo_usd"),
+    margen_pct: numero(datos, "margen_pct"),
+    precio_usd: numero(datos, "precio_usd"),
+    margen_mayor_pct: numero(datos, "margen_mayor_pct"),
+    precio_mayor_usd: numero(datos, "precio_mayor_usd"),
+  };
+  for (const valor of Object.values(precios)) {
+    if (valor !== null && valor < 0) volverConError("/admin/productos", "Costo, márgenes y precios no pueden ser negativos.");
   }
-  return { costo_usd: costo, margen_pct: margen, precio_usd: precio };
+  if (precios.costo_usd === null && (precios.margen_pct !== null || precios.margen_mayor_pct !== null)) {
+    volverConError("/admin/productos", "Para usar un margen hace falta el costo. Escríbelo, o pon el precio de venta a mano.");
+  }
+  return precios;
 }
 
 function leerUnidad(datos: FormData): Unidad {
@@ -160,6 +164,8 @@ export async function editarProducto(datos: FormData): Promise<void> {
     costo_usd: precios.costo_usd,
     margen_pct: precios.margen_pct,
     precio_usd: precios.precio_usd,
+    margen_mayor_pct: precios.margen_mayor_pct,
+    precio_mayor_usd: precios.precio_mayor_usd,
   });
   volverConExito("/admin/productos", `«${nombre}» guardado. La web ya lo muestra así.`);
 }
@@ -190,6 +196,8 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   const fecha = texto(datos, "fecha");
   if (!clienteId) volverConError("/admin/ventas", "Elige un cliente.");
   if (!fecha) volverConError("/admin/ventas", "Falta la fecha.");
+  const cliente = await buscarCliente(clienteId);
+  if (!cliente) volverConError("/admin/ventas", "No se encontró el cliente.");
 
   const lineas: LineaVenta[] = [];
   for (let i = 0; i < FILAS_VENTA; i++) {
@@ -200,10 +208,11 @@ export async function guardarVenta(datos: FormData): Promise<void> {
     if (!productoId || cantidad === null) {
       volverConError("/admin/ventas", `La fila ${i + 1} está incompleta: producto y cantidad.`);
     }
-    // Sin precio escrito se cobra al precio de venta del producto.
+    // Sin precio escrito se cobra el del producto: al mayor si el cliente
+    // es mayorista, al detal si no.
     if (precio === null) {
       const producto = await buscarProducto(productoId);
-      precio = producto?.precio_usd ?? null;
+      precio = producto ? precioParaCliente(producto, cliente.tipo) : null;
       if (precio === null) {
         volverConError("/admin/ventas", `La fila ${i + 1} no tiene precio y el producto tampoco: escríbelo.`);
       }

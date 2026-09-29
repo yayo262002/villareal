@@ -45,12 +45,31 @@ async function abrir(): Promise<Client> {
   return cliente;
 }
 
-/** Bases creadas antes de que productos tuviera costo, margen y descripción. */
-async function migrar(cliente: Client): Promise<void> {
+async function definicionDeProductos(cliente: Client): Promise<string> {
   const def = await cliente.execute("select sql from sqlite_master where type = 'table' and name = 'productos'");
-  const sql = String(def.rows[0]?.sql ?? "");
-  if (sql.includes("costo_usd") && sql.includes("'carton'")) return;
-  await cliente.executeMultiple(RECONSTRUIR_PRODUCTOS);
+  return String(def.rows[0]?.sql ?? "");
+}
+
+/**
+ * Pone al día las bases creadas con un esquema anterior. Next compila con
+ * varios procesos a la vez, así que dos pueden intentar lo mismo: añadir
+ * una columna que ya está no es un error.
+ */
+async function migrar(cliente: Client): Promise<void> {
+  let sql = await definicionDeProductos(cliente);
+  if (!(sql.includes("costo_usd") && sql.includes("'carton'"))) {
+    await cliente.executeMultiple(RECONSTRUIR_PRODUCTOS);
+    sql = await definicionDeProductos(cliente);
+  }
+  if (!sql.includes("precio_mayor_usd")) {
+    for (const columna of ["margen_mayor_pct real", "precio_mayor_usd real"]) {
+      try {
+        await cliente.execute(`alter table productos add column ${columna}`);
+      } catch (error) {
+        if (!/duplicate column/i.test(String(error))) throw error;
+      }
+    }
+  }
 }
 
 /** Crea los productos iniciales que falten y pone la descripción del dueño si está vacía. */

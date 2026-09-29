@@ -1,7 +1,8 @@
 # Comercializadora Villareal
 
 Web y sistema de gestión para un local de quesos en Venezuela: queso amarillo,
-mozzarella y lo que se vaya añadiendo.
+mozzarella, pecorino, huevos y lo que se vaya añadiendo. Vende al detal y al
+mayor.
 
 Tiene dos partes:
 
@@ -31,6 +32,8 @@ entero**, fotos incluidas: haz copia de él (ver más abajo).
 ```
 npm run verificar    typecheck + lint + pruebas unitarias
 npm run build        que compila
+npm run prueba:local   la web entera con una base temporal (después de build)
+npm run prueba:web     la web publicada; crea un cliente de prueba y lo borra
 ```
 
 ## Copias de seguridad
@@ -83,7 +86,7 @@ tiene plan gratuito. Solo hay que poner dos variables; el código no cambia.
    - `TURSO_AUTH_TOKEN`: el token de Turso.
    - `CRON_SECRET`: un texto largo al azar, para la copia automática.
 4. Despliega. La primera visita crea las tablas y los productos iniciales
-   (queso amarillo, mozzarella y huevos) sin precio.
+   (queso amarillo, mozzarella, pecorino y huevos) sin precio.
 
 Para pasar lo que ya tengas en el archivo local a Turso, instala la CLI de
 Turso y ejecuta `turso db shell villareal < copia.sql`, donde `copia.sql`
@@ -114,6 +117,7 @@ src/lib/dinero.ts         Conversión y formato de dólares y bolívares
 src/lib/acciones.ts       Lo que hacen los formularios del panel
 src/lib/copias.ts         Copias de seguridad de la base de datos
 scripts/copia.ts          npm run copia
+scripts/prueba-extremo.mjs  La prueba de extremo a extremo, en local o contra la web
 src/lib/sesion.ts         La clave del panel y la cookie
 src/proxy.ts              Corta el paso a /admin sin sesión
 src/app/page.tsx          La web pública
@@ -125,17 +129,21 @@ datos/                    La base de datos (fuera de Git)
 ## Cómo funcionan las cuentas
 
 - Cada producto tiene un **costo en dólares** (lo que paga el negocio) y
-  un **margen** en porcentaje. El precio de venta en dólares sale de ahí:
-  costo 6,80 con margen 25 % vende a 8,50. Si se prefiere, se escribe el
-  precio de venta directamente.
+  **dos márgenes** en porcentaje, al detal y al mayor. De ahí salen los dos
+  precios de venta en dólares: costo 6,80 con margen 25 % vende al detal a
+  8,50, y con margen 10 % al mayor a 7,48. Si se prefiere, cada precio se
+  escribe directamente. Un producto puede no tener precio al mayor.
+- **A quién se le cobra cuál.** El cliente está marcado como «detal» o
+  «mayor». Al anotar una venta con el precio vacío, al mayorista se le
+  cobra el precio al mayor y a los demás el de detal. Escribir el precio a
+  mano siempre manda.
 - La web publica los precios en **bolívares** con la **tasa del día**, que
   el dueño escribe en Productos. Al cambiar la tasa cambian todos los
   precios en bolívares a la vez. Sin tasa, la web muestra dólares.
 - Cada producto lleva sus **ventajas** (una por línea), que la web enseña
   debajo del precio, y un botón para pedirlo por WhatsApp.
 - Las cuentas internas siguen en **dólares**.
-- Cada venta suma al saldo del cliente. Cada pago resta. Si al anotar una
-  venta se deja el precio vacío, se cobra al precio de venta del producto.
+- Cada venta suma al saldo del cliente. Cada pago resta.
 - Los mensajes de WhatsApp (recordatorio y nota) dicen el monto en dólares y,
   si hay tasa del día, también en bolívares.
 - Un pago en bolívares se guarda con la **tasa del día** que se escribió al

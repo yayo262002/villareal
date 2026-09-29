@@ -57,30 +57,37 @@ export default async function PaginaInicio() {
           ) : (
             <ul className={estilos.productos}>
               {productos.map((p) => {
-                const enBs = p.precio_usd !== null ? aBolivares(p.precio_usd, tasa?.valor ?? null) : null;
+                // Los precios que tiene el producto. Con uno solo no hace falta decir cuál es.
+                const precios = [
+                  { nombre: "Al detal", usd: p.precio_usd },
+                  { nombre: "Al mayor", usd: p.precio_mayor_usd },
+                ].filter((x): x is { nombre: string; usd: number } => x.usd !== null);
                 const ventajas = (p.descripcion ?? "").split(/\r?\n/).map((v) => v.trim()).filter(Boolean);
                 const pedir = enlaceWhatsapp(`Hola, quiero pedir ${p.nombre.toLowerCase()}.`);
                 return (
                   <li key={p.id} className={estilos.producto}>
-                    <div className={estilos.productoCabecera}>
-                      <h2 className={estilos.nombre}>{p.nombre}</h2>
-                      <div className={estilos.precioBloque}>
-                        {p.precio_usd === null ? (
-                          <span className={estilos.precioPendiente}>Consulta el precio del día</span>
-                        ) : enBs !== null ? (
-                          <>
-                            <span className={estilos.precio}>
-                              {bs(enBs)} <small>/ {nombreUnidad(p.unidad)}</small>
-                            </span>
-                            <span className={estilos.precioUsd}>{usd(p.precio_usd)}</span>
-                          </>
-                        ) : (
-                          <span className={estilos.precio}>
-                            {usd(p.precio_usd)} <small>/ {nombreUnidad(p.unidad)}</small>
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <h2 className={estilos.nombre}>{p.nombre}</h2>
+                    {precios.length === 0 ? (
+                      <p className={estilos.precioPendiente}>Consulta el precio del día</p>
+                    ) : (
+                      <dl className={`${estilos.precios} ${precios.length === 1 ? estilos.preciosUno : ""}`}>
+                        {precios.map((precio) => {
+                          const enBs = aBolivares(precio.usd, tasa?.valor ?? null);
+                          return (
+                            <div
+                              key={precio.nombre}
+                              className={`${estilos.precioCaja} ${precio.nombre === "Al mayor" ? estilos.precioCajaMayor : ""}`}
+                            >
+                              <dt>{precios.length === 1 ? "Precio" : precio.nombre}</dt>
+                              <dd className={estilos.precio}>{enBs !== null ? bs(enBs) : usd(precio.usd)}</dd>
+                              <dd className={estilos.precioUsd}>
+                                {enBs !== null ? `${usd(precio.usd)} ` : ""}por {nombreUnidad(p.unidad)}
+                              </dd>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                    )}
                     {ventajas.length > 0 && (
                       <ul className={estilos.ventajas}>
                         {ventajas.map((v) => (
@@ -102,6 +109,8 @@ export default async function PaginaInicio() {
             {tasa
               ? "Precios en bolívares a la tasa del día. También puedes pagar en dólares, Zelle o Binance."
               : "Precios en dólares. Puedes pagar en bolívares a la tasa del día por pago móvil, transferencia o efectivo."}
+            {productos.some((p) => p.precio_mayor_usd !== null) &&
+              " Para comprar al mayor, consulta las condiciones por WhatsApp."}
           </p>
           {whatsapp && (
             <a className={`boton boton--acento ${estilos.botonGrande}`} href={whatsapp} target="_blank" rel="noopener">

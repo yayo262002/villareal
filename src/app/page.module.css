@@ -97,35 +97,50 @@
   display: grid;
   gap: var(--espacio-3);
 }
-.productoCabecera {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--espacio-3);
-}
 .nombre {
   font-size: 22px;
   font-weight: 800;
   color: var(--color-marca-oscuro);
 }
-.precioBloque {
+/* Dos cajas, una por precio: al detal y al mayor. Con un solo precio, una caja. */
+.precios {
+  margin: 0;
   display: grid;
-  justify-items: end;
-  gap: 2px;
-  flex: none;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--espacio-3);
 }
+.preciosUno {
+  grid-template-columns: 1fr;
+}
+.precioCaja {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+.precioCajaMayor {
+  background: var(--color-exito-fondo);
+}
+.precioCaja dt {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-texto-suave);
+}
+.precioCaja dd {
+  margin: 0;
+}
+/* El tamaño baja en pantallas estrechas para que «Bs 12.310,25» quepa en media tarjeta. */
 .precio {
-  font-size: 26px;
+  font-size: clamp(18px, 5.4vw, 26px);
   font-weight: 800;
   color: var(--color-marca);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-.precio small {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-texto-suave);
+  line-height: 1.15;
 }
 .precioUsd {
   font-size: 14px;
@@ -133,9 +148,8 @@
   font-variant-numeric: tabular-nums;
 }
 .precioPendiente {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--color-texto-suave);
-  text-align: right;
 }
 .ventajas {
   margin: 0;

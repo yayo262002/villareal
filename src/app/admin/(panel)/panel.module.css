@@ -348,7 +348,11 @@
   }
 }
 .precioResumen {
-  margin-bottom: var(--espacio-4);
+  list-style: none;
+  padding: 0;
+  margin: var(--espacio-3) 0 var(--espacio-4);
+  display: grid;
+  gap: var(--espacio-1);
   font-size: 17px;
 }
 .tarjetaApagada {
@@ -358,4 +362,38 @@
   margin-top: var(--espacio-4);
   padding-top: var(--espacio-4);
   border-top: 1px solid var(--color-borde);
+}
+
+/* Ficha de producto: un grupo por precio, al detal y al mayor. */
+.filaDos {
+  display: grid;
+  gap: var(--espacio-3);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 560px) {
+  .filaDos {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.grupoPrecio {
+  min-width: 0;
+  margin: 0;
+  padding: var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--espacio-3);
+}
+/* Un campo de número no se encoge solo: sin esto empuja la ficha fuera de la pantalla. */
+.grupoPrecio > * {
+  min-width: 0;
+}
+.grupoPrecio input {
+  width: 100%;
+  min-width: 0;
+}
+.grupoPrecio legend {
+  padding: 0 var(--espacio-2);
+  font-weight: 700;
 }

@@ -44,6 +44,18 @@ export function precioDeVenta(costoUsd: number | null, margenPct: number | null)
   return redondear(costoUsd * (1 + margenPct / 100));
 }
 
+/**
+ * El precio que le toca a un cliente: al mayor si es mayorista y el
+ * producto tiene precio al mayor; en cualquier otro caso, al detal.
+ */
+export function precioParaCliente(
+  precios: { precio_usd: number | null; precio_mayor_usd?: number | null },
+  tipo: "detal" | "mayor",
+): number | null {
+  if (tipo === "mayor" && precios.precio_mayor_usd != null) return precios.precio_mayor_usd;
+  return precios.precio_usd;
+}
+
 /** Un precio en dólares pasado a bolívares con la tasa del día, o null si no hay tasa. */
 export function aBolivares(usd: number, tasa: number | null): number | null {
   if (!tasa || tasa <= 0) return null;

@@ -66,7 +66,9 @@ export default async function PaginaVentas({
                     {productos.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nombre}
-                        {p.precio_usd !== null ? ` · ${usd(p.precio_usd)}/${nombreUnidad(p.unidad)}` : ""}
+                        {p.precio_usd !== null ? ` · detal ${usd(p.precio_usd)}` : ""}
+                        {p.precio_mayor_usd !== null ? ` · mayor ${usd(p.precio_mayor_usd)}` : ""}
+                        {p.precio_usd !== null || p.precio_mayor_usd !== null ? ` / ${nombreUnidad(p.unidad)}` : ""}
                       </option>
                     ))}
                   </select>
@@ -91,7 +93,7 @@ export default async function PaginaVentas({
                     inputMode="decimal"
                     step="0.01"
                     min="0"
-                    placeholder="Vacío = precio del producto"
+                    placeholder="Vacío = el del producto"
                   />
                 </div>
               </fieldset>

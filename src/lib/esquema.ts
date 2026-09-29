@@ -16,8 +16,9 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
-  -- El precio de venta en dólares sale del costo más el margen del dueño; la
-  -- web lo muestra en bolívares con la tasa del día (tabla ajustes).
+  -- Cada producto tiene dos precios de venta en dólares, al detal y al mayor.
+  -- Cada uno sale del costo más su margen; la web los muestra en bolívares
+  -- con la tasa del día (tabla ajustes).
   create table if not exists productos (
     id integer primary key autoincrement,
     nombre text not null,
@@ -25,6 +26,8 @@ export const ESQUEMA = `
     costo_usd real,
     margen_pct real,
     precio_usd real,
+    margen_mayor_pct real,
+    precio_mayor_usd real,
     descripcion text not null default '',
     activo integer not null default 1,
     creado_en text not null default (datetime('now'))
@@ -118,6 +121,8 @@ export const RECONSTRUIR_PRODUCTOS = `
     costo_usd real,
     margen_pct real,
     precio_usd real,
+    margen_mayor_pct real,
+    precio_mayor_usd real,
     descripcion text not null default '',
     activo integer not null default 1,
     creado_en text not null default (datetime('now'))
@@ -141,4 +146,5 @@ export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion:
     descripcion: "Gratina muy bien\nPerfecta para pizza\nAl rebanar no se desborona\nMuy buen gusto",
   },
   { nombre: "Huevos", unidad: "carton", descripcion: "" },
+  { nombre: "Queso pecorino", unidad: "kg", descripcion: "" },
 ];

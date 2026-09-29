@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ventasPorCliente, ventasPorMes, ventasPorProducto } from "@/lib/ventas";
+import { ventasPorCliente, ventasPorMes, ventasPorProducto, ventasPorTipo } from "@/lib/ventas";
 import { cantidad, hace, mesLegible, usd } from "@/lib/dinero";
 import estilos from "../panel.module.css";
 
@@ -10,12 +10,15 @@ const DIAS_RECIENTES = 30;
 /** Estudio de ventas: cuánto se vende, de qué, a quién y cómo va el cobro. */
 export default async function PaginaInforme() {
   const desde = hace(DIAS_RECIENTES);
-  const [meses, productos, productosRecientes, clientes] = await Promise.all([
+  const [meses, productos, productosRecientes, clientes, tipos, tiposRecientes] = await Promise.all([
     ventasPorMes(),
     ventasPorProducto(),
     ventasPorProducto(desde),
     ventasPorCliente(10),
+    ventasPorTipo(),
+    ventasPorTipo(desde),
   ]);
+  const totalTipos = tipos.reduce((s, t) => s + Number(t.vendido_usd), 0);
 
   const vendidoReciente = productosRecientes.reduce((s, p) => s + Number(p.vendido_usd), 0);
   const kilosRecientes = productosRecientes
@@ -69,6 +72,43 @@ export default async function PaginaInforme() {
                     <td className="numero">{usd(Number(m.cobrado_usd))}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="tarjeta">
+        <h2 className={estilos.subtitulo}>Al detal y al mayor</h2>
+        {tipos.length === 0 ? (
+          <p className="vacio">Todavía no hay ventas.</p>
+        ) : (
+          <div className="tabla-envoltorio">
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th>Clientes</th>
+                  <th className="numero">Ventas</th>
+                  <th className="numero">Últimos {DIAS_RECIENTES} días</th>
+                  <th className="numero">Total</th>
+                  <th className="numero">Parte</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tipos.map((t) => {
+                  const reciente = tiposRecientes.find((r) => r.tipo === t.tipo);
+                  return (
+                    <tr key={t.tipo}>
+                      <td>{t.tipo === "mayor" ? "Al mayor" : "Al detal"}</td>
+                      <td className="numero">{t.ventas}</td>
+                      <td className="numero">{usd(Number(reciente?.vendido_usd ?? 0))}</td>
+                      <td className="numero">{usd(Number(t.vendido_usd))}</td>
+                      <td className="numero">
+                        {totalTipos > 0 ? Math.round((Number(t.vendido_usd) / totalTipos) * 100) : 0} %
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

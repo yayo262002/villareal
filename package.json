@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"src/**/*.test.ts\"",
     "verificar": "npm run typecheck && npm run lint && npm run test",
-    "copia": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/copia.ts"
+    "copia": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/copia.ts",
+    "prueba:local": "node scripts/prueba-extremo.mjs",
+    "prueba:web": "node scripts/prueba-extremo.mjs --url=https://villareal-green.vercel.app"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
