@@ -21,9 +21,14 @@ export default async function PaginaInicio() {
     <>
       <header className={estilos.cabecera}>
         <div className={estilos.contenido}>
-          <div>
-            <p className={estilos.logo}>{negocio.nombre}</p>
-            <p className={estilos.lema}>{negocio.lema}</p>
+          <div className={estilos.marca}>
+            {/* El león coronado de la marca, calcado del bordado de las camisas. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/marca/leon-villa-real.svg" alt="" className={estilos.leon} />
+            <div>
+              <p className={estilos.logo}>{negocio.nombre}</p>
+              <p className={estilos.lema}>{negocio.lema}</p>
+            </div>
           </div>
           {whatsapp && (
             <a className="boton boton--acento" href={whatsapp} target="_blank" rel="noopener">

@@ -24,6 +24,17 @@
   padding-top: var(--espacio-3);
   padding-bottom: var(--espacio-3);
 }
+.marca {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  min-width: 0;
+}
+.leon {
+  height: 52px;
+  width: auto;
+  flex: none;
+}
 .logo {
   font-weight: 800;
   font-size: 18px;
