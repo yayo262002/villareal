@@ -2,7 +2,7 @@ import "server-only";
 import { createClient, type Client, type InValue, type Transaction } from "@libsql/client";
 import path from "node:path";
 import fs from "node:fs";
-import { ESQUEMA, PRODUCTOS_INICIALES, RECONSTRUIR_PRODUCTOS } from "./esquema";
+import { ESQUEMA, PRODUCTOS_INICIALES, RECONSTRUIR_PRODUCTOS, RENOMBRES } from "./esquema";
 
 /**
  * Conexión a la base de datos con el cliente de libsql, que habla el mismo
@@ -72,8 +72,31 @@ async function migrar(cliente: Client): Promise<void> {
   }
 }
 
+/** Las descripciones se comparan sin importar si los saltos de línea son de Windows. */
+function mismoTexto(a: unknown, b: string): boolean {
+  return String(a ?? "").replace(/\r\n/g, "\n").trim() === b.trim();
+}
+
+/** Productos que cambiaron de nombre en el código: se renombran, no se duplican. */
+async function renombrar(cliente: Client): Promise<void> {
+  for (const r of RENOMBRES) {
+    const viejo = await cliente.execute({ sql: "select id, descripcion from productos where nombre = ?", args: [r.de] });
+    if (viejo.rows.length === 0) continue;
+    const nuevo = await cliente.execute({ sql: "select id from productos where nombre = ?", args: [r.a] });
+    if (nuevo.rows.length > 0) continue;
+    const descripcion = mismoTexto(viejo.rows[0].descripcion, r.descripcionVieja)
+      ? r.descripcionNueva
+      : String(viejo.rows[0].descripcion ?? "");
+    await cliente.execute({
+      sql: "update productos set nombre = ?, descripcion = ? where id = ?",
+      args: [r.a, descripcion, viejo.rows[0].id],
+    });
+  }
+}
+
 /** Crea los productos iniciales que falten y pone la descripción del dueño si está vacía. */
 async function sembrar(cliente: Client): Promise<void> {
+  await renombrar(cliente);
   for (const p of PRODUCTOS_INICIALES) {
     const hay = await cliente.execute({ sql: "select id, descripcion from productos where nombre = ?", args: [p.nombre] });
     if (hay.rows.length === 0) {

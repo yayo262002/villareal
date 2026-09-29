@@ -109,11 +109,7 @@ export function cantidad(n: number, unidad: string): string {
   return `${num} ${nombreUnidad(unidad)}`;
 }
 
-/**
- * Fecha en formato YYYY-MM-DD usando la hora local, no UTC. Venezuela va
- * cuatro horas por detrás de UTC: con `toISOString()` una venta anotada a
- * las nueve de la noche saldría con la fecha de mañana.
- */
+/** Fecha en formato YYYY-MM-DD con la hora local del ordenador. Para nombres de archivo. */
 export function fechaIso(fecha: Date): string {
   const a = fecha.getFullYear();
   const m = String(fecha.getMonth() + 1).padStart(2, "0");
@@ -121,9 +117,33 @@ export function fechaIso(fecha: Date): string {
   return `${a}-${m}-${d}`;
 }
 
-/** Fecha de hoy para rellenar los formularios. */
+/** Venezuela va cuatro horas por detrás de UTC todo el año: no cambia la hora. */
+const DESFASE_VENEZUELA_MS = 4 * 60 * 60 * 1000;
+
+/**
+ * La fecha que es en Venezuela en un instante dado, en YYYY-MM-DD. No
+ * depende de la hora del servidor: en Vercel el servidor va en UTC, y con
+ * su fecha una venta anotada a las nueve de la noche saldría con la de
+ * mañana.
+ */
+export function fechaEnVenezuela(instante: Date): string {
+  return new Date(instante.getTime() - DESFASE_VENEZUELA_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * La fecha de Venezuela de un momento guardado por la base de datos, que
+ * escribe `datetime('now')` en UTC y sin zona: «2026-09-30 01:30:00».
+ */
+export function fechaDeLaBase(momentoUtc: string): string {
+  // Una fecha sin hora ya es un día del calendario: no se mueve.
+  if (momentoUtc.length <= 10) return momentoUtc;
+  const instante = new Date(momentoUtc.replace(" ", "T") + (momentoUtc.endsWith("Z") ? "" : "Z"));
+  return Number.isNaN(instante.getTime()) ? momentoUtc.slice(0, 10) : fechaEnVenezuela(instante);
+}
+
+/** Fecha de hoy en Venezuela, para rellenar los formularios. */
 export function hoy(): string {
-  return fechaIso(new Date());
+  return fechaEnVenezuela(new Date());
 }
 
 export function fechaCorta(iso: string): string {
@@ -145,7 +165,5 @@ export function mesLegible(mes: string): string {
 
 /** Fecha de hace `dias` días, en YYYY-MM-DD, para filtrar «los últimos 30 días». */
 export function hace(dias: number): string {
-  const f = new Date();
-  f.setDate(f.getDate() - dias);
-  return fechaIso(f);
+  return fechaEnVenezuela(new Date(Date.now() - dias * 24 * 60 * 60 * 1000));
 }

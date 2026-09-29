@@ -111,3 +111,19 @@
   justify-content: space-between;
   gap: var(--espacio-3);
 }
+
+/* Enlace para saltar la cabecera. Solo aparece al llegar a él con el teclado. */
+.saltar {
+  position: absolute;
+  left: var(--espacio-3);
+  top: -100px;
+  z-index: 20;
+  padding: var(--espacio-2) var(--espacio-4);
+  border-radius: var(--radio);
+  background: var(--color-acento);
+  color: var(--color-acento-texto);
+  font-weight: 700;
+}
+.saltar:focus {
+  top: var(--espacio-3);
+}

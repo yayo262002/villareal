@@ -1,12 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { enlaceWhatsapp, negocio } from "@/config/negocio";
-import { buscarProducto, listarProductos } from "@/lib/productos";
+import { direccionCompleta, enlaceCompartir, enlaceMapa, enlaceWhatsapp, negocio } from "@/config/negocio";
+import { buscarProducto, listarProductos, type Producto } from "@/lib/productos";
 import { leerTasa } from "@/lib/ajustes";
-import { bs, fechaCorta, nombreUnidad } from "@/lib/dinero";
+import { nombreUnidad } from "@/lib/dinero";
 import { idDeRuta, rutaProducto } from "@/lib/enlaces";
-import { CabeceraPublica, PiePublico, PreciosProducto, ventajasDe } from "@/components/publico";
+import {
+  CabeceraPublica,
+  DatosEstructurados,
+  LineaTasa,
+  PiePublico,
+  PreciosProducto,
+  datosDeLaTienda,
+  ventajasDe,
+} from "@/components/publico";
 import { IlustracionProducto } from "@/components/ilustracion-producto";
 import estilos from "../../page.module.css";
 
@@ -19,14 +27,64 @@ async function productoDe(segmento: string) {
   return producto && producto.activo ? producto : null;
 }
 
+/** Una frase que resume el producto, para los buscadores y la vista previa. */
+function resumenDe(producto: Producto): string {
+  const ventajas = ventajasDe(producto.descripcion);
+  const detalle = ventajas.length > 0 ? `${ventajas.join(". ")}. ` : "";
+  return `${producto.nombre} en ${negocio.localidad}. ${detalle}Al detal y al mayor, a tasa BCV.`;
+}
+
 export async function generateMetadata({ params }: Parametros): Promise<Metadata> {
   const { producto: segmento } = await params;
   const producto = await productoDe(segmento);
-  if (!producto) return { title: "Producto" };
-  const ventajas = ventajasDe(producto.descripcion);
+  if (!producto) return { title: "Producto", robots: { index: false } };
+  const ruta = rutaProducto(producto);
   return {
     title: producto.nombre,
-    description: ventajas.length > 0 ? `${producto.nombre}: ${ventajas.join(", ").toLowerCase()}.` : negocio.descripcion,
+    description: resumenDe(producto),
+    // Se llega con cualquier nombre detrás del número; la dirección buena es una.
+    alternates: { canonical: ruta },
+    openGraph: {
+      type: "website",
+      locale: "es_VE",
+      siteName: negocio.nombre,
+      title: `${producto.nombre} · ${negocio.nombre}`,
+      description: resumenDe(producto),
+      url: ruta,
+    },
+  };
+}
+
+/** El producto y su precio, como los entienden los buscadores. */
+function datosDelProducto(producto: Producto): Record<string, unknown> {
+  const ruta = direccionCompleta(rutaProducto(producto));
+  const precios = [producto.precio_usd, producto.precio_mayor_usd].filter((p): p is number => p !== null);
+  const oferta =
+    precios.length === 0
+      ? undefined
+      : precios.length === 1
+        ? { "@type": "Offer", price: precios[0], priceCurrency: "USD" }
+        : {
+            "@type": "AggregateOffer",
+            lowPrice: Math.min(...precios),
+            highPrice: Math.max(...precios),
+            offerCount: precios.length,
+            priceCurrency: "USD",
+          };
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: producto.nombre,
+    description: resumenDe(producto),
+    image: `${ruta}/opengraph-image`,
+    url: ruta,
+    brand: { "@type": "Brand", name: negocio.nombre },
+    offers: oferta && {
+      ...oferta,
+      availability: "https://schema.org/InStock",
+      url: ruta,
+      seller: datosDeLaTienda(),
+    },
   };
 }
 
@@ -43,14 +101,20 @@ export default async function PaginaProducto({ params }: Parametros) {
   const [tasa, todos] = await Promise.all([leerTasa(), listarProductos(true)]);
   const ventajas = ventajasDe(producto.descripcion);
   const otros = todos.filter((p) => p.id !== producto.id);
-  const pedir = enlaceWhatsapp(`Hola, quiero pedir ${producto.nombre.toLowerCase()}.`);
-  const mayor = enlaceWhatsapp(`Hola, quiero comprar ${producto.nombre.toLowerCase()} al mayor.`);
+  const nombre = producto.nombre.toLowerCase();
+  const pedir = enlaceWhatsapp(`Hola, quiero pedir ${nombre}.`);
+  const mayor = enlaceWhatsapp(`Hola, quiero comprar ${nombre} al mayor.`);
+  const compartir = enlaceCompartir(
+    `${producto.nombre} en ${negocio.nombre}: ${direccionCompleta(rutaProducto(producto))}`,
+  );
+  const mapa = enlaceMapa();
 
   return (
     <>
+      <DatosEstructurados datos={datosDelProducto(producto)} />
       <CabeceraPublica />
 
-      <main className={estilos.contenido}>
+      <main id="contenido" className={estilos.contenido}>
         <section className={estilos.seccion}>
           <Link href="/" className={estilos.volver}>
             ← Todos los productos
@@ -66,16 +130,15 @@ export default async function PaginaProducto({ params }: Parametros) {
             <div className={estilos.bloque}>
               <h2 className={estilos.bloqueTitulo}>Precio de hoy</h2>
               <PreciosProducto producto={producto} tasa={tasa?.valor ?? null} />
-              {tasa && (
-                <p className={estilos.tasa}>
-                  A la tasa de {bs(tasa.valor)} por dólar, del {fechaCorta(tasa.actualizada_en)}.
-                </p>
-              )}
+              <LineaTasa tasa={tasa} className={estilos.tasa} />
               {pedir && (
-                <a className={`boton boton--acento ${estilos.botonGrande}`} style={{ marginTop: 0 }} href={pedir} target="_blank" rel="noopener">
+                <a className={`boton boton--acento ${estilos.botonPedir}`} href={pedir} target="_blank" rel="noopener">
                   Pedir por WhatsApp
                 </a>
               )}
+              <a className={estilos.compartir} href={compartir} target="_blank" rel="noopener">
+                Compartir este producto por WhatsApp
+              </a>
             </div>
 
             {ventajas.length > 0 && (
@@ -99,7 +162,17 @@ export default async function PaginaProducto({ params }: Parametros) {
                 {(negocio.direccion || negocio.ciudad) && (
                   <div>
                     <dt>Tienda física</dt>
-                    <dd>{[negocio.direccion, negocio.ciudad].filter(Boolean).join(", ")}</dd>
+                    <dd>
+                      {[negocio.direccion, negocio.ciudad].filter(Boolean).join(", ")}
+                      {mapa && (
+                        <>
+                          {" · "}
+                          <a href={mapa} target="_blank" rel="noopener">
+                            Cómo llegar
+                          </a>
+                        </>
+                      )}
+                    </dd>
                   </div>
                 )}
                 {negocio.horario && (
@@ -113,7 +186,7 @@ export default async function PaginaProducto({ params }: Parametros) {
                     <dt>Al mayor</dt>
                     <dd>
                       <a href={mayor} target="_blank" rel="noopener">
-                        Consulta las condiciones por WhatsApp
+                        Pide el precio según la cantidad
                       </a>
                     </dd>
                   </div>

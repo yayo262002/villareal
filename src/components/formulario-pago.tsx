@@ -77,7 +77,7 @@ export function FormularioPago({ clientes, clienteFijo, ultimaTasa, volverA }: P
             name="tasa"
             type="number"
             inputMode="decimal"
-            step="0.01"
+            step="any"
             min="0.01"
             defaultValue={ultimaTasa ?? undefined}
           />

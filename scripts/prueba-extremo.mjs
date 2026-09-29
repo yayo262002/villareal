@@ -89,6 +89,7 @@ async function pagina(ruta, conCookie = cookie) {
   const r = await fetch(base + ruta, { headers: { cookie: conCookie }, redirect: "manual" });
   return {
     status: r.status,
+    cabeceras: r.headers,
     html: r.status === 200 ? await r.text() : "",
     destino: decodeURIComponent(r.headers.get("location") ?? ""),
     ms: Date.now() - t,
@@ -105,14 +106,14 @@ function accionDe(html, marca) {
 }
 
 /** Envía un formulario como lo haría el navegador sin JavaScript. */
-async function enviar(ruta, marca, campos, conCookie = cookie) {
+async function enviar(ruta, marca, campos, conCookie = cookie, cabeceras = {}) {
   const { html, status } = await pagina(ruta, conCookie);
   if (status !== 200) throw new Error(`GET ${ruta} → ${status}`);
   const datos = new FormData();
   datos.set(accionDe(html, marca), "");
   for (const [k, v] of Object.entries(campos)) datos.set(k, v);
   const t = Date.now();
-  const r = await fetch(base + ruta, { method: "POST", headers: { cookie: conCookie }, body: datos, redirect: "manual" });
+  const r = await fetch(base + ruta, { method: "POST", headers: { cookie: conCookie, ...cabeceras }, body: datos, redirect: "manual" });
   return {
     status: r.status,
     destino: decodeURIComponent(r.headers.get("location") ?? ""),
@@ -162,6 +163,80 @@ async function probarEntrada() {
   if (valor) cookie = `villareal_sesion=${valor}`;
 }
 
+/** Lo que ven los buscadores y quien recibe un enlace. Solo lee: vale en local y en la web. */
+async function probarPresentacion(portada) {
+  const html = portada.html;
+  comprobar("la portada dice qué se vende y dónde", html.includes('lang="es-VE"') && /<meta name="description" content="[^"]*Barquisimeto/.test(html));
+  comprobar("vista previa para WhatsApp: título, descripción e imagen", /property="og:title"/.test(html) && /property="og:description"/.test(html) && /property="og:image" content="[^"]*opengraph-image/.test(html));
+  comprobar("datos de la tienda para los buscadores", /"@type":"Store"/.test(html) && html.includes('"addressLocality":"Barquisimeto"') && html.includes('"telephone":"+584245541749"'));
+  comprobar("llamada a los negocios y cómo llegar", html.includes("Pedir precio al mayor") && html.includes("google.com/maps/search") && html.includes("Saltar al contenido"));
+
+  let r = await fetch(base + "/opengraph-image");
+  comprobar("imagen de vista previa de la portada", r.status === 200 && r.headers.get("content-type") === "image/png" && (await r.arrayBuffer()).byteLength > 20000);
+
+  const ruta = html.match(/href="(\/producto\/\d+[a-z0-9-]*)"/)?.[1];
+  const ficha = await pagina(ruta, "");
+  comprobar("página de producto: dirección propia, compartir y datos para buscadores", ficha.html.includes(`rel="canonical" href="`) && ficha.html.includes(ruta) && ficha.html.includes("Compartir este producto por WhatsApp") && /"@type":"Product"/.test(ficha.html));
+  r = await fetch(base + ruta + "/opengraph-image");
+  comprobar("imagen de vista previa del producto", r.status === 200 && r.headers.get("content-type") === "image/png" && (await r.arrayBuffer()).byteLength > 20000);
+
+  r = await fetch(base + "/robots.txt");
+  const robots = await r.text();
+  comprobar("los buscadores no entran al panel", robots.includes("Disallow: /admin") && robots.includes("sitemap.xml"));
+  r = await fetch(base + "/sitemap.xml");
+  comprobar("mapa del sitio con los productos", r.status === 200 && (await r.text()).includes("/producto/"));
+  r = await fetch(base + "/manifest.webmanifest");
+  const manifiesto = await r.json().catch(() => ({}));
+  comprobar("se puede poner en la pantalla de inicio del teléfono", manifiesto.short_name === "Villa Real" && manifiesto.icons?.length >= 2);
+  for (const icono of ["/marca/icono-192.png", "/marca/icono-512.png", "/apple-icon.png"]) {
+    r = await fetch(base + icono);
+    comprobar(`icono ${icono}`, r.status === 200 && r.headers.get("content-type") === "image/png");
+  }
+
+  comprobar("cabeceras de seguridad", portada.cabeceras.get("x-frame-options") === "DENY" && portada.cabeceras.get("x-content-type-options") === "nosniff");
+  r = await fetch(base + "/admin/entrar");
+  comprobar("el panel no sale en los buscadores", (r.headers.get("x-robots-tag") ?? "").includes("noindex"));
+
+  const perdida = await pagina("/esta-pagina-no-existe", "");
+  r = await fetch(base + "/esta-pagina-no-existe");
+  comprobar("página no encontrada, en castellano", r.status === 404 && (await r.text()).includes("No encontramos esa página"), String(perdida.status));
+}
+
+/** Solo en local: cinco claves malas desde una dirección la dejan fuera, a ella sola. */
+async function probarFreno() {
+  const intruso = { "x-forwarded-for": "203.0.113.7" };
+  let ultimo;
+  for (let i = 0; i < 5; i++) ultimo = await enviar("/admin/entrar", 'name="clave"', { clave: `mala-${i}` }, "", intruso);
+  comprobar("las cinco primeras claves malas se rechazan una a una", ultimo.destino.includes("no es correcta"), ultimo.destino);
+  const bloqueado = await enviar("/admin/entrar", 'name="clave"', { clave: env.ADMIN_CLAVE }, "", intruso);
+  comprobar("a la sexta, ni la clave buena entra desde esa dirección", bloqueado.destino.includes("Demasiados intentos") && !bloqueado.galleta.includes("villareal_sesion"), bloqueado.destino);
+  const otro = await enviar("/admin/entrar", 'name="clave"', { clave: env.ADMIN_CLAVE }, "", { "x-forwarded-for": "198.51.100.4" });
+  comprobar("desde otra dirección se sigue pudiendo entrar", otro.status === 303 && otro.galleta.includes("villareal_sesion"), otro.destino);
+}
+
+/** Solo en local: la tarea de cada mañana. La tasa de prueba es 36,50, muy lejos de la real. */
+async function probarTareaDiaria() {
+  let r = await fetch(base + "/api/tarea-diaria");
+  comprobar("la tarea diaria sin clave se niega", r.status === 401);
+  r = await fetch(base + "/api/tarea-diaria", { headers: { authorization: "Bearer " + env.CRON_SECRET } });
+  const resultado = await r.json().catch(() => ({}));
+  comprobar("la tarea diaria guarda la copia", resultado.copia?.estado === "guardada", JSON.stringify(resultado));
+  comprobar(
+    "una tasa que salta demasiado no entra sola",
+    ["rechazada", "sin_respuesta"].includes(resultado.tasa?.estado),
+    JSON.stringify(resultado.tasa),
+  );
+  const panel = (await pagina("/admin/productos")).html;
+  comprobar("la tasa sigue siendo la que había y el panel lo avisa", panel.includes('value="36.5"') && /No se (cambió|pudo traer) la tasa/.test(panel));
+
+  let cambio = await enviar("/admin/productos", 'name="encender"', { encender: "0" });
+  comprobar("la actualización automática se puede apagar", cambio.destino.includes("ya no se actualiza sola"));
+  r = await fetch(base + "/api/tarea-diaria", { headers: { authorization: "Bearer " + env.CRON_SECRET } });
+  comprobar("apagada, la tarea diaria no toca la tasa", (await r.json()).tasa?.estado === "apagada");
+  cambio = await enviar("/admin/productos", 'name="encender"', { encender: "1" });
+  comprobar("y volver a encender", cambio.destino.includes("cada mañana"));
+}
+
 /** Solo en local: tasa, costo con dos márgenes, y lo que enseña la web. */
 async function probarPrecios() {
   let r = await enviar("/admin/productos", 'name="tasa"', { tasa: "36.5" });
@@ -203,7 +278,7 @@ async function probarPrecios() {
   comprobar("página del queso amarillo: los dos precios y sus detalles", fichaAmarillo.html.includes("Bs 310,25") && fichaAmarillo.html.includes("Bs 273,02") && fichaAmarillo.html.includes("Por qué elegirlo") && fichaAmarillo.html.includes("Otros productos"));
   comprobar("todos los productos tienen detalles", (await Promise.all([3, 4].map((id) => pagina(`/producto/${id}`, "")))).every((p) => p.status === 200 && p.html.includes("Por qué elegirlo")));
   comprobar("un producto que no existe da 404", (await pagina("/producto/999-nada", "")).status === 404 && (await pagina("/producto/queso", "")).status === 404);
-  comprobar("web: huevos y pecorino, sin precio inventado", web.includes("Huevos") && web.includes("Queso pecorino") && web.includes("Consulta el precio del día"));
+  comprobar("web: huevos y pecorino rallado, sin precio inventado", web.includes("Huevos") && web.includes("Queso pecorino rallado") && web.includes("Consulta el precio del día"));
   comprobar("web: pedir cada producto por WhatsApp", web.includes("quiero%20pedir%20queso%20amarillo"));
 }
 
@@ -353,9 +428,14 @@ try {
   const detalle = primera ? await pagina(primera, "") : null;
   comprobar("la página de un producto abre desde la portada", Boolean(detalle) && detalle.status === 200 && detalle.html.includes("Cómo comprar") && detalle.html.includes("Todos los productos"), String(primera));
 
+  await probarPresentacion(web);
   await probarEntrada();
   if (!enProduccion) await probarPrecios();
   await probarNegocio();
+  if (!enProduccion) {
+    await probarTareaDiaria();
+    await probarFreno();
+  }
 
   console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLOS`);
 } catch (error) {

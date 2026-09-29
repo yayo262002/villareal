@@ -99,6 +99,15 @@ export const ESQUEMA = `
     datos blob not null
   );
 
+  -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
+  -- claves. No entra en las copias: no es parte del negocio.
+  create table if not exists entradas_fallidas (
+    id integer primary key autoincrement,
+    direccion text not null,
+    momento text not null default (datetime('now'))
+  );
+
+  create index if not exists entradas_fallidas_momento on entradas_fallidas(momento);
   create index if not exists ventas_cliente on ventas(cliente_id);
   create index if not exists pagos_cliente on pagos(cliente_id);
   create index if not exists adjuntos_cliente on adjuntos(cliente_id);
@@ -158,8 +167,23 @@ export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion:
     descripcion: "Se venden por cartón\nPara negocios y para la casa\nAl detal y al mayor",
   },
   {
-    nombre: "Queso pecorino",
+    nombre: "Queso pecorino rallado",
     unidad: "kg",
-    descripcion: "Queso curado de sabor intenso\nPara rallar sobre pastas y ensaladas\nSe vende por kilo, al detal y al mayor",
+    descripcion: "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
+  },
+];
+
+/**
+ * Productos que cambiaron de nombre. La siembra busca por nombre, así que
+ * sin esto un producto renombrado aquí se crearía otra vez. El texto viejo
+ * solo se sustituye si el dueño no lo ha tocado.
+ */
+export const RENOMBRES: { de: string; a: string; descripcionVieja: string; descripcionNueva: string }[] = [
+  {
+    de: "Queso pecorino",
+    a: "Queso pecorino rallado",
+    descripcionVieja:
+      "Queso curado de sabor intenso\nPara rallar sobre pastas y ensaladas\nSe vende por kilo, al detal y al mayor",
+    descripcionNueva: "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
   },
 ];

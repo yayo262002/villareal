@@ -1,8 +1,8 @@
 # Comercializadora Villareal
 
-Web y sistema de gestión para un local de quesos en Venezuela: queso amarillo,
-mozzarella, pecorino, huevos y lo que se vaya añadiendo. Vende al detal y al
-mayor.
+Web y sistema de gestión para un local de quesos en Barquisimeto, Venezuela:
+queso amarillo, mozzarella, pecorino rallado, huevos y lo que se vaya
+añadiendo. Vende al detal y al mayor.
 
 Tiene dos partes:
 
@@ -57,12 +57,12 @@ schtasks /create /tn "Copia Villareal" /sc daily /st 20:00 /tr "cmd /c cd /d $PW
 Desde el teléfono: en el Resumen del panel hay un botón «Descargar copia de
 ahora» que baja el mismo archivo.
 
-**Copias automáticas.** En Vercel, cada noche a las 4:00 UTC (medianoche en
-Venezuela) se llama a `/api/copia-automatica` (cron en `vercel.json`), que
-guarda una copia completa en la tabla `copias_automaticas` de la propia base.
-Se conservan las 14 últimas y se descargan desde el Resumen. La llamada del
-cron lleva la variable `CRON_SECRET`; el botón «Guardar copia en la nube»
-hace lo mismo a mano. Estas copias protegen de borrar algo por error, no de
+**Copias automáticas.** En Vercel, cada mañana a las 10:00 UTC (las 6 en
+Venezuela) se llama a `/api/tarea-diaria` (cron en `vercel.json`), que trae
+la tasa del BCV y guarda una copia completa en la tabla
+`copias_automaticas` de la propia base. Se conservan las 14 últimas y se
+descargan desde el Resumen. La llamada del cron lleva la variable
+`CRON_SECRET`; el botón «Guardar copia en la nube» hace la copia a mano. Estas copias protegen de borrar algo por error, no de
 perder la cuenta de Turso: por eso conviene bajar el archivo de vez en cuando.
 
 Para restaurar en local, para el servidor y sustituye `datos/villareal.db`
@@ -107,12 +107,19 @@ src/lib/conexion.ts       Dónde está la base, según el entorno
 src/lib/clientes.ts       Clientes y su saldo
 src/lib/ventas.ts         Ventas con sus líneas de producto
 src/lib/pagos.ts          Pagos: método, moneda, tasa, equivalente en USD
-src/lib/ajustes.ts        La tasa del día
+src/lib/ajustes.ts        La tasa del día y los demás ajustes
+src/lib/tasa.ts           Cuándo se acepta una tasa que llega de fuera
+src/lib/tasa-oficial.ts   Trae la tasa del BCV
+src/lib/intentos.ts       Freno a quien pruebe claves en la entrada del panel
+src/lib/dibujos.ts        El dibujo de cada producto, en SVG
+src/lib/imagen-social.tsx La imagen que sale al compartir un enlace
+src/assets/fuentes/       Las fuentes de esas imágenes, con su licencia
 src/lib/cuentas.ts        Qué ventas están pagadas y cuáles por pagar
 src/lib/adjuntos.ts       Fotos de las notas de entrega
 src/lib/whatsapp.ts       Mensajes de cobro y de nota para WhatsApp
 src/lib/copias-nube.ts    Copias automáticas guardadas en la base
-src/app/api/copia-automatica/  Lo que llama el cron de Vercel cada noche
+src/app/api/tarea-diaria/ Lo que Vercel hace solo cada mañana: tasa y copia
+src/app/api/copia-automatica/  Solo la copia, para lanzarla aparte
 src/lib/dinero.ts         Conversión y formato de dólares y bolívares
 src/lib/acciones.ts       Lo que hacen los formularios del panel
 src/lib/copias.ts         Copias de seguridad de la base de datos
@@ -123,7 +130,10 @@ src/proxy.ts              Corta el paso a /admin sin sesión
 src/app/page.tsx          La portada de la web pública
 src/app/producto/         La página de cada producto
 src/components/publico.tsx  Cabecera, pie y cajas de precio de la web pública
-src/components/ilustracion-producto.tsx  El dibujo de cada producto
+src/components/ilustracion-producto.tsx  El dibujo de un producto dentro de la página
+src/app/opengraph-image.tsx  La vista previa de la portada al compartirla
+src/app/robots.ts, sitemap.ts, manifest.ts  Lo que leen los buscadores y el teléfono
+src/app/not-found.tsx, error.tsx  Página no encontrada y página de fallo
 src/lib/enlaces.ts        La dirección de la página de cada producto
 src/components/entrada-foto.tsx  Reduce la foto en el teléfono antes de subirla
 src/app/admin/            El panel
@@ -141,17 +151,24 @@ datos/                    La base de datos (fuera de Git)
   «mayor». Al anotar una venta con el precio vacío, al mayorista se le
   cobra el precio al mayor y a los demás el de detal. Escribir el precio a
   mano siempre manda.
-- La web publica los precios en **bolívares** con la **tasa del día**, que
-  el dueño escribe en Productos. Al cambiar la tasa cambian todos los
-  precios en bolívares a la vez. Sin tasa, la web muestra dólares.
+- La web publica los precios en **bolívares** con la **tasa del día**. Al
+  cambiar la tasa cambian todos los precios en bolívares a la vez. Sin
+  tasa, la web muestra dólares.
+- **La tasa se trae sola del BCV** cada mañana, antes de abrir. El BCV no
+  la ofrece en un formato para programas: se lee de DolarApi
+  (`ve.dolarapi.com`), que la copia de la página del banco. Nada de lo
+  que llega se da por bueno sin revisar: si no es un número, o si se aleja
+  más de un 15 % por día de la tasa vigente, se deja la que había y el
+  panel lo avisa. En Productos el dueño puede escribir la tasa a mano,
+  traer la del BCV en el momento, o apagar la actualización automática.
 - Cada producto lleva sus **ventajas** (una por línea) y tiene su **propia
   página** en la web, `/producto/2-queso-mozzarella`: dibujo grande,
   precios, ventajas, cómo se paga y dónde está la tienda. En la portada
   cada tarjeta enseña el dibujo, el nombre y los precios, con dos botones:
   «Ver detalles», que lleva a esa página, y «Pedir», que abre WhatsApp.
 - El **dibujo** de cada producto se elige por su nombre (queso, mozzarella,
-  pecorino, huevos) en `src/components/ilustracion-producto.tsx`. Un
-  producto que no encaje lleva un dibujo genérico.
+  rallado, curado, huevos) en `src/lib/dibujos.ts`. Un producto que no
+  encaje lleva un dibujo genérico.
 - **Precios de ejemplo.** Si en `ajustes` está la clave
   `precios_de_ejemplo`, el panel avisa en rojo arriba de Productos de que
   los precios publicados no son los del dueño. Se quita con el botón «Ya
@@ -189,6 +206,31 @@ datos/                    La base de datos (fuera de Git)
 Métodos de pago que reconoce: pago móvil, transferencia, efectivo en
 bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 
+## La web hacia fuera
+
+- **Al compartir un enlace** por WhatsApp sale una vista previa con imagen:
+  la de la portada, o la del producto con su dibujo y su precio en dólares.
+  El precio en bolívares no va en la imagen porque cambia cada día.
+- **Para los buscadores**: descripción con la ciudad, datos de la tienda y
+  de cada producto (JSON-LD), mapa del sitio y `robots.txt`. El panel y
+  las tareas quedan fuera de los buscadores.
+- **En el teléfono** la web se puede poner en la pantalla de inicio, con el
+  león de icono. Manteniendo pulsado el icono sale el acceso al panel.
+- La dirección de la web está en `src/config/negocio.ts` (`web`). Con un
+  dominio propio se cambia ahí y cambian los enlaces, el mapa del sitio y
+  las vistas previas.
+- **Fechas.** En Vercel el servidor va en hora UTC. Las fechas que propone
+  el panel y las que se enseñan son las de Venezuela (UTC−4), esté donde
+  esté el servidor.
+
+## Seguridad
+
+- La entrada al panel frena a quien pruebe claves: con 5 fallos en 15
+  minutos desde una dirección, esa dirección espera. Hay también un tope
+  de 40 fallos para todas las direcciones juntas.
+- Cabeceras de seguridad en todas las páginas (`next.config.ts`).
+- Ninguna clave en el código ni en el repositorio, que es público.
+
 ## Reglas
 
 - **No inventar.** Si el precio no está, la web dice «consulta el precio del
@@ -199,12 +241,12 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 
 ## Pendiente
 
-- Confirmar en `src/config/negocio.ts` qué días abre el local (el horario
-  de 9 a 6, el WhatsApp, la razón social, el RIF y la dirección ya están).
 - El comprobante de RIF que hay venció el 15/07/2019: conviene renovarlo en
   el SENIAT antes de imprimirlo en facturas o ponerlo en la web.
-- Poner precios reales a los productos desde el panel.
-- Crear la cuenta de Turso y el proyecto en Vercel (ver «Publicar en
-  Vercel»). El código ya está preparado.
-- Fotos de los productos en la web.
+- Poner los precios reales del queso amarillo, los huevos y el pecorino
+  rallado: los que hay son de ejemplo y el panel lo avisa. El de la
+  mozzarella (7,70 USD el kilo) es real.
+- Confirmar si el pecorino rallado se vende por kilo.
+- Fotos reales de los productos: hoy llevan un dibujo.
+- Un dominio propio.
 - Facturación, cuando el negocio empiece a facturar.

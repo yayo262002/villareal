@@ -220,3 +220,53 @@
   width: 64px;
   height: 64px;
 }
+
+/* ---------- Añadidos de la portada ---------- */
+
+.entradilla {
+  margin-bottom: var(--espacio-4);
+  font-size: 17px;
+  color: var(--color-texto-suave);
+}
+
+/* La llamada a los negocios: pizzerías, panaderías, restaurantes. */
+.mayor {
+  display: grid;
+  gap: var(--espacio-3);
+  justify-items: start;
+  padding: var(--espacio-5);
+  border-radius: var(--radio-grande);
+  background: var(--color-marca-oscuro);
+  color: var(--color-marca-texto);
+}
+.mayorTitulo {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.botonMapa {
+  margin-top: var(--espacio-4);
+}
+
+/* ---------- Añadidos de la página de producto ---------- */
+
+.botonPedir {
+  width: 100%;
+  min-height: 52px;
+  font-size: 18px;
+}
+.compartir {
+  justify-self: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ---------- Página no encontrada ---------- */
+
+.mensaje {
+  display: grid;
+  gap: var(--espacio-4);
+  padding-top: var(--espacio-7);
+  padding-bottom: var(--espacio-7);
+}

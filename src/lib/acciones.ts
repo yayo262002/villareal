@@ -12,7 +12,15 @@ import {
   type PreciosProducto,
   type Unidad,
 } from "./productos";
-import { guardarTasa, quitarPreciosDeEjemplo } from "./ajustes";
+import { guardarTasa, ponerAvisoTasa, ponerTasaAutomatica, quitarPreciosDeEjemplo } from "./ajustes";
+import { actualizarTasaOficial } from "./tasa-oficial";
+import {
+  VENTANA_MINUTOS,
+  anotarEntradaFallida,
+  direccionDeLaPeticion,
+  entradaBloqueada,
+  olvidarEntradasFallidas,
+} from "./intentos";
 import { buscarVenta, crearVenta, eliminarVenta, type LineaVenta } from "./ventas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { buscarAdjunto, eliminarAdjunto, guardarAdjunto } from "./adjuntos";
@@ -59,9 +67,16 @@ function mensajeDe(error: unknown): string {
 // ---------- Sesión ----------
 
 export async function entrar(datos: FormData): Promise<void> {
+  const direccion = await direccionDeLaPeticion();
+  // Con demasiados fallos recientes ni se mira la clave: acertarla no sirve.
+  if (await entradaBloqueada(direccion)) {
+    volverConError("/admin/entrar", `Demasiados intentos fallidos. Espera ${VENTANA_MINUTOS} minutos y vuelve a probar.`);
+  }
   if (!claveEsCorrecta(texto(datos, "clave"))) {
+    await anotarEntradaFallida(direccion);
     volverConError("/admin/entrar", "La clave no es correcta.");
   }
+  await olvidarEntradasFallidas(direccion);
   await iniciarSesion();
   redirect("/admin");
 }
@@ -182,8 +197,33 @@ export async function cambiarTasa(datos: FormData): Promise<void> {
   await exigirSesion();
   const tasa = numero(datos, "tasa");
   if (tasa === null || tasa <= 0) volverConError("/admin/productos", "Escribe la tasa: bolívares por dólar.");
-  await guardarTasa(tasa);
+  await guardarTasa(tasa, "manual");
+  await ponerAvisoTasa(null);
   volverConExito("/admin/productos", "Tasa del día guardada. La web ya muestra los precios en bolívares con ella.");
+}
+
+/** Enciende o apaga que la tasa se traiga sola del BCV cada mañana. */
+export async function alternarTasaAutomatica(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const encender = texto(datos, "encender") === "1";
+  await ponerTasaAutomatica(encender);
+  volverConExito(
+    "/admin/productos",
+    encender
+      ? "La tasa se traerá sola del BCV cada mañana."
+      : "La tasa ya no se actualiza sola. Vale la que escribas tú.",
+  );
+}
+
+/** El botón «Traer la del BCV ahora»: funciona aunque lo automático esté apagado. */
+export async function traerTasaOficial(): Promise<void> {
+  await exigirSesion();
+  const resultado = await actualizarTasaOficial({ forzar: true });
+  if (resultado.estado === "actualizada") {
+    volverConExito("/admin/productos", `Tasa del BCV puesta: ${resultado.valor} bolívares por dólar.`);
+  }
+  const motivo = resultado.estado === "apagada" ? "la actualización está apagada" : resultado.motivo;
+  volverConError("/admin/productos", `No se cambió la tasa: ${motivo}.`);
 }
 
 export async function alternarProducto(datos: FormData): Promise<void> {

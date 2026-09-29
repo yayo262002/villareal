@@ -1,34 +1,42 @@
 import Link from "next/link";
 import { enlaceWhatsapp, negocio } from "@/config/negocio";
-import { aBolivares, bs, nombreUnidad, usd } from "@/lib/dinero";
+import type { Tasa } from "@/lib/ajustes";
+import { aBolivares, bs, fechaCorta, fechaDeLaBase, nombreUnidad, usd } from "@/lib/dinero";
 import estilos from "./publico.module.css";
 
 /**
  * Lo que comparten las páginas públicas: la cabecera con el león y el botón
- * de WhatsApp, el pie con la razón social, y las cajas de precio.
+ * de WhatsApp, el pie con la razón social, las cajas de precio y los datos
+ * para los buscadores.
  */
 
 export function CabeceraPublica() {
   const whatsapp = enlaceWhatsapp("Hola, quiero información sobre sus productos.");
   return (
-    <header className={estilos.cabecera}>
-      <div className={estilos.contenido}>
-        <Link href="/" className={estilos.marca}>
-          {/* El león coronado de la marca. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/marca/leon.svg" alt="" className={estilos.leon} />
-          <span>
-            <span className={estilos.logo}>{negocio.nombre}</span>
-            <span className={estilos.lema}>{negocio.lema}</span>
-          </span>
-        </Link>
-        {whatsapp && (
-          <a className="boton boton--acento" href={whatsapp} target="_blank" rel="noopener">
-            WhatsApp
-          </a>
-        )}
-      </div>
-    </header>
+    <>
+      {/* Para quien navega con teclado o lector de pantalla: salta la cabecera. */}
+      <a href="#contenido" className={estilos.saltar}>
+        Saltar al contenido
+      </a>
+      <header className={estilos.cabecera}>
+        <div className={estilos.contenido}>
+          <Link href="/" className={estilos.marca}>
+            {/* El león coronado de la marca. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/marca/leon.svg" alt="" width={33} height={52} className={estilos.leon} />
+            <span>
+              <span className={estilos.logo}>{negocio.nombre}</span>
+              <span className={estilos.lema}>{negocio.lema}</span>
+            </span>
+          </Link>
+          {whatsapp && (
+            <a className="boton boton--acento" href={whatsapp} target="_blank" rel="noopener">
+              WhatsApp
+            </a>
+          )}
+        </div>
+      </header>
+    </>
   );
 }
 
@@ -43,6 +51,17 @@ export function PiePublico() {
         <Link href="/admin">Panel</Link>
       </div>
     </footer>
+  );
+}
+
+/** «Tasa BCV: Bs 857,89 por dólar · 29/09/2026». Sin tasa no se enseña nada. */
+export function LineaTasa({ tasa, className }: { tasa: Tasa | null; className?: string }) {
+  if (!tasa) return null;
+  return (
+    <p className={className}>
+      {tasa.origen === "bcv" ? "Tasa BCV" : "Tasa"}: {bs(tasa.valor)} por dólar ·{" "}
+      {fechaCorta(fechaDeLaBase(tasa.actualizada_en))}
+    </p>
   );
 }
 
@@ -89,4 +108,49 @@ export function ventajasDe(descripcion: string | null | undefined): string[] {
     .split(/\r?\n/)
     .map((v) => v.trim())
     .filter(Boolean);
+}
+
+/**
+ * Datos de la página en el formato que leen Google y los demás buscadores
+ * (JSON-LD). No se ve: va dentro de una etiqueta `<script>`. El `<` se
+ * escapa para que un nombre de producto no pueda cerrar la etiqueta.
+ */
+export function DatosEstructurados({ datos }: { datos: Record<string, unknown> }) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(datos).replace(/</g, "\\u003c") }}
+    />
+  );
+}
+
+/** La tienda, como la entienden los buscadores. */
+export function datosDeLaTienda(): Record<string, unknown> {
+  return {
+    "@type": "Store",
+    "@id": `${negocio.web}/#tienda`,
+    name: negocio.nombre,
+    legalName: negocio.razonSocial || undefined,
+    description: negocio.descripcion,
+    url: negocio.web,
+    image: `${negocio.web}/opengraph-image`,
+    logo: `${negocio.web}/marca/leon-negro.png`,
+    telephone: negocio.whatsapp ? `+${negocio.whatsapp}` : undefined,
+    email: negocio.correo || undefined,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: negocio.direccion,
+      addressLocality: negocio.localidad,
+      addressRegion: negocio.estado,
+      addressCountry: negocio.pais,
+    },
+    openingHoursSpecification: {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: negocio.horarioSemanal.dias,
+      opens: negocio.horarioSemanal.abre,
+      closes: negocio.horarioSemanal.cierra,
+    },
+    currenciesAccepted: "USD, VES",
+    paymentAccepted: "Pago móvil, transferencia, efectivo, Zelle, Binance",
+  };
 }

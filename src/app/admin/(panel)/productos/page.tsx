@@ -1,13 +1,15 @@
 import { listarProductos } from "@/lib/productos";
-import { hayPreciosDeEjemplo, leerTasa } from "@/lib/ajustes";
+import { hayPreciosDeEjemplo, leerAvisoTasa, leerTasa, tasaAutomatica } from "@/lib/ajustes";
 import {
   alternarProducto,
+  alternarTasaAutomatica,
   cambiarTasa,
+  traerTasaOficial,
   confirmarPrecios,
   editarProducto,
   guardarProducto,
 } from "@/lib/acciones";
-import { UNIDADES, aBolivares, bs, fechaCorta, nombreUnidad, usd } from "@/lib/dinero";
+import { UNIDADES, aBolivares, bs, fechaCorta, fechaDeLaBase, nombreUnidad, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
 
@@ -121,7 +123,13 @@ export default async function PaginaProductos({
   searchParams: Promise<ParametrosAviso>;
 }) {
   const parametros = await searchParams;
-  const [productos, tasa, deEjemplo] = await Promise.all([listarProductos(), leerTasa(), hayPreciosDeEjemplo()]);
+  const [productos, tasa, deEjemplo, automatica, avisoTasa] = await Promise.all([
+    listarProductos(),
+    leerTasa(),
+    hayPreciosDeEjemplo(),
+    tasaAutomatica(),
+    leerAvisoTasa(),
+  ]);
   const sinPrecio = productos.filter((p) => p.activo && p.precio_usd === null && p.precio_mayor_usd === null);
   const tasaValor = tasa?.valor ?? null;
 
@@ -161,7 +169,7 @@ export default async function PaginaProductos({
               name="tasa"
               type="number"
               inputMode="decimal"
-              step="0.01"
+              step="any"
               min="0.01"
               required
               defaultValue={tasa?.valor ?? ""}
@@ -169,7 +177,9 @@ export default async function PaginaProductos({
             />
             <span className="ayuda">
               {tasa
-                ? `Vigente: ${bs(tasa.valor)} por dólar, puesta el ${fechaCorta(tasa.actualizada_en)}. Al cambiarla cambian todos los precios en bolívares de la web.`
+                ? `Vigente: ${bs(tasa.valor)} por dólar, ${
+                    tasa.origen === "bcv" ? "traída del BCV" : "escrita a mano"
+                  } el ${fechaCorta(fechaDeLaBase(tasa.actualizada_en))}. Al cambiarla cambian todos los precios en bolívares de la web.`
                 : "Sin tasa, la web muestra los precios solo en dólares."}
             </span>
           </div>
@@ -179,6 +189,33 @@ export default async function PaginaProductos({
             </button>
           </div>
         </form>
+
+        {avisoTasa && (
+          <p className="aviso aviso--aviso" style={{ marginTop: "var(--espacio-4)" }}>
+            {avisoTasa.mensaje} ({fechaCorta(fechaDeLaBase(avisoTasa.momento))})
+          </p>
+        )}
+
+        <div className={estilos.alternar}>
+          <p className={estilos.ayuda}>
+            {automatica
+              ? "Cada mañana, antes de abrir, la tasa se trae sola del BCV y los precios en bolívares se ponen al día. Si escribes una a mano, vale hasta la mañana siguiente."
+              : "La tasa no se actualiza sola: vale la que escribas tú hasta que la cambies."}
+          </p>
+          <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
+            <form action={traerTasaOficial}>
+              <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                Traer la del BCV ahora
+              </button>
+            </form>
+            <form action={alternarTasaAutomatica}>
+              <input type="hidden" name="encender" value={automatica ? "0" : "1"} />
+              <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                {automatica ? "No actualizarla sola" : "Actualizarla sola cada mañana"}
+              </button>
+            </form>
+          </div>
+        </div>
       </section>
 
       {sinPrecio.length > 0 && (

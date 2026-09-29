@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { buscarAdjunto } from "@/lib/adjuntos";
 import { buscarCliente } from "@/lib/clientes";
 import { borrarAdjunto } from "@/lib/acciones";
-import { fechaCorta } from "@/lib/dinero";
+import { fechaCorta, fechaDeLaBase } from "@/lib/dinero";
 import estilos from "../../../panel.module.css";
 
 export const metadata = { title: "Eliminar foto" };
@@ -36,7 +36,7 @@ export default async function PaginaEliminarAdjunto({ params }: { params: Promis
             )}
             <div className={estilos.miniaturaTexto}>
               <strong>{adjunto.descripcion || "Nota"}</strong>
-              <span>{fechaCorta(adjunto.creado_en)}</span>
+              <span>{fechaCorta(fechaDeLaBase(adjunto.creado_en))}</span>
             </div>
           </div>
         </div>

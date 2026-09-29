@@ -6,7 +6,7 @@ import { listarPagosDeCliente, ultimaTasa } from "@/lib/pagos";
 import { listarAdjuntosDeCliente } from "@/lib/adjuntos";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { editarCliente, subirAdjunto } from "@/lib/acciones";
-import { METODOS_PAGO, cantidad, fechaCorta, formatearMonto, usd } from "@/lib/dinero";
+import { METODOS_PAGO, cantidad, fechaCorta, fechaDeLaBase, formatearMonto, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
 import { EntradaFoto } from "@/components/entrada-foto";
@@ -319,7 +319,7 @@ export default async function PaginaCliente({
                   <div className={estilos.miniaturaTexto}>
                     <strong>{a.descripcion || "Nota"}</strong>
                     <span>
-                      {fechaCorta(a.creado_en)}
+                      {fechaCorta(fechaDeLaBase(a.creado_en))}
                       {venta ? ` · venta del ${fechaCorta(venta.fecha)} (${usd(venta.total_usd)})` : ""}
                     </span>
                     <Link href={`/admin/adjuntos/${a.id}/eliminar`} className="enlace-fila">

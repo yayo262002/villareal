@@ -7,6 +7,8 @@ import {
   precioParaCliente,
   esMetodoPago,
   fechaCorta,
+  fechaDeLaBase,
+  fechaEnVenezuela,
   fechaIso,
   mesLegible,
   monedaDelMetodo,
@@ -54,6 +56,20 @@ test("la fecha del formulario es la local, aunque en UTC ya sea mañana", () => 
   // la 01:30 UTC del 29, y toISOString() daría 2026-09-29.
   assert.equal(fechaIso(new Date(2026, 8, 28, 21, 30)), "2026-09-28");
   assert.equal(fechaIso(new Date(2026, 0, 5, 0, 0)), "2026-01-05");
+});
+
+test("la fecha es la de Venezuela aunque el servidor vaya en UTC", () => {
+  // Las 21:30 del 28 en Venezuela son la 01:30 UTC del 29.
+  assert.equal(fechaEnVenezuela(new Date("2026-09-29T01:30:00Z")), "2026-09-28");
+  assert.equal(fechaEnVenezuela(new Date("2026-09-29T04:00:00Z")), "2026-09-29");
+  assert.equal(fechaEnVenezuela(new Date("2027-01-01T03:59:59Z")), "2026-12-31");
+});
+
+test("los momentos que guarda la base, en UTC, se leen con la fecha de Venezuela", () => {
+  assert.equal(fechaDeLaBase("2026-09-30 01:30:00"), "2026-09-29");
+  assert.equal(fechaDeLaBase("2026-09-30 10:00:00"), "2026-09-30");
+  assert.equal(fechaDeLaBase("2026-09-30T01:30:00Z"), "2026-09-29");
+  assert.equal(fechaDeLaBase("2026-09-30"), "2026-09-30");
 });
 
 test("el mes del informe se escribe con nombre", () => {
