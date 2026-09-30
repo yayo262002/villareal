@@ -5,6 +5,7 @@ import { buscarCliente } from "@/lib/clientes";
 import { buscarVenta, listarVentasDeCliente } from "@/lib/ventas";
 import { leerTasa } from "@/lib/ajustes";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
+import { sumarDias } from "@/lib/credito";
 import { cambiarEntrega } from "@/lib/acciones";
 import { numeroDeNota } from "@/lib/entregas";
 import { aBolivares, bs, cantidad, fechaCorta, fechaDeLaBase, usd } from "@/lib/dinero";
@@ -44,10 +45,12 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
       negocio: negocio.nombre,
       cliente: cliente.nombre,
       fecha: venta.fecha,
+      numero: numeroDeNota(venta.id),
       lineas: venta.lineas,
       total_usd: venta.total_usd,
       saldo_usd: cliente.saldo_usd,
       tasa: venta.tasa ?? tasaDeHoy?.valor,
+      vence: cuenta && cuenta.pendiente_usd > 0 ? sumarDias(venta.fecha, cliente.dias_credito) : undefined,
     }),
   );
 
@@ -150,6 +153,12 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
                   {usd(cuenta.pendiente_usd)} · {NOMBRE_ESTADO[cuenta.estado]}
                 </dd>
               </div>
+              {cuenta.pendiente_usd > 0 && (
+                <div>
+                  <dt>Fecha límite de pago</dt>
+                  <dd>{fechaCorta(sumarDias(venta.fecha, cliente.dias_credito))}</dd>
+                </div>
+              )}
             </>
           )}
           {cliente.saldo_usd !== 0 && (

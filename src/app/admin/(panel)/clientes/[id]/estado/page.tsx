@@ -6,6 +6,7 @@ import { conLineas, listarVentasDeCliente } from "@/lib/ventas";
 import { listarPagosDeCliente } from "@/lib/pagos";
 import { leerTasa } from "@/lib/ajustes";
 import { aplicarPagos, movimientosDeCuenta } from "@/lib/cuentas";
+import { conVencimiento } from "@/lib/credito";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { METODOS_PAGO, aBolivares, bs, fechaCorta, hoy, usd } from "@/lib/dinero";
 import { enlaceWhatsappA, mensajeRecordatorio } from "@/lib/whatsapp";
@@ -45,7 +46,7 @@ export default async function PaginaEstadoDeCuenta({ params }: Parametros) {
   const pago = new Map(pagos.map((p) => [p.id, p]));
 
   const saldoEnBs = cliente.saldo_usd > 0 ? aBolivares(cliente.saldo_usd, tasa?.valor ?? null) : null;
-  const pendientes = aplicarPagos(ventas, cliente.total_pagado_usd)
+  const pendientes = conVencimiento(aplicarPagos(ventas, cliente.total_pagado_usd), cliente.dias_credito, hoy())
     .filter((c) => c.pendiente_usd > 0)
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
   const recordar =

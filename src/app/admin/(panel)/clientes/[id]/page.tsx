@@ -62,10 +62,12 @@ export default async function PaginaCliente({
         negocio: negocio.nombre,
         cliente: cliente.nombre,
         fecha: v.fecha,
+        numero: numeroDeNota(v.id),
         lineas: v.lineas,
         total_usd: v.total_usd,
         saldo_usd: cliente.saldo_usd,
         tasa,
+        vence: v.pendiente_usd > 0 ? v.vence : undefined,
       }),
     );
 

@@ -62,7 +62,24 @@ export function enlaceWhatsappA(telefono: string, mensaje: string): string | nul
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
 }
 
-type Pendiente = { fecha: string; total_usd: number; pendiente_usd: number };
+type Pendiente = {
+  fecha: string;
+  total_usd: number;
+  pendiente_usd: number;
+  /** El día en que había que tener pagada la nota, si se sabe. */
+  vence?: string;
+  /** Días pasados desde el vencimiento (negativos: los que faltan). */
+  atraso?: number;
+};
+
+/** «, vencida hace 3 días» / «, vence el 05/10/2026» / nada si no se sabe. */
+function plazoDe(p: Pendiente): string {
+  if (p.atraso === undefined || !p.vence) return "";
+  if (p.atraso > 1) return `, vencida hace ${p.atraso} días`;
+  if (p.atraso === 1) return ", vencida desde ayer";
+  if (p.atraso === 0) return ", vence hoy";
+  return `, vence el ${fechaCorta(p.vence)}`;
+}
 
 /** Recordatorio de cobro con el detalle de las notas que quedan por pagar. */
 export function mensajeRecordatorio(datos: {
@@ -77,7 +94,7 @@ export function mensajeRecordatorio(datos: {
   lineas.push(`Tiene pendiente ${dolaresYBolivares(datos.saldo_usd, datos.tasa)}:`);
   for (const p of datos.pendientes) {
     const parte = p.pendiente_usd < p.total_usd ? ` (quedan ${usd(p.pendiente_usd)})` : "";
-    lineas.push(`• Nota del ${fechaCorta(p.fecha)}: ${usd(p.total_usd)}${parte}`);
+    lineas.push(`• Nota del ${fechaCorta(p.fecha)}: ${usd(p.total_usd)}${parte}${plazoDe(p)}`);
   }
   lineas.push(
     datos.tasa
@@ -94,18 +111,25 @@ export function mensajeNota(datos: {
   negocio: string;
   cliente: string;
   fecha: string;
+  /** «000012»: el número de la nota, para que el cliente la tenga a mano. */
+  numero?: string;
   lineas: Linea[];
   total_usd: number;
   saldo_usd: number;
   tasa?: number | null;
+  /** El día límite para pagarla; se dice solo si queda algo por pagar. */
+  vence?: string;
 }): string {
-  const lineas = [`${datos.negocio} · Nota del ${fechaCorta(datos.fecha)}`, `Cliente: ${datos.cliente}`, ""];
+  const titulo = datos.numero ? `Nota N.º ${datos.numero} del ${fechaCorta(datos.fecha)}` : `Nota del ${fechaCorta(datos.fecha)}`;
+  const lineas = [`${datos.negocio} · ${titulo}`, `Cliente: ${datos.cliente}`, ""];
   for (const l of datos.lineas) {
     lineas.push(`${formatearCantidad(l.cantidad)} ${nombreUnidad(l.unidad)} ${l.producto_nombre} × ${usd(l.precio_unitario_usd)} = ${usd(l.subtotal_usd)}`);
   }
   lineas.push("", `Total: ${dolaresYBolivares(datos.total_usd, datos.tasa)}`);
-  if (datos.saldo_usd > 0) lineas.push(`Saldo pendiente: ${dolaresYBolivares(datos.saldo_usd, datos.tasa)}`);
-  else if (datos.saldo_usd < 0) lineas.push(`Saldo a su favor: ${usd(-datos.saldo_usd)}`);
+  if (datos.saldo_usd > 0) {
+    lineas.push(`Saldo pendiente: ${dolaresYBolivares(datos.saldo_usd, datos.tasa)}`);
+    if (datos.vence) lineas.push(`Fecha límite de pago de esta nota: ${fechaCorta(datos.vence)}`);
+  } else if (datos.saldo_usd < 0) lineas.push(`Saldo a su favor: ${usd(-datos.saldo_usd)}`);
   else lineas.push("Cuenta al día. ¡Gracias!");
   return lineas.join("\n");
 }

@@ -172,7 +172,15 @@ export async function totalVendidoUsd(): Promise<number> {
 
 // Lo que sigue son las consultas del estudio de ventas.
 
-export type VentasPorMes = { mes: string; ventas: number; vendido_usd: number; cobrado_usd: number };
+export type VentasPorMes = {
+  mes: string;
+  ventas: number;
+  vendido_usd: number;
+  cobrado_usd: number;
+  /** Lo comprado a proveedores ese mes y lo que se les pagó. */
+  comprado_usd: number;
+  pagado_proveedores_usd: number;
+};
 export type VentasPorProducto = { producto: string; unidad: string; cantidad: number; vendido_usd: number };
 export type VentasPorCliente = { cliente_id: number; cliente: string; ventas: number; vendido_usd: number };
 
@@ -182,19 +190,25 @@ export async function vendidoDesde(desde: string): Promise<number> {
   return redondear(Number(f?.t ?? 0));
 }
 
-/** Vendido y cobrado por mes (YYYY-MM), del más reciente al más antiguo. */
+/** Vendido, cobrado, comprado y pagado a proveedores por mes (YYYY-MM), del más reciente al más antiguo. */
 export async function ventasPorMes(): Promise<VentasPorMes[]> {
   return filas<VentasPorMes>(`
     with meses as (
       select substr(fecha, 1, 7) as mes from ventas
       union
       select substr(fecha, 1, 7) as mes from pagos
+      union
+      select substr(fecha, 1, 7) as mes from compras
+      union
+      select substr(fecha, 1, 7) as mes from pagos_proveedores
     )
     select
       m.mes,
       (select count(*) from ventas v where substr(v.fecha, 1, 7) = m.mes) as ventas,
       coalesce((select sum(total_usd) from ventas v where substr(v.fecha, 1, 7) = m.mes), 0) as vendido_usd,
-      coalesce((select sum(monto_usd) from pagos p where substr(p.fecha, 1, 7) = m.mes), 0) as cobrado_usd
+      coalesce((select sum(monto_usd) from pagos p where substr(p.fecha, 1, 7) = m.mes), 0) as cobrado_usd,
+      coalesce((select sum(total_usd) from compras c where substr(c.fecha, 1, 7) = m.mes), 0) as comprado_usd,
+      coalesce((select sum(monto_usd) from pagos_proveedores g where substr(g.fecha, 1, 7) = m.mes), 0) as pagado_proveedores_usd
     from meses m
     order by m.mes desc
   `);

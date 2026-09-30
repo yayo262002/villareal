@@ -18,8 +18,8 @@ export const negocio = {
   // vistas previas de WhatsApp.
   web: "https://villareal-green.vercel.app",
 
-  // Con código de país y sin el cero inicial: 0424-5541749 → 58424...
-  whatsapp: "584245541749",
+  // Con código de país y sin el cero inicial: 0424-6343236 → 58424...
+  whatsapp: "584246343236",
   correo: "comercializadoravillareal@gmail.com",
 
   // Domicilio fiscal según el RIF (SENIAT, 2016).
@@ -44,7 +44,7 @@ export const negocio = {
   },
 } as const;
 
-/** El número como se escribe en Venezuela: 0424-5541749. Vacío si no está configurado. */
+/** El número como se escribe en Venezuela: 0424-6343236. Vacío si no está configurado. */
 export function whatsappLegible(): string {
   const n = negocio.whatsapp;
   if (!n.startsWith("58") || n.length !== 12) return n;

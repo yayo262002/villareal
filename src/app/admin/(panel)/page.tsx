@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listarClientes, resumenDeudas } from "@/lib/clientes";
 import { clientesConVencimiento, proveedoresConVencimiento } from "@/lib/vencimientos";
 import { describirVencimiento } from "@/lib/credito";
+import { cierreDelDia } from "@/lib/caja";
 import { listarPagos, totalCobradoUsd } from "@/lib/pagos";
 import { contarVentasPorEntregar, listarVentas, totalVendidoUsd, vendidoDesde } from "@/lib/ventas";
 import { numeroDeNota } from "@/lib/entregas";
@@ -34,6 +35,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
       clientesConVencimiento(),
       proveedoresConVencimiento(),
     ]);
+  const hoyCierre = await cierreDelDia(hoy());
   // Quien debe: primero los que ya pasaron su plazo, con el más atrasado arriba.
   const deudores = conVencimiento
     .filter((c) => c.saldo_usd > 0)
@@ -67,6 +69,29 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
           Ruta de despacho
         </Link>
       </nav>
+
+      <section className={`tarjeta ${estilos.hoy}`}>
+        <div className={estilos.encabezado}>
+          <h2 className={estilos.subtitulo} style={{ marginBottom: 0 }}>
+            Hoy, {fechaCorta(hoy())}
+          </h2>
+          <Link href="/admin/caja">Cierre del día</Link>
+        </div>
+        <dl className={estilos.hoyCifras}>
+          <div>
+            <dt>Vendido</dt>
+            <dd>{usd(hoyCierre.ventas.total_usd)}</dd>
+          </div>
+          <div>
+            <dt>Entró</dt>
+            <dd>{usd(hoyCierre.cobrado.total_usd)}</dd>
+          </div>
+          <div>
+            <dt>Salió</dt>
+            <dd>{usd(hoyCierre.pagado_a_proveedores.total_usd)}</dd>
+          </div>
+        </dl>
+      </section>
 
       <dl className={`${estilos.cifras} ${estilos["cifras--seis"]}`}>
         <div className={estilos.cifra}>

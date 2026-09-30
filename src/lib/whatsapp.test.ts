@@ -72,6 +72,37 @@ test("el recordatorio enumera las notas pendientes y lo que queda de cada una", 
   assert.match(texto, /Gracias/);
 });
 
+test("el recordatorio dice de cada nota si venció o cuándo vence", () => {
+  const texto = mensajeRecordatorio({
+    negocio: "Villa Real",
+    cliente: "Ana",
+    saldo_usd: 41,
+    pendientes: [
+      { fecha: "2026-09-01", total_usd: 23, pendiente_usd: 18, vence: "2026-09-08", atraso: 21 },
+      { fecha: "2026-09-28", total_usd: 23, pendiente_usd: 23, vence: "2026-10-05", atraso: -6 },
+      { fecha: "2026-09-22", total_usd: 5, pendiente_usd: 5, vence: "2026-09-29", atraso: 0 },
+      { fecha: "2026-09-21", total_usd: 5, pendiente_usd: 5, vence: "2026-09-28", atraso: 1 },
+      { fecha: "2026-09-20", total_usd: 5, pendiente_usd: 5 },
+    ],
+  });
+  // Los montos se comparan con `usd()`: entre «USD» y la cifra va un espacio que no parte línea.
+  const lineas = texto.split("\n");
+  assert.ok(lineas.includes(`• Nota del 01/09/2026: ${usd(23)} (quedan ${usd(18)}), vencida hace 21 días`), texto);
+  assert.ok(lineas.includes(`• Nota del 28/09/2026: ${usd(23)}, vence el 05/10/2026`), texto);
+  assert.ok(lineas.includes(`• Nota del 22/09/2026: ${usd(5)}, vence hoy`), texto);
+  assert.ok(lineas.includes(`• Nota del 21/09/2026: ${usd(5)}, vencida desde ayer`), texto);
+  assert.ok(lineas.includes(`• Nota del 20/09/2026: ${usd(5)}`), texto);
+});
+
+test("la nota lleva su número y la fecha límite de pago si queda algo por pagar", () => {
+  const conDeuda = mensajeNota({ negocio: "X", cliente: "Y", fecha: "2026-09-15", numero: "000012", lineas: [], total_usd: 23, saldo_usd: 23, vence: "2026-09-22" });
+  assert.match(conDeuda, /^X · Nota N\.º 000012 del 15\/09\/2026/);
+  assert.match(conDeuda, /Fecha límite de pago de esta nota: 22\/09\/2026/);
+  const pagada = mensajeNota({ negocio: "X", cliente: "Y", fecha: "2026-09-15", numero: "000012", lineas: [], total_usd: 23, saldo_usd: 0, vence: "2026-09-22" });
+  assert.doesNotMatch(pagada, /Fecha límite/);
+  assert.match(pagada, /Cuenta al día/);
+});
+
 test("con tasa, el recordatorio y la nota llevan el monto en bolívares", () => {
   const recordatorio = mensajeRecordatorio({
     negocio: "Villa Real",

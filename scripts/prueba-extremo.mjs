@@ -185,7 +185,7 @@ async function probarPresentacion(portada) {
   const html = portada.html;
   comprobar("la portada dice qué se vende y dónde", html.includes('lang="es-VE"') && /<meta name="description" content="[^"]*Barquisimeto/.test(html));
   comprobar("vista previa para WhatsApp: título, descripción e imagen", /property="og:title"/.test(html) && /property="og:description"/.test(html) && /property="og:image" content="[^"]*opengraph-image/.test(html));
-  comprobar("datos de la tienda para los buscadores", /"@type":"Store"/.test(html) && html.includes('"addressLocality":"Barquisimeto"') && html.includes('"telephone":"+584245541749"'));
+  comprobar("datos de la tienda para los buscadores", /"@type":"Store"/.test(html) && html.includes('"addressLocality":"Barquisimeto"') && html.includes('"telephone":"+584246343236"'));
   comprobar("llamada a los negocios y cómo llegar", html.includes("Pedir precio al mayor") && html.includes("google.com/maps/search") && html.includes("Saltar al contenido"));
 
   let r = await fetch(base + "/opengraph-image");
@@ -368,6 +368,14 @@ async function probarNegocio() {
     );
     const resumen = legible((await pagina("/admin")).html);
     comprobar("resumen: quien debe sale con su plazo vencido y lo que se debe a proveedores", /Vencida hace \d+ días/.test(resumen) && resumen.includes("Debo a proveedores") && resumen.includes("A quién le debo"));
+    const recordatorio = decodeURIComponent(ficha.match(/wa\.me\/584120000000\?text=([^"]*Tiene%20pendiente[^"]*)"/)?.[1] ?? "");
+    comprobar("el recordatorio por WhatsApp dice desde cuándo venció cada nota", /vencida hace \d+ días/.test(recordatorio), recordatorio);
+    const caja = legible((await pagina("/admin/caja?fecha=2026-09-20")).html);
+    comprobar(
+      "el cierre del día 20 de septiembre cuadra el abono en bolívares por método",
+      caja.includes("Cierre del 20/09/2026") && caja.includes("Pago móvil") && caja.includes("Bs 146,00") && caja.includes(usd("4,00")) && caja.includes("1 movimiento"),
+    );
+    comprobar("el cierre de hoy abre sin fecha", (await pagina("/admin/caja")).html.includes("Cierre del día"));
     const cuentasVencidas = legible((await pagina("/admin/cuentas")).html);
     comprobar("cuentas: columna «Vence» y total con el plazo vencido", cuentasVencidas.includes(">Vence<") && /Vencida hace \d+ días/.test(cuentasVencidas) && cuentasVencidas.includes("Con el plazo vencido"));
 
@@ -381,6 +389,13 @@ async function probarNegocio() {
         nota.html.includes(usd("10,00")) && nota.html.includes("No es una factura"),
     );
     comprobar("la nota dice lo abonado y lo que queda", nota.html.includes(usd("4,00")) && nota.html.includes(usd("6,00")) && nota.html.includes("Abonada"));
+    const notaPorWhatsapp = decodeURIComponent(nota.html.match(/wa\.me\/584120000000\?text=([^"]+)"/)?.[1] ?? "");
+    comprobar(
+      "la nota tiene fecha límite de pago (7 días) y va con su número por WhatsApp",
+      legible(nota.html).includes("Fecha límite de pago") && legible(nota.html).includes("08/09/2026") &&
+        notaPorWhatsapp.includes(`Nota N.º ${String(notaId).padStart(6, "0")} del 01/09/2026`) && notaPorWhatsapp.includes("Fecha límite de pago de esta nota: 08/09/2026"),
+      notaPorWhatsapp,
+    );
     comprobar("una nota que no existe da 404", (await pagina("/admin/ventas/999999/nota")).status === 404);
 
     // La ruta de despacho.
@@ -786,9 +801,11 @@ async function probarProveedores() {
 
     const ficha = legible((await pagina(`/admin/proveedores/${id}`)).html);
     comprobar(
-      "la ficha del proveedor: le debo USD 60 y la compra está vencida",
+      "la ficha del proveedor: le debo USD 60 y la compra está vencida (y el informe suma compras y pagos)",
       ficha.includes(`Le debo ${usd("60,00")}`) && ficha.includes("20 kg de mozzarella") && ficha.includes(">Abonada<") && /Vencida hace \d+ días/.test(ficha),
     );
+    const informe = legible((await pagina("/admin/informe")).html);
+    comprobar("el informe suma por mes lo comprado y lo pagado a proveedores", informe.includes("Pagado a proveedores") && informe.includes("Entró neto") && informe.includes(usd("100,00")));
     const lista = legible((await pagina("/admin/proveedores")).html);
     comprobar("la lista de proveedores dice cuánto se le debe y desde cuándo", lista.includes(PROVEEDOR_DE_PRUEBA) && lista.includes(`Le debo ${usd("60,00")}`) && /Vencida hace \d+ días/.test(lista));
     const resumen = legible((await pagina("/admin")).html);
@@ -845,7 +862,7 @@ try {
   if (!enProduccion) await arrancarServidor();
 
   const web = await pagina("/", "");
-  comprobar(`web pública (${web.ms} ms)`, web.status === 200 && web.html.includes("Precios de hoy") && web.html.includes("wa.me/584245541749"));
+  comprobar(`web pública (${web.ms} ms)`, web.status === 200 && web.html.includes("Precios de hoy") && web.html.includes("wa.me/584246343236"));
 
   const primera = web.html.match(/href="(\/producto\/\d+[a-z0-9-]*)"/)?.[1];
   const detalle = primera ? await pagina(primera, "") : null;

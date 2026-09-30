@@ -124,6 +124,7 @@ src/lib/cuentas.ts        Qué ventas están pagadas y cuáles por pagar
 src/lib/credito.ts        Los días de crédito: cuándo vence una nota y cuánto está vencido
 src/lib/vencimientos.ts   Cada cliente y cada proveedor con lo que tiene vencido
 src/lib/proveedores.ts    Proveedores, sus compras y los pagos que se les hacen
+src/lib/caja.ts           El cierre del día: vendido, entrado por método y salido
 src/lib/direcciones.ts    Lee una dirección y la sitúa en la cuadrícula
 src/lib/ruta.ts           El orden en que conviene visitar a los clientes
 src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho
@@ -229,7 +230,16 @@ datos/                    La base de datos (fuera de Git)
   Lo mismo vale para lo que el negocio le debe a cada proveedor, con los
   días que da el proveedor (`src/lib/credito.ts`).
 - Los mensajes de WhatsApp (recordatorio y nota) dicen el monto en dólares y,
-  si hay tasa del día, también en bolívares.
+  si hay tasa del día, también en bolívares. El recordatorio dice de cada
+  nota si venció y desde cuándo, o cuándo vence; la nota va con su número
+  y con la fecha límite de pago.
+- **Cierre del día** (`/admin/caja`, desde el Resumen o desde Abonos): lo
+  que se vendió, lo que entró por cada método en su moneda (para contar
+  la caja en bolívares y en dólares aparte) y lo que salió a proveedores,
+  con las notas, abonos y pagos de ese día. Se elige cualquier día y se
+  imprime. El Resumen enseña arriba las tres cifras de hoy.
+- El **Informe** suma por mes, junto a lo vendido y cobrado, lo comprado y
+  lo pagado a proveedores, y lo que entró neto (cobrado menos pagado).
 - Un pago en bolívares se guarda con la **tasa del día** que se escribió al
   registrarlo, y se convierte a dólares en ese momento. Si la tasa cambia
   mañana, el pago de hoy no se mueve.

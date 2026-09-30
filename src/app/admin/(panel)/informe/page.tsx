@@ -50,6 +50,10 @@ export default async function PaginaInforme() {
 
       <section className="tarjeta">
         <h2 className={estilos.subtitulo}>Por mes</h2>
+        <p className={estilos.ayuda}>
+          Lo que se vendió y lo que se cobró a los clientes; lo que se compró y lo que se pagó a los proveedores.
+          Cobrado menos pagado es lo que entró de verdad ese mes.
+        </p>
         {meses.length === 0 ? (
           <p className="vacio">Todavía no hay ventas ni pagos.</p>
         ) : (
@@ -61,6 +65,9 @@ export default async function PaginaInforme() {
                   <th className="numero">Ventas</th>
                   <th className="numero">Vendido</th>
                   <th className="numero">Cobrado</th>
+                  <th className="numero">Comprado</th>
+                  <th className="numero">Pagado a proveedores</th>
+                  <th className="numero">Entró neto</th>
                 </tr>
               </thead>
               <tbody>
@@ -70,6 +77,9 @@ export default async function PaginaInforme() {
                     <td className="numero">{m.ventas}</td>
                     <td className="numero">{usd(Number(m.vendido_usd))}</td>
                     <td className="numero">{usd(Number(m.cobrado_usd))}</td>
+                    <td className="numero">{usd(Number(m.comprado_usd))}</td>
+                    <td className="numero">{usd(Number(m.pagado_proveedores_usd))}</td>
+                    <td className="numero">{usd(Number(m.cobrado_usd) - Number(m.pagado_proveedores_usd))}</td>
                   </tr>
                 ))}
               </tbody>

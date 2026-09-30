@@ -58,6 +58,29 @@
   border-bottom-color: var(--color-acento);
 }
 
+/* El día de hoy en el resumen: tres cifras en una fila. */
+.hoy {
+  display: grid;
+  gap: var(--espacio-3);
+}
+.hoyCifras {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--espacio-3);
+}
+.hoyCifras dt {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+.hoyCifras dd {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
 /* Lo que más se hace desde el teléfono, a un toque. */
 .atajos {
   display: grid;

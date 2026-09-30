@@ -18,7 +18,12 @@ export default async function PaginaPagos({
 
   return (
     <>
-      <h1 className={estilos.titulo}>Abonos</h1>
+      <div className={estilos.encabezado}>
+        <h1 className={estilos.titulo}>Abonos</h1>
+        <Link href="/admin/caja" className="boton boton--secundario">
+          Cierre del día
+        </Link>
+      </div>
       <Avisos parametros={parametros} />
 
       <section className="tarjeta">
