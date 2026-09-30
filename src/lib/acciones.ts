@@ -36,10 +36,11 @@ import { buscarAdjunto, eliminarAdjunto, guardarAdjunto } from "./adjuntos";
 import { guardarCopiaNube } from "./copias-nube";
 import {
   buscarResena,
-  cambiarPublicada,
   crearResena,
   eliminarResena,
+  esconderResena,
   ponerResenasDeEjemplo,
+  publicarResena,
   quitarResenasDeEjemplo,
 } from "./resenas";
 import { leerResena } from "./resenas-texto";
@@ -436,27 +437,35 @@ export async function guardarResena(datos: FormData): Promise<void> {
   const lectura = leerResena({ autor: texto(datos, "autor"), detalle: texto(datos, "detalle"), texto: texto(datos, "texto") });
   if (!lectura.valida) volverConError("/admin/resenas", lectura.motivo);
 
-  // Sin la casilla marcada se guarda escondida, para revisarla antes de enseñarla.
-  const publicada = texto(datos, "publicada") === "1";
-  await crearResena(productoId, lectura.datos, publicada);
+  // La casilla dice que el cliente dio permiso para salir con su nombre.
+  // Sin ella la reseña se guarda, pero escondida hasta tener el permiso.
+  const conPermiso = texto(datos, "permiso") === "1";
+  await crearResena(productoId, lectura.datos, conPermiso);
   volverConExito(
     "/admin/resenas",
-    publicada
+    conPermiso
       ? `Reseña de ${lectura.datos.autor} guardada. Ya sale en la página de «${producto.nombre}».`
-      : `Reseña de ${lectura.datos.autor} guardada, escondida. Publícala cuando quieras.`,
+      : `Reseña de ${lectura.datos.autor} guardada, escondida: falta el permiso del cliente. Cuando te lo dé, pulsa «Ya me dio permiso: publicar».`,
   );
 }
 
-/** Esconde una reseña sin borrarla, o la vuelve a enseñar. */
+/**
+ * Publica una reseña o la esconde sin borrarla. Publicar es afirmar que el
+ * cliente dio su permiso: el botón lo dice y queda anotado.
+ */
 export async function alternarResena(datos: FormData): Promise<void> {
   await exigirSesion();
   const id = numero(datos, "id");
   const resena = id ? await buscarResena(id) : null;
   if (!id || !resena) volverConError("/admin/resenas", "No se encontró la reseña.");
+  if (resena.de_ejemplo) volverConError("/admin/resenas", "Una reseña de ejemplo no se publica: no la dijo ningún cliente.");
 
-  const publicada = texto(datos, "publicada") === "1";
-  await cambiarPublicada(id, publicada);
-  volverConExito("/admin/resenas", publicada ? "Reseña publicada." : "Reseña escondida. No se borró.");
+  if (texto(datos, "publicada") === "1") {
+    await publicarResena(id);
+    volverConExito("/admin/resenas", `Reseña de ${resena.autor} publicada.`);
+  }
+  await esconderResena(id);
+  volverConExito("/admin/resenas", "Reseña escondida. No se borró.");
 }
 
 /** La confirmación está en `/admin/resenas/[id]/eliminar`. */

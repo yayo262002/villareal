@@ -3,11 +3,13 @@ import { ejecutar, fila, filas, transaccion } from "./db";
 import { ejemplosPara, type DatosResena } from "./resenas-texto";
 
 /**
- * Las reseñas de cada producto, en la base. Una reseña tiene dos marcas:
+ * Las reseñas de cada producto, en la base. Una reseña tiene tres marcas:
  *
+ * - `con_permiso`: el cliente dijo que se puede publicar con su nombre. Sin
+ *   permiso no sale en la web, aunque esté marcada como publicada.
  * - `publicada`: el dueño la puede esconder sin borrarla.
  * - `de_ejemplo`: la puso el botón «Poner reseñas de ejemplo» para ver cómo
- *   queda la página. Esas nunca se enseñan al público, ni publicadas.
+ *   queda la página. Esas nunca se enseñan al público.
  */
 
 export type Resena = DatosResena & {
@@ -15,6 +17,7 @@ export type Resena = DatosResena & {
   producto_id: number;
   producto_nombre: string;
   de_ejemplo: number;
+  con_permiso: number;
   publicada: number;
   creado_en: string;
 };
@@ -31,14 +34,16 @@ export async function listarResenas(): Promise<Resena[]> {
 }
 
 /**
- * Las que enseña la página de un producto. Al público, las publicadas que
- * no son de ejemplo. Al dueño con la sesión abierta, también las de ejemplo.
+ * Las que enseña la página de un producto. Al público, las del dueño que
+ * están publicadas y tienen el permiso del cliente. Al dueño con la sesión
+ * abierta, además, las de ejemplo.
  */
 export async function resenasDeProducto(productoId: number, conLasDeEjemplo: boolean): Promise<Resena[]> {
-  const filtro = conLasDeEjemplo ? "" : "and r.de_ejemplo = 0";
+  const deEjemplo = conLasDeEjemplo ? "or r.de_ejemplo = 1" : "";
   return filas<Resena>(
     `${CONSULTA_RESENAS}
-     where r.producto_id = ? and r.publicada = 1 ${filtro}
+     where r.producto_id = ? and r.publicada = 1
+       and ((r.de_ejemplo = 0 and r.con_permiso = 1) ${deEjemplo})
      order by r.de_ejemplo, r.id desc`,
     [productoId],
   );
@@ -48,16 +53,24 @@ export async function buscarResena(id: number): Promise<Resena | null> {
   return fila<Resena>(`${CONSULTA_RESENAS} where r.id = ?`, [id]);
 }
 
-export async function crearResena(productoId: number, datos: DatosResena, publicada = true): Promise<number> {
+/** Con permiso se publica en el momento; sin él se guarda escondida hasta tenerlo. */
+export async function crearResena(productoId: number, datos: DatosResena, conPermiso: boolean): Promise<number> {
   const r = await ejecutar(
-    "insert into resenas (producto_id, autor, detalle, texto, publicada) values (?, ?, ?, ?, ?)",
-    [productoId, datos.autor, datos.detalle, datos.texto, publicada ? 1 : 0],
+    "insert into resenas (producto_id, autor, detalle, texto, con_permiso, publicada) values (?, ?, ?, ?, ?, ?)",
+    [productoId, datos.autor, datos.detalle, datos.texto, conPermiso ? 1 : 0, conPermiso ? 1 : 0],
   );
   return r.ultimoId;
 }
 
-export async function cambiarPublicada(id: number, publicada: boolean): Promise<boolean> {
-  const r = await ejecutar("update resenas set publicada = ? where id = ?", [publicada ? 1 : 0, id]);
+/** Publica una reseña. Publicar es decir que el cliente dio su permiso: queda anotado. */
+export async function publicarResena(id: number): Promise<boolean> {
+  const r = await ejecutar("update resenas set publicada = 1, con_permiso = 1 where id = ? and de_ejemplo = 0", [id]);
+  return r.cambios > 0;
+}
+
+/** La quita de la web sin borrarla. El permiso que hubiera se conserva. */
+export async function esconderResena(id: number): Promise<boolean> {
+  const r = await ejecutar("update resenas set publicada = 0 where id = ?", [id]);
   return r.cambios > 0;
 }
 

@@ -574,9 +574,10 @@ async function probarCartera() {
 const AUTOR_DE_PRUEBA = "Prueba automática (borrar)";
 
 /**
- * Las reseñas. En la web publicada la de prueba se guarda escondida, para
- * que ningún cliente llegue a verla, y no se tocan las de ejemplo que haya.
- * En local se prueba todo: publicar, esconder, los ejemplos y quién los ve.
+ * Las reseñas. En la web publicada la de prueba se guarda sin permiso, o sea
+ * escondida, para que ningún cliente llegue a verla, y no se tocan las de
+ * ejemplo que haya. En local se prueba todo: el permiso, publicar,
+ * esconder, los ejemplos y quién los ve.
  */
 async function probarResenas() {
   const [producto] = await consultar("select id, nombre from productos where activo = 1 order by id limit 1");
@@ -587,35 +588,53 @@ async function probarResenas() {
   try {
     const panel = await pagina("/admin/resenas");
     comprobar(`panel de reseñas (${panel.ms} ms)`, panel.status === 200 && panel.html.includes("Reseña nueva") && panel.html.includes("Reseñas de ejemplo"));
+    const pedir = decodeURIComponent(panel.html.match(/href="https:\/\/wa\.me\/\?text=([^"]*opini[^"]*)"/)?.[1] ?? "");
+    comprobar(
+      "mensaje para pedir la reseña y el permiso, a quien se elija en WhatsApp",
+      panel.html.includes("Pedir reseña por WhatsApp") && pedir.includes("Nos gustaría conocer su opinión sobre este producto") &&
+        pedir.includes("Con su permiso") && pedir.includes("/producto/"),
+      pedir,
+    );
 
     let r = await enviar("/admin/resenas", 'name="autor"', { producto_id: String(producto.id), autor: AUTOR_DE_PRUEBA, detalle: "", texto: "" });
     comprobar("una reseña sin comentario no se guarda", r.destino.includes("Escribe el comentario del cliente"), r.destino);
 
-    // Sin la casilla de publicar: se guarda escondida.
+    // Sin la casilla del permiso: se guarda, pero escondida.
     r = await enviar("/admin/resenas", 'name="autor"', {
       producto_id: String(producto.id), autor: `  ${AUTOR_DE_PRUEBA} `, detalle: "Pizzería · Centro", texto: ` "${comentario}" `,
     });
     const id = await idDeLaPrueba();
-    const [guardada] = await consultar("select autor, texto, publicada, de_ejemplo from resenas where id = ?", [id]);
+    const [guardada] = await consultar("select autor, texto, publicada, con_permiso, de_ejemplo from resenas where id = ?", [id]);
     comprobar(
-      `guardar una reseña escondida, sin espacios ni comillas de más (${r.ms} ms)`,
-      r.destino.includes("guardada, escondida") && guardada?.autor === AUTOR_DE_PRUEBA && guardada?.texto === comentario &&
-        Number(guardada?.publicada) === 0 && Number(guardada?.de_ejemplo) === 0,
+      `sin permiso se guarda escondida, sin espacios ni comillas de más (${r.ms} ms)`,
+      r.destino.includes("falta el permiso del cliente") && guardada?.autor === AUTOR_DE_PRUEBA && guardada?.texto === comentario &&
+        Number(guardada?.publicada) === 0 && Number(guardada?.con_permiso) === 0 && Number(guardada?.de_ejemplo) === 0,
       `${r.destino} ${JSON.stringify(guardada)}`,
     );
-    comprobar("el panel la enseña como escondida", legible((await pagina("/admin/resenas")).html).includes(`«${comentario}»`) && (await pagina("/admin/resenas")).html.includes(">Escondida<"));
+    const conLaNueva = legible((await pagina("/admin/resenas")).html);
     comprobar(
-      "una reseña escondida no sale en la web, ni para el dueño",
+      "el panel dice que le falta el permiso y cómo publicarla",
+      conLaNueva.includes(`«${comentario}»`) && conLaNueva.includes(">Falta el permiso<") && conLaNueva.includes("Ya me dio permiso: publicar") &&
+        conLaNueva.includes("Esperan el permiso"),
+    );
+    comprobar(
+      "una reseña sin permiso no sale en la web, ni para el dueño",
       !(await pagina(paginaDelProducto, "")).html.includes(comentario) && !(await pagina(paginaDelProducto)).html.includes(comentario),
     );
 
     if (!enProduccion) {
       const marca = `name="id" value="${id}"`;
       r = await enviar("/admin/resenas", marca, { id: String(id), publicada: "1" });
+      const [conPermiso] = await consultar("select publicada, con_permiso from resenas where id = ?", [id]);
+      comprobar(
+        "«Ya me dio permiso: publicar» anota el permiso y la publica",
+        r.destino.includes("publicada") && Number(conPermiso.publicada) === 1 && Number(conPermiso.con_permiso) === 1,
+        `${r.destino} ${JSON.stringify(conPermiso)}`,
+      );
       const publica = legible((await pagina(paginaDelProducto, "")).html);
       comprobar(
         "publicada, sale en «Por qué elegirlo» con su autor y sus iniciales",
-        r.destino.includes("Reseña publicada") && publica.includes(`«${comentario}»`) && publica.includes(`<strong>${AUTOR_DE_PRUEBA}</strong>`) &&
+        publica.includes(`«${comentario}»`) && publica.includes(`<strong>${AUTOR_DE_PRUEBA}</strong>`) &&
           publica.includes("Pizzería · Centro") && publica.includes(">PA<") && publica.indexOf(comentario) > publica.indexOf("Por qué elegirlo"),
       );
       // Las ventajas salen también en la descripción para los buscadores: aquí se mira la lista.
@@ -645,8 +664,33 @@ async function probarResenas() {
       const delPrimero = legible((await pagina(paginaDelProducto)).html);
       comprobar("en un producto con reseña propia, la propia va antes que las de ejemplo", delPrimero.indexOf(comentario) > 0 && delPrimero.indexOf(comentario) < delPrimero.indexOf("de ejemplo</strong>"));
 
+      // Con el permiso marcado al guardarla, sale en la web en el momento.
+      r = await enviar("/admin/resenas", 'name="autor"', {
+        producto_id: "2", autor: "Pizzería 33 de la prueba", detalle: "", texto: "Al rallarla no se apelmaza.", permiso: "1",
+      });
+      comprobar(
+        "con el permiso marcado se publica al guardarla",
+        r.destino.includes("Ya sale en la página") && legible((await pagina(mozzarella, "")).html).includes("«Al rallarla no se apelmaza.»"),
+        r.destino,
+      );
+      const [ejemplo] = await consultar("select id from resenas where de_ejemplo = 1 limit 1");
+      // Una de ejemplo no tiene botón de publicar: se intenta con el formulario de otra.
+      r = await enviar("/admin/resenas", marca, { id: String(ejemplo.id), publicada: "1" });
+      comprobar(
+        "una reseña de ejemplo no se puede publicar ni a la fuerza",
+        r.destino.includes("no se publica") && !legible((await pagina(mozzarella, "")).html).includes("de ejemplo"),
+        r.destino,
+      );
+      const otra =Number((await consultar("select id from resenas where autor = 'Pizzería 33 de la prueba'"))[0].id);
+      await enviar(`/admin/resenas/${otra}/eliminar`, 'name="id"', { id: String(otra) });
+
       r = await enviar("/admin/resenas", marca, { id: String(id), publicada: "0" });
-      comprobar("esconderla la quita de la web sin borrarla", r.destino.includes("Reseña escondida") && !(await pagina(paginaDelProducto, "")).html.includes(comentario) && (await idDeLaPrueba()) === id);
+      const [escondida] = await consultar("select publicada, con_permiso from resenas where id = ?", [id]);
+      comprobar(
+        "esconderla la quita de la web sin borrarla ni perder el permiso",
+        r.destino.includes("Reseña escondida") && !(await pagina(paginaDelProducto, "")).html.includes(comentario) &&
+          Number(escondida.publicada) === 0 && Number(escondida.con_permiso) === 1,
+      );
 
       const respuesta = await fetch(base + "/admin/copia", { headers: { cookie } });
       const archivo = path.join(carpetaTemporal, "copia-resenas.db");

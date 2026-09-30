@@ -4,6 +4,8 @@ import { listarResenas, type Resena } from "@/lib/resenas";
 import { LARGO_MAXIMO_DEL_NOMBRE, LARGO_MAXIMO_DEL_TEXTO } from "@/lib/resenas-texto";
 import { alternarResena, cargarResenasDeEjemplo, guardarResena, retirarResenasDeEjemplo } from "@/lib/acciones";
 import { rutaProducto } from "@/lib/enlaces";
+import { direccionCompleta, enlaceCompartir, negocio } from "@/config/negocio";
+import { mensajePedirResena } from "@/lib/whatsapp";
 import { fechaCorta, fechaDeLaBase } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
@@ -23,17 +25,19 @@ function ResenaDelPanel({ resena }: { resena: Resena }) {
       <div className={estilos.carteraAcciones}>
         {resena.de_ejemplo ? (
           <span className={`${estilos.estado} ${estilos["estado--parcial"]}`}>De ejemplo: solo la ves tú</span>
+        ) : !resena.con_permiso ? (
+          <span className={`${estilos.estado} ${estilos["estado--por_pagar"]}`}>Falta el permiso</span>
         ) : resena.publicada ? (
           <span className={`${estilos.estado} ${estilos["estado--pagada"]}`}>Publicada</span>
         ) : (
-          <span className={`${estilos.estado} ${estilos["estado--por_pagar"]}`}>Escondida</span>
+          <span className={`${estilos.estado} ${estilos["estado--parcial"]}`}>Escondida</span>
         )}
         {!resena.de_ejemplo && (
           <form action={alternarResena}>
             <input type="hidden" name="id" value={resena.id} />
-            <input type="hidden" name="publicada" value={resena.publicada ? "0" : "1"} />
+            <input type="hidden" name="publicada" value={resena.publicada && resena.con_permiso ? "0" : "1"} />
             <button type="submit" className={estilos.botonEnlace}>
-              {resena.publicada ? "Esconder" : "Publicar"}
+              {!resena.con_permiso ? "Ya me dio permiso: publicar" : resena.publicada ? "Esconder" : "Publicar"}
             </button>
           </form>
         )}
@@ -58,7 +62,13 @@ export default async function PaginaResenas({ searchParams }: { searchParams: Pr
   const publicados = productos.filter((p) => p.activo);
   const deEjemplo = resenas.filter((r) => r.de_ejemplo).length;
   const delDueno = resenas.length - deEjemplo;
-  const enLaWeb = resenas.filter((r) => !r.de_ejemplo && r.publicada).length;
+  const enLaWeb = resenas.filter((r) => !r.de_ejemplo && r.publicada && r.con_permiso).length;
+  const sinPermiso = resenas.filter((r) => !r.de_ejemplo && !r.con_permiso).length;
+  // El mensaje para pedir la reseña: sin número, para elegir el contacto en WhatsApp.
+  const pedir = (p: { id: number; nombre: string }) =>
+    enlaceCompartir(
+      mensajePedirResena({ negocio: negocio.nombre, producto: p.nombre, enlace: direccionCompleta(rutaProducto(p)) }),
+    );
 
   return (
     <>
@@ -74,13 +84,19 @@ export default async function PaginaResenas({ searchParams }: { searchParams: Pr
           <dt>Se ven en la web</dt>
           <dd>{enLaWeb}</dd>
         </div>
+        {sinPermiso > 0 && (
+          <div className={`${estilos.cifra} ${estilos["cifra--alerta"]}`}>
+            <dt>Esperan el permiso</dt>
+            <dd>{sinPermiso}</dd>
+          </div>
+        )}
       </dl>
 
       <section className="tarjeta">
         <h2 className={estilos.subtitulo}>Reseña nueva</h2>
         <p className={estilos.ayuda}>
           Pregúntale al cliente qué le parece el producto y escríbelo aquí con sus palabras. Sale en la página del
-          producto, en «Por qué elegirlo». Pídele permiso para poner su nombre.
+          producto, en «Por qué elegirlo», con el nombre de su negocio: por eso hace falta su permiso.
         </p>
         <form action={guardarResena} className="formulario">
           <div className="campo">
@@ -106,7 +122,7 @@ export default async function PaginaResenas({ searchParams }: { searchParams: Pr
                 required
                 maxLength={LARGO_MAXIMO_DEL_NOMBRE}
                 autoComplete="off"
-                placeholder="Pizzería La Esquina"
+                placeholder="Pizzería 33"
               />
               <span className="ayuda">El nombre del negocio o de la persona.</span>
             </div>
@@ -135,9 +151,10 @@ export default async function PaginaResenas({ searchParams }: { searchParams: Pr
             <span className="ayuda">Sin comillas: la web las pone. Corto se lee mejor.</span>
           </div>
           <label className={estilos.casilla}>
-            <input type="checkbox" name="publicada" value="1" defaultChecked />
-            <span>Publicarla ya en la web</span>
+            <input type="checkbox" name="permiso" value="1" />
+            <span>Me dio permiso para publicarla con su nombre</span>
           </label>
+          <p className="ayuda">Sin marcar, se guarda escondida hasta que te lo dé.</p>
           <div>
             <button type="submit" className="boton">
               Guardar reseña
@@ -156,9 +173,14 @@ export default async function PaginaResenas({ searchParams }: { searchParams: Pr
                 {p.nombre} ({suyas.length})
               </h2>
               {p.activo ? (
-                <a href={rutaProducto(p)} target="_blank" rel="noopener">
-                  Ver cómo queda en la web
-                </a>
+                <div className={estilos.carteraAcciones} style={{ marginTop: 0 }}>
+                  <a href={pedir(p)} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                    Pedir reseña por WhatsApp
+                  </a>
+                  <a href={rutaProducto(p)} target="_blank" rel="noopener">
+                    Ver cómo queda en la web
+                  </a>
+                </div>
               ) : (
                 <span className="ayuda">Producto escondido de la web</span>
               )}

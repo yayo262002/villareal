@@ -83,6 +83,10 @@ async function migrar(cliente: Client): Promise<void> {
     await añadirColumna(cliente, "ventas", "por_entregar integer not null default 0");
     await añadirColumna(cliente, "ventas", "entregada_en text");
   }
+  // Las reseñas que ya hubiera quedan sin permiso anotado: no se publican solas.
+  if (!(await definicionDe(cliente, "resenas")).includes("con_permiso")) {
+    await añadirColumna(cliente, "resenas", "con_permiso integer not null default 0");
+  }
 }
 
 /** Las descripciones se comparan sin importar si los saltos de línea son de Windows. */

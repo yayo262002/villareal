@@ -125,7 +125,7 @@ src/lib/ruta.ts           El orden en que conviene visitar a los clientes
 src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho
 src/lib/entregas.ts       Pedidos por entregar: qué lleva cada cliente y qué cargar
 src/lib/adjuntos.ts       Fotos de las notas de entrega
-src/lib/whatsapp.ts       Mensajes para WhatsApp: cobro, nota, recibo de abono, en camino
+src/lib/whatsapp.ts       Mensajes para WhatsApp: cobro, nota, recibo, en camino, pedir reseña
 src/lib/copias-nube.ts    Copias automáticas guardadas en la base
 src/app/api/tarea-diaria/ Lo que Vercel hace solo cada mañana: tasa y copia
 src/app/api/copia-automatica/  Solo la copia, para lanzarla aparte
@@ -184,6 +184,16 @@ datos/                    La base de datos (fuera de Git)
   El dueño le pide el comentario al cliente y lo escribe en el panel, en
   Reseñas, con las palabras del cliente: producto, quién lo dice, qué
   negocio es y qué dijo. Una reseña se puede esconder sin borrarla.
+  - **El permiso del cliente.** La reseña sale con el nombre del negocio,
+    así que hace falta su permiso. Al guardarla se marca «Me dio permiso
+    para publicarla con su nombre» y sale en el momento. Sin marcar se
+    guarda escondida, y cuando el cliente lo da se pulsa «Ya me dio
+    permiso: publicar». Sin permiso anotado una reseña no sale en la web.
+  - **Pedir la reseña.** En Reseñas, cada producto tiene «Pedir reseña por
+    WhatsApp»: abre WhatsApp con el mensaje escrito, que pregunta por el
+    producto y pide el permiso, y deja elegir a quién mandarlo. En la
+    ficha de un cliente, «Pedirle una reseña» lo manda directo a él, por
+    cada producto que ha comprado.
   - **Reseñas de ejemplo.** El botón «Poner reseñas de ejemplo» carga unas
     de muestra para ver cómo queda la página. No las dijo nadie, así que
     **solo las ve el dueño**, con la sesión del panel abierta, marcadas

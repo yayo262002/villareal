@@ -7,6 +7,7 @@ import {
   mensajeAbono,
   mensajeEnCamino,
   mensajeNota,
+  mensajePedirResena,
   mensajeRecordatorio,
   mismoTelefono,
   numeroWhatsapp,
@@ -176,4 +177,28 @@ test("el aviso de que el pedido va en camino dice lo que se lleva", () => {
     mensajeEnCamino({ negocio: "Villa Real", cliente: "Ana", lineas: [], total_usd: 0 }),
     "Hola Ana, le saluda Villa Real.\nVamos en camino con su pedido.",
   );
+});
+
+test("pedir una reseña: pregunta por el producto y pide permiso para publicarla", () => {
+  const texto = mensajePedirResena({
+    negocio: "Villa Real",
+    cliente: "Pizzería 33",
+    producto: "Queso mozzarella",
+    enlace: "https://ejemplo.test/producto/2-queso-mozzarella",
+  });
+  assert.deepEqual(texto.split("\n"), [
+    "Hola Pizzería 33, le saluda Villa Real.",
+    "Nos gustaría conocer su opinión sobre este producto: queso mozzarella.",
+    "¿Nos cuenta en un mensaje qué le ha parecido? Con su permiso, publicaremos su comentario en nuestra web con el nombre de su negocio.",
+    "Aquí saldría: https://ejemplo.test/producto/2-queso-mozzarella",
+    "¡Gracias!",
+  ]);
+});
+
+test("pedir una reseña sin saber a quién: saluda sin nombre y no inventa enlace", () => {
+  const texto = mensajePedirResena({ negocio: "Villa Real", producto: "Huevos" });
+  assert.match(texto, /^Hola, le saluda Villa Real\./);
+  assert.match(texto, /este producto: huevos\./);
+  assert.doesNotMatch(texto, /Aquí saldría/);
+  assert.match(mensajePedirResena({ negocio: "Villa Real", cliente: "0412-1234567", producto: "Huevos" }), /^Hola, le saluda/);
 });

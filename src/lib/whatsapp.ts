@@ -142,6 +142,28 @@ export function mensajeAbono(datos: {
   return lineas.join("\n");
 }
 
+/**
+ * Pedirle a un cliente su opinión de un producto, y su permiso para
+ * publicarla. Sin nombre de cliente vale para cualquiera: el dueño elige
+ * el contacto en WhatsApp.
+ */
+export function mensajePedirResena(datos: {
+  negocio: string;
+  cliente?: string;
+  producto: string;
+  /** La página del producto en la web, para que vea dónde saldría. */
+  enlace?: string;
+}): string {
+  const lineas = [
+    `${saludo(datos.cliente ?? "")}, le saluda ${datos.negocio}.`,
+    `Nos gustaría conocer su opinión sobre este producto: ${datos.producto.toLowerCase()}.`,
+    "¿Nos cuenta en un mensaje qué le ha parecido? Con su permiso, publicaremos su comentario en nuestra web con el nombre de su negocio.",
+  ];
+  if (datos.enlace) lineas.push(`Aquí saldría: ${datos.enlace}`);
+  lineas.push("¡Gracias!");
+  return lineas.join("\n");
+}
+
 /** El aviso de que el pedido va en camino, con lo que se le lleva. */
 export function mensajeEnCamino(datos: {
   negocio: string;

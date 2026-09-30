@@ -98,8 +98,9 @@ export const ESQUEMA = `
   );
 
   -- Reseñas: lo que dicen de cada producto los negocios que lo compran. Las
-  -- escribe el dueño con las palabras del cliente. Las de ejemplo sirven
-  -- para ver cómo queda la página y nunca se enseñan al público.
+  -- escribe el dueño con las palabras del cliente y con su permiso: sin
+  -- permiso anotado no salen en la web. Las de ejemplo sirven para ver cómo
+  -- queda la página y nunca se enseñan al público.
   create table if not exists resenas (
     id integer primary key autoincrement,
     producto_id integer not null references productos(id),
@@ -107,6 +108,7 @@ export const ESQUEMA = `
     detalle text not null default '',
     texto text not null,
     de_ejemplo integer not null default 0,
+    con_permiso integer not null default 0,
     publicada integer not null default 1,
     creado_en text not null default (datetime('now'))
   );

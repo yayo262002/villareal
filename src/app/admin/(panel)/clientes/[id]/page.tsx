@@ -15,7 +15,9 @@ import { EntradaFoto } from "@/components/entrada-foto";
 import { negocio } from "@/config/negocio";
 import { enlaceAlMapa } from "@/lib/despacho";
 import { explicarMotivo, leerDireccion } from "@/lib/direcciones";
-import { enlaceWhatsappA, mensajeAbono, mensajeNota, mensajeRecordatorio } from "@/lib/whatsapp";
+import { enlaceWhatsappA, mensajeAbono, mensajeNota, mensajePedirResena, mensajeRecordatorio } from "@/lib/whatsapp";
+import { rutaProducto } from "@/lib/enlaces";
+import { direccionCompleta } from "@/config/negocio";
 import estilos from "../../panel.module.css";
 
 export default async function PaginaCliente({
@@ -64,6 +66,24 @@ export default async function PaginaCliente({
         tasa,
       }),
     );
+
+  // Pedirle su opinión de lo que ha comprado, para las reseñas de la web.
+  const comprados = new Map(ventas.flatMap((v) => v.lineas).map((l) => [l.producto_id, l.producto_nombre]));
+  const pedirResena = [...comprados]
+    .map(([id, nombre]) => ({
+      id,
+      nombre,
+      enlace: enlaceWhatsappA(
+        cliente.telefono,
+        mensajePedirResena({
+          negocio: negocio.nombre,
+          cliente: cliente.nombre,
+          producto: nombre,
+          enlace: direccionCompleta(rutaProducto({ id, nombre })),
+        }),
+      ),
+    }))
+    .filter((p): p is { id: number; nombre: string; enlace: string } => p.enlace !== null);
 
   // El recibo de cada abono, con el saldo como está hoy.
   const enlaceRecibo = (p: (typeof pagos)[number]) =>
@@ -282,6 +302,23 @@ export default async function PaginaCliente({
           </div>
         )}
       </section>
+
+      {pedirResena.length > 0 && (
+        <section className="tarjeta">
+          <h2 className={estilos.subtitulo}>Pedirle una reseña</h2>
+          <p className={estilos.ayuda}>
+            Abre WhatsApp con el mensaje escrito: le pregunta qué le parece el producto y si da permiso para
+            publicarlo con su nombre. Lo que responda se anota en <Link href="/admin/resenas">Reseñas</Link>.
+          </p>
+          <div className={estilos.carteraAcciones}>
+            {pedirResena.map((p) => (
+              <a key={p.id} href={p.enlace} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                {p.nombre}
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="tarjeta">
         <h2 className={estilos.subtitulo}>Abonos</h2>
