@@ -43,7 +43,7 @@ export default async function PaginaPagos({
           <p className="vacio">Todavía no hay abonos.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Fecha</th>
@@ -58,15 +58,15 @@ export default async function PaginaPagos({
               <tbody>
                 {pagos.map((p) => (
                   <tr key={p.id}>
-                    <td>{fechaCorta(p.fecha)}</td>
-                    <td>
+                    <td data-label="Fecha">{fechaCorta(p.fecha)}</td>
+                    <td data-label="Cliente">
                       <Link href={`/admin/clientes/${p.cliente_id}`}>{p.cliente_nombre}</Link>
                     </td>
-                    <td>{METODOS_PAGO[p.metodo]}</td>
-                    <td className="numero">{formatearMonto(p.monto, p.moneda)}</td>
-                    <td className="numero">{p.tasa ? p.tasa.toFixed(2) : "—"}</td>
-                    <td className="numero">{usd(p.monto_usd)}</td>
-                    <td>{p.referencia || "—"}</td>
+                    <td data-label="Método">{METODOS_PAGO[p.metodo]}</td>
+                    <td data-label="Monto" className="numero">{formatearMonto(p.monto, p.moneda)}</td>
+                    <td data-label="Tasa" className="numero">{p.tasa ? p.tasa.toFixed(2) : "—"}</td>
+                    <td data-label="En USD" className="numero">{usd(p.monto_usd)}</td>
+                    <td data-label="Referencia">{p.referencia || "—"}</td>
                   </tr>
                 ))}
               </tbody>

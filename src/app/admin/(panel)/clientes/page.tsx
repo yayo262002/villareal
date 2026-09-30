@@ -7,6 +7,7 @@ import { enlaceAlMapa, planDeDespacho } from "@/lib/despacho";
 import { explicarMotivo } from "@/lib/direcciones";
 import { fechaCorta, redondear, usd } from "@/lib/dinero";
 import { enlaceWhatsappA } from "@/lib/whatsapp";
+import { normalizar } from "@/lib/buscar";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
 
@@ -20,14 +21,6 @@ const ORDENES = {
   deuda: "Los que más deben",
 } as const;
 type Orden = keyof typeof ORDENES;
-
-/** Sin tildes ni mayúsculas, para que «jose» encuentre a «José». */
-function normalizar(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-}
 
 /**
  * La cartera de clientes. Arriba, el alta rápida: con el teléfono y la

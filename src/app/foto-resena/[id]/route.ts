@@ -24,7 +24,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     headers: {
       "content-type": foto.tipo,
       "content-length": String(foto.tamano),
-      "cache-control": visible ? "public, max-age=604800" : "private, no-store",
+      // Una hora: si la reseña se esconde, su foto deja de verse pronto.
+      "cache-control": visible ? "public, max-age=3600" : "private, no-store",
     },
   });
 }

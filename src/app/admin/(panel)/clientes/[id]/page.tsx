@@ -266,7 +266,7 @@ export default async function PaginaCliente({
           <p className="vacio">Sin ventas todavía.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Nota</th>
@@ -285,14 +285,14 @@ export default async function PaginaCliente({
               <tbody>
                 {cuentas.map((v) => (
                   <tr key={v.id}>
-                    <td>
+                    <td data-label="Nota">
                       <Link href={`/admin/ventas/${v.id}/nota`}>{numeroDeNota(v.id)}</Link>
                     </td>
-                    <td>{fechaCorta(v.fecha)}</td>
-                    <td>{resumenDeLineas(v.lineas)}</td>
-                    <td className="numero">{usd(v.total_usd)}</td>
-                    <td className="numero">{v.pendiente_usd > 0 ? usd(v.pendiente_usd) : "—"}</td>
-                    <td>
+                    <td data-label="Fecha">{fechaCorta(v.fecha)}</td>
+                    <td data-label="Productos">{resumenDeLineas(v.lineas)}</td>
+                    <td data-label="Total" className="numero">{usd(v.total_usd)}</td>
+                    <td data-label="Pendiente" className="numero">{v.pendiente_usd > 0 ? usd(v.pendiente_usd) : "—"}</td>
+                    <td data-label="Estado">
                       <span className={`${estilos.estado} ${estilos[`estado--${v.estado}`]}`}>
                         {NOMBRE_ESTADO[v.estado]}
                       </span>
@@ -305,14 +305,14 @@ export default async function PaginaCliente({
                         </>
                       ) : null}
                     </td>
-                    <td>
+                    <td data-label="Vence">
                       {v.pendiente_usd > 0 ? (
                         <span className={v.vencida ? estilos.vencida : undefined}>{describirVencimiento(v.atraso)}</span>
                       ) : (
                         "—"
                       )}
                     </td>
-                    <td>{v.nota || "—"}</td>
+                    <td data-label="Observación">{v.nota || "—"}</td>
                     <td className={estilos.accionesFila}>
                       <Link href={`/admin/ventas/${v.id}/nota`}>Ver nota</Link>
                       {enlaceNota(v) && (
@@ -355,7 +355,7 @@ export default async function PaginaCliente({
           <p className="vacio">Sin abonos todavía.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Fecha</th>
@@ -372,12 +372,12 @@ export default async function PaginaCliente({
               <tbody>
                 {pagos.map((p) => (
                   <tr key={p.id}>
-                    <td>{fechaCorta(p.fecha)}</td>
-                    <td>{METODOS_PAGO[p.metodo]}</td>
-                    <td className="numero">{formatearMonto(p.monto, p.moneda)}</td>
-                    <td className="numero">{p.tasa ? p.tasa.toFixed(2) : "—"}</td>
-                    <td className="numero">{usd(p.monto_usd)}</td>
-                    <td>{p.referencia || "—"}</td>
+                    <td data-label="Fecha">{fechaCorta(p.fecha)}</td>
+                    <td data-label="Método">{METODOS_PAGO[p.metodo]}</td>
+                    <td data-label="Monto" className="numero">{formatearMonto(p.monto, p.moneda)}</td>
+                    <td data-label="Tasa" className="numero">{p.tasa ? p.tasa.toFixed(2) : "—"}</td>
+                    <td data-label="En USD" className="numero">{usd(p.monto_usd)}</td>
+                    <td data-label="Referencia">{p.referencia || "—"}</td>
                     <td className={estilos.accionesFila}>
                       {enlaceRecibo(p) && (
                         <a href={enlaceRecibo(p)!} target="_blank" rel="noopener" className={estilos.whatsapp}>

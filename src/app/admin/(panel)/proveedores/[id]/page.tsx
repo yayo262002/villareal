@@ -131,7 +131,7 @@ export default async function PaginaProveedor({
           <p className="vacio">Sin compras todavía.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Fecha</th>
@@ -148,14 +148,14 @@ export default async function PaginaProveedor({
               <tbody>
                 {cuentas.map((c) => (
                   <tr key={c.id}>
-                    <td>{fechaCorta(c.fecha)}</td>
-                    <td>{c.descripcion || c.nota || "—"}</td>
-                    <td className="numero">{usd(c.total_usd)}</td>
-                    <td className="numero">{c.pendiente_usd > 0 ? usd(c.pendiente_usd) : "—"}</td>
-                    <td>
+                    <td data-label="Fecha">{fechaCorta(c.fecha)}</td>
+                    <td data-label="Qué">{c.descripcion || c.nota || "—"}</td>
+                    <td data-label="Total" className="numero">{usd(c.total_usd)}</td>
+                    <td data-label="Pendiente" className="numero">{c.pendiente_usd > 0 ? usd(c.pendiente_usd) : "—"}</td>
+                    <td data-label="Estado">
                       <span className={`${estilos.estado} ${estilos[`estado--${c.estado}`]}`}>{NOMBRE_ESTADO[c.estado]}</span>
                     </td>
-                    <td>
+                    <td data-label="Vence">
                       {c.pendiente_usd > 0 ? (
                         <span className={c.vencida ? estilos.vencida : undefined}>{describirVencimiento(c.atraso)}</span>
                       ) : (
@@ -181,7 +181,7 @@ export default async function PaginaProveedor({
           <p className="vacio">Sin pagos todavía.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Fecha</th>
@@ -198,12 +198,12 @@ export default async function PaginaProveedor({
               <tbody>
                 {pagos.map((p) => (
                   <tr key={p.id}>
-                    <td>{fechaCorta(p.fecha)}</td>
-                    <td>{METODOS_PAGO[p.metodo]}</td>
-                    <td className="numero">{formatearMonto(p.monto, p.moneda)}</td>
-                    <td className="numero">{p.tasa ? p.tasa.toFixed(2) : "—"}</td>
-                    <td className="numero">{usd(p.monto_usd)}</td>
-                    <td>{p.referencia || "—"}</td>
+                    <td data-label="Fecha">{fechaCorta(p.fecha)}</td>
+                    <td data-label="Método">{METODOS_PAGO[p.metodo]}</td>
+                    <td data-label="Monto" className="numero">{formatearMonto(p.monto, p.moneda)}</td>
+                    <td data-label="Tasa" className="numero">{p.tasa ? p.tasa.toFixed(2) : "—"}</td>
+                    <td data-label="En USD" className="numero">{usd(p.monto_usd)}</td>
+                    <td data-label="Referencia">{p.referencia || "—"}</td>
                     <td>
                       <Link href={`/admin/pagos-proveedor/${p.id}/eliminar`} className="enlace-fila">
                         Eliminar

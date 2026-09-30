@@ -94,7 +94,7 @@ export default async function PaginaCuentas() {
           <p className="vacio">Nadie debe nada.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Fecha</th>
@@ -111,18 +111,18 @@ export default async function PaginaCuentas() {
               <tbody>
                 {porPagar.map((c) => (
                   <tr key={c.id}>
-                    <td>{fechaCorta(c.fecha)}</td>
-                    <td>
+                    <td data-label="Fecha">{fechaCorta(c.fecha)}</td>
+                    <td data-label="Cliente">
                       <Link href={`/admin/clientes/${c.cliente_id}`}>{c.cliente_nombre}</Link>
                     </td>
-                    <td className="numero">{usd(c.total_usd)}</td>
-                    <td className={`numero ${estilos.deuda}`}>{usd(c.pendiente_usd)}</td>
-                    <td>
+                    <td data-label="Total" className="numero">{usd(c.total_usd)}</td>
+                    <td data-label="Pendiente" className={`numero ${estilos.deuda}`}>{usd(c.pendiente_usd)}</td>
+                    <td data-label="Estado">
                       <span className={`${estilos.estado} ${estilos[`estado--${c.estado}`]}`}>
                         {NOMBRE_ESTADO[c.estado]}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Vence">
                       <span className={c.vencida ? estilos.vencida : undefined}>{describirVencimiento(c.atraso)}</span>
                     </td>
                     <td>
@@ -148,7 +148,7 @@ export default async function PaginaCuentas() {
           <p className="vacio">Todavía no hay ninguna cuenta pagada.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Fecha</th>
@@ -160,12 +160,12 @@ export default async function PaginaCuentas() {
               <tbody>
                 {pagadas.slice(0, PAGADAS_A_MOSTRAR).map((c) => (
                   <tr key={c.id}>
-                    <td>{fechaCorta(c.fecha)}</td>
-                    <td>
+                    <td data-label="Fecha">{fechaCorta(c.fecha)}</td>
+                    <td data-label="Cliente">
                       <Link href={`/admin/clientes/${c.cliente_id}`}>{c.cliente_nombre}</Link>
                     </td>
-                    <td className="numero">{usd(c.total_usd)}</td>
-                    <td>{c.nota || "—"}</td>
+                    <td data-label="Total" className="numero">{usd(c.total_usd)}</td>
+                    <td data-label="Nota">{c.nota || "—"}</td>
                   </tr>
                 ))}
               </tbody>

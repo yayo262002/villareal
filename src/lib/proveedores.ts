@@ -202,6 +202,7 @@ export async function registrarPagoProveedor(datos: {
 }): Promise<number> {
   if (!(datos.monto > 0)) throw new Error("El monto tiene que ser mayor que cero.");
   const montoUsd = aDolares(datos.monto, datos.moneda, datos.tasa);
+  if (!(montoUsd > 0)) throw new Error("Ese monto no llega a un centavo de dólar. Revisa el monto y la tasa.");
   const r = await ejecutar(
     `insert into pagos_proveedores (proveedor_id, fecha, metodo, moneda, monto, tasa, monto_usd, referencia, nota)
      values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,

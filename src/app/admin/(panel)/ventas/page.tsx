@@ -5,11 +5,14 @@ import { conLineas, listarVentas } from "@/lib/ventas";
 import { guardarVenta } from "@/lib/acciones";
 import { FILAS_VENTA, FILAS_VENTA_A_LA_VISTA } from "@/lib/constantes";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
+import { ventaCoincide } from "@/lib/buscar";
 import { fechaCorta, hoy, nombreUnidad, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Ventas" };
+
+const MAXIMO_AL_BUSCAR = 100;
 
 /** Una fila del formulario: producto, cantidad y precio. */
 function FilaDeVenta({ i, productos }: { i: number; productos: Producto[] }) {
@@ -57,10 +60,15 @@ export default async function PaginaVentas({
 }) {
   const parametros = await searchParams;
   const clientePreseleccionado = typeof parametros.cliente === "string" ? parametros.cliente : "";
+  const busqueda = typeof parametros.q === "string" ? parametros.q.trim() : "";
+  // Sin buscar, las últimas 50. Buscando, se mira entre todas y se enseñan hasta 100.
   const [clientes, productos, ventas] = await Promise.all([
     listarClientes(),
     listarProductos(true),
-    listarVentas(50).then(conLineas),
+    (busqueda
+      ? listarVentas(100000).then((todas) => todas.filter((v) => ventaCoincide(v, busqueda)).slice(0, MAXIMO_AL_BUSCAR))
+      : listarVentas(50)
+    ).then(conLineas),
   ]);
   const filas = Array.from({ length: FILAS_VENTA }, (_, i) => i);
 
@@ -134,12 +142,34 @@ export default async function PaginaVentas({
       </section>
 
       <section className="tarjeta">
-        <h2 className={estilos.subtitulo}>Últimas ventas</h2>
+        <h2 className={estilos.subtitulo} id="lista">
+          {busqueda ? `${ventas.length === MAXIMO_AL_BUSCAR ? "Más de " : ""}${ventas.length} ${ventas.length === 1 ? "venta" : "ventas"} con «${busqueda}»` : "Últimas ventas"}
+        </h2>
+        <form method="get" action="/admin/ventas#lista" className={estilos.buscador} role="search">
+          <label htmlFor="buscar-venta" className="visualmente-oculto">
+            Buscar una venta
+          </label>
+          <input
+            id="buscar-venta"
+            name="q"
+            type="search"
+            placeholder="Cliente, n.º de nota o fecha (30/09)"
+            defaultValue={busqueda}
+          />
+          <button type="submit" className="boton boton--secundario">
+            Buscar
+          </button>
+          {busqueda && (
+            <Link href="/admin/ventas#lista" className={estilos.limpiar}>
+              Ver las últimas
+            </Link>
+          )}
+        </form>
         {ventas.length === 0 ? (
-          <p className="vacio">Todavía no hay ventas.</p>
+          <p className="vacio">{busqueda ? `Ninguna venta coincide con «${busqueda}».` : "Todavía no hay ventas."}</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Nota</th>
@@ -153,16 +183,16 @@ export default async function PaginaVentas({
               <tbody>
                 {ventas.map((v) => (
                   <tr key={v.id}>
-                    <td>
+                    <td data-label="Nota">
                       <Link href={`/admin/ventas/${v.id}/nota`}>{numeroDeNota(v.id)}</Link>
                     </td>
-                    <td>{fechaCorta(v.fecha)}</td>
-                    <td>
+                    <td data-label="Fecha">{fechaCorta(v.fecha)}</td>
+                    <td data-label="Cliente">
                       <Link href={`/admin/clientes/${v.cliente_id}`}>{v.cliente_nombre}</Link>
                     </td>
-                    <td>{resumenDeLineas(v.lineas)}</td>
-                    <td className="numero">{usd(v.total_usd)}</td>
-                    <td>
+                    <td data-label="Productos">{resumenDeLineas(v.lineas)}</td>
+                    <td data-label="Total" className="numero">{usd(v.total_usd)}</td>
+                    <td data-label="Entrega">
                       {v.por_entregar ? (
                         <Link href="/admin/despacho" className={`${estilos.estado} ${estilos["estado--parcial"]}`}>
                           Por entregar

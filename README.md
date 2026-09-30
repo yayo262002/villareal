@@ -39,8 +39,14 @@ entero**, fotos incluidas: haz copia de él (ver más abajo).
 npm run verificar    typecheck + lint + pruebas unitarias
 npm run build        que compila
 npm run prueba:local   la web entera con una base temporal (después de build)
-npm run prueba:web     la web publicada; crea un cliente de prueba y lo borra
+npm run prueba:web     la web publicada, solo mirando: no crea ni borra nada
 ```
+
+La web publicada tiene los datos de verdad del negocio. Por eso
+`prueba:web` solo abre las pantallas, baja las descargas y abre la copia
+de seguridad: nada que escriba. Crear una venta de prueba allí gastaría un
+número de nota, y guardar una copia empujaría fuera una de las de cada
+noche. Todo lo que escribe se prueba en local.
 
 ## Copias de seguridad
 
@@ -126,6 +132,7 @@ src/lib/vencimientos.ts   Cada cliente y cada proveedor con lo que tiene vencido
 src/lib/proveedores.ts    Proveedores, sus compras y los pagos que se les hacen
 src/lib/caja.ts           El cierre del día: vendido, entrado por método y salido
 src/lib/exportar.ts       Lo que se descarga para Excel: movimientos y resumen por día
+src/lib/buscar.ts         Buscar sin tildes ni mayúsculas; una nota por su número
 src/lib/direcciones.ts    Lee una dirección y la sitúa en la cuadrícula
 src/lib/ruta.ts           El orden en que conviene visitar a los clientes
 src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho
@@ -251,7 +258,9 @@ datos/                    La base de datos (fuera de Git)
   lo pagado a proveedores, y lo que entró neto (cobrado menos pagado).
 - Un pago en bolívares se guarda con la **tasa del día** que se escribió al
   registrarlo, y se convierte a dólares en ese momento. Si la tasa cambia
-  mañana, el pago de hoy no se mueve.
+  mañana, el pago de hoy no se mueve. Un monto que no llega a un centavo
+  de dólar (Bs 1, por ejemplo) se rechaza: casi siempre es un error al
+  teclear.
 - El saldo del cliente es lo comprado menos lo pagado, en dólares.
 - Una venta o un pago mal anotado se **borra** desde la ficha del cliente
   (enlace «Eliminar», con pantalla de confirmación) y se registra de nuevo.
@@ -332,6 +341,11 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     reparte.
 - **El formulario de venta** tiene seis filas de producto: dos a la vista y
   cuatro más en «Más productos». Son fijas porque no lleva JavaScript.
+- **Buscar una venta.** En Ventas, por el nombre del cliente, por el número
+  de la nota («26» o «000026») o por la fecha («30/09»). Sin buscar salen
+  las últimas 50 (`src/lib/buscar.ts`).
+- **Los números de nota** son los de la venta y no se repiten: si una nota
+  se borra, su número no se vuelve a usar.
 
 ## Proveedores
 
@@ -380,6 +394,10 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   día». Si el teléfono no está, la web no muestra ninguno.
 - **Escribir en castellano.** Código, comentarios, mensajes y commits.
 - **Móvil primero.** El dueño usa el panel desde el teléfono en el local.
+  Ninguna página se desborda a los lados. Las tablas del panel llevan la
+  clase `tabla--fichas` y cada celda su `data-label`: en el teléfono cada
+  fila se pinta como una ficha, con el nombre de la columna delante de
+  cada dato; en pantallas anchas y en papel siguen siendo tablas.
 - **Ninguna clave en el código.** Van en `.env.local`.
 
 ## Pendiente

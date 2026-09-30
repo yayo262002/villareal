@@ -60,6 +60,8 @@ export async function eliminarPago(id: number): Promise<boolean> {
 export async function registrarPago(datos: DatosPago): Promise<number> {
   if (!(datos.monto > 0)) throw new Error("El monto tiene que ser mayor que cero.");
   const montoUsd = aDolares(datos.monto, datos.moneda, datos.tasa);
+  // Bs 1 a la tasa de hoy son USD 0,00: se guardaría un abono que no abona nada.
+  if (!(montoUsd > 0)) throw new Error("Ese monto no llega a un centavo de dólar. Revisa el monto y la tasa.");
 
   const r = await ejecutar(
     `insert into pagos (cliente_id, fecha, metodo, moneda, monto, tasa, monto_usd, referencia, nota)

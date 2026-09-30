@@ -63,7 +63,7 @@ export default async function PaginaInforme() {
           <p className="vacio">Todavía no hay ventas ni pagos.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Mes</th>
@@ -78,13 +78,13 @@ export default async function PaginaInforme() {
               <tbody>
                 {meses.map((m) => (
                   <tr key={m.mes}>
-                    <td>{mesLegible(m.mes)}</td>
-                    <td className="numero">{m.ventas}</td>
-                    <td className="numero">{usd(Number(m.vendido_usd))}</td>
-                    <td className="numero">{usd(Number(m.cobrado_usd))}</td>
-                    <td className="numero">{usd(Number(m.comprado_usd))}</td>
-                    <td className="numero">{usd(Number(m.pagado_proveedores_usd))}</td>
-                    <td className="numero">{usd(Number(m.cobrado_usd) - Number(m.pagado_proveedores_usd))}</td>
+                    <td data-label="Mes">{mesLegible(m.mes)}</td>
+                    <td data-label="Ventas" className="numero">{m.ventas}</td>
+                    <td data-label="Vendido" className="numero">{usd(Number(m.vendido_usd))}</td>
+                    <td data-label="Cobrado" className="numero">{usd(Number(m.cobrado_usd))}</td>
+                    <td data-label="Comprado" className="numero">{usd(Number(m.comprado_usd))}</td>
+                    <td data-label="Pagado a proveedores" className="numero">{usd(Number(m.pagado_proveedores_usd))}</td>
+                    <td data-label="Entró neto" className="numero">{usd(Number(m.cobrado_usd) - Number(m.pagado_proveedores_usd))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -99,7 +99,7 @@ export default async function PaginaInforme() {
           <p className="vacio">Todavía no hay ventas.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Clientes</th>
@@ -114,11 +114,11 @@ export default async function PaginaInforme() {
                   const reciente = tiposRecientes.find((r) => r.tipo === t.tipo);
                   return (
                     <tr key={t.tipo}>
-                      <td>{t.tipo === "mayor" ? "Al mayor" : "Al detal"}</td>
-                      <td className="numero">{t.ventas}</td>
-                      <td className="numero">{usd(Number(reciente?.vendido_usd ?? 0))}</td>
-                      <td className="numero">{usd(Number(t.vendido_usd))}</td>
-                      <td className="numero">
+                      <td data-label="Clientes">{t.tipo === "mayor" ? "Al mayor" : "Al detal"}</td>
+                      <td data-label="Ventas" className="numero">{t.ventas}</td>
+                      <td data-label={`Últimos ${DIAS_RECIENTES} días`} className="numero">{usd(Number(reciente?.vendido_usd ?? 0))}</td>
+                      <td data-label="Total" className="numero">{usd(Number(t.vendido_usd))}</td>
+                      <td data-label="Parte" className="numero">
                         {totalTipos > 0 ? Math.round((Number(t.vendido_usd) / totalTipos) * 100) : 0} %
                       </td>
                     </tr>
@@ -137,7 +137,7 @@ export default async function PaginaInforme() {
             <p className="vacio">Todavía no hay ventas.</p>
           ) : (
             <div className="tabla-envoltorio">
-              <table className="tabla">
+              <table className="tabla tabla--fichas">
                 <thead>
                   <tr>
                     <th>Producto</th>
@@ -151,10 +151,10 @@ export default async function PaginaInforme() {
                     const reciente = productosRecientes.find((r) => r.producto === p.producto);
                     return (
                       <tr key={p.producto}>
-                        <td>{p.producto}</td>
-                        <td className="numero">{cantidad(Number(reciente?.cantidad ?? 0), p.unidad)}</td>
-                        <td className="numero">{cantidad(Number(p.cantidad), p.unidad)}</td>
-                        <td className="numero">{usd(Number(p.vendido_usd))}</td>
+                        <td data-label="Producto">{p.producto}</td>
+                        <td data-label={`Últimos ${DIAS_RECIENTES} días`} className="numero">{cantidad(Number(reciente?.cantidad ?? 0), p.unidad)}</td>
+                        <td data-label="Total" className="numero">{cantidad(Number(p.cantidad), p.unidad)}</td>
+                        <td data-label="Vendido" className="numero">{usd(Number(p.vendido_usd))}</td>
                       </tr>
                     );
                   })}
@@ -170,7 +170,7 @@ export default async function PaginaInforme() {
             <p className="vacio">Todavía no hay ventas.</p>
           ) : (
             <div className="tabla-envoltorio">
-              <table className="tabla">
+              <table className="tabla tabla--fichas">
                 <thead>
                   <tr>
                     <th>Cliente</th>
@@ -181,11 +181,11 @@ export default async function PaginaInforme() {
                 <tbody>
                   {clientes.map((c) => (
                     <tr key={c.cliente_id}>
-                      <td>
+                      <td data-label="Cliente">
                         <Link href={`/admin/clientes/${c.cliente_id}`}>{c.cliente}</Link>
                       </td>
-                      <td className="numero">{c.ventas}</td>
-                      <td className="numero">{usd(Number(c.vendido_usd))}</td>
+                      <td data-label="Compras" className="numero">{c.ventas}</td>
+                      <td data-label="Comprado" className="numero">{usd(Number(c.vendido_usd))}</td>
                     </tr>
                   ))}
                 </tbody>

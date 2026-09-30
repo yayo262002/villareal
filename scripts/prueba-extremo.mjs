@@ -4,10 +4,12 @@
 //   npm run prueba:local   arranca `next start` con una base temporal (hace
 //                          falta `npm run build` antes). Prueba también los
 //                          precios, porque la base es de usar y tirar.
-//   npm run prueba:web     contra la web publicada. No toca productos ni la
-//                          tasa: crea un cliente de prueba y lo borra todo.
+//   npm run prueba:web     contra la web publicada, SOLO MIRANDO. Allí están
+//                          los datos de verdad del negocio: no crea, no
+//                          cambia ni borra nada. Abre cada pantalla, baja
+//                          las descargas y comprueba la copia de seguridad.
 //
-// La clave y el acceso a Turso salen de `.env.local`; aquí no hay secretos.
+// La clave sale de `.env.local`; aquí no hay secretos.
 
 import { spawn } from "node:child_process";
 import { createHmac } from "node:crypto";
@@ -15,7 +17,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { createClient } from "@libsql/client";
 
 const raiz = process.cwd();
 const urlWeb = process.argv.find((a) => a.startsWith("--url="))?.slice(6) ?? null;
@@ -47,18 +48,10 @@ function comprobar(nombre, condicion, detalle = "") {
   if (!condicion) fallos++;
 }
 
-// ---------- La base, para comprobar y para limpiar ----------
+// ---------- La base temporal de la prueba local, para comprobar ----------
 
-/** En local se lee el archivo temporal; en producción, Turso. */
+/** Lee el archivo temporal. Solo en local: la base de verdad no se toca desde aquí. */
 async function consultar(sql, args = []) {
-  if (enProduccion) {
-    const nube = createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
-    try {
-      return (await nube.execute({ sql, args })).rows.map((f) => ({ ...f }));
-    } finally {
-      nube.close();
-    }
-  }
   const db = new DatabaseSync(rutaDb, { readOnly: true });
   try {
     return db.prepare(sql).all(...args).map((f) => ({ ...f }));
@@ -171,8 +164,11 @@ async function probarEntrada() {
   const sinSesion = await pagina("/admin", "");
   comprobar("el panel sin sesión manda a entrar", sinSesion.status === 307 && sinSesion.destino.includes("/admin/entrar"));
 
-  const mala = await enviar("/admin/entrar", 'name="clave"', { clave: "incorrecta" }, "");
-  comprobar("una clave incorrecta no entra", mala.destino.includes("no es correcta"));
+  // Una clave mala deja anotado el fallo: en la web publicada no se prueba.
+  if (!enProduccion) {
+    const mala = await enviar("/admin/entrar", 'name="clave"', { clave: "incorrecta" }, "");
+    comprobar("una clave incorrecta no entra", mala.destino.includes("no es correcta"));
+  }
 
   const buena = await enviar("/admin/entrar", 'name="clave"', { clave: env.ADMIN_CLAVE }, "");
   const valor = buena.galleta.match(/villareal_sesion=([^;]+)/)?.[1];
@@ -302,271 +298,281 @@ async function probarPrecios() {
 
 /** Alta de cliente, ventas, pago, cuentas, foto, descargas y borrados. */
 async function probarNegocio() {
-  const nombre = enProduccion ? "Prueba Vercel (borrar)" : "Bodega Prueba";
+  const nombre = "Bodega Prueba";
   let r = await enviar("/admin/clientes", 'name="cedula_rif"', {
     nombre, telefono: "0412-0000000", direccion: "Carrera 19 con calle 25", tipo: "mayor",
   });
   const clienteId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
   comprobar(`alta de cliente mayorista (${r.ms} ms)`, r.destino.includes("Cliente guardado") && clienteId > 0, r.destino);
   if (!clienteId) throw new Error("Sin cliente no se puede seguir");
-  const limpiar = [clienteId];
 
-  try {
-    const [producto] = await consultar("select id from productos order by id limit 1");
-    const productoId = String(producto.id);
+  const [producto] = await consultar("select id from productos order by id limit 1");
+  const productoId = String(producto.id);
 
-    r = await enviar("/admin/ventas", 'name="producto_0"', {
-      cliente_id: String(clienteId), fecha: "2026-09-01", producto_0: productoId, cantidad_0: "2", precio_0: "5", nota: "primera",
-      entrega: "despacho",
-    });
-    comprobar(`venta con precio escrito (${r.ms} ms)`, r.destino.includes("Venta registrada") && cerca((await cuentasDe(clienteId)).ventas, 10));
-    const pedidoId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
-    comprobar("la venta que se lleva al cliente queda por entregar", r.destino.includes("Queda por entregar") && pedidoId > 0, r.destino);
+  r = await enviar("/admin/ventas", 'name="producto_0"', {
+    cliente_id: String(clienteId), fecha: "2026-09-01", producto_0: productoId, cantidad_0: "2", precio_0: "5", nota: "primera",
+    entrega: "despacho",
+  });
+  comprobar(`venta con precio escrito (${r.ms} ms)`, r.destino.includes("Venta registrada") && cerca((await cuentasDe(clienteId)).ventas, 10));
+  const pedidoId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  comprobar("la venta que se lleva al cliente queda por entregar", r.destino.includes("Queda por entregar") && pedidoId > 0, r.destino);
 
-    let esperado = 10;
-    if (!enProduccion) {
-      r = await enviar("/admin/ventas", 'name="producto_0"', {
-        cliente_id: String(clienteId), fecha: "2026-09-15", producto_0: "1", cantidad_0: "2", precio_0: "",
-      });
-      esperado += 14.96;
-      comprobar("al mayorista, sin precio escrito, se le cobra al mayor (2 × 7,48)", cerca((await cuentasDe(clienteId)).ventas, esperado), JSON.stringify(await cuentasDe(clienteId)));
+  let esperado = 10;
+  r = await enviar("/admin/ventas", 'name="producto_0"', {
+    cliente_id: String(clienteId), fecha: "2026-09-15", producto_0: "1", cantidad_0: "2", precio_0: "",
+  });
+  esperado += 14.96;
+  comprobar("al mayorista, sin precio escrito, se le cobra al mayor (2 × 7,48)", cerca((await cuentasDe(clienteId)).ventas, esperado), JSON.stringify(await cuentasDe(clienteId)));
 
-      r = await enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "Cliente Detal", telefono: "", tipo: "detal" });
-      const detalId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
-      limpiar.push(detalId);
-      r = await enviar("/admin/ventas", 'name="producto_0"', {
-        cliente_id: String(detalId), fecha: "2026-09-15", producto_0: "1", cantidad_0: "2", precio_0: "",
-      });
-      comprobar("al cliente al detal se le cobra al detal (2 × 8,50)", cerca((await cuentasDe(detalId)).ventas, 17), JSON.stringify(await cuentasDe(detalId)));
+  r = await enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "Cliente Detal", telefono: "", tipo: "detal" });
+  const detalId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
+  r = await enviar("/admin/ventas", 'name="producto_0"', {
+    cliente_id: String(detalId), fecha: "2026-09-15", producto_0: "1", cantidad_0: "2", precio_0: "",
+  });
+  comprobar("al cliente al detal se le cobra al detal (2 × 8,50)", cerca((await cuentasDe(detalId)).ventas, 17), JSON.stringify(await cuentasDe(detalId)));
 
-      r = await enviar("/admin/ventas", 'name="producto_0"', {
-        cliente_id: String(clienteId), fecha: "2026-09-15", producto_0: "3", cantidad_0: "1", precio_0: "",
-      });
-      comprobar("un producto sin precio no se vende sin escribirlo", r.destino.includes("no tiene precio"), r.destino);
+  r = await enviar("/admin/ventas", 'name="producto_0"', {
+    cliente_id: String(clienteId), fecha: "2026-09-15", producto_0: "3", cantidad_0: "1", precio_0: "",
+  });
+  comprobar("un producto sin precio no se vende sin escribirlo", r.destino.includes("no tiene precio"), r.destino);
 
-      // Un pedido largo: la primera fila y la última, que está en «Más productos».
-      r = await enviar("/admin/ventas", 'name="producto_0"', {
-        cliente_id: String(detalId), fecha: "2026-09-16", producto_0: "1", cantidad_0: "1", precio_0: "",
-        producto_5: "2", cantidad_5: "0.5", precio_5: "",
-      });
-      comprobar("una venta con productos en la última fila (8,50 + medio kilo a 7)", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
-    }
+  // Un pedido largo: la primera fila y la última, que está en «Más productos».
+  r = await enviar("/admin/ventas", 'name="producto_0"', {
+    cliente_id: String(detalId), fecha: "2026-09-16", producto_0: "1", cantidad_0: "1", precio_0: "",
+    producto_5: "2", cantidad_5: "0.5", precio_5: "",
+  });
+  comprobar("una venta con productos en la última fila (8,50 + medio kilo a 7)", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
 
-    r = await enviar(`/admin/clientes/${clienteId}`, 'name="monto"', {
-      cliente_id: String(clienteId), fecha: "2026-09-20", metodo: "pago_movil", monto: "146", tasa: "36.5",
-      volver_a: `/admin/clientes/${clienteId}`,
-    });
-    comprobar(`pago en bolívares con tasa: Bs 146 = USD 4 (${r.ms} ms)`, r.destino.includes("Abono registrado") && cerca((await cuentasDe(clienteId)).pagos, 4));
+  r = await enviar(`/admin/clientes/${clienteId}`, 'name="monto"', {
+    cliente_id: String(clienteId), fecha: "2026-09-20", metodo: "pago_movil", monto: "146", tasa: "36.5",
+    volver_a: `/admin/clientes/${clienteId}`,
+  });
+  comprobar(`pago en bolívares con tasa: Bs 146 = USD 4 (${r.ms} ms)`, r.destino.includes("Abono registrado") && cerca((await cuentasDe(clienteId)).pagos, 4));
 
-    const ficha = (await pagina(`/admin/clientes/${clienteId}`)).html;
-    comprobar("ficha: la primera nota queda abonada con USD 6 pendientes", ficha.includes(">Abonada<") && ficha.includes(usd("6,00")));
-    comprobar("ficha: recordar deuda y enviar nota por WhatsApp", ficha.includes("Recordar deuda por WhatsApp") && ficha.includes(">Enviar nota<") && ficha.includes("wa.me/584120000000"));
-    comprobar("ficha: la dirección entra en la ruta y tiene mapa", ficha.includes("Entra en la ruta de despacho") && ficha.includes("google.com/maps/search"));
-    comprobar(
-      "ficha: la nota del 1 de septiembre pasó sus 7 días de crédito y sale vencida",
-      /Vencida hace \d+ días/.test(ficha) && legible(ficha).includes("Con el plazo vencido") && ficha.includes(usd("6,00")) && ficha.includes('name="dias_credito"'),
-    );
-    const resumen = legible((await pagina("/admin")).html);
-    comprobar("resumen: quien debe sale con su plazo vencido y lo que se debe a proveedores", /Vencida hace \d+ días/.test(resumen) && resumen.includes("Debo a proveedores") && resumen.includes("A quién le debo"));
-    const recordatorio = decodeURIComponent(ficha.match(/wa\.me\/584120000000\?text=([^"]*Tiene%20pendiente[^"]*)"/)?.[1] ?? "");
-    comprobar("el recordatorio por WhatsApp dice desde cuándo venció cada nota", /vencida hace \d+ días/.test(recordatorio), recordatorio);
-    const caja = legible((await pagina("/admin/caja?fecha=2026-09-20")).html);
-    comprobar(
-      "el cierre del día 20 de septiembre cuadra el abono en bolívares por método",
-      caja.includes("Cierre del 20/09/2026") && caja.includes("Pago móvil") && caja.includes("Bs 146,00") && caja.includes(usd("4,00")) && caja.includes("1 movimiento"),
-    );
-    comprobar("el cierre de hoy abre sin fecha", (await pagina("/admin/caja")).html.includes("Cierre del día"));
-    const cuentasVencidas = legible((await pagina("/admin/cuentas")).html);
-    comprobar("cuentas: columna «Vence» y total con el plazo vencido", cuentasVencidas.includes(">Vence<") && /Vencida hace \d+ días/.test(cuentasVencidas) && cuentasVencidas.includes("Con el plazo vencido"));
+  r = await enviar(`/admin/clientes/${clienteId}`, 'name="monto"', {
+    cliente_id: String(clienteId), fecha: "2026-09-20", metodo: "pago_movil", monto: "0.1", tasa: "36.5",
+    volver_a: `/admin/clientes/${clienteId}`,
+  });
+  comprobar("un abono que no llega a un centavo de dólar se rechaza", r.destino.includes("no llega a un centavo") && cerca((await cuentasDe(clienteId)).pagos, 4), r.destino);
 
-    // La nota de entrega de la primera venta.
-    const notaId = Math.min(...[...ficha.matchAll(/\/admin\/ventas\/(\d+)\/nota/g)].map((m) => Number(m[1])));
-    const nota = await pagina(`/admin/ventas/${notaId}/nota`);
-    comprobar(
-      `nota de entrega (${nota.ms} ms)`,
-      nota.status === 200 && nota.html.includes("Nota de entrega") && legible(nota.html).includes(`N.º ${String(notaId).padStart(6, "0")}`) &&
-        nota.html.includes(nombre) && nota.html.includes("0412-0000000") && nota.html.includes("Carrera 19 con calle 25") &&
-        nota.html.includes(usd("10,00")) && nota.html.includes("No es una factura"),
-    );
-    comprobar("la nota dice lo abonado y lo que queda", nota.html.includes(usd("4,00")) && nota.html.includes(usd("6,00")) && nota.html.includes("Abonada"));
-    const notaPorWhatsapp = decodeURIComponent(nota.html.match(/wa\.me\/584120000000\?text=([^"]+)"/)?.[1] ?? "");
-    comprobar(
-      "la nota tiene fecha límite de pago (7 días) y va con su número por WhatsApp",
-      legible(nota.html).includes("Fecha límite de pago") && legible(nota.html).includes("08/09/2026") &&
-        notaPorWhatsapp.includes(`Nota N.º ${String(notaId).padStart(6, "0")} del 01/09/2026`) && notaPorWhatsapp.includes("Fecha límite de pago de esta nota: 08/09/2026"),
-      notaPorWhatsapp,
-    );
-    comprobar("una nota que no existe da 404", (await pagina("/admin/ventas/999999/nota")).status === 404);
+  // Se mira solo la lista: el formulario de arriba nombra a todos los clientes.
+  const paginaBuscada = legible((await pagina(`/admin/ventas?q=${encodeURIComponent("bodega")}`)).html);
+  const desdeLaLista = paginaBuscada.slice(paginaBuscada.indexOf('id="lista"'));
+  const buscada = desdeLaLista.slice(0, desdeLaLista.indexOf("</section>"));
+  const porNumero = legible((await pagina(`/admin/ventas?q=${pedidoId}`)).html);
+  comprobar(
+    "las ventas se buscan por cliente y por número de nota",
+    buscada.includes("con «bodega»") && buscada.includes(nombre) && !buscada.includes("Cliente Detal") &&
+      porNumero.includes(`1 venta con «${pedidoId}»`) && legible((await pagina("/admin/ventas?q=nadie-se-llama-asi")).html).includes("Ninguna venta coincide"),
+    buscada.slice(0, 200),
+  );
 
-    // La ruta de despacho.
-    const despacho = await pagina("/admin/despacho");
-    comprobar(
-      `ruta de despacho (${despacho.ms} ms)`,
-      despacho.status === 200 && despacho.html.includes(nombre) && despacho.html.includes("Vuelta a la tienda") &&
-        despacho.html.includes("google.com/maps/dir/") && despacho.html.includes("Hacer la ruta"),
-    );
-    const soloEste = await pagina(`/admin/despacho?c=${clienteId}`);
-    comprobar("ruta con un solo cliente elegido: 1 parada, 49 cuadras de ida y vuelta", /: <!-- -->1<!-- --> <!-- -->parada/.test(soloEste.html) && soloEste.html.includes("49 cuadras"), soloEste.html.match(/Los clientes elegidos[^<]*(<!-- -->[^<]*)*/)?.[0]);
+  const ficha = (await pagina(`/admin/clientes/${clienteId}`)).html;
+  comprobar("ficha: la primera nota queda abonada con USD 6 pendientes", ficha.includes(">Abonada<") && ficha.includes(usd("6,00")));
+  comprobar("ficha: recordar deuda y enviar nota por WhatsApp", ficha.includes("Recordar deuda por WhatsApp") && ficha.includes(">Enviar nota<") && ficha.includes("wa.me/584120000000"));
+  comprobar("ficha: la dirección entra en la ruta y tiene mapa", ficha.includes("Entra en la ruta de despacho") && ficha.includes("google.com/maps/search"));
+  comprobar(
+    "ficha: la nota del 1 de septiembre pasó sus 7 días de crédito y sale vencida",
+    /Vencida hace \d+ días/.test(ficha) && legible(ficha).includes("Con el plazo vencido") && ficha.includes(usd("6,00")) && ficha.includes('name="dias_credito"'),
+  );
+  const resumen = legible((await pagina("/admin")).html);
+  comprobar("resumen: quien debe sale con su plazo vencido y lo que se debe a proveedores", /Vencida hace \d+ días/.test(resumen) && resumen.includes("Debo a proveedores") && resumen.includes("A quién le debo"));
+  const recordatorio = decodeURIComponent(ficha.match(/wa\.me\/584120000000\?text=([^"]*Tiene%20pendiente[^"]*)"/)?.[1] ?? "");
+  comprobar("el recordatorio por WhatsApp dice desde cuándo venció cada nota", /vencida hace \d+ días/.test(recordatorio), recordatorio);
+  const caja = legible((await pagina("/admin/caja?fecha=2026-09-20")).html);
+  comprobar(
+    "el cierre del día 20 de septiembre cuadra el abono en bolívares por método",
+    caja.includes("Cierre del 20/09/2026") && caja.includes("Pago móvil") && caja.includes("Bs 146,00") && caja.includes(usd("4,00")) && caja.includes("1 movimiento"),
+  );
+  comprobar("el cierre de hoy abre sin fecha", (await pagina("/admin/caja")).html.includes("Cierre del día"));
+  const cuentasVencidas = legible((await pagina("/admin/cuentas")).html);
+  comprobar("cuentas: columna «Vence» y total con el plazo vencido", cuentasVencidas.includes(">Vence<") && /Vencida hace \d+ días/.test(cuentasVencidas) && cuentasVencidas.includes("Con el plazo vencido"));
 
-    // Los pedidos por entregar: salen en el despacho con lo que hay que cargar.
-    const numeroDelPedido = String(pedidoId).padStart(6, "0");
-    const entregas = await pagina("/admin/despacho?solo=entregas");
-    const textoEntregas = legible(entregas.html);
-    comprobar(
-      `el despacho enseña el pedido por entregar (${entregas.ms} ms)`,
-      textoEntregas.includes("Pedidos por entregar") && textoEntregas.includes(nombre) &&
-        textoEntregas.includes(`Nota ${numeroDelPedido}`) && textoEntregas.includes(">Entregado<"),
-    );
-    // Lo que hay que cargar se mira con el cliente solo: en la web puede haber pedidos de verdad.
-    comprobar(
-      "y lo que hay que cargar para llevárselo",
-      legible(soloEste.html).includes("Para cargar") && /<strong>2 (kg|cartón|unidad)<\/strong>/.test(legible(soloEste.html)) &&
-        legible(soloEste.html).includes("1 pedido por entregar"),
-    );
-    comprobar("el aviso de «vamos en camino» lleva el pedido", decodeURIComponent(entregas.html.match(/wa\.me\/584120000000\?text=([^"]+)"/)?.[1] ?? "").includes("Vamos en camino con su pedido:"));
-    comprobar("la cartera dice quién tiene un pedido esperando", (await pagina("/admin/clientes")).html.includes("1 pedido por entregar"));
-    comprobar("el resumen cuenta los pedidos por entregar", legible((await pagina("/admin")).html).includes("Pedidos por entregar"));
+  // La nota de entrega de la primera venta.
+  const notaId = Math.min(...[...ficha.matchAll(/\/admin\/ventas\/(\d+)\/nota/g)].map((m) => Number(m[1])));
+  const nota = await pagina(`/admin/ventas/${notaId}/nota`);
+  comprobar(
+    `nota de entrega (${nota.ms} ms)`,
+    nota.status === 200 && nota.html.includes("Nota de entrega") && legible(nota.html).includes(`N.º ${String(notaId).padStart(6, "0")}`) &&
+      nota.html.includes(nombre) && nota.html.includes("0412-0000000") && nota.html.includes("Carrera 19 con calle 25") &&
+      nota.html.includes(usd("10,00")) && nota.html.includes("No es una factura"),
+  );
+  comprobar("la nota dice lo abonado y lo que queda", nota.html.includes(usd("4,00")) && nota.html.includes(usd("6,00")) && nota.html.includes("Abonada"));
+  const notaPorWhatsapp = decodeURIComponent(nota.html.match(/wa\.me\/584120000000\?text=([^"]+)"/)?.[1] ?? "");
+  comprobar(
+    "la nota tiene fecha límite de pago (7 días) y va con su número por WhatsApp",
+    legible(nota.html).includes("Fecha límite de pago") && legible(nota.html).includes("08/09/2026") &&
+      notaPorWhatsapp.includes(`Nota N.º ${String(notaId).padStart(6, "0")} del 01/09/2026`) && notaPorWhatsapp.includes("Fecha límite de pago de esta nota: 08/09/2026"),
+    notaPorWhatsapp,
+  );
+  comprobar("una nota que no existe da 404", (await pagina("/admin/ventas/999999/nota")).status === 404);
 
-    const marca = `name="id" value="${pedidoId}"`;
-    r = await enviar("/admin/despacho?solo=entregas", marca, { id: String(pedidoId), entregada: "1", volver_a: "/admin/despacho?solo=entregas" });
-    let [entrega] = await consultar("select por_entregar, entregada_en from ventas where id = ?", [pedidoId]);
-    comprobar(
-      `marcar el pedido como entregado (${r.ms} ms)`,
-      r.destino.startsWith("/admin/despacho?solo=entregas&ok=") && r.destino.includes(`Nota ${numeroDelPedido} entregada`) &&
-        Number(entrega.por_entregar) === 0 && Boolean(entrega.entregada_en),
-      r.destino,
-    );
-    const notaEntregada = await pagina(`/admin/ventas/${pedidoId}/nota`);
-    comprobar("la nota dice que ya se entregó", notaEntregada.html.includes(">Entregada<") && notaEntregada.html.includes("Mandar al despacho"));
-    r = await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "0", volver_a: "https://example.com/admin" });
-    [entrega] = await consultar("select por_entregar, entregada_en from ventas where id = ?", [pedidoId]);
-    comprobar(
-      "devolverla al despacho, y un destino de fuera del panel no se acepta",
-      r.destino.startsWith(`/admin/ventas/${pedidoId}/nota?ok=`) && Number(entrega.por_entregar) === 1 && entrega.entregada_en === null,
-      r.destino,
-    );
-    await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "1", volver_a: "" });
+  // La ruta de despacho.
+  const despacho = await pagina("/admin/despacho");
+  comprobar(
+    `ruta de despacho (${despacho.ms} ms)`,
+    despacho.status === 200 && despacho.html.includes(nombre) && despacho.html.includes("Vuelta a la tienda") &&
+      despacho.html.includes("google.com/maps/dir/") && despacho.html.includes("Hacer la ruta"),
+  );
+  const soloEste = await pagina(`/admin/despacho?c=${clienteId}`);
+  comprobar("ruta con un solo cliente elegido: 1 parada, 49 cuadras de ida y vuelta", /: <!-- -->1<!-- --> <!-- -->parada/.test(soloEste.html) && soloEste.html.includes("49 cuadras"), soloEste.html.match(/Los clientes elegidos[^<]*(<!-- -->[^<]*)*/)?.[0]);
 
-    // El estado de cuenta y el recibo del abono.
-    const estado = await pagina(`/admin/clientes/${clienteId}/estado`);
-    const textoEstado = legible(estado.html);
-    comprobar(
-      `estado de cuenta (${estado.ms} ms)`,
-      estado.status === 200 && textoEstado.includes("Estado de cuenta") && textoEstado.includes(`Nota ${numeroDelPedido}`) &&
-        textoEstado.includes("Abono · Pago móvil") && textoEstado.includes("Saldo por pagar") && textoEstado.includes(usd("4,00")),
-    );
-    comprobar("el estado de cuenta de un cliente que no existe da 404", (await pagina("/admin/clientes/999999/estado")).status === 404);
-    const recibo = decodeURIComponent(ficha.match(/href="https:\/\/wa\.me\/584120000000\?text=([^"]*Recibimos[^"]*)"/)?.[1] ?? "");
-    comprobar(
-      "ficha: estado de cuenta y recibo del abono por WhatsApp",
-      ficha.includes(`/admin/clientes/${clienteId}/estado`) && ficha.includes(">Enviar recibo<") &&
-        recibo.includes("Recibimos su abono del 20/09/2026.") && recibo.includes("Método: Pago móvil") && recibo.includes("Saldo pendiente a hoy"),
-      recibo,
-    );
+  // Los pedidos por entregar: salen en el despacho con lo que hay que cargar.
+  const numeroDelPedido = String(pedidoId).padStart(6, "0");
+  const entregas = await pagina("/admin/despacho?solo=entregas");
+  const textoEntregas = legible(entregas.html);
+  comprobar(
+    `el despacho enseña el pedido por entregar (${entregas.ms} ms)`,
+    textoEntregas.includes("Pedidos por entregar") && textoEntregas.includes(nombre) &&
+      textoEntregas.includes(`Nota ${numeroDelPedido}`) && textoEntregas.includes(">Entregado<"),
+  );
+  // Lo que hay que cargar se mira con el cliente solo: en la web puede haber pedidos de verdad.
+  comprobar(
+    "y lo que hay que cargar para llevárselo",
+    legible(soloEste.html).includes("Para cargar") && /<strong>2 (kg|cartón|unidad)<\/strong>/.test(legible(soloEste.html)) &&
+      legible(soloEste.html).includes("1 pedido por entregar"),
+  );
+  comprobar("el aviso de «vamos en camino» lleva el pedido", decodeURIComponent(entregas.html.match(/wa\.me\/584120000000\?text=([^"]+)"/)?.[1] ?? "").includes("Vamos en camino con su pedido:"));
+  comprobar("la cartera dice quién tiene un pedido esperando", (await pagina("/admin/clientes")).html.includes("1 pedido por entregar"));
+  comprobar("el resumen cuenta los pedidos por entregar", legible((await pagina("/admin")).html).includes("Pedidos por entregar"));
 
-    const cuentas = await pagina("/admin/cuentas");
-    comprobar(`cuentas por pagar (${cuentas.ms} ms)`, cuentas.html.includes(nombre) && cuentas.html.includes(">Recordar</a>"));
-    const informe = await pagina("/admin/informe");
-    comprobar(`informe con detal y mayor (${informe.ms} ms)`, informe.html.includes("Al detal y al mayor") && informe.html.includes("Al mayor") && informe.html.includes(nombre));
-    const busca = await pagina(`/admin/clientes?q=${encodeURIComponent(nombre.slice(0, 6).toUpperCase())}`);
-    comprobar("buscador de clientes sin distinguir mayúsculas", busca.html.includes(nombre) && busca.html.includes("Ver todos"));
-    const productos = await pagina("/admin/productos");
-    comprobar("panel de productos con los dos precios", productos.html.includes("Al detal") && productos.html.includes("Al mayor") && productos.html.includes("Tasa del día"));
+  const marca = `name="id" value="${pedidoId}"`;
+  r = await enviar("/admin/despacho?solo=entregas", marca, { id: String(pedidoId), entregada: "1", volver_a: "/admin/despacho?solo=entregas" });
+  let [entrega] = await consultar("select por_entregar, entregada_en from ventas where id = ?", [pedidoId]);
+  comprobar(
+    `marcar el pedido como entregado (${r.ms} ms)`,
+    r.destino.startsWith("/admin/despacho?solo=entregas&ok=") && r.destino.includes(`Nota ${numeroDelPedido} entregada`) &&
+      Number(entrega.por_entregar) === 0 && Boolean(entrega.entregada_en),
+    r.destino,
+  );
+  const notaEntregada = await pagina(`/admin/ventas/${pedidoId}/nota`);
+  comprobar("la nota dice que ya se entregó", notaEntregada.html.includes(">Entregada<") && notaEntregada.html.includes("Mandar al despacho"));
+  r = await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "0", volver_a: "https://example.com/admin" });
+  [entrega] = await consultar("select por_entregar, entregada_en from ventas where id = ?", [pedidoId]);
+  comprobar(
+    "devolverla al despacho, y un destino de fuera del panel no se acepta",
+    r.destino.startsWith(`/admin/ventas/${pedidoId}/nota?ok=`) && Number(entrega.por_entregar) === 1 && entrega.entregada_en === null,
+    r.destino,
+  );
+  await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "1", volver_a: "" });
 
-    // Foto de la nota.
-    const datos = new FormData();
-    datos.set(accionDe(ficha, 'name="archivo"'), "");
-    datos.set("cliente_id", String(clienteId));
-    datos.set("descripcion", "Nota 45");
-    datos.set("archivo", new File([png], "nota.png", { type: "image/png" }));
-    let respuesta = await fetch(base + `/admin/clientes/${clienteId}`, { method: "POST", headers: { cookie }, body: datos, redirect: "manual" });
-    comprobar("subir la foto de la nota", respuesta.status === 303 && (await cuentasDe(clienteId)).fotos === 1, String(respuesta.status));
-    const conFoto = (await pagina(`/admin/clientes/${clienteId}`)).html;
-    const adjuntoId = Number(conFoto.match(/\/admin\/adjuntos\/(\d+)"/)?.[1]);
-    respuesta = await fetch(base + `/admin/adjuntos/${adjuntoId}`, { headers: { cookie } });
-    comprobar("la foto se sirve tal cual", respuesta.status === 200 && Buffer.from(await respuesta.arrayBuffer()).equals(png));
-    respuesta = await fetch(base + `/admin/adjuntos/${adjuntoId}`, { redirect: "manual" });
-    comprobar("la foto no se sirve sin sesión", respuesta.status === 307);
+  // El estado de cuenta y el recibo del abono.
+  const estado = await pagina(`/admin/clientes/${clienteId}/estado`);
+  const textoEstado = legible(estado.html);
+  comprobar(
+    `estado de cuenta (${estado.ms} ms)`,
+    estado.status === 200 && textoEstado.includes("Estado de cuenta") && textoEstado.includes(`Nota ${numeroDelPedido}`) &&
+      textoEstado.includes("Abono · Pago móvil") && textoEstado.includes("Saldo por pagar") && textoEstado.includes(usd("4,00")),
+  );
+  comprobar("el estado de cuenta de un cliente que no existe da 404", (await pagina("/admin/clientes/999999/estado")).status === 404);
+  const recibo = decodeURIComponent(ficha.match(/href="https:\/\/wa\.me\/584120000000\?text=([^"]*Recibimos[^"]*)"/)?.[1] ?? "");
+  comprobar(
+    "ficha: estado de cuenta y recibo del abono por WhatsApp",
+    ficha.includes(`/admin/clientes/${clienteId}/estado`) && ficha.includes(">Enviar recibo<") &&
+      recibo.includes("Recibimos su abono del 20/09/2026.") && recibo.includes("Método: Pago móvil") && recibo.includes("Saldo pendiente a hoy"),
+    recibo,
+  );
 
-    const malo = new FormData();
-    malo.set(accionDe(ficha, 'name="archivo"'), "");
-    malo.set("cliente_id", String(clienteId));
-    malo.set("archivo", new File(["hola"], "nota.txt", { type: "text/plain" }));
-    respuesta = await fetch(base + `/admin/clientes/${clienteId}`, { method: "POST", headers: { cookie }, body: malo, redirect: "manual" });
-    comprobar("un archivo que no es foto se rechaza", decodeURIComponent(respuesta.headers.get("location") ?? "").includes("Solo se aceptan"));
+  const cuentas = await pagina("/admin/cuentas");
+  comprobar(`cuentas por pagar (${cuentas.ms} ms)`, cuentas.html.includes(nombre) && cuentas.html.includes(">Recordar</a>"));
+  const informe = await pagina("/admin/informe");
+  comprobar(`informe con detal y mayor (${informe.ms} ms)`, informe.html.includes("Al detal y al mayor") && informe.html.includes("Al mayor") && informe.html.includes(nombre));
+  const busca = await pagina(`/admin/clientes?q=${encodeURIComponent(nombre.slice(0, 6).toUpperCase())}`);
+  comprobar("buscador de clientes sin distinguir mayúsculas", busca.html.includes(nombre) && busca.html.includes("Ver todos"));
+  const productos = await pagina("/admin/productos");
+  comprobar("panel de productos con los dos precios", productos.html.includes("Al detal") && productos.html.includes("Al mayor") && productos.html.includes("Tasa del día"));
 
-    // Descargas.
-    respuesta = await fetch(base + "/admin/clientes/exportar", { headers: { cookie } });
-    const csv = Buffer.from(await respuesta.arrayBuffer());
-    comprobar("lista de clientes para Excel", respuesta.status === 200 && csv[0] === 0xef && csv.toString("utf8").includes(`${nombre};0412-0000000`));
+  // Foto de la nota.
+  const datos = new FormData();
+  datos.set(accionDe(ficha, 'name="archivo"'), "");
+  datos.set("cliente_id", String(clienteId));
+  datos.set("descripcion", "Nota 45");
+  datos.set("archivo", new File([png], "nota.png", { type: "image/png" }));
+  let respuesta = await fetch(base + `/admin/clientes/${clienteId}`, { method: "POST", headers: { cookie }, body: datos, redirect: "manual" });
+  comprobar("subir la foto de la nota", respuesta.status === 303 && (await cuentasDe(clienteId)).fotos === 1, String(respuesta.status));
+  const conFoto = (await pagina(`/admin/clientes/${clienteId}`)).html;
+  const adjuntoId = Number(conFoto.match(/\/admin\/adjuntos\/(\d+)"/)?.[1]);
+  respuesta = await fetch(base + `/admin/adjuntos/${adjuntoId}`, { headers: { cookie } });
+  comprobar("la foto se sirve tal cual", respuesta.status === 200 && Buffer.from(await respuesta.arrayBuffer()).equals(png));
+  respuesta = await fetch(base + `/admin/adjuntos/${adjuntoId}`, { redirect: "manual" });
+  comprobar("la foto no se sirve sin sesión", respuesta.status === 307);
 
-    // Los movimientos para Excel: la venta del día 1 y el abono del día 20.
-    respuesta = await fetch(base + "/admin/caja/exportar?desde=2026-09-30&hasta=2026-09-01", { headers: { cookie } });
-    const movimientos = Buffer.from(await respuesta.arrayBuffer());
-    const textoMovimientos = movimientos.toString("utf8");
-    comprobar(
-      "movimientos para Excel: una fila por venta y por abono, con coma decimal y su tasa",
-      respuesta.status === 200 && movimientos[0] === 0xef && (respuesta.headers.get("content-disposition") ?? "").includes("movimientos-2026-09-01-a-2026-09-30.csv") &&
-        textoMovimientos.includes("Fecha;Tipo;Nota n.º;Cliente o proveedor;") &&
-        textoMovimientos.includes(`01/09/2026;Venta;${String(notaId).padStart(6, "0")};${nombre};`) && textoMovimientos.includes(";10,00;") &&
-        textoMovimientos.includes(`20/09/2026;Abono;;${nombre};;Pago móvil;146,00;Bs;36,5000;;4,00;`),
-      textoMovimientos.slice(0, 600),
-    );
-    respuesta = await fetch(base + "/admin/caja/exportar?forma=dias&desde=2026-09-20&hasta=2026-09-20", { headers: { cookie } });
-    const porDia = Buffer.from(await respuesta.arrayBuffer()).toString("utf8");
-    comprobar(
-      "resumen por día para Excel: lo que entró, en bolívares y en dólares aparte",
-      respuesta.status === 200 && (respuesta.headers.get("content-disposition") ?? "").includes("resumen-por-dia-2026-09-20.csv") &&
-        porDia.includes("Fecha;Notas;Vendido USD;Abonos;Entró USD;Entró en bolívares;Entró en dólares;") &&
-        (enProduccion ? porDia.includes("\r\n20/09/2026;") : porDia.includes("\r\n20/09/2026;0;0,00;1;4,00;146,00;0,00;0;0,00;0;0,00;4,00\r\n")),
-      porDia,
-    );
-    respuesta = await fetch(base + "/admin/caja/exportar", { redirect: "manual" });
-    comprobar("los movimientos no se descargan sin sesión", respuesta.status === 307 || respuesta.status === 401, String(respuesta.status));
-    comprobar("el cierre del día ofrece la descarga para Excel", (await pagina("/admin/caja")).html.includes("Descargar para Excel"));
+  const malo = new FormData();
+  malo.set(accionDe(ficha, 'name="archivo"'), "");
+  malo.set("cliente_id", String(clienteId));
+  malo.set("archivo", new File(["hola"], "nota.txt", { type: "text/plain" }));
+  respuesta = await fetch(base + `/admin/clientes/${clienteId}`, { method: "POST", headers: { cookie }, body: malo, redirect: "manual" });
+  comprobar("un archivo que no es foto se rechaza", decodeURIComponent(respuesta.headers.get("location") ?? "").includes("Solo se aceptan"));
 
-    respuesta = await fetch(base + "/api/copia-automatica");
-    comprobar("la copia automática sin clave se niega", respuesta.status === 401);
-    respuesta = await fetch(base + "/api/copia-automatica", { headers: { authorization: "Bearer " + env.CRON_SECRET } });
-    const copiaNube = await respuesta.json().catch(() => ({}));
-    comprobar("la copia automática con la clave del cron", respuesta.status === 200 && copiaNube.ok === true, JSON.stringify(copiaNube));
+  // Descargas.
+  respuesta = await fetch(base + "/admin/clientes/exportar", { headers: { cookie } });
+  const csv = Buffer.from(await respuesta.arrayBuffer());
+  comprobar("lista de clientes para Excel", respuesta.status === 200 && csv[0] === 0xef && csv.toString("utf8").includes(`${nombre};0412-0000000`));
 
-    respuesta = await fetch(base + "/admin/copia", { headers: { cookie } });
-    const archivoCopia = path.join(carpetaTemporal, "copia.db");
-    fs.writeFileSync(archivoCopia, Buffer.from(await respuesta.arrayBuffer()));
-    const copia = new DatabaseSync(archivoCopia, { readOnly: true });
-    const enCopia = copia.prepare("select (select count(*) from ventas) v, (select count(*) from adjuntos) a, (select count(*) from productos) p").get();
-    copia.close();
-    comprobar("la copia de seguridad lleva ventas, fotos y productos", respuesta.status === 200 && enCopia.v >= 1 && enCopia.a >= 1 && enCopia.p >= 4, JSON.stringify({ ...enCopia }));
+  // Los movimientos para Excel: la venta del día 1 y el abono del día 20.
+  respuesta = await fetch(base + "/admin/caja/exportar?desde=2026-09-30&hasta=2026-09-01", { headers: { cookie } });
+  const movimientos = Buffer.from(await respuesta.arrayBuffer());
+  const textoMovimientos = movimientos.toString("utf8");
+  comprobar(
+    "movimientos para Excel: una fila por venta y por abono, con coma decimal y su tasa",
+    respuesta.status === 200 && movimientos[0] === 0xef && (respuesta.headers.get("content-disposition") ?? "").includes("movimientos-2026-09-01-a-2026-09-30.csv") &&
+      textoMovimientos.includes("Fecha;Tipo;Nota n.º;Cliente o proveedor;") &&
+      textoMovimientos.includes(`01/09/2026;Venta;${String(notaId).padStart(6, "0")};${nombre};`) && textoMovimientos.includes(";10,00;") &&
+      textoMovimientos.includes(`20/09/2026;Abono;;${nombre};;Pago móvil;146,00;Bs;36,5000;;4,00;`),
+    textoMovimientos.slice(0, 600),
+  );
+  respuesta = await fetch(base + "/admin/caja/exportar?forma=dias&desde=2026-09-20&hasta=2026-09-20", { headers: { cookie } });
+  const porDia = Buffer.from(await respuesta.arrayBuffer()).toString("utf8");
+  comprobar(
+    "resumen por día para Excel: lo que entró, en bolívares y en dólares aparte",
+    respuesta.status === 200 && (respuesta.headers.get("content-disposition") ?? "").includes("resumen-por-dia-2026-09-20.csv") &&
+      porDia.includes("Fecha;Notas;Vendido USD;Abonos;Entró USD;Entró en bolívares;Entró en dólares;") &&
+      porDia.includes("\r\n20/09/2026;0;0,00;1;4,00;146,00;0,00;0;0,00;0;0,00;4,00\r\n"),
+    porDia,
+  );
+  respuesta = await fetch(base + "/admin/caja/exportar", { redirect: "manual" });
+  comprobar("los movimientos no se descargan sin sesión", respuesta.status === 307 || respuesta.status === 401, String(respuesta.status));
+  comprobar("el cierre del día ofrece la descarga para Excel", (await pagina("/admin/caja")).html.includes("Descargar para Excel"));
 
-    // Borrados, con su pantalla de confirmación.
-    r = await enviar(`/admin/adjuntos/${adjuntoId}/eliminar`, 'name="id"', { id: String(adjuntoId) });
-    comprobar("borrar la foto", r.destino.includes("Foto eliminada"));
-    const ventaId = Number(ficha.match(/\/admin\/ventas\/(\d+)\/eliminar/)?.[1]);
-    r = await enviar(`/admin/ventas/${ventaId}/eliminar`, 'name="id"', { id: String(ventaId) });
-    comprobar("borrar una venta", r.destino.includes("Venta eliminada"));
-    const pagoId = Number(ficha.match(/\/admin\/pagos\/(\d+)\/eliminar/)?.[1]);
-    r = await enviar(`/admin/pagos/${pagoId}/eliminar`, 'name="id"', { id: String(pagoId) });
-    comprobar("borrar un pago", r.destino.includes("Abono eliminado") && cerca((await cuentasDe(clienteId)).pagos, 0));
-    comprobar("una venta ya borrada da 404", (await pagina(`/admin/ventas/${ventaId}/eliminar`)).status === 404);
+  respuesta = await fetch(base + "/api/copia-automatica");
+  comprobar("la copia automática sin clave se niega", respuesta.status === 401);
+  respuesta = await fetch(base + "/api/copia-automatica", { headers: { authorization: "Bearer " + env.CRON_SECRET } });
+  const copiaNube = await respuesta.json().catch(() => ({}));
+  comprobar("la copia automática con la clave del cron", respuesta.status === 200 && copiaNube.ok === true, JSON.stringify(copiaNube));
 
-    // Borrar un cliente entero pide la clave del panel. En local se borra el
-    // cliente al detal, porque la cartera de después cuenta con el mayorista.
-    const aBorrar = enProduccion ? clienteId : limpiar[1];
-    const confirmacion = await pagina(`/admin/clientes/${aBorrar}/eliminar`);
-    comprobar("la pantalla de borrar un cliente dice qué se lleva y pide la clave", confirmacion.html.includes("Se borran con el cliente") && confirmacion.html.includes('name="clave"'));
-    r = await enviar(`/admin/clientes/${aBorrar}/eliminar`, 'name="clave"', { id: String(aBorrar), clave: "no-es-la-clave" });
-    comprobar("con una clave mala no se borra nada", r.destino.includes("La clave no es correcta") && (await consultar("select count(*) as n from clientes where id = ?", [aBorrar]))[0].n == 1, r.destino);
-    r = await enviar(`/admin/clientes/${aBorrar}/eliminar`, 'name="clave"', { id: String(aBorrar), clave: env.ADMIN_CLAVE });
-    const [rastro] = await consultar(
-      "select (select count(*) from clientes where id = ?) c, (select count(*) from ventas where cliente_id = ?) v, (select count(*) from pagos where cliente_id = ?) p",
-      [aBorrar, aBorrar, aBorrar],
-    );
-    comprobar(`con la clave buena se borra el cliente con todo lo suyo (${r.ms} ms)`, r.destino.includes("eliminado con todo lo suyo") && rastro.c == 0 && rastro.v == 0 && rastro.p == 0, `${r.destino} ${JSON.stringify(rastro)}`);
-    comprobar("un cliente ya borrado da 404", (await pagina(`/admin/clientes/${aBorrar}`)).status === 404);
-  } finally {
-    if (enProduccion) await borrarDeLaNube(limpiar);
-  }
+  respuesta = await fetch(base + "/admin/copia", { headers: { cookie } });
+  const archivoCopia = path.join(carpetaTemporal, "copia.db");
+  fs.writeFileSync(archivoCopia, Buffer.from(await respuesta.arrayBuffer()));
+  const copia = new DatabaseSync(archivoCopia, { readOnly: true });
+  const enCopia = copia.prepare("select (select count(*) from ventas) v, (select count(*) from adjuntos) a, (select count(*) from productos) p").get();
+  copia.close();
+  comprobar("la copia de seguridad lleva ventas, fotos y productos", respuesta.status === 200 && enCopia.v >= 1 && enCopia.a >= 1 && enCopia.p >= 4, JSON.stringify({ ...enCopia }));
+
+  // Borrados, con su pantalla de confirmación.
+  r = await enviar(`/admin/adjuntos/${adjuntoId}/eliminar`, 'name="id"', { id: String(adjuntoId) });
+  comprobar("borrar la foto", r.destino.includes("Foto eliminada"));
+  const ventaId = Number(ficha.match(/\/admin\/ventas\/(\d+)\/eliminar/)?.[1]);
+  r = await enviar(`/admin/ventas/${ventaId}/eliminar`, 'name="id"', { id: String(ventaId) });
+  comprobar("borrar una venta", r.destino.includes("Venta eliminada"));
+  const pagoId = Number(ficha.match(/\/admin\/pagos\/(\d+)\/eliminar/)?.[1]);
+  r = await enviar(`/admin/pagos/${pagoId}/eliminar`, 'name="id"', { id: String(pagoId) });
+  comprobar("borrar un pago", r.destino.includes("Abono eliminado") && cerca((await cuentasDe(clienteId)).pagos, 0));
+  comprobar("una venta ya borrada da 404", (await pagina(`/admin/ventas/${ventaId}/eliminar`)).status === 404);
+
+  // Borrar un cliente entero pide la clave del panel. Se borra el cliente
+  // al detal, porque la cartera de después cuenta con el mayorista.
+  const aBorrar = detalId;
+  const confirmacion = await pagina(`/admin/clientes/${aBorrar}/eliminar`);
+  comprobar("la pantalla de borrar un cliente dice qué se lleva y pide la clave", confirmacion.html.includes("Se borran con el cliente") && confirmacion.html.includes('name="clave"'));
+  r = await enviar(`/admin/clientes/${aBorrar}/eliminar`, 'name="clave"', { id: String(aBorrar), clave: "no-es-la-clave" });
+  comprobar("con una clave mala no se borra nada", r.destino.includes("La clave no es correcta") && (await consultar("select count(*) as n from clientes where id = ?", [aBorrar]))[0].n == 1, r.destino);
+  r = await enviar(`/admin/clientes/${aBorrar}/eliminar`, 'name="clave"', { id: String(aBorrar), clave: env.ADMIN_CLAVE });
+  const [rastro] = await consultar(
+    "select (select count(*) from clientes where id = ?) c, (select count(*) from ventas where cliente_id = ?) v, (select count(*) from pagos where cliente_id = ?) p",
+    [aBorrar, aBorrar, aBorrar],
+  );
+  comprobar(`con la clave buena se borra el cliente con todo lo suyo (${r.ms} ms)`, r.destino.includes("eliminado con todo lo suyo") && rastro.c == 0 && rastro.v == 0 && rastro.p == 0, `${r.destino} ${JSON.stringify(rastro)}`);
+  comprobar("un cliente ya borrado da 404", (await pagina(`/admin/clientes/${aBorrar}`)).status === 404);
 }
 
 /** Solo en local: el alta rápida, los repetidos y el orden de la ruta. */
@@ -637,10 +643,8 @@ async function probarCartera() {
 const AUTOR_DE_PRUEBA = "Prueba automática (borrar)";
 
 /**
- * Las reseñas. En la web publicada la de prueba se guarda sin permiso, o sea
- * escondida, para que ningún cliente llegue a verla, y no se tocan las de
- * ejemplo que haya. En local se prueba todo: el permiso, publicar,
- * esconder, los ejemplos y quién los ve.
+ * Las reseñas: el permiso, publicar, esconder, la foto, los ejemplos y
+ * quién los ve.
  */
 async function probarResenas() {
   const [producto] = await consultar("select id, nombre from productos where activo = 1 order by id limit 1");
@@ -648,247 +652,285 @@ async function probarResenas() {
   const comentario = "Llega siempre a tiempo y el queso sale parejo.";
   const idDeLaPrueba = async () => Number((await consultar("select id from resenas where autor = ? order by id desc", [AUTOR_DE_PRUEBA]))[0]?.id ?? 0);
 
-  try {
-    const panel = await pagina("/admin/resenas");
-    comprobar(`panel de reseñas (${panel.ms} ms)`, panel.status === 200 && panel.html.includes("Reseña nueva") && panel.html.includes("Reseñas de ejemplo"));
-    const pedir = decodeURIComponent(panel.html.match(/href="https:\/\/wa\.me\/\?text=([^"]*opini[^"]*)"/)?.[1] ?? "");
-    comprobar(
-      "mensaje para pedir la reseña y el permiso, a quien se elija en WhatsApp",
-      panel.html.includes("Pedir reseña por WhatsApp") && pedir.includes("Nos gustaría conocer su opinión sobre este producto") &&
-        pedir.includes("Con su permiso") && pedir.includes("/producto/"),
-      pedir,
-    );
+  const panel = await pagina("/admin/resenas");
+  comprobar(`panel de reseñas (${panel.ms} ms)`, panel.status === 200 && panel.html.includes("Reseña nueva") && panel.html.includes("Reseñas de ejemplo"));
+  const pedir = decodeURIComponent(panel.html.match(/href="https:\/\/wa\.me\/\?text=([^"]*opini[^"]*)"/)?.[1] ?? "");
+  comprobar(
+    "mensaje para pedir la reseña y el permiso, a quien se elija en WhatsApp",
+    panel.html.includes("Pedir reseña por WhatsApp") && pedir.includes("Nos gustaría conocer su opinión sobre este producto") &&
+      pedir.includes("Con su permiso") && pedir.includes("/producto/"),
+    pedir,
+  );
 
-    let r = await enviar("/admin/resenas", 'name="autor"', { producto_id: String(producto.id), autor: AUTOR_DE_PRUEBA, detalle: "", texto: "" });
-    comprobar("una reseña sin comentario no se guarda", r.destino.includes("Escribe el comentario del cliente"), r.destino);
+  let r = await enviar("/admin/resenas", 'name="autor"', { producto_id: String(producto.id), autor: AUTOR_DE_PRUEBA, detalle: "", texto: "" });
+  comprobar("una reseña sin comentario no se guarda", r.destino.includes("Escribe el comentario del cliente"), r.destino);
 
-    // Sin la casilla del permiso: se guarda, pero escondida.
-    r = await enviar("/admin/resenas", 'name="autor"', {
-      producto_id: String(producto.id), autor: `  ${AUTOR_DE_PRUEBA} `, detalle: "Pizzería · Centro", texto: ` "${comentario}" `,
-    });
-    const id = await idDeLaPrueba();
-    const [guardada] = await consultar("select autor, texto, publicada, con_permiso, de_ejemplo from resenas where id = ?", [id]);
-    comprobar(
-      `sin permiso se guarda escondida, sin espacios ni comillas de más (${r.ms} ms)`,
-      r.destino.includes("falta el permiso del cliente") && guardada?.autor === AUTOR_DE_PRUEBA && guardada?.texto === comentario &&
-        Number(guardada?.publicada) === 0 && Number(guardada?.con_permiso) === 0 && Number(guardada?.de_ejemplo) === 0,
-      `${r.destino} ${JSON.stringify(guardada)}`,
-    );
-    const conLaNueva = legible((await pagina("/admin/resenas")).html);
-    comprobar(
-      "el panel dice que le falta el permiso y cómo publicarla",
-      conLaNueva.includes(`«${comentario}»`) && conLaNueva.includes(">Falta el permiso<") && conLaNueva.includes("Ya me dio permiso: publicar") &&
-        conLaNueva.includes("Esperan el permiso"),
-    );
-    comprobar(
-      "una reseña sin permiso no sale en la web, ni para el dueño",
-      !(await pagina(paginaDelProducto, "")).html.includes(comentario) && !(await pagina(paginaDelProducto)).html.includes(comentario),
-    );
+  // Sin la casilla del permiso: se guarda, pero escondida.
+  r = await enviar("/admin/resenas", 'name="autor"', {
+    producto_id: String(producto.id), autor: `  ${AUTOR_DE_PRUEBA} `, detalle: "Pizzería · Centro", texto: ` "${comentario}" `,
+  });
+  const id = await idDeLaPrueba();
+  const [guardada] = await consultar("select autor, texto, publicada, con_permiso, de_ejemplo from resenas where id = ?", [id]);
+  comprobar(
+    `sin permiso se guarda escondida, sin espacios ni comillas de más (${r.ms} ms)`,
+    r.destino.includes("falta el permiso del cliente") && guardada?.autor === AUTOR_DE_PRUEBA && guardada?.texto === comentario &&
+      Number(guardada?.publicada) === 0 && Number(guardada?.con_permiso) === 0 && Number(guardada?.de_ejemplo) === 0,
+    `${r.destino} ${JSON.stringify(guardada)}`,
+  );
+  const conLaNueva = legible((await pagina("/admin/resenas")).html);
+  comprobar(
+    "el panel dice que le falta el permiso y cómo publicarla",
+    conLaNueva.includes(`«${comentario}»`) && conLaNueva.includes(">Falta el permiso<") && conLaNueva.includes("Ya me dio permiso: publicar") &&
+      conLaNueva.includes("Esperan el permiso"),
+  );
+  comprobar(
+    "una reseña sin permiso no sale en la web, ni para el dueño",
+    !(await pagina(paginaDelProducto, "")).html.includes(comentario) && !(await pagina(paginaDelProducto)).html.includes(comentario),
+  );
 
-    if (!enProduccion) {
-      const marca = `name="id" value="${id}"`;
-      r = await enviar("/admin/resenas", marca, { id: String(id), publicada: "1" });
-      const [conPermiso] = await consultar("select publicada, con_permiso from resenas where id = ?", [id]);
-      comprobar(
-        "«Ya me dio permiso: publicar» anota el permiso y la publica",
-        r.destino.includes("publicada") && Number(conPermiso.publicada) === 1 && Number(conPermiso.con_permiso) === 1,
-        `${r.destino} ${JSON.stringify(conPermiso)}`,
-      );
-      const publica = legible((await pagina(paginaDelProducto, "")).html);
-      comprobar(
-        "publicada, sale en «Por qué elegirlo» con su autor y sus iniciales",
-        publica.includes(`«${comentario}»`) && publica.includes(`<strong>${AUTOR_DE_PRUEBA}</strong>`) &&
-          publica.includes("Pizzería · Centro") && publica.includes(">PA<") && publica.indexOf(comentario) > publica.indexOf("Por qué elegirlo"),
-      );
-      // Las ventajas salen también en la descripción para los buscadores: aquí se mira la lista.
-      const ventaja = publica.indexOf("<li>Funde bien al calentar</li>");
-      comprobar("las reseñas van delante de las ventajas", ventaja > 0 && publica.indexOf(`«${comentario}»`) < ventaja, String(ventaja));
+  const marca = `name="id" value="${id}"`;
+  r = await enviar("/admin/resenas", marca, { id: String(id), publicada: "1" });
+  const [conPermiso] = await consultar("select publicada, con_permiso from resenas where id = ?", [id]);
+  comprobar(
+    "«Ya me dio permiso: publicar» anota el permiso y la publica",
+    r.destino.includes("publicada") && Number(conPermiso.publicada) === 1 && Number(conPermiso.con_permiso) === 1,
+    `${r.destino} ${JSON.stringify(conPermiso)}`,
+  );
+  const publica = legible((await pagina(paginaDelProducto, "")).html);
+  comprobar(
+    "publicada, sale en «Por qué elegirlo» con su autor y sus iniciales",
+    publica.includes(`«${comentario}»`) && publica.includes(`<strong>${AUTOR_DE_PRUEBA}</strong>`) &&
+      publica.includes("Pizzería · Centro") && publica.includes(">PA<") && publica.indexOf(comentario) > publica.indexOf("Por qué elegirlo"),
+  );
+  // Las ventajas salen también en la descripción para los buscadores: aquí se mira la lista.
+  const ventaja = publica.indexOf("<li>Funde bien al calentar</li>");
+  comprobar("las reseñas van delante de las ventajas", ventaja > 0 && publica.indexOf(`«${comentario}»`) < ventaja, String(ventaja));
 
-      // Las de ejemplo: las ve el dueño, el público no.
-      r = await enviar("/admin/resenas", 'value="poner"', { ejemplo: "poner" });
-      const puestas = Number((await consultar("select count(*) as n from resenas where de_ejemplo = 1"))[0].n);
-      comprobar("poner las reseñas de ejemplo de todos los productos", r.destino.includes(`Puestas ${puestas} reseñas de ejemplo`) && puestas >= 8, r.destino);
-      await enviar("/admin/resenas", 'value="poner"', { ejemplo: "poner" });
-      comprobar("pulsar dos veces no las duplica", Number((await consultar("select count(*) as n from resenas where de_ejemplo = 1"))[0].n) === puestas);
+  // Las de ejemplo: las ve el dueño, el público no.
+  r = await enviar("/admin/resenas", 'value="poner"', { ejemplo: "poner" });
+  const puestas = Number((await consultar("select count(*) as n from resenas where de_ejemplo = 1"))[0].n);
+  comprobar("poner las reseñas de ejemplo de todos los productos", r.destino.includes(`Puestas ${puestas} reseñas de ejemplo`) && puestas >= 8, r.destino);
+  await enviar("/admin/resenas", 'value="poner"', { ejemplo: "poner" });
+  comprobar("pulsar dos veces no las duplica", Number((await consultar("select count(*) as n from resenas where de_ejemplo = 1"))[0].n) === puestas);
 
-      const mozzarella = "/producto/2-queso-mozzarella";
-      const loQueVeElPublico = legible((await pagina(mozzarella, "")).html);
-      const loQueVeElDueno = legible((await pagina(mozzarella)).html);
-      comprobar(
-        "el público no ve ninguna reseña de ejemplo",
-        !loQueVeElPublico.includes("de ejemplo") && !loQueVeElPublico.includes(">Ejemplo<") && !loQueVeElPublico.includes("solo las ves tú") &&
-          loQueVeElPublico.includes("Perfecta para rallar"),
-      );
-      comprobar(
-        "el dueño las ve, marcadas como ejemplo y con el aviso",
-        loQueVeElDueno.includes("Pizzería de ejemplo") && loQueVeElDueno.includes(">Ejemplo<") && loQueVeElDueno.includes("solo las ves tú") &&
-          loQueVeElDueno.includes("Gratina parejo y no se quema"),
-      );
-      const delPrimero = legible((await pagina(paginaDelProducto)).html);
-      comprobar("en un producto con reseña propia, la propia va antes que las de ejemplo", delPrimero.indexOf(comentario) > 0 && delPrimero.indexOf(comentario) < delPrimero.indexOf("de ejemplo</strong>"));
+  const mozzarella = "/producto/2-queso-mozzarella";
+  const loQueVeElPublico = legible((await pagina(mozzarella, "")).html);
+  const loQueVeElDueno = legible((await pagina(mozzarella)).html);
+  comprobar(
+    "el público no ve ninguna reseña de ejemplo",
+    !loQueVeElPublico.includes("de ejemplo") && !loQueVeElPublico.includes(">Ejemplo<") && !loQueVeElPublico.includes("solo las ves tú") &&
+      loQueVeElPublico.includes("Perfecta para rallar"),
+  );
+  comprobar(
+    "el dueño las ve, marcadas como ejemplo y con el aviso",
+    loQueVeElDueno.includes("Pizzería de ejemplo") && loQueVeElDueno.includes(">Ejemplo<") && loQueVeElDueno.includes("solo las ves tú") &&
+      loQueVeElDueno.includes("Gratina parejo y no se quema"),
+  );
+  const delPrimero = legible((await pagina(paginaDelProducto)).html);
+  comprobar("en un producto con reseña propia, la propia va antes que las de ejemplo", delPrimero.indexOf(comentario) > 0 && delPrimero.indexOf(comentario) < delPrimero.indexOf("de ejemplo</strong>"));
 
-      // Con el permiso marcado al guardarla, sale en la web en el momento.
-      r = await enviar("/admin/resenas", 'name="autor"', {
-        producto_id: "2", autor: "Pizzería 33 de la prueba", detalle: "", texto: "Al rallarla no se apelmaza.", permiso: "1",
-      });
-      comprobar(
-        "con el permiso marcado se publica al guardarla",
-        r.destino.includes("Ya sale en la página") && legible((await pagina(mozzarella, "")).html).includes("«Al rallarla no se apelmaza.»"),
-        r.destino,
-      );
-      const portadaConCita = legible((await portadaCon("Al rallarla no se apelmaza")).html);
-      comprobar(
-        "la portada enseña una frase corta de un cliente de verdad, nunca una de ejemplo",
-        portadaConCita.includes("«Al rallarla no se apelmaza.» <span") && portadaConCita.includes("— Pizzería 33 de la prueba") && !portadaConCita.includes("de ejemplo"),
-      );
-      const [ejemplo] = await consultar("select id from resenas where de_ejemplo = 1 limit 1");
-      // Una de ejemplo no tiene botón de publicar: se intenta con el formulario de otra.
-      r = await enviar("/admin/resenas", marca, { id: String(ejemplo.id), publicada: "1" });
-      comprobar(
-        "una reseña de ejemplo no se puede publicar ni a la fuerza",
-        r.destino.includes("no se publica") && !legible((await pagina(mozzarella, "")).html).includes("de ejemplo"),
-        r.destino,
-      );
-      const otra = Number((await consultar("select id from resenas where autor = 'Pizzería 33 de la prueba'"))[0].id);
+  // Con el permiso marcado al guardarla, sale en la web en el momento.
+  r = await enviar("/admin/resenas", 'name="autor"', {
+    producto_id: "2", autor: "Pizzería 33 de la prueba", detalle: "", texto: "Al rallarla no se apelmaza.", permiso: "1",
+  });
+  comprobar(
+    "con el permiso marcado se publica al guardarla",
+    r.destino.includes("Ya sale en la página") && legible((await pagina(mozzarella, "")).html).includes("«Al rallarla no se apelmaza.»"),
+    r.destino,
+  );
+  const portadaConCita = legible((await portadaCon("Al rallarla no se apelmaza")).html);
+  comprobar(
+    "la portada enseña una frase corta de un cliente de verdad, nunca una de ejemplo",
+    portadaConCita.includes("«Al rallarla no se apelmaza.» <span") && portadaConCita.includes("— Pizzería 33 de la prueba") && !portadaConCita.includes("de ejemplo"),
+  );
+  const [ejemplo] = await consultar("select id from resenas where de_ejemplo = 1 limit 1");
+  // Una de ejemplo no tiene botón de publicar: se intenta con el formulario de otra.
+  r = await enviar("/admin/resenas", marca, { id: String(ejemplo.id), publicada: "1" });
+  comprobar(
+    "una reseña de ejemplo no se puede publicar ni a la fuerza",
+    r.destino.includes("no se publica") && !legible((await pagina(mozzarella, "")).html).includes("de ejemplo"),
+    r.destino,
+  );
+  const otra = Number((await consultar("select id from resenas where autor = 'Pizzería 33 de la prueba'"))[0].id);
 
-      // La foto de la reseña: se ve en la web mientras la reseña se vea.
-      const panelConOtra = (await pagina("/admin/resenas")).html;
-      const conFoto = new FormData();
-      conFoto.set(accionDe(panelConOtra, `id="foto-${otra}"`), "");
-      conFoto.set("id", String(otra));
-      conFoto.set("foto", new File([png], "local.png", { type: "image/png" }));
-      let respuestaFoto = await fetch(base + "/admin/resenas", { method: "POST", headers: { cookie }, body: conFoto, redirect: "manual" });
-      const publicaConFoto = legible((await pagina(mozzarella, "")).html);
-      const direccionFoto = publicaConFoto.match(/src="(\/foto-resena\/\d+\?v=\d+)"/)?.[1];
-      comprobar("ponerle una foto a una reseña: sale redonda junto al nombre", respuestaFoto.status === 303 && decodeURIComponent(respuestaFoto.headers.get("location") ?? "").includes("Foto puesta") && Boolean(direccionFoto), String(direccionFoto));
-      respuestaFoto = await fetch(base + direccionFoto);
-      comprobar("la foto de la reseña se sirve al público tal cual", respuestaFoto.status === 200 && Buffer.from(await respuestaFoto.arrayBuffer()).equals(png) && (respuestaFoto.headers.get("cache-control") ?? "").includes("public"));
-      const conFotoMala = new FormData();
-      conFotoMala.set(accionDe(panelConOtra, `id="foto-${otra}"`), "");
-      conFotoMala.set("id", String(otra));
-      conFotoMala.set("foto", new File(["hola"], "nota.txt", { type: "text/plain" }));
-      respuestaFoto = await fetch(base + "/admin/resenas", { method: "POST", headers: { cookie }, body: conFotoMala, redirect: "manual" });
-      comprobar("un archivo que no es foto se rechaza en la reseña", decodeURIComponent(respuestaFoto.headers.get("location") ?? "").includes("JPG, PNG o WebP"));
-      await enviar("/admin/resenas", `name="id" value="${otra}"`, { id: String(otra), publicada: "0" });
-      comprobar("escondida la reseña, su foto deja de servirse al público pero no al dueño", (await fetch(base + direccionFoto)).status === 404 && (await fetch(base + direccionFoto, { headers: { cookie } })).status === 200);
-      r = await enviar("/admin/resenas", ">Quitar foto<", { id: String(otra) });
-      comprobar("quitar la foto deja la reseña", r.destino.includes("Foto quitada") && (await fetch(base + direccionFoto, { headers: { cookie } })).status === 404 && (await consultar("select count(*) as n from resenas where id = ?", [otra]))[0].n == 1, r.destino);
+  // La foto de la reseña: se ve en la web mientras la reseña se vea.
+  const panelConOtra = (await pagina("/admin/resenas")).html;
+  const conFoto = new FormData();
+  conFoto.set(accionDe(panelConOtra, `id="foto-${otra}"`), "");
+  conFoto.set("id", String(otra));
+  conFoto.set("foto", new File([png], "local.png", { type: "image/png" }));
+  let respuestaFoto = await fetch(base + "/admin/resenas", { method: "POST", headers: { cookie }, body: conFoto, redirect: "manual" });
+  const publicaConFoto = legible((await pagina(mozzarella, "")).html);
+  const direccionFoto = publicaConFoto.match(/src="(\/foto-resena\/\d+\?v=\d+)"/)?.[1];
+  comprobar("ponerle una foto a una reseña: sale redonda junto al nombre", respuestaFoto.status === 303 && decodeURIComponent(respuestaFoto.headers.get("location") ?? "").includes("Foto puesta") && Boolean(direccionFoto), String(direccionFoto));
+  respuestaFoto = await fetch(base + direccionFoto);
+  comprobar("la foto de la reseña se sirve al público tal cual", respuestaFoto.status === 200 && Buffer.from(await respuestaFoto.arrayBuffer()).equals(png) && (respuestaFoto.headers.get("cache-control") ?? "").includes("public"));
+  const conFotoMala = new FormData();
+  conFotoMala.set(accionDe(panelConOtra, `id="foto-${otra}"`), "");
+  conFotoMala.set("id", String(otra));
+  conFotoMala.set("foto", new File(["hola"], "nota.txt", { type: "text/plain" }));
+  respuestaFoto = await fetch(base + "/admin/resenas", { method: "POST", headers: { cookie }, body: conFotoMala, redirect: "manual" });
+  comprobar("un archivo que no es foto se rechaza en la reseña", decodeURIComponent(respuestaFoto.headers.get("location") ?? "").includes("JPG, PNG o WebP"));
+  await enviar("/admin/resenas", `name="id" value="${otra}"`, { id: String(otra), publicada: "0" });
+  comprobar("escondida la reseña, su foto deja de servirse al público pero no al dueño", (await fetch(base + direccionFoto)).status === 404 && (await fetch(base + direccionFoto, { headers: { cookie } })).status === 200);
+  r = await enviar("/admin/resenas", ">Quitar foto<", { id: String(otra) });
+  comprobar("quitar la foto deja la reseña", r.destino.includes("Foto quitada") && (await fetch(base + direccionFoto, { headers: { cookie } })).status === 404 && (await consultar("select count(*) as n from resenas where id = ?", [otra]))[0].n == 1, r.destino);
 
-      await enviar(`/admin/resenas/${otra}/eliminar`, 'name="id"', { id: String(otra) });
+  await enviar(`/admin/resenas/${otra}/eliminar`, 'name="id"', { id: String(otra) });
 
-      r = await enviar("/admin/resenas", marca, { id: String(id), publicada: "0" });
-      const [escondida] = await consultar("select publicada, con_permiso from resenas where id = ?", [id]);
-      comprobar(
-        "esconderla la quita de la web sin borrarla ni perder el permiso",
-        r.destino.includes("Reseña escondida") && !(await pagina(paginaDelProducto, "")).html.includes(comentario) &&
-          Number(escondida.publicada) === 0 && Number(escondida.con_permiso) === 1,
-      );
+  r = await enviar("/admin/resenas", marca, { id: String(id), publicada: "0" });
+  const [escondida] = await consultar("select publicada, con_permiso from resenas where id = ?", [id]);
+  comprobar(
+    "esconderla la quita de la web sin borrarla ni perder el permiso",
+    r.destino.includes("Reseña escondida") && !(await pagina(paginaDelProducto, "")).html.includes(comentario) &&
+      Number(escondida.publicada) === 0 && Number(escondida.con_permiso) === 1,
+  );
 
-      const respuesta = await fetch(base + "/admin/copia", { headers: { cookie } });
-      const archivo = path.join(carpetaTemporal, "copia-resenas.db");
-      fs.writeFileSync(archivo, Buffer.from(await respuesta.arrayBuffer()));
-      const copia = new DatabaseSync(archivo, { readOnly: true });
-      const enCopia = copia.prepare("select count(*) as n from resenas").get();
-      copia.close();
-      comprobar("la copia de seguridad lleva las reseñas", Number(enCopia.n) === puestas + 1, JSON.stringify({ ...enCopia }));
+  const respuesta = await fetch(base + "/admin/copia", { headers: { cookie } });
+  const archivo = path.join(carpetaTemporal, "copia-resenas.db");
+  fs.writeFileSync(archivo, Buffer.from(await respuesta.arrayBuffer()));
+  const copia = new DatabaseSync(archivo, { readOnly: true });
+  const enCopia = copia.prepare("select count(*) as n from resenas").get();
+  copia.close();
+  comprobar("la copia de seguridad lleva las reseñas", Number(enCopia.n) === puestas + 1, JSON.stringify({ ...enCopia }));
 
-      r = await enviar("/admin/resenas", 'value="quitar"', { ejemplo: "quitar" });
-      const quedan = await consultar("select autor, de_ejemplo from resenas");
-      comprobar("quitar las de ejemplo deja las del dueño", r.destino.includes(`Quitadas ${puestas}`) && quedan.length === 1 && quedan[0].autor === AUTOR_DE_PRUEBA, JSON.stringify(quedan));
-    }
+  r = await enviar("/admin/resenas", 'value="quitar"', { ejemplo: "quitar" });
+  const quedan = await consultar("select autor, de_ejemplo from resenas");
+  comprobar("quitar las de ejemplo deja las del dueño", r.destino.includes(`Quitadas ${puestas}`) && quedan.length === 1 && quedan[0].autor === AUTOR_DE_PRUEBA, JSON.stringify(quedan));
 
-    r = await enviar(`/admin/resenas/${id}/eliminar`, 'name="id"', { id: String(id) });
-    comprobar("borrar la reseña, con su confirmación", r.destino.includes("Reseña eliminada") && (await idDeLaPrueba()) === 0, r.destino);
-    comprobar("una reseña ya borrada da 404", (await pagina(`/admin/resenas/${id}/eliminar`)).status === 404);
-  } finally {
-    if (enProduccion) {
-      const nube = createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
-      try {
-        await nube.execute({ sql: "delete from resenas where autor = ?", args: [AUTOR_DE_PRUEBA] });
-        const quedan = await nube.execute("select (select count(*) from resenas where de_ejemplo = 0) suyas, (select count(*) from resenas where de_ejemplo = 1) ejemplo");
-        console.log("reseñas en la nube:", JSON.stringify({ ...quedan.rows[0] }));
-      } finally {
-        nube.close();
-      }
-    }
-  }
+  r = await enviar(`/admin/resenas/${id}/eliminar`, 'name="id"', { id: String(id) });
+  comprobar("borrar la reseña, con su confirmación", r.destino.includes("Reseña eliminada") && (await idDeLaPrueba()) === 0, r.destino);
+  comprobar("una reseña ya borrada da 404", (await pagina(`/admin/resenas/${id}/eliminar`)).status === 404);
 }
 
 const PROVEEDOR_DE_PRUEBA = "Quesos de prueba (borrar)";
 
 /** Proveedores: a quién se le debe, con sus días de crédito, compras y pagos. Borrar pide la clave. */
 async function probarProveedores() {
-  try {
-    let r = await enviar("/admin/proveedores", 'name="dias_credito"', { nombre: PROVEEDOR_DE_PRUEBA, telefono: "0414-0000001", dias_credito: "7", cedula_rif: "", direccion: "", nota: "" });
-    const id = Number(r.destino.match(/\/admin\/proveedores\/(\d+)/)?.[1]);
-    comprobar(`alta de proveedor (${r.ms} ms)`, r.destino.includes("Proveedor guardado") && id > 0, r.destino);
-    if (!id) throw new Error("Sin proveedor no se puede seguir");
+  let r = await enviar("/admin/proveedores", 'name="dias_credito"', { nombre: PROVEEDOR_DE_PRUEBA, telefono: "0414-0000001", dias_credito: "7", cedula_rif: "", direccion: "", nota: "" });
+  const id = Number(r.destino.match(/\/admin\/proveedores\/(\d+)/)?.[1]);
+  comprobar(`alta de proveedor (${r.ms} ms)`, r.destino.includes("Proveedor guardado") && id > 0, r.destino);
+  if (!id) throw new Error("Sin proveedor no se puede seguir");
 
-    r = await enviar(`/admin/proveedores/${id}`, 'name="total_usd"', { proveedor_id: String(id), fecha: "2026-09-01", total_usd: "100", descripcion: "20 kg de mozzarella", nota: "" });
-    comprobar("una compra de USD 100 el 1 de septiembre", r.destino.includes("Compra registrada"), r.destino);
-    r = await enviar(`/admin/proveedores/${id}`, 'name="monto"', { proveedor_id: String(id), fecha: "2026-09-10", metodo: "efectivo_usd", monto: "40", tasa: "", volver_a: `/admin/proveedores/${id}` });
-    comprobar("un pago de USD 40 al proveedor", r.destino.includes("Pago al proveedor registrado"), r.destino);
+  r = await enviar(`/admin/proveedores/${id}`, 'name="total_usd"', { proveedor_id: String(id), fecha: "2026-09-01", total_usd: "100", descripcion: "20 kg de mozzarella", nota: "" });
+  comprobar("una compra de USD 100 el 1 de septiembre", r.destino.includes("Compra registrada"), r.destino);
+  r = await enviar(`/admin/proveedores/${id}`, 'name="monto"', { proveedor_id: String(id), fecha: "2026-09-10", metodo: "efectivo_usd", monto: "40", tasa: "", volver_a: `/admin/proveedores/${id}` });
+  comprobar("un pago de USD 40 al proveedor", r.destino.includes("Pago al proveedor registrado"), r.destino);
 
-    const ficha = legible((await pagina(`/admin/proveedores/${id}`)).html);
-    comprobar(
-      "la ficha del proveedor: le debo USD 60 y la compra está vencida (y el informe suma compras y pagos)",
-      ficha.includes(`Le debo ${usd("60,00")}`) && ficha.includes("20 kg de mozzarella") && ficha.includes(">Abonada<") && /Vencida hace \d+ días/.test(ficha),
-    );
-    const informe = legible((await pagina("/admin/informe")).html);
-    comprobar("el informe suma por mes lo comprado y lo pagado a proveedores", informe.includes("Pagado a proveedores") && informe.includes("Entró neto") && informe.includes(usd("100,00")));
-    const lista = legible((await pagina("/admin/proveedores")).html);
-    comprobar("la lista de proveedores dice cuánto se le debe y desde cuándo", lista.includes(PROVEEDOR_DE_PRUEBA) && lista.includes(`Le debo ${usd("60,00")}`) && /Vencida hace \d+ días/.test(lista));
-    const resumen = legible((await pagina("/admin")).html);
-    comprobar("el resumen lo enseña en «A quién le debo»", resumen.indexOf(PROVEEDOR_DE_PRUEBA) > resumen.indexOf("A quién le debo"));
+  const ficha = legible((await pagina(`/admin/proveedores/${id}`)).html);
+  comprobar(
+    "la ficha del proveedor: le debo USD 60 y la compra está vencida (y el informe suma compras y pagos)",
+    ficha.includes(`Le debo ${usd("60,00")}`) && ficha.includes("20 kg de mozzarella") && ficha.includes(">Abonada<") && /Vencida hace \d+ días/.test(ficha),
+  );
+  const informe = legible((await pagina("/admin/informe")).html);
+  comprobar("el informe suma por mes lo comprado y lo pagado a proveedores", informe.includes("Pagado a proveedores") && informe.includes("Entró neto") && informe.includes(usd("100,00")));
+  const lista = legible((await pagina("/admin/proveedores")).html);
+  comprobar("la lista de proveedores dice cuánto se le debe y desde cuándo", lista.includes(PROVEEDOR_DE_PRUEBA) && lista.includes(`Le debo ${usd("60,00")}`) && /Vencida hace \d+ días/.test(lista));
+  const resumen = legible((await pagina("/admin")).html);
+  comprobar("el resumen lo enseña en «A quién le debo»", resumen.indexOf(PROVEEDOR_DE_PRUEBA) > resumen.indexOf("A quién le debo"));
 
-    const [compra] = await consultar("select id from compras where proveedor_id = ?", [id]);
-    const [pago] = await consultar("select id from pagos_proveedores where proveedor_id = ?", [id]);
-    r = await enviar(`/admin/compras/${compra.id}/eliminar`, 'name="id"', { id: String(compra.id) });
-    comprobar("borrar una compra", r.destino.includes("Compra eliminada"), r.destino);
-    r = await enviar(`/admin/pagos-proveedor/${pago.id}/eliminar`, 'name="id"', { id: String(pago.id) });
-    comprobar("borrar un pago al proveedor", r.destino.includes("Pago eliminado"), r.destino);
+  const [compra] = await consultar("select id from compras where proveedor_id = ?", [id]);
+  const [pago] = await consultar("select id from pagos_proveedores where proveedor_id = ?", [id]);
+  r = await enviar(`/admin/compras/${compra.id}/eliminar`, 'name="id"', { id: String(compra.id) });
+  comprobar("borrar una compra", r.destino.includes("Compra eliminada"), r.destino);
+  r = await enviar(`/admin/pagos-proveedor/${pago.id}/eliminar`, 'name="id"', { id: String(pago.id) });
+  comprobar("borrar un pago al proveedor", r.destino.includes("Pago eliminado"), r.destino);
 
-    r = await enviar(`/admin/proveedores/${id}/eliminar`, 'name="clave"', { id: String(id), clave: "no-es-la-clave" });
-    comprobar("borrar un proveedor con una clave mala no borra", r.destino.includes("La clave no es correcta"), r.destino);
-    r = await enviar(`/admin/proveedores/${id}/eliminar`, 'name="clave"', { id: String(id), clave: env.ADMIN_CLAVE });
-    comprobar("con la clave buena se borra el proveedor", r.destino.includes("eliminado con sus compras") && (await consultar("select count(*) as n from proveedores where id = ?", [id]))[0].n == 0, r.destino);
-  } finally {
-    if (enProduccion) {
-      const nube = createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
-      try {
-        for (const tabla of ["compras", "pagos_proveedores"]) {
-          await nube.execute({ sql: `delete from ${tabla} where proveedor_id in (select id from proveedores where nombre = ?)`, args: [PROVEEDOR_DE_PRUEBA] });
-        }
-        await nube.execute({ sql: "delete from proveedores where nombre = ?", args: [PROVEEDOR_DE_PRUEBA] });
-      } finally {
-        nube.close();
-      }
-    }
-  }
+  r = await enviar(`/admin/proveedores/${id}/eliminar`, 'name="clave"', { id: String(id), clave: "no-es-la-clave" });
+  comprobar("borrar un proveedor con una clave mala no borra", r.destino.includes("La clave no es correcta"), r.destino);
+  r = await enviar(`/admin/proveedores/${id}/eliminar`, 'name="clave"', { id: String(id), clave: env.ADMIN_CLAVE });
+  comprobar("con la clave buena se borra el proveedor", r.destino.includes("eliminado con sus compras") && (await consultar("select count(*) as n from proveedores where id = ?", [id]))[0].n == 0, r.destino);
 }
 
-/** El panel no borra clientes: los de prueba se quitan directamente de Turso. */
-async function borrarDeLaNube(clientes) {
-  const nube = createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
-  try {
-    for (const id of clientes.filter(Boolean)) {
-      await nube.execute({ sql: "delete from venta_lineas where venta_id in (select id from ventas where cliente_id = ?)", args: [id] });
-      for (const tabla of ["adjuntos", "ventas", "pagos"]) {
-        await nube.execute({ sql: `delete from ${tabla} where cliente_id = ?`, args: [id] });
-      }
-      await nube.execute({ sql: "delete from clientes where id = ?", args: [id] });
-    }
-    const quedan = await nube.execute("select (select count(*) from clientes) c, (select count(*) from ventas) v, (select count(*) from productos) p");
-    console.log("en la nube quedan:", JSON.stringify({ ...quedan.rows[0] }));
-  } finally {
-    nube.close();
+/**
+ * La web publicada tiene los datos de verdad del negocio, así que aquí solo
+ * se mira: ninguna de estas peticiones crea, cambia ni borra nada, ni gasta
+ * números de nota, ni guarda copias en la nube. Todo lo que escribe se
+ * prueba en local, con una base de usar y tirar.
+ */
+async function probarSinEscribir() {
+  const pantallas = [
+    ["/admin", "Resumen", "Hoy,"],
+    ["/admin/clientes", "Clientes", "Cliente nuevo"],
+    ["/admin/ventas", "Ventas", "Registrar venta"],
+    ["/admin/pagos", "Abonos", "Registrar abono"],
+    ["/admin/despacho", "Despacho", "Ruta de despacho"],
+    ["/admin/cuentas", "Cuentas", "Cuentas por pagar"],
+    ["/admin/informe", "Informe", "Por mes"],
+    ["/admin/productos", "Productos", "Tasa del día"],
+    ["/admin/resenas", "Reseñas", "Reseña nueva"],
+    ["/admin/proveedores", "Proveedores", "Proveedor nuevo"],
+    ["/admin/caja", "Cierre del día", "Descargar para Excel"],
+  ];
+  const vistas = {};
+  for (const [ruta, nombre, texto] of pantallas) {
+    const p = await pagina(ruta);
+    vistas[ruta] = p.html;
+    comprobar(`panel: ${nombre} (${p.ms} ms)`, p.status === 200 && legible(p.html).includes(texto), String(p.status));
   }
+
+  // Lo que cuelga de cada lista, si ya hay algo cargado: una ficha, una nota, un proveedor.
+  const cliente = vistas["/admin/clientes"].match(/href="\/admin\/clientes\/(\d+)"/)?.[1];
+  if (cliente) {
+    const ficha = await pagina(`/admin/clientes/${cliente}`);
+    comprobar(`la ficha de un cliente (${ficha.ms} ms)`, ficha.status === 200 && ficha.html.includes("Registrar abono") && ficha.html.includes('name="dias_credito"'));
+    comprobar("su estado de cuenta", (await pagina(`/admin/clientes/${cliente}/estado`)).html.includes("Estado de cuenta"));
+    comprobar("la pantalla de borrarlo pide la clave (no se envía)", (await pagina(`/admin/clientes/${cliente}/eliminar`)).html.includes('name="clave"'));
+  }
+  const nota = vistas["/admin/ventas"].match(/href="(\/admin\/ventas\/\d+\/nota)"/)?.[1];
+  if (nota) comprobar("una nota de entrega", (await pagina(nota)).html.includes("No es una factura"));
+  const proveedor = vistas["/admin/proveedores"].match(/href="(\/admin\/proveedores\/\d+)"/)?.[1];
+  if (proveedor) comprobar("la ficha de un proveedor", (await pagina(proveedor)).html.includes("Registrar compra"));
+  console.log(`      (con datos: ${cliente ? "cliente" : "sin clientes"}, ${nota ? "nota" : "sin notas"}, ${proveedor ? "proveedor" : "sin proveedores"})`);
+
+  // Las descargas.
+  let respuesta = await fetch(base + "/admin/clientes/exportar", { headers: { cookie } });
+  let archivo = Buffer.from(await respuesta.arrayBuffer());
+  comprobar("la lista de clientes para Excel", respuesta.status === 200 && archivo[0] === 0xef && archivo.toString("utf8").includes("Nombre;Teléfono;"));
+  respuesta = await fetch(base + "/admin/caja/exportar", { headers: { cookie } });
+  archivo = Buffer.from(await respuesta.arrayBuffer());
+  comprobar("los movimientos para Excel", respuesta.status === 200 && archivo[0] === 0xef && archivo.toString("utf8").includes("Fecha;Tipo;Nota n.º;"));
+  respuesta = await fetch(base + "/admin/caja/exportar?forma=dias", { headers: { cookie } });
+  comprobar("el resumen por día para Excel", respuesta.status === 200 && Buffer.from(await respuesta.arrayBuffer()).toString("utf8").includes("Fecha;Notas;Vendido USD;"));
+
+  // La copia de seguridad: se baja, se abre y se cuenta lo que lleva. Es leer, no guardar.
+  respuesta = await fetch(base + "/admin/copia", { headers: { cookie } });
+  const rutaCopia = path.join(carpetaTemporal, "copia-de-la-web.db");
+  fs.writeFileSync(rutaCopia, Buffer.from(await respuesta.arrayBuffer()));
+  let enCopia = null;
+  try {
+    const copia = new DatabaseSync(rutaCopia, { readOnly: true });
+    enCopia = { ...copia.prepare("select (select count(*) from clientes) clientes, (select count(*) from ventas) ventas, (select count(*) from pagos) abonos, (select count(*) from productos) productos, (select count(*) from resenas) resenas, (select count(*) from proveedores) proveedores").get() };
+    copia.close();
+  } catch (error) {
+    enCopia = { error: String(error) };
+  }
+  comprobar("la copia de seguridad se descarga y se abre", respuesta.status === 200 && enCopia.productos >= 1, JSON.stringify(enCopia));
+  console.log("      en la web hay:", JSON.stringify(enCopia));
+
+  // Lo que no debe verse sin sesión.
+  for (const ruta of ["/admin/clientes/exportar", "/admin/caja/exportar", "/admin/copia"]) {
+    respuesta = await fetch(base + ruta, { redirect: "manual" });
+    comprobar(`sin sesión no se descarga ${ruta}`, respuesta.status === 307 || respuesta.status === 401, String(respuesta.status));
+  }
+  for (const ruta of ["/api/tarea-diaria", "/api/copia-automatica"]) {
+    respuesta = await fetch(base + ruta);
+    comprobar(`sin su clave no corre ${ruta}`, respuesta.status === 401, String(respuesta.status));
+  }
+  comprobar("la foto de una reseña que no existe da 404", (await fetch(base + "/foto-resena/99999999")).status === 404);
+
+  // El público no ve las reseñas de ejemplo en ningún producto ni en la portada.
+  const portada = (await pagina("/", "")).html;
+  const productos = [...new Set([...portada.matchAll(/href="(\/producto\/\d+-[a-z0-9-]+)"/g)].map((m) => m[1]))];
+  const conEjemplo = [];
+  for (const ruta of productos) if (legible((await pagina(ruta, "")).html).includes("de ejemplo")) conEjemplo.push(ruta);
+  comprobar(`ninguna reseña de ejemplo a la vista del público (${productos.length} productos)`, productos.length > 0 && conEjemplo.length === 0 && !legible(portada).includes("de ejemplo"), conEjemplo.join(", "));
 }
 
 // ---------- Principal ----------
 
 try {
-  console.log(enProduccion ? `Probando ${base}` : "Probando en local con una base temporal");
+  console.log(enProduccion ? `Probando ${base}, solo mirando` : "Probando en local con una base temporal");
   if (!enProduccion) await arrancarServidor();
 
   const web = await pagina("/", "");
@@ -900,11 +942,13 @@ try {
 
   await probarPresentacion(web);
   await probarEntrada();
-  if (!enProduccion) await probarPrecios();
-  await probarNegocio();
-  await probarResenas();
-  await probarProveedores();
-  if (!enProduccion) {
+  if (enProduccion) {
+    await probarSinEscribir();
+  } else {
+    await probarPrecios();
+    await probarNegocio();
+    await probarResenas();
+    await probarProveedores();
     await probarCartera();
     await probarTareaDiaria();
     await probarFreno();

@@ -141,7 +141,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
             <p className="vacio">Nadie debe nada.</p>
           ) : (
             <div className="tabla-envoltorio">
-              <table className="tabla">
+              <table className="tabla tabla--fichas">
                 <thead>
                   <tr>
                     <th>Cliente</th>
@@ -155,11 +155,11 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                 <tbody>
                   {deudores.slice(0, 8).map((c) => (
                     <tr key={c.id}>
-                      <td>
+                      <td data-label="Cliente">
                         <Link href={`/admin/clientes/${c.id}`}>{c.nombre}</Link>
                       </td>
-                      <td className={`numero ${c.vencido_usd > 0 ? estilos.vencida : estilos.deuda}`}>{usd(c.saldo_usd)}</td>
-                      <td>
+                      <td data-label="Debe" className={`numero ${c.vencido_usd > 0 ? estilos.vencida : estilos.deuda}`}>{usd(c.saldo_usd)}</td>
+                      <td data-label="Plazo">
                         {c.vencido_usd > 0 ? (
                           <span className={estilos.vencida}>{describirVencimiento(c.mayor_atraso)}</span>
                         ) : c.proximo_vencimiento ? (
@@ -196,7 +196,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
             </p>
           ) : (
             <div className="tabla-envoltorio">
-              <table className="tabla">
+              <table className="tabla tabla--fichas">
                 <thead>
                   <tr>
                     <th>Proveedor</th>
@@ -207,11 +207,11 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                 <tbody>
                   {acreedores.slice(0, 8).map((p) => (
                     <tr key={p.id}>
-                      <td>
+                      <td data-label="Proveedor">
                         <Link href={`/admin/proveedores/${p.id}`}>{p.nombre}</Link>
                       </td>
-                      <td className={`numero ${p.vencido_usd > 0 ? estilos.vencida : estilos.deuda}`}>{usd(p.saldo_usd)}</td>
-                      <td>
+                      <td data-label="Le debo" className={`numero ${p.vencido_usd > 0 ? estilos.vencida : estilos.deuda}`}>{usd(p.saldo_usd)}</td>
+                      <td data-label="Plazo">
                         {p.vencido_usd > 0 ? (
                           <span className={estilos.vencida}>{describirVencimiento(p.mayor_atraso)}</span>
                         ) : p.proximo_vencimiento ? (
@@ -236,7 +236,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
             </p>
           ) : (
             <div className="tabla-envoltorio">
-              <table className="tabla">
+              <table className="tabla tabla--fichas">
                 <thead>
                   <tr>
                     <th>Fecha</th>
@@ -248,12 +248,12 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                 <tbody>
                   {ultimosPagos.map((p) => (
                     <tr key={p.id}>
-                      <td>{fechaCorta(p.fecha)}</td>
-                      <td>
+                      <td data-label="Fecha">{fechaCorta(p.fecha)}</td>
+                      <td data-label="Cliente">
                         <Link href={`/admin/clientes/${p.cliente_id}`}>{p.cliente_nombre}</Link>
                       </td>
-                      <td>{METODOS_PAGO[p.metodo]}</td>
-                      <td className="numero">{formatearMonto(p.monto, p.moneda)}</td>
+                      <td data-label="Método">{METODOS_PAGO[p.metodo]}</td>
+                      <td data-label="Monto" className="numero">{formatearMonto(p.monto, p.moneda)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -271,7 +271,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
           </p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Nota</th>
@@ -283,14 +283,14 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
               <tbody>
                 {ultimasVentas.map((v) => (
                   <tr key={v.id}>
-                    <td>
+                    <td data-label="Nota">
                       <Link href={`/admin/ventas/${v.id}/nota`}>{numeroDeNota(v.id)}</Link>
                     </td>
-                    <td>{fechaCorta(v.fecha)}</td>
-                    <td>
+                    <td data-label="Fecha">{fechaCorta(v.fecha)}</td>
+                    <td data-label="Cliente">
                       <Link href={`/admin/clientes/${v.cliente_id}`}>{v.cliente_nombre}</Link>
                     </td>
-                    <td className="numero">{usd(v.total_usd)}</td>
+                    <td data-label="Total" className="numero">{usd(v.total_usd)}</td>
                   </tr>
                 ))}
               </tbody>

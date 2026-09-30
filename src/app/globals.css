@@ -195,6 +195,79 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
+/* En el teléfono una tabla ancha no cabe, y lo de la derecha (cuánto debe,
+   desde cuándo) quedaba fuera de la pantalla. Cada fila se vuelve una
+   ficha: el dato a la derecha y, delante, el nombre de su columna, que lo
+   pone `data-label`. Los títulos siguen ahí para los lectores de pantalla.
+   En papel y en pantallas anchas sigue siendo una tabla. */
+@media screen and (max-width: 640px) {
+  .tabla--fichas,
+  .tabla--fichas tbody {
+    display: block;
+  }
+  .tabla--fichas thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .tabla--fichas tr {
+    display: block;
+    padding: var(--espacio-3) 0;
+    border-bottom: 1px solid var(--color-borde);
+  }
+  .tabla--fichas tr:first-child {
+    padding-top: 0;
+  }
+  .tabla--fichas tr:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .tabla--fichas td,
+  .tabla--fichas td.numero {
+    display: block;
+    position: relative;
+    min-height: 28px;
+    padding: 3px 0 3px 42%;
+    border: none;
+    white-space: normal;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+  .tabla--fichas td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    top: 4px;
+    width: 40%;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-texto-suave);
+    text-align: left;
+  }
+  /* El primer dato de la fila hace de título de la ficha. */
+  .tabla--fichas td:first-child {
+    font-weight: 700;
+  }
+  /* Las celdas sin nombre (los enlaces de cada fila) van a lo ancho. */
+  .tabla--fichas td:not([data-label]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--espacio-1) var(--espacio-4);
+    padding-left: 0;
+    text-align: left;
+  }
+  .tabla--fichas td:not([data-label])::before {
+    content: none;
+  }
+  .tabla--fichas td:not([data-label]):empty {
+    display: none;
+  }
+}
+
 /* Avisos */
 .aviso {
   padding: var(--espacio-3) var(--espacio-4);

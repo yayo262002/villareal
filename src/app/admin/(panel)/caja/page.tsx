@@ -111,7 +111,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
           <p className="vacio">Ninguna venta ese día.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Nota</th>
@@ -123,14 +123,14 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
               <tbody>
                 {ventas.map((v) => (
                   <tr key={v.id}>
-                    <td>
+                    <td data-label="Nota">
                       <Link href={`/admin/ventas/${v.id}/nota`}>{numeroDeNota(v.id)}</Link>
                     </td>
-                    <td>
+                    <td data-label="Cliente">
                       <Link href={`/admin/clientes/${v.cliente_id}`}>{v.cliente_nombre}</Link>
                     </td>
-                    <td>{resumenDeLineas(v.lineas)}</td>
-                    <td className="numero">{usd(v.total_usd)}</td>
+                    <td data-label="Productos">{resumenDeLineas(v.lineas)}</td>
+                    <td data-label="Total" className="numero">{usd(v.total_usd)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -145,7 +145,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
           <p className="vacio">Ningún abono ese día.</p>
         ) : (
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Cliente</th>
@@ -158,13 +158,13 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
               <tbody>
                 {abonos.map((p) => (
                   <tr key={p.id}>
-                    <td>
+                    <td data-label="Cliente">
                       <Link href={`/admin/clientes/${p.cliente_id}`}>{p.cliente_nombre}</Link>
                     </td>
-                    <td>{METODOS_PAGO[p.metodo]}</td>
-                    <td className="numero">{formatearMonto(p.monto, p.moneda)}</td>
-                    <td className="numero">{usd(p.monto_usd)}</td>
-                    <td>{p.referencia || "—"}</td>
+                    <td data-label="Método">{METODOS_PAGO[p.metodo]}</td>
+                    <td data-label="Monto" className="numero">{formatearMonto(p.monto, p.moneda)}</td>
+                    <td data-label="En USD" className="numero">{usd(p.monto_usd)}</td>
+                    <td data-label="Referencia">{p.referencia || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -177,7 +177,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
         <section className="tarjeta">
           <h2 className={estilos.subtitulo}>Pagos a proveedores del día ({pagos.length})</h2>
           <div className="tabla-envoltorio">
-            <table className="tabla">
+            <table className="tabla tabla--fichas">
               <thead>
                 <tr>
                   <th>Proveedor</th>
@@ -190,13 +190,13 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
               <tbody>
                 {pagos.map((p) => (
                   <tr key={p.id}>
-                    <td>
+                    <td data-label="Proveedor">
                       <Link href={`/admin/proveedores/${p.proveedor_id}`}>{p.proveedor_nombre}</Link>
                     </td>
-                    <td>{METODOS_PAGO[p.metodo]}</td>
-                    <td className="numero">{formatearMonto(p.monto, p.moneda)}</td>
-                    <td className="numero">{usd(p.monto_usd)}</td>
-                    <td>{p.referencia || "—"}</td>
+                    <td data-label="Método">{METODOS_PAGO[p.metodo]}</td>
+                    <td data-label="Monto" className="numero">{formatearMonto(p.monto, p.moneda)}</td>
+                    <td data-label="En USD" className="numero">{usd(p.monto_usd)}</td>
+                    <td data-label="Referencia">{p.referencia || "—"}</td>
                   </tr>
                 ))}
               </tbody>
