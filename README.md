@@ -316,14 +316,21 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   venta, lo abonado y lo que queda. Se imprime, se guarda como PDF o se
   manda por WhatsApp. **No es una factura fiscal** y lo dice: una factura
   legal en Venezuela necesita un formato autorizado por el SENIAT.
-- **Pedidos por entregar.** Al anotar una venta se elige la entrega: «Ya
-  entregada» (se la lleva del local, lo normal) o «Por entregar». Las que
-  quedan por entregar salen en Despacho con su ruta, con lo que lleva cada
-  cliente y con la suma de lo que hay que cargar (`src/lib/entregas.ts`).
-  En cada parada, «Entregado» la quita de la lista; desde la nota se puede
-  devolver al despacho si se marcó por error. «Avisar» abre WhatsApp con
-  «vamos en camino» y el pedido. Las ventas anteriores a este cambio
-  cuentan como entregadas.
+- **La entrega se elige a mano** al anotar la venta: «Sí, ya la entregué»
+  o «No, queda por entregar». No hay opción por defecto.
+  - **Entregada** exige la **foto de la nota firmada** por el cliente (la
+    hoja de papel). Se guarda como foto del cliente unida a esa venta,
+    «Nota N.º 000012 firmada». Sin foto no se guarda la venta.
+  - **Por entregar** exige el **día previsto de entrega** (no anterior a
+    la fecha de despacho). Esas ventas salen en Despacho con su ruta, con
+    lo que lleva cada cliente, la suma de lo que hay que cargar
+    (`src/lib/entregas.ts`) y para cuándo es cada una; y el Resumen las
+    recuerda arriba: «Entregas pendientes», con las de hoy y las
+    atrasadas. En cada parada, «Entregado» pide también la foto de la nota
+    firmada y la quita de la lista; desde la nota se puede devolver al
+    despacho si se marcó por error. «Avisar» abre WhatsApp con «vamos en
+    camino» y el pedido. Las ventas anteriores a este cambio cuentan como
+    entregadas.
 - **Ruta de despacho.** El centro de Barquisimeto es una cuadrícula de
   calles y carreras numeradas. De cada dirección se lee el número de la
   calle y el de la carrera (`src/lib/direcciones.ts`) y con eso se cuenta
@@ -372,10 +379,16 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   - Con `MAPA_APAGADO=1` no se llama al mapa (las pruebas locales).
 - **Nombre y razón social.** El nombre del cliente es como lo llama el
   dueño («Luis», «Panadería Tuttopan»); la razón social, el nombre legal
-  para la nota («Tutto Pan, C.A.»), que va como «Señor(es)» y deja el
-  nombre como «Atención». Los dos son opcionales: sin nombre, el cliente
-  queda con el teléfono y se dice bajito («sin nombre») en la cartera y en
-  la ficha, sin frenar nada.
+  para la nota («Tutto Pan, C.A.»). En las listas, en la ficha, en las
+  ventas y en los abonos lo que va en grande es la razón social si la
+  hay, y si no, el nombre (`rotulo` en `src/lib/clientes.ts`); en la nota
+  y el estado de cuenta va como «Señor(es)» y deja el nombre como
+  «Atención». Los mensajes de WhatsApp saludan por el nombre. Los dos son
+  opcionales: sin nombre, el cliente queda con el teléfono y se dice
+  bajito («sin nombre») en la cartera y en la ficha, sin frenar nada.
+- **Calles con letra.** Por el oeste hay calles «13A», «13B»: se entienden
+  y se colocan entre la 13 y la 14, y se escriben igual al enseñarlas
+  («carrera 5 con calle 13A»).
 - **Buscar una venta.** En Ventas, por el nombre del cliente, por el número
   de la nota («26» o «000026») o por la fecha («30/09»). Sin buscar salen
   las últimas 50 (`src/lib/buscar.ts`).

@@ -12,6 +12,7 @@ import { aBolivares, bs, cantidad, fechaCorta, fechaDeLaBase, usd } from "@/lib/
 import { enlaceWhatsappA, mensajeNota } from "@/lib/whatsapp";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { BotonImprimir } from "@/components/boton-imprimir";
+import { EntradaFoto } from "@/components/entrada-foto";
 import { DatosDelCliente, Membrete } from "../../../membrete";
 import estilos from "../../../panel.module.css";
 
@@ -58,7 +59,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
     <>
       <div className={estilos.noImprimir}>
         <p>
-          <Link href={`/admin/clientes/${cliente.id}`}>← {cliente.nombre}</Link>
+          <Link href={`/admin/clientes/${cliente.id}`}>← {cliente.rotulo}</Link>
         </p>
         <Avisos parametros={parametros} />
         <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginTop: "var(--espacio-3)" }}>
@@ -77,7 +78,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
         </div>
 
         {/* La entrega: si va al despacho, si ya se llevó, y el botón para cambiarlo. */}
-        <form action={cambiarEntrega} className={estilos.entrega}>
+        <form action={cambiarEntrega} className={estilos.entrega} encType="multipart/form-data">
           <input type="hidden" name="id" value={venta.id} />
           <input type="hidden" name="entregada" value={venta.por_entregar ? "1" : "0"} />
           <input type="hidden" name="volver_a" value={`/admin/ventas/${venta.id}/nota`} />
@@ -85,8 +86,13 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
             <>
               <span className={`${estilos.estado} ${estilos["estado--parcial"]}`}>Por entregar</span>
               <span>
+                {venta.entrega_prevista ? `Prevista para el ${fechaCorta(venta.entrega_prevista)}. ` : ""}
                 Está en la <Link href="/admin/despacho">ruta de despacho</Link>.
               </span>
+              <label htmlFor="foto-entrega" className="ayuda">
+                Foto de la nota firmada:
+              </label>
+              <EntradaFoto nombre="foto" id="foto-entrega" />
               <button type="submit" className={`boton ${estilos.botonPequeno}`}>
                 Marcar entregada
               </button>

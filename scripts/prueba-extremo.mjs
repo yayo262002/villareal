@@ -42,6 +42,9 @@ const png = Buffer.from(
   "base64",
 );
 
+/** La foto de la nota firmada que exige cada entrega. */
+const fotoFirmada = () => new File([png], "nota-firmada.png", { type: "image/png" });
+
 let fallos = 0;
 function comprobar(nombre, condicion, detalle = "") {
   console.log(`${condicion ? "ok   " : "FALLO"} ${nombre}${condicion ? "" : " → " + detalle}`);
@@ -309,7 +312,7 @@ async function probarNegocio() {
   // La nota como la de papel: 2 piezas, 2 kilos de queso amarillo a USD 5, del 1 de septiembre, por entregar.
   r = await enviar("/admin/ventas", 'name="cantidad_1"', {
     cliente_id: String(clienteId), fecha: "2026-09-01", piezas_1: "2", cantidad_1: "2", precio_1: "5", nota: "primera",
-    entrega: "despacho",
+    entrega: "despacho", entrega_prevista: "2026-09-02",
   });
   comprobar(`venta con piezas, kilos y precio (${r.ms} ms)`, r.destino.includes("Venta registrada") && cerca((await cuentasDe(clienteId)).ventas, 10), r.destino);
   const pedidoId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
@@ -324,13 +327,23 @@ async function probarNegocio() {
     r.destino.includes("escribe el precio en dólares") && r.destino.includes("cantidad_1=2") && r.destino.includes(`cliente_id=${clienteId}`),
     r.destino,
   );
+  // La entrega se elige a mano; si ya se entregó, va con la foto de la nota firmada; si no, con el día previsto.
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48" });
+  comprobar("sin decir si se entregó, no se guarda", r.destino.includes("Elige si ya la entregaste"), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "local" });
+  comprobar("entregada sin la foto de la nota firmada, no se guarda", r.destino.includes("adjunta la foto de la nota firmada"), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "despacho" });
+  comprobar("por entregar sin el día previsto, no se guarda", r.destino.includes("día previsto de entrega"), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "despacho", entrega_prevista: "2026-09-10" });
+  comprobar("el día previsto no puede ser antes del despacho", r.destino.includes("no puede ser antes de la fecha de despacho"), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "local", foto: fotoFirmada() });
+  comprobar("entregada con la foto: se guarda y la foto queda con la venta", r.destino.includes("con la foto de la nota firmada") && (await cuentasDe(clienteId)).fotos === 1, `${r.destino} ${JSON.stringify(await cuentasDe(clienteId))}`);
   let esperado = 10 + 14.96;
   comprobar("venta al mayorista a 7,48 el kilo (2 × 7,48)", cerca((await cuentasDe(clienteId)).ventas, esperado), JSON.stringify(await cuentasDe(clienteId)));
 
   r = await enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "Cliente Detal", telefono: "", tipo: "detal" });
   const detalId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
-  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "8.5" });
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "8.5", entrega: "local", foto: fotoFirmada() });
   comprobar("venta al detal (2 × 8,50)", cerca((await cuentasDe(detalId)).ventas, 17), JSON.stringify(await cuentasDe(detalId)));
 
   // Un precio que se sale de lo normal avisa y no guarda hasta confirmar.
@@ -343,7 +356,7 @@ async function probarNegocio() {
   );
   const relleno = (await pagina(r.destino)).html;
   comprobar("el formulario vuelve con lo escrito y la casilla de confirmar", relleno.includes('value="85"') && relleno.includes('name="confirmar"'), r.destino);
-  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "85", confirmar: "1" });
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "85", confirmar: "1", entrega: "local", foto: fotoFirmada() });
   comprobar("confirmado, se guarda", r.destino.includes("Venta registrada") && cerca((await cuentasDe(detalId)).ventas, 17 + 85), r.destino);
   const caraId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
   await enviar(`/admin/ventas/${caraId}/eliminar`, 'name="id"', { id: String(caraId) });
@@ -359,6 +372,7 @@ async function probarNegocio() {
   // Dos productos en la misma nota: 1 kilo de amarillo a 8,50 y medio kilo de mozzarella a 7.
   r = await enviar("/admin/ventas", 'name="cantidad_1"', {
     cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "8.5", cantidad_2: "0.5", precio_2: "7",
+    entrega: "local", foto: fotoFirmada(),
   });
   comprobar("una nota con dos productos (8,50 + medio kilo a 7)", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
 
@@ -396,6 +410,8 @@ async function probarNegocio() {
   );
   const resumen = legible((await pagina("/admin")).html);
   comprobar("resumen: quien debe sale con su plazo vencido y lo que se debe a proveedores", /Vencida hace \d+ días/.test(resumen) && resumen.includes("Debo a proveedores") && resumen.includes("A quién le debo"));
+  comprobar("resumen: recuerda la entrega pendiente y dice que va atrasada", resumen.includes("Entregas pendientes (1)") && resumen.includes("1 atrasada") && resumen.includes("atrasada: era para el 02/09/2026") && resumen.includes("Hacer la ruta"));
+  comprobar("la lista de ventas dice para cuándo era", legible((await pagina("/admin/ventas")).html).includes("Por entregar el 02/09/2026"));
   const recordatorio = decodeURIComponent(ficha.match(/wa\.me\/584120000000\?text=([^"]*Tiene%20pendiente[^"]*)"/)?.[1] ?? "");
   comprobar("el recordatorio por WhatsApp dice desde cuándo venció cada nota", /vencida hace \d+ días/.test(recordatorio), recordatorio);
   const caja = legible((await pagina("/admin/caja?fecha=2026-09-20")).html);
@@ -464,10 +480,12 @@ async function probarNegocio() {
 
   const marca = `name="id" value="${pedidoId}"`;
   r = await enviar("/admin/despacho?solo=entregas", marca, { id: String(pedidoId), entregada: "1", volver_a: "/admin/despacho?solo=entregas" });
+  comprobar("entregar sin la foto de la nota firmada no marca nada", r.destino.includes("adjunta la foto de la nota firmada") && Number((await consultar("select por_entregar from ventas where id = ?", [pedidoId]))[0].por_entregar) === 1, r.destino);
+  r = await enviar("/admin/despacho?solo=entregas", marca, { id: String(pedidoId), entregada: "1", volver_a: "/admin/despacho?solo=entregas", foto: fotoFirmada() });
   let [entrega] = await consultar("select por_entregar, entregada_en from ventas where id = ?", [pedidoId]);
   comprobar(
     `marcar el pedido como entregado (${r.ms} ms)`,
-    r.destino.startsWith("/admin/despacho?solo=entregas&ok=") && r.destino.includes(`Nota ${numeroDelPedido} entregada`) &&
+    r.destino.startsWith("/admin/despacho?solo=entregas&ok=") && r.destino.includes(`Nota ${numeroDelPedido} entregada`) && r.destino.includes("con su foto guardada") &&
       Number(entrega.por_entregar) === 0 && Boolean(entrega.entregada_en),
     r.destino,
   );
@@ -480,7 +498,7 @@ async function probarNegocio() {
     r.destino.startsWith(`/admin/ventas/${pedidoId}/nota?ok=`) && Number(entrega.por_entregar) === 1 && entrega.entregada_en === null,
     r.destino,
   );
-  await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "1", volver_a: "" });
+  await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "1", volver_a: "", foto: fotoFirmada() });
 
   // El estado de cuenta y el recibo del abono.
   const estado = await pagina(`/admin/clientes/${clienteId}/estado`);
@@ -515,7 +533,8 @@ async function probarNegocio() {
   datos.set("descripcion", "Nota 45");
   datos.set("archivo", new File([png], "nota.png", { type: "image/png" }));
   let respuesta = await fetch(base + `/admin/clientes/${clienteId}`, { method: "POST", headers: { cookie }, body: datos, redirect: "manual" });
-  comprobar("subir la foto de la nota", respuesta.status === 303 && (await cuentasDe(clienteId)).fotos === 1, String(respuesta.status));
+  // Ya había tres: la de la venta entregada y las dos de marcar el pedido entregado.
+  comprobar("subir la foto de la nota", respuesta.status === 303 && (await cuentasDe(clienteId)).fotos === 4, `${respuesta.status} ${JSON.stringify(await cuentasDe(clienteId))}`);
   const conFoto = (await pagina(`/admin/clientes/${clienteId}`)).html;
   const adjuntoId = Number(conFoto.match(/\/admin\/adjuntos\/(\d+)"/)?.[1]);
   respuesta = await fetch(base + `/admin/adjuntos/${adjuntoId}`, { headers: { cookie } });
@@ -543,8 +562,8 @@ async function probarNegocio() {
     "movimientos para Excel: una fila por venta y por abono, con coma decimal y su tasa",
     respuesta.status === 200 && movimientos[0] === 0xef && (respuesta.headers.get("content-disposition") ?? "").includes("movimientos-2026-09-01-a-2026-09-30.csv") &&
       textoMovimientos.includes("Fecha;Tipo;Nota n.º;Cliente o proveedor;") &&
-      textoMovimientos.includes(`01/09/2026;Venta;${String(notaId).padStart(6, "0")};${nombre};`) && textoMovimientos.includes(";10,00;") &&
-      textoMovimientos.includes(`20/09/2026;Abono;;${nombre};;Pago móvil;146,00;Bs;36,5000;;4,00;`),
+      textoMovimientos.includes(`01/09/2026;Venta;${String(notaId).padStart(6, "0")};Bodega Prueba, C.A.;`) && textoMovimientos.includes(";10,00;") &&
+      textoMovimientos.includes(`20/09/2026;Abono;;Bodega Prueba, C.A.;;Pago móvil;146,00;Bs;36,5000;;4,00;`),
     textoMovimientos.slice(0, 600),
   );
   respuesta = await fetch(base + "/admin/caja/exportar?forma=dias&desde=2026-09-20&hasta=2026-09-20", { headers: { cookie } });

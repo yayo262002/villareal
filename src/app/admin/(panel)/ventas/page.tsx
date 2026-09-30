@@ -9,6 +9,7 @@ import { ventaCoincide } from "@/lib/buscar";
 import { fechaCorta, hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { TotalDeVenta } from "@/components/total-de-venta";
+import { EntradaFoto } from "@/components/entrada-foto";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Ventas" };
@@ -117,7 +118,7 @@ export default async function PaginaVentas({
             Primero <Link href="/admin/clientes">registra un cliente</Link>.
           </p>
         ) : (
-          <form action={guardarVenta} className="formulario">
+          <form action={guardarVenta} className="formulario" encType="multipart/form-data">
             <div className="formulario__fila">
               <div className="campo">
                 <label htmlFor="venta-cliente">Cliente</label>
@@ -127,7 +128,7 @@ export default async function PaginaVentas({
                   </option>
                   {clientes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.nombre}
+                      {c.rotulo}
                       {c.tipo === "mayor" ? " (al mayor)" : ""}
                     </option>
                   ))}
@@ -152,19 +153,34 @@ export default async function PaginaVentas({
               </label>
             )}
 
-            <div className="formulario__fila">
+            <fieldset className={estilos.entregaVenta}>
+              <legend>Entrega</legend>
               <div className="campo">
-                <label htmlFor="venta-entrega">Entrega</label>
-                <select id="venta-entrega" name="entrega" defaultValue={escrito(parametros, "entrega") || "local"}>
-                  <option value="local">Ya entregada (se la lleva del local)</option>
-                  <option value="despacho">Por entregar (va al despacho)</option>
+                <label htmlFor="venta-entrega">¿Ya se la entregaste?</label>
+                <select id="venta-entrega" name="entrega" required defaultValue={escrito(parametros, "entrega")}>
+                  <option value="" disabled>
+                    Elige una
+                  </option>
+                  <option value="local">Sí, ya la entregué</option>
+                  <option value="despacho">No, queda por entregar</option>
                 </select>
-                <span className="ayuda">Lo que queda por entregar sale en la ruta de despacho.</span>
               </div>
-              <div className="campo">
-                <label htmlFor="venta-nota">Observación</label>
-                <input id="venta-nota" name="nota" type="text" defaultValue={escrito(parametros, "nota")} />
+              <div className="formulario__fila">
+                <div className="campo">
+                  <label htmlFor="venta-foto">Si ya la entregaste: foto de la nota firmada</label>
+                  <EntradaFoto nombre="foto" id="venta-foto" opcional soloFoto />
+                  <span className="ayuda">La hoja con la firma del cliente. Obligatoria si ya se entregó.</span>
+                </div>
+                <div className="campo">
+                  <label htmlFor="venta-entrega-prevista">Si queda por entregar: día previsto</label>
+                  <input id="venta-entrega-prevista" name="entrega_prevista" type="date" defaultValue={escrito(parametros, "entrega_prevista")} />
+                  <span className="ayuda">Sale en el despacho y el resumen te lo recuerda.</span>
+                </div>
               </div>
+            </fieldset>
+            <div className="campo">
+              <label htmlFor="venta-nota">Observación</label>
+              <input id="venta-nota" name="nota" type="text" defaultValue={escrito(parametros, "nota")} />
             </div>
             <div>
               <button type="submit" className="boton">
@@ -229,7 +245,7 @@ export default async function PaginaVentas({
                     <td data-label="Entrega">
                       {v.por_entregar ? (
                         <Link href="/admin/despacho" className={`${estilos.estado} ${estilos["estado--parcial"]}`}>
-                          Por entregar
+                          Por entregar{v.entrega_prevista ? ` el ${fechaCorta(v.entrega_prevista)}` : ""}
                         </Link>
                       ) : (
                         <span className={`${estilos.estado} ${estilos["estado--pagada"]}`}>Entregada</span>

@@ -52,7 +52,7 @@ import { lineaRellena, revisarFecha, revisarVenta, type LineaEscrita } from "./v
 import { listarProductos } from "./productos";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
-import { buscarAdjunto, eliminarAdjunto, guardarAdjunto } from "./adjuntos";
+import { TAMANO_MAXIMO_ADJUNTO, buscarAdjunto, eliminarAdjunto, esTipoAdjunto, guardarAdjunto } from "./adjuntos";
 import { guardarCopiaNube } from "./copias-nube";
 import {
   buscarResena,
@@ -140,6 +140,28 @@ async function exigirClave(datos: FormData, volverA: string): Promise<void> {
 function archivoDe(datos: FormData, campo: string): File | null {
   const valor = datos.get(campo);
   return valor instanceof File && valor.size > 0 ? valor : null;
+}
+
+/**
+ * La foto de la nota firmada que exige una entrega. Se comprueba antes de
+ * guardar nada, para que una foto mala no deje una venta a medias. Devuelve
+ * el motivo si no vale.
+ */
+function revisarFotoDeLaNota(foto: File | null): string | null {
+  if (!foto) return "Si ya la entregaste, adjunta la foto de la nota firmada por el cliente.";
+  if (!esTipoAdjunto(foto.type) || foto.type === "application/pdf") return "La foto de la nota tiene que ser una foto (JPG, PNG o WebP).";
+  if (foto.size > TAMANO_MAXIMO_ADJUNTO) return "La foto de la nota pesa más de 4 MB. Hazla con menos resolución.";
+  return null;
+}
+
+async function guardarFotoDeLaNota(clienteId: number, ventaId: number, foto: File): Promise<void> {
+  await guardarAdjunto({
+    cliente_id: clienteId,
+    venta_id: ventaId,
+    descripcion: `Nota N.º ${numeroDeNota(ventaId)} firmada`,
+    tipo: foto.type,
+    contenido: new Uint8Array(await foto.arrayBuffer()),
+  });
 }
 
 // ---------- Sesión ----------
@@ -561,7 +583,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
 
   // Con lo escrito en la dirección, el formulario vuelve relleno.
   const escrito = new URLSearchParams();
-  for (const campo of ["cliente_id", "fecha", "entrega", "nota"]) if (texto(datos, campo)) escrito.set(campo, texto(datos, campo));
+  for (const campo of ["cliente_id", "fecha", "entrega", "entrega_prevista", "nota"]) if (texto(datos, campo)) escrito.set(campo, texto(datos, campo));
   for (const p of productos) {
     for (const campo of ["piezas", "cantidad", "precio"]) {
       const valor = texto(datos, `${campo}_${p.id}`);
@@ -611,18 +633,33 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   }));
 
   // Lo que se lleva al cliente queda por entregar y entra en el despacho.
-  const porEntregar = texto(datos, "entrega") === "despacho";
+  // La entrega se elige a mano: si ya se entregó, va con la foto de la nota firmada; si no, con el día previsto.
+  const entrega = texto(datos, "entrega");
+  if (entrega !== "local" && entrega !== "despacho") volver("Elige si ya la entregaste o si queda por entregar.");
+  const porEntregar = entrega === "despacho";
+  const foto = archivoDe(datos, "foto");
+  const entregaPrevista = texto(datos, "entrega_prevista");
+  if (!porEntregar) {
+    const malaFoto = revisarFotoDeLaNota(foto);
+    if (malaFoto) volver(malaFoto);
+  } else if (!/^\d{4}-\d{2}-\d{2}$/.test(entregaPrevista) || Number.isNaN(new Date(entregaPrevista + "T00:00:00Z").getTime())) {
+    volver("Escribe el día previsto de entrega, para que el resumen te lo recuerde.");
+  } else if (entregaPrevista < fecha) {
+    volver("El día previsto de entrega no puede ser antes de la fecha de despacho.");
+  }
+
   let ventaId = 0;
   try {
     const tasa = await leerTasa();
-    ventaId = await crearVenta(clienteId, fecha, lineas, texto(datos, "nota"), tasa?.valor ?? null, porEntregar);
+    ventaId = await crearVenta(clienteId, fecha, lineas, texto(datos, "nota"), tasa?.valor ?? null, porEntregar, porEntregar ? entregaPrevista : null);
+    if (!porEntregar && foto) await guardarFotoDeLaNota(clienteId, ventaId, foto);
   } catch (error) {
     volver(mensajeDe(error));
   }
   // A la nota de entrega, para mandarla o imprimirla en el momento.
   volverConExito(
     `/admin/ventas/${ventaId}/nota`,
-    porEntregar ? "Venta registrada. Queda por entregar: ya está en el despacho." : "Venta registrada.",
+    porEntregar ? "Venta registrada. Queda por entregar: ya está en el despacho y en el resumen." : "Venta registrada con la foto de la nota firmada.",
   );
 }
 
@@ -637,11 +674,19 @@ export async function cambiarEntrega(datos: FormData): Promise<void> {
   if (!id || !venta) volverConError("/admin/despacho", "No se encontró la venta.");
 
   const entregada = texto(datos, "entregada") === "1";
+  const destino = volverA(datos, `/admin/ventas/${id}/nota`);
+  // Entregar es entregar con la nota firmada: sin su foto no se marca.
+  const foto = archivoDe(datos, "foto");
+  if (entregada) {
+    const malaFoto = revisarFotoDeLaNota(foto);
+    if (malaFoto) volverConError(destino, malaFoto);
+  }
   await marcarEntrega(id, entregada);
+  if (entregada && foto) await guardarFotoDeLaNota(venta.cliente_id, id, foto);
   volverConExito(
-    volverA(datos, `/admin/ventas/${id}/nota`),
+    destino,
     entregada
-      ? `Nota ${numeroDeNota(id)} entregada a ${venta.cliente_nombre}.`
+      ? `Nota ${numeroDeNota(id)} entregada a ${venta.cliente_nombre}, con su foto guardada.`
       : `La nota ${numeroDeNota(id)} vuelve a estar por entregar.`,
   );
 }

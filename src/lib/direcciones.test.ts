@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cruceParaElMapa, describirUbicacion, explicarMotivo, leerDireccion } from "./direcciones.ts";
+import { cruceParaElMapa, describirUbicacion, explicarMotivo, leerDireccion, nombreDeEje } from "./direcciones.ts";
 
 test("el motivo se dice en una frase entera", () => {
   assert.equal(explicarMotivo("no tiene dirección"), "No tiene dirección.");
@@ -47,6 +47,20 @@ test("una dirección a medias no se adivina: se dice qué falta, y se guarda lo 
   assert.equal(ubicacion("Frente a la plaza Bolívar"), "no dice calle ni carrera");
   assert.equal(ubicacion(""), "no tiene dirección");
   assert.equal(ubicacion("   "), "no tiene dirección");
+});
+
+test("las calles con letra del oeste, «calle 13A», caen entre la 13 y la 14 y se escriben igual", () => {
+  assert.deepEqual(ubicacion("Calle 13A con carrera 5"), { calle: 13.3, carrera: 5 });
+  assert.deepEqual(ubicacion("calle 13a carrera 5"), { calle: 13.3, carrera: 5 });
+  assert.deepEqual(ubicacion("Carrera 5-B con calle 13"), { calle: 13, carrera: 5.4 });
+  assert.deepEqual(ubicacion("Calle 13A entre carreras 5 y 6"), { calle: 13.3, carrera: 5.5 });
+  // «13 a la derecha» no es la 13A: la letra va pegada al número.
+  assert.deepEqual(ubicacion("Calle 13 a la derecha, carrera 5"), { calle: 13, carrera: 5 });
+  assert.equal(describirUbicacion({ calle: 13.3, carrera: 5 }), "carrera 5 con calle 13A");
+  assert.equal(describirUbicacion({ calle: 13.3, carrera: 5.5 }), "calle 13A, entre carreras 5 y 6");
+  assert.equal(cruceParaElMapa({ calle: 13.3, carrera: 5.4 }, "Barquisimeto"), "Calle 13A con Carrera 5B, Barquisimeto");
+  assert.equal(nombreDeEje(13.5), null);
+  assert.equal(nombreDeEje(13), "13");
 });
 
 test("una avenida con nombre no es un número de la cuadrícula", () => {

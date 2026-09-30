@@ -47,7 +47,7 @@ export default async function PaginaClientes({
   const clave = normalizar(busqueda);
   const filtrados = clave
     ? todos.filter((c) =>
-        [c.nombre, c.telefono, c.cedula_rif, c.direccion, c.nota].some((campo) => normalizar(campo).includes(clave)),
+        [c.nombre, c.razon_social, c.telefono, c.cedula_rif, c.direccion, c.nota].some((campo) => normalizar(campo).includes(clave)),
       )
     : todos;
 
@@ -286,7 +286,7 @@ export default async function PaginaClientes({
                       <div className={estilos.carteraCabecera}>
                         <Link href={`/admin/clientes/${c.id}`} className={estilos.carteraNombre}>
                           {orden === "ruta" && !sinUbicar && <span className={estilos.carteraOrden}>{i + 1}</span>}
-                          {c.nombre}
+                          {c.rotulo}
                           {sinNombre && <span className={estilos.sinNombre}> · sin nombre</span>}
                         </Link>
                         <span className={c.vencido_usd > 0 ? estilos.vencida : c.saldo_usd > 0 ? estilos.deuda : estilos.saldado}>
@@ -300,7 +300,7 @@ export default async function PaginaClientes({
                       )}
                       <p className={estilos.carteraDato}>
                         {c.direccion || <span className="ayuda">Sin dirección</span>}
-                        {c.razon_social && <span className="ayuda"> · {c.razon_social}</span>}
+                        {c.razon_social && !sinNombre && <span className="ayuda"> · {c.nombre}</span>}
                         {sinUbicar && c.direccion && <span className="ayuda"> · Fuera de la ruta. {explicarMotivo(sinUbicar)}</span>}
                         {situacion.situada && (
                           <span className="ayuda">

@@ -19,7 +19,7 @@ type Parametros = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Parametros) {
   const { id } = await params;
   const cliente = await buscarCliente(Number(id));
-  return { title: cliente ? `Estado de cuenta de ${cliente.nombre}` : "Estado de cuenta" };
+  return { title: cliente ? `Estado de cuenta de ${cliente.rotulo}` : "Estado de cuenta" };
 }
 
 /**
@@ -67,7 +67,7 @@ export default async function PaginaEstadoDeCuenta({ params }: Parametros) {
     <>
       <div className={estilos.noImprimir}>
         <p>
-          <Link href={`/admin/clientes/${cliente.id}`}>← {cliente.nombre}</Link>
+          <Link href={`/admin/clientes/${cliente.id}`}>← {cliente.rotulo}</Link>
         </p>
         <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginTop: "var(--espacio-3)" }}>
           <BotonImprimir className="boton">Imprimir o guardar PDF</BotonImprimir>

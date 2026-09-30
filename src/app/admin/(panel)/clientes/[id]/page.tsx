@@ -125,8 +125,10 @@ export default async function PaginaCliente({
           <p>
             <Link href="/admin/clientes">← Clientes</Link>
           </p>
-          <h1 className={estilos.titulo}>{cliente.nombre}</h1>
-          {cliente.razon_social && <p className={estilos.ayuda} style={{ marginBottom: 0 }}>{cliente.razon_social}</p>}
+          <h1 className={estilos.titulo}>{cliente.rotulo}</h1>
+          {cliente.razon_social && !esSoloUnTelefono(cliente.nombre) && (
+            <p className={estilos.ayuda} style={{ marginBottom: 0 }}>Atención: {cliente.nombre}</p>
+          )}
           {esSoloUnTelefono(cliente.nombre) && (
             <p className={estilos.sinNombre}>
               Sin nombre: <Link href="#datos">ponlo en Datos</Link> cuando lo sepas.
@@ -230,7 +232,7 @@ export default async function PaginaCliente({
             <div className="formulario__fila">
               <div className="campo">
                 <label htmlFor="nombre">Nombre del cliente</label>
-                <input id="nombre" name="nombre" type="text" defaultValue={esSoloUnTelefono(cliente.nombre) ? "" : cliente.nombre} placeholder={cliente.telefono} />
+                <input id="nombre" name="nombre" type="text" defaultValue={esSoloUnTelefono(cliente.nombre) ? "" : cliente.nombre} placeholder="Luis" />
               </div>
               <div className="campo">
                 <label htmlFor="razon_social">Razón social</label>

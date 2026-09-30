@@ -2,6 +2,7 @@ import "server-only";
 import { ejecutar, fila, filas } from "./db";
 import { aDolares, redondear, type MetodoPago, type Moneda } from "./dinero";
 import { leerTasa } from "./ajustes";
+import { ROTULO_DEL_CLIENTE } from "./clientes";
 
 export type Pago = {
   id: number;
@@ -30,7 +31,7 @@ export type DatosPago = {
 };
 
 const CONSULTA_PAGOS = `
-  select p.*, c.nombre as cliente_nombre
+  select p.*, ${ROTULO_DEL_CLIENTE} as cliente_nombre
   from pagos p
   join clientes c on c.id = p.cliente_id
 `;

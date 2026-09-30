@@ -30,9 +30,9 @@ export default async function PaginaEliminarCliente({
     <>
       <div>
         <p>
-          <Link href={volver}>← {cliente.nombre}</Link>
+          <Link href={volver}>← {cliente.rotulo}</Link>
         </p>
-        <h1 className={estilos.titulo}>¿Eliminar a {cliente.nombre}?</h1>
+        <h1 className={estilos.titulo}>¿Eliminar a {cliente.rotulo}?</h1>
       </div>
       <Avisos parametros={parametros} />
 

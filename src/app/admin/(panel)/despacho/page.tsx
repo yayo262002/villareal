@@ -8,9 +8,11 @@ import { enlaceAlMapa, planDeDespacho } from "@/lib/despacho";
 import { describirUbicacion, explicarMotivo } from "@/lib/direcciones";
 import { cargaDe, numeroDeNota, pedidosPorCliente, resumenDeLineas } from "@/lib/entregas";
 import { distanciaLegible } from "@/lib/ruta";
-import { cantidad, redondear, usd } from "@/lib/dinero";
+import { cantidad, fechaCorta, hoy, redondear, usd } from "@/lib/dinero";
 import { enlaceWhatsappA, mensajeEnCamino } from "@/lib/whatsapp";
 import { BotonImprimir } from "@/components/boton-imprimir";
+import { EntradaFoto } from "@/components/entrada-foto";
+import { diasEntre } from "@/lib/credito";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
 
@@ -26,30 +28,49 @@ const MODOS = {
 } as const;
 type Modo = keyof typeof MODOS;
 
-/** Los pedidos que se le llevan a un cliente, cada uno con su botón de «Entregado». */
+/** «para hoy», «atrasada 2 días», «para el 03/10». */
+function plazoDeEntrega(prevista: string | null, fecha: string): string {
+  if (!prevista) return "";
+  const atraso = diasEntre(prevista, fecha);
+  if (atraso > 0) return `atrasada: era para el ${fechaCorta(prevista)}`;
+  if (atraso === 0) return "para hoy";
+  if (atraso === -1) return "para mañana";
+  return `para el ${fechaCorta(prevista)}`;
+}
+
+/** Los pedidos que se le llevan a un cliente, cada uno con su «Entregado», que pide la foto de la nota firmada. */
 function Pedidos({ pedidos, volverA }: { pedidos: VentaConLineas[] | undefined; volverA: string }) {
   if (!pedidos || pedidos.length === 0) return null;
+  const fecha = hoy();
   return (
     <ul className={estilos.pedidos}>
-      {pedidos.map((p) => (
-        <li key={p.id}>
-          <p>
-            <Link href={`/admin/ventas/${p.id}/nota`}>Nota {numeroDeNota(p.id)}</Link>
-            {" · "}
-            {resumenDeLineas(p.lineas)}
-            {" · "}
-            <strong>{usd(p.total_usd)}</strong>
-          </p>
-          <form action={cambiarEntrega} className={estilos.noImprimir}>
-            <input type="hidden" name="id" value={p.id} />
-            <input type="hidden" name="entregada" value="1" />
-            <input type="hidden" name="volver_a" value={volverA} />
-            <button type="submit" className={`boton ${estilos.botonPequeno}`}>
-              Entregado
-            </button>
-          </form>
-        </li>
-      ))}
+      {pedidos.map((p) => {
+        const plazo = plazoDeEntrega(p.entrega_prevista, fecha);
+        return (
+          <li key={p.id}>
+            <p>
+              <Link href={`/admin/ventas/${p.id}/nota`}>Nota {numeroDeNota(p.id)}</Link>
+              {" · "}
+              {resumenDeLineas(p.lineas)}
+              {" · "}
+              <strong>{usd(p.total_usd)}</strong>
+              {plazo && <span className={plazo.startsWith("atrasada") ? estilos.vencida : "ayuda"}> · {plazo}</span>}
+            </p>
+            <details className={`${estilos.masDatos} ${estilos.noImprimir}`}>
+              <summary>Entregado</summary>
+              <form action={cambiarEntrega} encType="multipart/form-data" className={estilos.accionesFila} style={{ flexWrap: "wrap", marginTop: "var(--espacio-2)" }}>
+                <input type="hidden" name="id" value={p.id} />
+                <input type="hidden" name="entregada" value="1" />
+                <input type="hidden" name="volver_a" value={volverA} />
+                <EntradaFoto nombre="foto" id={`foto-entrega-${p.id}`} />
+                <button type="submit" className={`boton ${estilos.botonPequeno}`}>
+                  Guardar la nota firmada y marcar entregada
+                </button>
+              </form>
+            </details>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -240,7 +261,7 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
                         <div className={estilos.paradaDatos}>
                           <div className={estilos.carteraCabecera}>
                             <Link href={`/admin/clientes/${c.id}`} className={estilos.carteraNombre}>
-                              {c.nombre}
+                              {c.rotulo}
                             </Link>
                             {c.saldo_usd > 0 && <span className={estilos.deuda}>Debe {usd(c.saldo_usd)}</span>}
                           </div>
@@ -310,7 +331,7 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
                     <li key={c.id} className={estilos.carteraCliente}>
                       <div className={estilos.carteraCabecera}>
                         <Link href={`/admin/clientes/${c.id}`} className={estilos.carteraNombre}>
-                          {c.nombre}
+                          {c.rotulo}
                         </Link>
                         {c.saldo_usd > 0 && <span className={estilos.deuda}>Debe {usd(c.saldo_usd)}</span>}
                       </div>
@@ -351,7 +372,7 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
                         defaultChecked={modo === "elegidos" ? elegidos.has(c.id) : modo === "entregas" && pedidos.has(c.id)}
                       />
                       <span>
-                        <strong>{c.nombre}</strong>
+                        <strong>{c.rotulo}</strong>
                         <span className="ayuda"> {c.direccion || "sin dirección"}</span>
                         {c.por_entregar > 0 && <span className={estilos.deuda}> · por entregar</span>}
                       </span>

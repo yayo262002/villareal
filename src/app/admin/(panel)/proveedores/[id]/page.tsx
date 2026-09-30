@@ -113,7 +113,7 @@ export default async function PaginaProveedor({
         <section className="tarjeta" id="pago">
           <h2 className={estilos.subtitulo}>Registrar pago al proveedor</h2>
           <FormularioPago
-            clientes={[proveedor]}
+            clientes={[{ id: proveedor.id, rotulo: proveedor.nombre, saldo_usd: proveedor.saldo_usd }]}
             clienteFijo={proveedor.id}
             ultimaTasa={tasa}
             volverA={`/admin/proveedores/${proveedor.id}`}

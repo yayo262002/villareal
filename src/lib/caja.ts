@@ -3,6 +3,7 @@ import { filas } from "./db";
 import { METODOS_PAGO, redondear, type MetodoPago, type Moneda } from "./dinero";
 import { lineasDeVentas, type LineaVentaGuardada } from "./ventas";
 import type { Movimientos } from "./exportar";
+import { ROTULO_DEL_CLIENTE } from "./clientes";
 
 /**
  * El cierre del día: lo que se vendió, lo que entró (abonos de clientes,
@@ -76,13 +77,13 @@ export async function movimientosEntre(desde: string | null, hasta: string | nul
   const periodo = [desde ?? "0000-01-01", hasta ?? "9999-12-31"];
   const [ventas, abonos, compras, pagos] = await Promise.all([
     filas<Omit<Movimientos["ventas"][number], "lineas">>(
-      `select v.id, v.fecha, v.total_usd, v.nota, c.nombre as cliente_nombre
+      `select v.id, v.fecha, v.total_usd, v.nota, ${ROTULO_DEL_CLIENTE} as cliente_nombre
        from ventas v join clientes c on c.id = v.cliente_id
        where v.fecha between ? and ? order by v.fecha, v.id`,
       periodo,
     ),
     filas<Movimientos["abonos"][number]>(
-      `select p.id, p.fecha, p.metodo, p.moneda, p.monto, p.tasa, p.monto_usd, p.referencia, p.nota, c.nombre as cliente_nombre
+      `select p.id, p.fecha, p.metodo, p.moneda, p.monto, p.tasa, p.monto_usd, p.referencia, p.nota, ${ROTULO_DEL_CLIENTE} as cliente_nombre
        from pagos p join clientes c on c.id = p.cliente_id
        where p.fecha between ? and ? order by p.fecha, p.id`,
       periodo,

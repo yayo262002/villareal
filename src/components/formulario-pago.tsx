@@ -3,7 +3,7 @@ import { METODOS_PAGO, METODOS_EN_BOLIVARES, hoy } from "@/lib/dinero";
 import type { ClienteConSaldo } from "@/lib/clientes";
 
 type Props = {
-  clientes: Pick<ClienteConSaldo, "id" | "nombre" | "saldo_usd">[];
+  clientes: Pick<ClienteConSaldo, "id" | "rotulo" | "saldo_usd">[];
   /** Si viene, el cliente queda fijo y no se muestra el selector. */
   clienteFijo?: number;
   ultimaTasa: number | null;
@@ -45,7 +45,7 @@ export function FormularioPago({
             </option>
             {clientes.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.nombre}
+                {c.rotulo}
                 {c.saldo_usd > 0 ? ` (debe $${c.saldo_usd.toFixed(2)})` : ""}
               </option>
             ))}

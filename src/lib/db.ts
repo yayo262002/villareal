@@ -87,6 +87,9 @@ async function migrar(cliente: Client): Promise<void> {
   if (!(await definicionDe(cliente, "resenas")).includes("con_permiso")) {
     await añadirColumna(cliente, "resenas", "con_permiso integer not null default 0");
   }
+  if (!(await definicionDe(cliente, "ventas")).includes("entrega_prevista")) {
+    await añadirColumna(cliente, "ventas", "entrega_prevista text");
+  }
   const clientes = await definicionDe(cliente, "clientes");
   if (!clientes.includes("razon_social")) await añadirColumna(cliente, "clientes", "razon_social text not null default ''");
   if (!clientes.includes("sitio")) {

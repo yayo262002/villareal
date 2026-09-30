@@ -4,8 +4,9 @@ import { clientesConVencimiento, proveedoresConVencimiento } from "@/lib/vencimi
 import { describirVencimiento } from "@/lib/credito";
 import { cierreDelDia } from "@/lib/caja";
 import { listarPagos, totalCobradoUsd } from "@/lib/pagos";
-import { contarVentasPorEntregar, listarVentas, totalVendidoUsd, vendidoDesde } from "@/lib/ventas";
-import { numeroDeNota } from "@/lib/entregas";
+import { conLineas, contarVentasPorEntregar, listarVentas, listarVentasPorEntregar, totalVendidoUsd, vendidoDesde } from "@/lib/ventas";
+import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
+import { diasEntre } from "@/lib/credito";
 import { METODOS_PAGO, fechaCorta, formatearMonto, hoy, mesLegible, redondear, usd } from "@/lib/dinero";
 import { listarCopiasNube } from "@/lib/copias-nube";
 import { leerTasa } from "@/lib/ajustes";
@@ -35,7 +36,11 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
       clientesConVencimiento(),
       proveedoresConVencimiento(),
     ]);
-  const hoyCierre = await cierreDelDia(hoy());
+  const [hoyCierre, entregas] = await Promise.all([cierreDelDia(hoy()), listarVentasPorEntregar().then(conLineas)]);
+  const fecha = hoy();
+  const atrasoDe = (e: (typeof entregas)[number]) => (e.entrega_prevista ? diasEntre(e.entrega_prevista, fecha) : null);
+  const atrasadas = entregas.filter((e) => (atrasoDe(e) ?? -1) > 0).length;
+  const paraHoy = entregas.filter((e) => atrasoDe(e) === 0).length;
   // Quien debe: primero los que ya pasaron su plazo, con el más atrasado arriba.
   const deudores = conVencimiento
     .filter((c) => c.saldo_usd > 0)
@@ -92,6 +97,47 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
           </div>
         </dl>
       </section>
+
+      {entregas.length > 0 && (
+        <section className={`tarjeta ${atrasadas > 0 ? estilos.tarjetaAviso : ""}`}>
+          <div className={estilos.encabezado} style={{ marginBottom: "var(--espacio-3)" }}>
+            <h2 className={estilos.subtitulo} style={{ marginBottom: 0 }}>
+              Entregas pendientes ({entregas.length})
+              {paraHoy > 0 ? ` · ${paraHoy} para hoy` : ""}
+              {atrasadas > 0 ? ` · ${atrasadas} ${atrasadas === 1 ? "atrasada" : "atrasadas"}` : ""}
+            </h2>
+            <Link href="/admin/despacho" className="boton boton--acento">
+              Hacer la ruta
+            </Link>
+          </div>
+          <ul className={estilos.pedidos}>
+            {entregas.slice(0, 8).map((e) => {
+              const atraso = atrasoDe(e);
+              const plazo =
+                atraso === null ? "" : atraso > 0 ? `atrasada: era para el ${fechaCorta(e.entrega_prevista!)}` : atraso === 0 ? "para hoy" : atraso === -1 ? "para mañana" : `para el ${fechaCorta(e.entrega_prevista!)}`;
+              return (
+                <li key={e.id}>
+                  <p>
+                    <Link href={`/admin/clientes/${e.cliente_id}`}>
+                      <strong>{e.cliente_nombre}</strong>
+                    </Link>
+                    {" · "}
+                    {resumenDeLineas(e.lineas)}
+                    {" · "}
+                    <Link href={`/admin/ventas/${e.id}/nota`}>nota {numeroDeNota(e.id)}</Link>
+                    {plazo && <span className={atraso !== null && atraso > 0 ? estilos.vencida : "ayuda"}> · {plazo}</span>}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+          {entregas.length > 8 && (
+            <p className={estilos.ayuda} style={{ marginTop: "var(--espacio-3)", marginBottom: 0 }}>
+              <Link href="/admin/despacho">Ver las {entregas.length} en el despacho</Link>
+            </p>
+          )}
+        </section>
+      )}
 
       <dl className={`${estilos.cifras} ${estilos["cifras--seis"]}`}>
         <div className={estilos.cifra}>
@@ -156,7 +202,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                   {deudores.slice(0, 8).map((c) => (
                     <tr key={c.id}>
                       <td data-label="Cliente">
-                        <Link href={`/admin/clientes/${c.id}`}>{c.nombre}</Link>
+                        <Link href={`/admin/clientes/${c.id}`}>{c.rotulo}</Link>
                       </td>
                       <td data-label="Debe" className={`numero ${c.vencido_usd > 0 ? estilos.vencida : estilos.deuda}`}>{usd(c.saldo_usd)}</td>
                       <td data-label="Plazo">

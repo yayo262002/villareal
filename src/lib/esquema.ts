@@ -107,6 +107,8 @@ export const ESQUEMA = `
     -- mostrador nace entregada.
     por_entregar integer not null default 0,
     entregada_en text,
+    -- El día en que hay que llevarla, si quedó por entregar; el resumen lo recuerda.
+    entrega_prevista text,
     creado_en text not null default (datetime('now'))
   );
 

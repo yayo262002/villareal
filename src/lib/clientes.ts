@@ -25,8 +25,21 @@ export type Cliente = {
   creado_en: string;
 };
 
+/**
+ * Cómo se llama al cliente en las listas: la razón social si la hay, y si
+ * no, el nombre. En SQL, para las consultas que juntan ventas y pagos con
+ * su cliente (`c` es la tabla clientes).
+ */
+export const ROTULO_DEL_CLIENTE = "case when c.razon_social <> '' then c.razon_social else c.nombre end";
+
+export function rotuloDe(c: { nombre: string; razon_social?: string | null }): string {
+  return c.razon_social?.trim() || c.nombre;
+}
+
 /** Cliente con lo que ha comprado, lo que ha pagado y lo que debe, todo en USD. */
 export type ClienteConSaldo = Cliente & {
+  /** La razón social si la hay; si no, el nombre. Lo que va en grande. */
+  rotulo: string;
   total_comprado_usd: number;
   total_pagado_usd: number;
   saldo_usd: number;
@@ -58,6 +71,7 @@ function conSaldo(f: ClienteConSaldo): ClienteConSaldo {
     total_pagado_usd: pagado,
     saldo_usd: redondear(comprado - pagado),
     por_entregar: Number(f.por_entregar),
+    rotulo: rotuloDe(f),
   };
 }
 

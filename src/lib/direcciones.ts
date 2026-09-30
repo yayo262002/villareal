@@ -52,6 +52,25 @@ function ejeDe(palabra: string, numero: number): Eje | "otro" | null {
 const contrario = (eje: Eje): Eje => (eje === "calle" ? "carrera" : "calle");
 const media = (numeros: number[]) => numeros.reduce((s, n) => s + n, 0) / numeros.length;
 
+/**
+ * Por el oeste hay calles con letra, «calle 13A», metidas entre la 13 y la
+ * 14. Se guardan como un decimal fijo por letra, distinto del ,5 que
+ * significa «entre las dos», para poder escribirlas igual al enseñarlas.
+ */
+const LETRAS: Record<string, number> = { a: 0.3, b: 0.4, c: 0.6, d: 0.7 };
+
+function numeroConLetra(numero: string, letra: string | undefined): number {
+  return Number(numero) + (letra ? LETRAS[letra] : 0);
+}
+
+/** «13», «13A», o null si el número lleva decimales que no son de letra (los «entre»). */
+export function nombreDeEje(n: number): string | null {
+  if (Number.isInteger(n)) return String(n);
+  const entero = Math.floor(n);
+  const letra = Object.entries(LETRAS).find(([, valor]) => Math.abs(n - entero - valor) < 1e-6)?.[0];
+  return letra ? `${entero}${letra.toUpperCase()}` : null;
+}
+
 export function leerDireccion(direccion: string): Lectura {
   const texto = normalizar(direccion);
   if (!texto) return { ubicada: false, motivo: "no tiene dirección" };
@@ -59,16 +78,20 @@ export function leerDireccion(direccion: string): Lectura {
     return { ubicada: false, motivo: "parece una urbanización o un barrio, fuera de la cuadrícula del centro" };
   }
 
-  // «calle 38», «carreras 30 y 31», «entre 30 y 31», «con 25», «esquina 25».
+  // «calle 38», «carreras 30 y 31», «entre 30 y 31», «con 25», «esquina 25», «calle 13a», «carrera 5-b».
   const patron =
-    /\b(calles?|cll|cl|carreras?|cra|kra|krr|carr|cr|avenida|ave|av|entre|con|c\/|esquina|esq)\s*(\d{1,3})(?:\s*(?:y|e|-)\s*(\d{1,3}))?\b/g;
+    /\b(calles?|cll|cl|carreras?|cra|kra|krr|carr|cr|avenida|ave|av|entre|con|c\/|esquina|esq)\s*(\d{1,3})(?:-?([a-d]))?(?:\s*(?:y|e|-)\s*(\d{1,3})(?:-?([a-d]))?)?\b/g;
   const valores: Record<Eje, number[]> = { calle: [], carrera: [] };
   let ultimo: Eje | null = null;
 
   for (const hallazgo of texto.matchAll(patron)) {
-    const numeros = [hallazgo[2], hallazgo[3]]
-      .filter((n): n is string => n !== undefined)
-      .map(Number)
+    const pares: [string | undefined, string | undefined][] = [
+      [hallazgo[2], hallazgo[3]],
+      [hallazgo[4], hallazgo[5]],
+    ];
+    const numeros = pares
+      .filter((par): par is [string, string | undefined] => par[0] !== undefined)
+      .map(([numero, letra]) => numeroConLetra(numero, letra))
       .filter((n) => n >= 1 && n <= NUMERO_MAXIMO);
     if (numeros.length === 0) continue;
 
@@ -103,7 +126,8 @@ export function explicarMotivo(motivo: string): string {
  * carrera. «Entre la 30 y la 31» se redondea a la 30.
  */
 export function cruceParaElMapa(ubicacion: Ubicacion, ciudad: string): string {
-  return `Calle ${Math.floor(ubicacion.calle)} con Carrera ${Math.floor(ubicacion.carrera)}, ${ciudad}`;
+  const nombre = (n: number) => nombreDeEje(n) ?? String(Math.floor(n));
+  return `Calle ${nombre(ubicacion.calle)} con Carrera ${nombre(ubicacion.carrera)}, ${ciudad}`;
 }
 
 /**
@@ -113,10 +137,10 @@ export function cruceParaElMapa(ubicacion: Ubicacion, ciudad: string): string {
  */
 export function describirUbicacion(u: Ubicacion): string {
   const entre = (plural: string, n: number) => `entre ${plural} ${Math.floor(n)} y ${Math.ceil(n)}`;
-  const calleExacta = Number.isInteger(u.calle);
-  const carreraExacta = Number.isInteger(u.carrera);
-  if (calleExacta && carreraExacta) return `carrera ${u.carrera} con calle ${u.calle}`;
-  if (carreraExacta) return `carrera ${u.carrera}, ${entre("calles", u.calle)}`;
-  if (calleExacta) return `calle ${u.calle}, ${entre("carreras", u.carrera)}`;
+  const calle = nombreDeEje(u.calle);
+  const carrera = nombreDeEje(u.carrera);
+  if (calle && carrera) return `carrera ${carrera} con calle ${calle}`;
+  if (carrera) return `carrera ${carrera}, ${entre("calles", u.calle)}`;
+  if (calle) return `calle ${calle}, ${entre("carreras", u.carrera)}`;
   return `${entre("carreras", u.carrera)}, ${entre("calles", u.calle)}`;
 }

@@ -1,5 +1,6 @@
 import "server-only";
 import { ejecutar, fila, filas, transaccion } from "./db";
+import { ROTULO_DEL_CLIENTE } from "./clientes";
 import { redondear } from "./dinero";
 
 export type LineaVenta = {
@@ -32,13 +33,15 @@ export type Venta = {
   por_entregar: number;
   /** Cuándo se marcó entregada (en UTC). Vacío si se la llevó del local o si sigue pendiente. */
   entregada_en: string | null;
+  /** El día en que hay que llevarla, si quedó por entregar. */
+  entrega_prevista: string | null;
   creado_en: string;
 };
 
 export type VentaConLineas = Venta & { lineas: LineaVentaGuardada[] };
 
 const CONSULTA_VENTAS = `
-  select v.*, c.nombre as cliente_nombre
+  select v.*, ${ROTULO_DEL_CLIENTE} as cliente_nombre
   from ventas v
   join clientes c on c.id = v.cliente_id
 `;
@@ -51,9 +54,9 @@ export async function listarVentasDeCliente(clienteId: number): Promise<Venta[]>
   return filas<Venta>(`${CONSULTA_VENTAS} where v.cliente_id = ? order by v.fecha desc, v.id desc`, [clienteId]);
 }
 
-/** Los pedidos que faltan por llevar, del más antiguo al más nuevo. */
+/** Los pedidos que faltan por llevar: primero los que tocan antes. */
 export async function listarVentasPorEntregar(): Promise<Venta[]> {
-  return filas<Venta>(`${CONSULTA_VENTAS} where v.por_entregar = 1 order by v.fecha, v.id`);
+  return filas<Venta>(`${CONSULTA_VENTAS} where v.por_entregar = 1 order by coalesce(v.entrega_prevista, v.fecha), v.id`);
 }
 
 export async function contarVentasPorEntregar(): Promise<number> {
@@ -127,6 +130,7 @@ export async function crearVenta(
   nota: string,
   tasa: number | null = null,
   porEntregar = false,
+  entregaPrevista: string | null = null,
 ): Promise<number> {
   if (lineas.length === 0) throw new Error("Una venta necesita al menos un producto.");
   for (const l of lineas) {
@@ -138,9 +142,9 @@ export async function crearVenta(
 
   return transaccion(async (tx) => {
     const venta = await tx.execute({
-      sql: `insert into ventas (cliente_id, fecha, total_usd, nota, tasa, por_entregar)
-            values (?, ?, ?, ?, ?, ?) returning id`,
-      args: [clienteId, fecha, total, nota, tasa && tasa > 0 ? tasa : null, porEntregar ? 1 : 0],
+      sql: `insert into ventas (cliente_id, fecha, total_usd, nota, tasa, por_entregar, entrega_prevista)
+            values (?, ?, ?, ?, ?, ?, ?) returning id`,
+      args: [clienteId, fecha, total, nota, tasa && tasa > 0 ? tasa : null, porEntregar ? 1 : 0, porEntregar ? entregaPrevista : null],
     });
     const ventaId = Number(venta.rows[0].id);
     for (const l of lineas) {
@@ -266,7 +270,7 @@ export async function ventasPorTipo(desde?: string): Promise<VentasPorTipo[]> {
 export async function ventasPorCliente(limite = 10, desde?: string): Promise<VentasPorCliente[]> {
   const filtro = desde ? "where v.fecha >= ?" : "";
   return filas<VentasPorCliente>(
-    `select c.id as cliente_id, c.nombre as cliente,
+    `select c.id as cliente_id, ${ROTULO_DEL_CLIENTE} as cliente,
             count(*) as ventas, coalesce(sum(v.total_usd), 0) as vendido_usd
      from ventas v
      join clientes c on c.id = v.cliente_id
