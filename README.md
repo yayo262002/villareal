@@ -6,15 +6,17 @@ añadiendo. Vende al detal y al mayor.
 
 Tiene dos partes:
 
-- **La web pública** (`/`): qué se vende, precios si están puestos, y cómo
-  contactar. Pensada para el teléfono.
+- **La web pública** (`/`): qué se vende, precios si están puestos, lo que
+  dicen del producto los negocios que lo compran, y cómo contactar. Pensada
+  para el teléfono.
 - **El panel** (`/admin`): la cartera de clientes, con alta rápida por
   teléfono y dirección; las ventas, cada una con su nota de entrega para
   imprimir o mandar; los abonos en dólares o en bolívares con la tasa del
   día, con su recibo por WhatsApp; las cuentas por pagar y pagadas y el
   estado de cuenta de cada cliente; los pedidos por entregar y la ruta de
   despacho, que los ordena desde la tienda y dice qué cargar; la foto de
-  cada nota en papel, y un informe de cuánto se vende, de qué y a quién.
+  cada nota en papel, las reseñas de cada producto, y un informe de cuánto
+  se vende, de qué y a quién.
 
 ## Arrancar
 
@@ -142,6 +144,9 @@ src/app/opengraph-image.tsx  La vista previa de la portada al compartirla
 src/app/robots.ts, sitemap.ts, manifest.ts  Lo que leen los buscadores y el teléfono
 src/app/not-found.tsx, error.tsx  Página no encontrada y página de fallo
 src/lib/enlaces.ts        La dirección de la página de cada producto
+src/lib/resenas.ts        Las reseñas de cada producto, en la base
+src/lib/resenas-texto.ts  Deja limpia una reseña escrita; las reseñas de ejemplo
+src/components/resenas.tsx  Las reseñas, como se ven en la página del producto
 src/components/entrada-foto.tsx  Reduce la foto en el teléfono antes de subirla
 src/components/nav-panel.tsx     El menú del panel, con la sección abierta marcada
 src/app/admin/            El panel
@@ -174,6 +179,18 @@ datos/                    La base de datos (fuera de Git)
   precios, ventajas, cómo se paga y dónde está la tienda. En la portada
   cada tarjeta enseña el dibujo, el nombre y los precios, con dos botones:
   «Ver detalles», que lleva a esa página, y «Pedir», que abre WhatsApp.
+- **Reseñas.** En la página de cada producto, «Por qué elegirlo» enseña
+  primero lo que dicen los negocios que lo compran y después las ventajas.
+  El dueño le pide el comentario al cliente y lo escribe en el panel, en
+  Reseñas, con las palabras del cliente: producto, quién lo dice, qué
+  negocio es y qué dijo. Una reseña se puede esconder sin borrarla.
+  - **Reseñas de ejemplo.** El botón «Poner reseñas de ejemplo» carga unas
+    de muestra para ver cómo queda la página. No las dijo nadie, así que
+    **solo las ve el dueño**, con la sesión del panel abierta, marcadas
+    «Ejemplo». Al público no se le enseñan nunca: una opinión inventada no
+    se publica como si fuera de un cliente. Es la regla de «no inventar».
+  - Las reseñas no van en los datos para buscadores: Google no acepta las
+    que un negocio recoge sobre sí mismo.
 - El **dibujo** de cada producto se elige por su nombre (queso, mozzarella,
   rallado, curado, huevos) en `src/lib/dibujos.ts`. Un producto que no
   encaje lleva un dibujo genérico.
@@ -306,6 +323,8 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   mozzarella (7,70 USD el kilo) es real.
 - Confirmar si el pecorino rallado se vende por kilo.
 - Fotos reales de los productos: hoy llevan un dibujo.
+- Las reseñas de verdad de cada producto: las que hay son de ejemplo y solo
+  las ve el dueño.
 - Un dominio propio.
 - Facturación fiscal, cuando el negocio empiece a facturar. Hoy hay notas
   de entrega, que no son facturas.

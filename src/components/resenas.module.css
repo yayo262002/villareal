@@ -1,0 +1,106 @@
+/*
+ * Las reseñas de un producto. Una debajo de otra en el teléfono; de dos en
+ * dos cuando hay sitio. La raya dorada de la izquierda es la del león.
+ */
+.resenas {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--espacio-3);
+}
+@media (min-width: 600px) {
+  .resenas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Una sola, o la última de un número impar, ocupa todo el ancho. */
+  .resena:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+.resena {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  border-radius: var(--radio);
+  border-left: 4px solid var(--color-acento);
+  background: var(--color-superficie-suave);
+}
+
+.texto {
+  margin: 0;
+}
+.texto p {
+  font-size: 18px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.autor {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  font-size: 15px;
+  line-height: 1.3;
+}
+.autor strong {
+  display: block;
+  color: var(--color-marca-oscuro);
+  overflow-wrap: anywhere;
+}
+.detalle {
+  display: block;
+  color: var(--color-texto-suave);
+  font-size: 14px;
+}
+.iniciales {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-marca-oscuro);
+  color: var(--color-acento);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* Las de ejemplo: a rayas y con su etiqueta, para que no se confundan con una de verdad. */
+.deEjemplo {
+  border-left-style: dashed;
+  border-left-color: var(--color-aviso);
+  background: var(--color-aviso-fondo);
+}
+.etiqueta {
+  justify-self: start;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--color-aviso);
+  color: var(--color-marca-texto);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* El aviso que ve el dueño encima de las reseñas de ejemplo. */
+.avisoDelDueno {
+  padding: var(--espacio-3) var(--espacio-4);
+  border-radius: var(--radio);
+  border: 1px dashed var(--color-aviso);
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso);
+  font-size: 15px;
+  line-height: 1.4;
+}
+.avisoDelDueno a {
+  color: inherit;
+  font-weight: 700;
+}

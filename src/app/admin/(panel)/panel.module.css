@@ -511,6 +511,7 @@
 .carteraAcciones {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--espacio-1) var(--espacio-4);
   margin-top: var(--espacio-1);
   font-size: 15px;
@@ -749,6 +750,44 @@
   font-size: 13px;
   color: var(--color-texto-suave);
   text-align: center;
+}
+
+/* ---------- Reseñas ---------- */
+
+.resenaTexto {
+  font-size: 17px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+/* Un botón de formulario que se ve como los enlaces de al lado. */
+.botonEnlace {
+  min-height: 36px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-marca);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.botonEnlace:focus-visible {
+  outline: 3px solid var(--color-acento);
+  outline-offset: 2px;
+}
+/* Una casilla con su texto, fácil de tocar. */
+.casilla {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  min-height: 44px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.casilla input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  accent-color: var(--color-marca);
 }
 
 /* ---------- Estado de cuenta ---------- */

@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { direccionCompleta, enlaceCompartir, enlaceMapa, enlaceWhatsapp, negocio } from "@/config/negocio";
 import { buscarProducto, listarProductos, type Producto } from "@/lib/productos";
 import { leerTasa } from "@/lib/ajustes";
+import { resenasDeProducto } from "@/lib/resenas";
+import { haySesion } from "@/lib/sesion";
 import { nombreUnidad } from "@/lib/dinero";
 import { idDeRuta, rutaProducto } from "@/lib/enlaces";
 import {
@@ -16,6 +18,7 @@ import {
   ventajasDe,
 } from "@/components/publico";
 import { IlustracionProducto } from "@/components/ilustracion-producto";
+import { AvisoDeEjemplos, ListaDeResenas } from "@/components/resenas";
 import estilos from "../../page.module.css";
 
 type Parametros = { params: Promise<{ producto: string }> };
@@ -90,15 +93,24 @@ function datosDelProducto(producto: Producto): Record<string, unknown> {
 
 /**
  * La página de un producto: a ella llevan «Ver detalles» y el nombre de
- * cada tarjeta de la portada. Dibujo grande, precios, ventajas, cómo se paga
- * y dónde se recoge, con el botón de pedir siempre a mano.
+ * cada tarjeta de la portada. Dibujo grande, precios, por qué elegirlo (lo
+ * que dicen los negocios que lo compran y sus ventajas), cómo se paga y
+ * dónde se recoge, con el botón de pedir siempre a mano.
+ *
+ * Las reseñas de ejemplo solo se enseñan al dueño, con la sesión del panel
+ * abierta: al público, nunca.
  */
 export default async function PaginaProducto({ params }: Parametros) {
   const { producto: segmento } = await params;
   const producto = await productoDe(segmento);
   if (!producto) notFound();
 
-  const [tasa, todos] = await Promise.all([leerTasa(), listarProductos(true)]);
+  const esElDueno = await haySesion();
+  const [tasa, todos, resenas] = await Promise.all([
+    leerTasa(),
+    listarProductos(true),
+    resenasDeProducto(producto.id, esElDueno),
+  ]);
   const ventajas = ventajasDe(producto.descripcion);
   const otros = todos.filter((p) => p.id !== producto.id);
   const nombre = producto.nombre.toLowerCase();
@@ -141,14 +153,18 @@ export default async function PaginaProducto({ params }: Parametros) {
               </a>
             </div>
 
-            {ventajas.length > 0 && (
+            {(resenas.length > 0 || ventajas.length > 0) && (
               <div className={estilos.bloque}>
                 <h2 className={estilos.bloqueTitulo}>Por qué elegirlo</h2>
-                <ul className={estilos.ventajas}>
-                  {ventajas.map((v) => (
-                    <li key={v}>{v}</li>
-                  ))}
-                </ul>
+                {resenas.some((r) => r.de_ejemplo) && <AvisoDeEjemplos />}
+                <ListaDeResenas resenas={resenas} />
+                {ventajas.length > 0 && (
+                  <ul className={estilos.ventajas}>
+                    {ventajas.map((v) => (
+                      <li key={v}>{v}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 

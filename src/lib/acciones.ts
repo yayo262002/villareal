@@ -34,6 +34,15 @@ import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { buscarAdjunto, eliminarAdjunto, guardarAdjunto } from "./adjuntos";
 import { guardarCopiaNube } from "./copias-nube";
+import {
+  buscarResena,
+  cambiarPublicada,
+  crearResena,
+  eliminarResena,
+  ponerResenasDeEjemplo,
+  quitarResenasDeEjemplo,
+} from "./resenas";
+import { leerResena } from "./resenas-texto";
 import { esMetodoPago, esUnidad, monedaDelMetodo, precioParaCliente } from "./dinero";
 import { FILAS_VENTA } from "./constantes";
 
@@ -414,6 +423,64 @@ export async function borrarPago(datos: FormData): Promise<void> {
 
   await eliminarPago(id);
   volverConExito(`/admin/clientes/${pago.cliente_id}`, "Abono eliminado.");
+}
+
+// ---------- Reseñas ----------
+
+export async function guardarResena(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const productoId = numero(datos, "producto_id");
+  const producto = productoId ? await buscarProducto(productoId) : null;
+  if (!productoId || !producto) volverConError("/admin/resenas", "Elige de qué producto es la reseña.");
+
+  const lectura = leerResena({ autor: texto(datos, "autor"), detalle: texto(datos, "detalle"), texto: texto(datos, "texto") });
+  if (!lectura.valida) volverConError("/admin/resenas", lectura.motivo);
+
+  // Sin la casilla marcada se guarda escondida, para revisarla antes de enseñarla.
+  const publicada = texto(datos, "publicada") === "1";
+  await crearResena(productoId, lectura.datos, publicada);
+  volverConExito(
+    "/admin/resenas",
+    publicada
+      ? `Reseña de ${lectura.datos.autor} guardada. Ya sale en la página de «${producto.nombre}».`
+      : `Reseña de ${lectura.datos.autor} guardada, escondida. Publícala cuando quieras.`,
+  );
+}
+
+/** Esconde una reseña sin borrarla, o la vuelve a enseñar. */
+export async function alternarResena(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const resena = id ? await buscarResena(id) : null;
+  if (!id || !resena) volverConError("/admin/resenas", "No se encontró la reseña.");
+
+  const publicada = texto(datos, "publicada") === "1";
+  await cambiarPublicada(id, publicada);
+  volverConExito("/admin/resenas", publicada ? "Reseña publicada." : "Reseña escondida. No se borró.");
+}
+
+/** La confirmación está en `/admin/resenas/[id]/eliminar`. */
+export async function borrarResena(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const resena = id ? await buscarResena(id) : null;
+  if (!id || !resena) volverConError("/admin/resenas", "No se encontró la reseña.");
+
+  await eliminarResena(id);
+  volverConExito("/admin/resenas", "Reseña eliminada.");
+}
+
+/** Reseñas de muestra para ver cómo queda la página. Solo las ve el dueño. */
+export async function cargarResenasDeEjemplo(): Promise<void> {
+  await exigirSesion();
+  const puestas = await ponerResenasDeEjemplo();
+  volverConExito("/admin/resenas", `Puestas ${puestas} reseñas de ejemplo. Solo las ves tú; tus clientes no.`);
+}
+
+export async function retirarResenasDeEjemplo(): Promise<void> {
+  await exigirSesion();
+  const quitadas = await quitarResenasDeEjemplo();
+  volverConExito("/admin/resenas", `Quitadas ${quitadas} reseñas de ejemplo. Las tuyas siguen donde estaban.`);
 }
 
 // ---------- Copias ----------

@@ -571,6 +571,113 @@ async function probarCartera() {
   comprobar("despacho solo de los que deben", deudores.includes("Los clientes que deben"));
 }
 
+const AUTOR_DE_PRUEBA = "Prueba automática (borrar)";
+
+/**
+ * Las reseñas. En la web publicada la de prueba se guarda escondida, para
+ * que ningún cliente llegue a verla, y no se tocan las de ejemplo que haya.
+ * En local se prueba todo: publicar, esconder, los ejemplos y quién los ve.
+ */
+async function probarResenas() {
+  const [producto] = await consultar("select id, nombre from productos where activo = 1 order by id limit 1");
+  const paginaDelProducto = `/producto/${producto.id}`;
+  const comentario = "Llega siempre a tiempo y el queso sale parejo.";
+  const idDeLaPrueba = async () => Number((await consultar("select id from resenas where autor = ? order by id desc", [AUTOR_DE_PRUEBA]))[0]?.id ?? 0);
+
+  try {
+    const panel = await pagina("/admin/resenas");
+    comprobar(`panel de reseñas (${panel.ms} ms)`, panel.status === 200 && panel.html.includes("Reseña nueva") && panel.html.includes("Reseñas de ejemplo"));
+
+    let r = await enviar("/admin/resenas", 'name="autor"', { producto_id: String(producto.id), autor: AUTOR_DE_PRUEBA, detalle: "", texto: "" });
+    comprobar("una reseña sin comentario no se guarda", r.destino.includes("Escribe el comentario del cliente"), r.destino);
+
+    // Sin la casilla de publicar: se guarda escondida.
+    r = await enviar("/admin/resenas", 'name="autor"', {
+      producto_id: String(producto.id), autor: `  ${AUTOR_DE_PRUEBA} `, detalle: "Pizzería · Centro", texto: ` "${comentario}" `,
+    });
+    const id = await idDeLaPrueba();
+    const [guardada] = await consultar("select autor, texto, publicada, de_ejemplo from resenas where id = ?", [id]);
+    comprobar(
+      `guardar una reseña escondida, sin espacios ni comillas de más (${r.ms} ms)`,
+      r.destino.includes("guardada, escondida") && guardada?.autor === AUTOR_DE_PRUEBA && guardada?.texto === comentario &&
+        Number(guardada?.publicada) === 0 && Number(guardada?.de_ejemplo) === 0,
+      `${r.destino} ${JSON.stringify(guardada)}`,
+    );
+    comprobar("el panel la enseña como escondida", legible((await pagina("/admin/resenas")).html).includes(`«${comentario}»`) && (await pagina("/admin/resenas")).html.includes(">Escondida<"));
+    comprobar(
+      "una reseña escondida no sale en la web, ni para el dueño",
+      !(await pagina(paginaDelProducto, "")).html.includes(comentario) && !(await pagina(paginaDelProducto)).html.includes(comentario),
+    );
+
+    if (!enProduccion) {
+      const marca = `name="id" value="${id}"`;
+      r = await enviar("/admin/resenas", marca, { id: String(id), publicada: "1" });
+      const publica = legible((await pagina(paginaDelProducto, "")).html);
+      comprobar(
+        "publicada, sale en «Por qué elegirlo» con su autor y sus iniciales",
+        r.destino.includes("Reseña publicada") && publica.includes(`«${comentario}»`) && publica.includes(`<strong>${AUTOR_DE_PRUEBA}</strong>`) &&
+          publica.includes("Pizzería · Centro") && publica.includes(">PA<") && publica.indexOf(comentario) > publica.indexOf("Por qué elegirlo"),
+      );
+      // Las ventajas salen también en la descripción para los buscadores: aquí se mira la lista.
+      const ventaja = publica.indexOf("<li>Funde bien al calentar</li>");
+      comprobar("las reseñas van delante de las ventajas", ventaja > 0 && publica.indexOf(`«${comentario}»`) < ventaja, String(ventaja));
+
+      // Las de ejemplo: las ve el dueño, el público no.
+      r = await enviar("/admin/resenas", 'value="poner"', { ejemplo: "poner" });
+      const puestas = Number((await consultar("select count(*) as n from resenas where de_ejemplo = 1"))[0].n);
+      comprobar("poner las reseñas de ejemplo de todos los productos", r.destino.includes(`Puestas ${puestas} reseñas de ejemplo`) && puestas >= 8, r.destino);
+      await enviar("/admin/resenas", 'value="poner"', { ejemplo: "poner" });
+      comprobar("pulsar dos veces no las duplica", Number((await consultar("select count(*) as n from resenas where de_ejemplo = 1"))[0].n) === puestas);
+
+      const mozzarella = "/producto/2-queso-mozzarella";
+      const loQueVeElPublico = legible((await pagina(mozzarella, "")).html);
+      const loQueVeElDueno = legible((await pagina(mozzarella)).html);
+      comprobar(
+        "el público no ve ninguna reseña de ejemplo",
+        !loQueVeElPublico.includes("de ejemplo") && !loQueVeElPublico.includes(">Ejemplo<") && !loQueVeElPublico.includes("solo las ves tú") &&
+          loQueVeElPublico.includes("Perfecta para rallar"),
+      );
+      comprobar(
+        "el dueño las ve, marcadas como ejemplo y con el aviso",
+        loQueVeElDueno.includes("Pizzería de ejemplo") && loQueVeElDueno.includes(">Ejemplo<") && loQueVeElDueno.includes("solo las ves tú") &&
+          loQueVeElDueno.includes("Gratina parejo y no se quema"),
+      );
+      const delPrimero = legible((await pagina(paginaDelProducto)).html);
+      comprobar("en un producto con reseña propia, la propia va antes que las de ejemplo", delPrimero.indexOf(comentario) > 0 && delPrimero.indexOf(comentario) < delPrimero.indexOf("de ejemplo</strong>"));
+
+      r = await enviar("/admin/resenas", marca, { id: String(id), publicada: "0" });
+      comprobar("esconderla la quita de la web sin borrarla", r.destino.includes("Reseña escondida") && !(await pagina(paginaDelProducto, "")).html.includes(comentario) && (await idDeLaPrueba()) === id);
+
+      const respuesta = await fetch(base + "/admin/copia", { headers: { cookie } });
+      const archivo = path.join(carpetaTemporal, "copia-resenas.db");
+      fs.writeFileSync(archivo, Buffer.from(await respuesta.arrayBuffer()));
+      const copia = new DatabaseSync(archivo, { readOnly: true });
+      const enCopia = copia.prepare("select count(*) as n from resenas").get();
+      copia.close();
+      comprobar("la copia de seguridad lleva las reseñas", Number(enCopia.n) === puestas + 1, JSON.stringify({ ...enCopia }));
+
+      r = await enviar("/admin/resenas", 'value="quitar"', { ejemplo: "quitar" });
+      const quedan = await consultar("select autor, de_ejemplo from resenas");
+      comprobar("quitar las de ejemplo deja las del dueño", r.destino.includes(`Quitadas ${puestas}`) && quedan.length === 1 && quedan[0].autor === AUTOR_DE_PRUEBA, JSON.stringify(quedan));
+    }
+
+    r = await enviar(`/admin/resenas/${id}/eliminar`, 'name="id"', { id: String(id) });
+    comprobar("borrar la reseña, con su confirmación", r.destino.includes("Reseña eliminada") && (await idDeLaPrueba()) === 0, r.destino);
+    comprobar("una reseña ya borrada da 404", (await pagina(`/admin/resenas/${id}/eliminar`)).status === 404);
+  } finally {
+    if (enProduccion) {
+      const nube = createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
+      try {
+        await nube.execute({ sql: "delete from resenas where autor = ?", args: [AUTOR_DE_PRUEBA] });
+        const quedan = await nube.execute("select (select count(*) from resenas where de_ejemplo = 0) suyas, (select count(*) from resenas where de_ejemplo = 1) ejemplo");
+        console.log("reseñas en la nube:", JSON.stringify({ ...quedan.rows[0] }));
+      } finally {
+        nube.close();
+      }
+    }
+  }
+}
+
 /** El panel no borra clientes: los de prueba se quitan directamente de Turso. */
 async function borrarDeLaNube(clientes) {
   const nube = createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
@@ -606,6 +713,7 @@ try {
   await probarEntrada();
   if (!enProduccion) await probarPrecios();
   await probarNegocio();
+  await probarResenas();
   if (!enProduccion) {
     await probarCartera();
     await probarTareaDiaria();

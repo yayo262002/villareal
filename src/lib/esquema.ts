@@ -97,6 +97,20 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- Reseñas: lo que dicen de cada producto los negocios que lo compran. Las
+  -- escribe el dueño con las palabras del cliente. Las de ejemplo sirven
+  -- para ver cómo queda la página y nunca se enseñan al público.
+  create table if not exists resenas (
+    id integer primary key autoincrement,
+    producto_id integer not null references productos(id),
+    autor text not null,
+    detalle text not null default '',
+    texto text not null,
+    de_ejemplo integer not null default 0,
+    publicada integer not null default 1,
+    creado_en text not null default (datetime('now'))
+  );
+
   -- Copias automáticas: cada noche se guarda aquí una copia completa de las
   -- tablas de arriba (un archivo SQLite en un blob). No entra en TABLAS,
   -- así una copia nunca contiene a las anteriores.
@@ -119,10 +133,20 @@ export const ESQUEMA = `
   create index if not exists ventas_cliente on ventas(cliente_id);
   create index if not exists pagos_cliente on pagos(cliente_id);
   create index if not exists adjuntos_cliente on adjuntos(cliente_id);
+  create index if not exists resenas_producto on resenas(producto_id);
 `;
 
 /** Las tablas en orden de dependencias, para copiar o restaurar en orden. */
-export const TABLAS = ["clientes", "productos", "ventas", "venta_lineas", "pagos", "adjuntos", "ajustes"] as const;
+export const TABLAS = [
+  "clientes",
+  "productos",
+  "ventas",
+  "venta_lineas",
+  "pagos",
+  "adjuntos",
+  "ajustes",
+  "resenas",
+] as const;
 
 /**
  * Cambio para bases creadas antes de que productos tuviera costo, margen y
