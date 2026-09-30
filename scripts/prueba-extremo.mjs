@@ -932,7 +932,7 @@ async function probarSinEscribir() {
   // Las descargas.
   let respuesta = await fetch(base + "/admin/clientes/exportar", { headers: { cookie } });
   let archivo = Buffer.from(await respuesta.arrayBuffer());
-  comprobar("la lista de clientes para Excel", respuesta.status === 200 && archivo[0] === 0xef && archivo.toString("utf8").includes("Nombre;Teléfono;"));
+  comprobar("la lista de clientes para Excel", respuesta.status === 200 && archivo[0] === 0xef && archivo.toString("utf8").includes("Nombre;Razón social;Teléfono;"));
   respuesta = await fetch(base + "/admin/caja/exportar", { headers: { cookie } });
   archivo = Buffer.from(await respuesta.arrayBuffer());
   comprobar("los movimientos para Excel", respuesta.status === 200 && archivo[0] === 0xef && archivo.toString("utf8").includes("Fecha;Tipo;Nota n.º;"));
