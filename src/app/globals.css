@@ -226,10 +226,10 @@ textarea {
   }
   .tabla--fichas td,
   .tabla--fichas td.numero {
-    display: block;
-    position: relative;
+    /* flow-root: la celda crece con su etiqueta, aunque la etiqueta ocupe dos líneas. */
+    display: flow-root;
     min-height: 28px;
-    padding: 3px 0 3px 42%;
+    padding: 3px 0;
     border: none;
     white-space: normal;
     text-align: right;
@@ -237,13 +237,12 @@ textarea {
   }
   .tabla--fichas td::before {
     content: attr(data-label);
-    position: absolute;
-    left: 0;
-    top: 4px;
-    width: 40%;
+    float: left;
+    max-width: 45%;
+    margin-right: var(--espacio-3);
     font-size: 13px;
     font-weight: 400;
-    line-height: 1.5;
+    line-height: 1.7;
     color: var(--color-texto-suave);
     text-align: left;
   }

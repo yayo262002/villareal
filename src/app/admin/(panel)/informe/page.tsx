@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ventasPorCliente, ventasPorMes, ventasPorProducto, ventasPorTipo } from "@/lib/ventas";
-import { cantidad, hace, mesLegible, usd } from "@/lib/dinero";
+import { cantidad, hace, mesLegible, usd, usdConSigno } from "@/lib/dinero";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Informe" };
@@ -84,7 +84,7 @@ export default async function PaginaInforme() {
                     <td data-label="Cobrado" className="numero">{usd(Number(m.cobrado_usd))}</td>
                     <td data-label="Comprado" className="numero">{usd(Number(m.comprado_usd))}</td>
                     <td data-label="Pagado a proveedores" className="numero">{usd(Number(m.pagado_proveedores_usd))}</td>
-                    <td data-label="Entró neto" className="numero">{usd(Number(m.cobrado_usd) - Number(m.pagado_proveedores_usd))}</td>
+                    <td data-label="Entró neto" className="numero">{usdConSigno(Number(m.cobrado_usd) - Number(m.pagado_proveedores_usd))}</td>
                   </tr>
                 ))}
               </tbody>

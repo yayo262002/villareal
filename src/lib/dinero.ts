@@ -84,6 +84,11 @@ export function usd(n: number): string {
   return formatoUsd.format(n);
 }
 
+/** Como `usd`, pero un número negativo se lee bien: «−USD 239,70» en vez de «USD-239,70». */
+export function usdConSigno(n: number): string {
+  return n < 0 ? `−${usd(-n)}` : usd(n);
+}
+
 export function bs(n: number): string {
   return `Bs ${formatoBs.format(n)}`;
 }

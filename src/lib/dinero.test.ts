@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  usdConSigno,
+  usd,
   aBolivares,
   aDolares,
   precioDeVenta,
@@ -105,4 +107,10 @@ test("el precio en bolívares usa la tasa del día", () => {
 test("las fechas se muestran día/mes/año", () => {
   assert.equal(fechaCorta("2026-09-28"), "28/09/2026");
   assert.equal(fechaCorta("2026-09-28T10:00:00Z"), "28/09/2026");
+});
+
+test("un monto negativo lleva el signo delante, no pegado a la cifra", () => {
+  assert.equal(usdConSigno(239.7), usd(239.7));
+  assert.equal(usdConSigno(0), usd(0));
+  assert.equal(usdConSigno(-239.7), "−" + usd(239.7));
 });
