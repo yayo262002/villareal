@@ -8,23 +8,38 @@ type Props = {
   clienteFijo?: number;
   ultimaTasa: number | null;
   volverA: string;
+  /** Para los pagos a proveedores: otra acción y otro nombre del campo. */
+  accion?: (datos: FormData) => Promise<void>;
+  campoId?: string;
+  etiqueta?: string;
+  textoDelBoton?: string;
 };
 
 /**
- * Se usa en la página de pagos y en la ficha de cada cliente. Los métodos
- * en bolívares llevan la tasa como campo obligatorio; los demás la ignoran.
+ * Se usa en la página de pagos, en la ficha de cada cliente y, con otra
+ * acción, en la de cada proveedor. Los métodos en bolívares llevan la tasa
+ * como campo obligatorio; los demás la ignoran.
  */
-export function FormularioPago({ clientes, clienteFijo, ultimaTasa, volverA }: Props) {
+export function FormularioPago({
+  clientes,
+  clienteFijo,
+  ultimaTasa,
+  volverA,
+  accion = guardarPago,
+  campoId = "cliente_id",
+  etiqueta = "Cliente",
+  textoDelBoton = "Registrar abono",
+}: Props) {
   return (
-    <form action={guardarPago} className="formulario">
+    <form action={accion} className="formulario">
       <input type="hidden" name="volver_a" value={volverA} />
 
       {clienteFijo ? (
-        <input type="hidden" name="cliente_id" value={clienteFijo} />
+        <input type="hidden" name={campoId} value={clienteFijo} />
       ) : (
         <div className="campo">
-          <label htmlFor="pago-cliente">Cliente</label>
-          <select id="pago-cliente" name="cliente_id" required defaultValue="">
+          <label htmlFor="pago-cliente">{etiqueta}</label>
+          <select id="pago-cliente" name={campoId} required defaultValue="">
             <option value="" disabled>
               Elige un cliente
             </option>
@@ -98,7 +113,7 @@ export function FormularioPago({ clientes, clienteFijo, ultimaTasa, volverA }: P
 
       <div>
         <button type="submit" className="boton">
-          Registrar abono
+          {textoDelBoton}
         </button>
       </div>
     </form>

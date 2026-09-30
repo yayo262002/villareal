@@ -5,10 +5,11 @@ import { conLineas, listarVentasDeCliente } from "@/lib/ventas";
 import { listarPagosDeCliente, ultimaTasa } from "@/lib/pagos";
 import { listarAdjuntosDeCliente } from "@/lib/adjuntos";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
+import { conVencimiento, describirVencimiento } from "@/lib/credito";
 import { editarCliente, subirAdjunto } from "@/lib/acciones";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { leerTasa } from "@/lib/ajustes";
-import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, usd } from "@/lib/dinero";
+import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
 import { EntradaFoto } from "@/components/entrada-foto";
@@ -39,7 +40,8 @@ export default async function PaginaCliente({
     ultimaTasa(),
     leerTasa(),
   ]);
-  const cuentas = aplicarPagos(ventas, cliente.total_pagado_usd);
+  const cuentas = conVencimiento(aplicarPagos(ventas, cliente.total_pagado_usd), cliente.dias_credito, hoy());
+  const vencido = cuentas.filter((c) => c.vencida).reduce((s, c) => s + c.pendiente_usd, 0);
   const ubicacion = leerDireccion(cliente.direccion);
   const mapa = enlaceAlMapa(cliente.direccion, `${negocio.localidad}, ${negocio.estado}, Venezuela`);
   const ventaDeAdjunto = new Map(ventas.map((v) => [v.id, v]));
@@ -159,9 +161,9 @@ export default async function PaginaCliente({
           <dt>Saldo</dt>
           <dd className={claseSaldo}>{textoSaldo}</dd>
         </div>
-        <div className={estilos.cifra}>
-          <dt>Tipo</dt>
-          <dd>{cliente.tipo === "mayor" ? "Mayor" : "Detal"}</dd>
+        <div className={`${estilos.cifra} ${vencido > 0 ? estilos["cifra--alerta"] : ""}`}>
+          <dt>Con el plazo vencido</dt>
+          <dd>{usd(vencido)}</dd>
         </div>
       </dl>
 
@@ -219,21 +221,38 @@ export default async function PaginaCliente({
             </div>
             <div className="formulario__fila">
               <div className="campo">
-                <label htmlFor="tipo">Tipo</label>
+                <label htmlFor="tipo">Le vendes</label>
                 <select id="tipo" name="tipo" defaultValue={cliente.tipo}>
-                  <option value="detal">Detal</option>
-                  <option value="mayor">Mayor</option>
+                  <option value="detal">Al detal</option>
+                  <option value="mayor">Al mayor</option>
                 </select>
               </div>
               <div className="campo">
-                <label htmlFor="nota">Nota</label>
-                <input id="nota" name="nota" type="text" defaultValue={cliente.nota} />
+                <label htmlFor="dias_credito">Días de crédito</label>
+                <input
+                  id="dias_credito"
+                  name="dias_credito"
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  max="365"
+                  step="1"
+                  defaultValue={cliente.dias_credito}
+                />
+                <span className="ayuda">Cada nota vence a esos días de su fecha.</span>
               </div>
             </div>
-            <div>
+            <div className="campo">
+              <label htmlFor="nota">Nota</label>
+              <input id="nota" name="nota" type="text" defaultValue={cliente.nota} />
+            </div>
+            <div className={estilos.accionesFila} style={{ flexWrap: "wrap", justifyContent: "space-between" }}>
               <button type="submit" className="boton boton--secundario">
                 Guardar cambios
               </button>
+              <Link href={`/admin/clientes/${cliente.id}/eliminar`} className="enlace-fila">
+                Eliminar cliente
+              </Link>
             </div>
           </form>
         </section>
@@ -254,6 +273,7 @@ export default async function PaginaCliente({
                   <th className="numero">Total</th>
                   <th className="numero">Pendiente</th>
                   <th>Estado</th>
+                  <th>Vence</th>
                   <th>Observación</th>
                   <th>
                     <span className="visualmente-oculto">Acciones</span>
@@ -282,6 +302,13 @@ export default async function PaginaCliente({
                           </Link>
                         </>
                       ) : null}
+                    </td>
+                    <td>
+                      {v.pendiente_usd > 0 ? (
+                        <span className={v.vencida ? estilos.vencida : undefined}>{describirVencimiento(v.atraso)}</span>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td>{v.nota || "—"}</td>
                     <td className={estilos.accionesFila}>

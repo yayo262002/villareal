@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { listarProductos } from "@/lib/productos";
-import { listarResenas, type Resena } from "@/lib/resenas";
+import { direccionDeFoto, listarResenas, type Resena } from "@/lib/resenas";
 import { LARGO_MAXIMO_DEL_NOMBRE, LARGO_MAXIMO_DEL_TEXTO } from "@/lib/resenas-texto";
-import { alternarResena, cargarResenasDeEjemplo, guardarResena, retirarResenasDeEjemplo } from "@/lib/acciones";
+import {
+  alternarResena,
+  cambiarFotoDeResena,
+  cargarResenasDeEjemplo,
+  guardarResena,
+  retirarFotoDeResena,
+  retirarResenasDeEjemplo,
+} from "@/lib/acciones";
+import { EntradaFoto } from "@/components/entrada-foto";
 import { rutaProducto } from "@/lib/enlaces";
 import { direccionCompleta, enlaceCompartir, negocio } from "@/config/negocio";
 import { mensajePedirResena } from "@/lib/whatsapp";
@@ -14,10 +22,15 @@ export const metadata = { title: "Reseñas" };
 
 /** Una reseña en el panel: lo que dice, de quién es, si se ve, y qué se puede hacer con ella. */
 function ResenaDelPanel({ resena }: { resena: Resena }) {
+  const foto = direccionDeFoto(resena);
   return (
     <li className={estilos.carteraCliente}>
       <p className={estilos.resenaTexto}>«{resena.texto}»</p>
       <p className={estilos.carteraDato}>
+        {foto && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={foto} alt="" width={44} height={44} className={estilos.fotoResena} />
+        )}
         <strong>{resena.autor}</strong>
         {resena.detalle ? ` · ${resena.detalle}` : ""}
         <span className="ayuda"> · {fechaCorta(fechaDeLaBase(resena.creado_en))}</span>
@@ -45,6 +58,28 @@ function ResenaDelPanel({ resena }: { resena: Resena }) {
           Eliminar
         </Link>
       </div>
+      {!resena.de_ejemplo && (
+        <details className={estilos.masDatos}>
+          <summary>{foto ? "Cambiar o quitar la foto" : "Ponerle una foto"}</summary>
+          <div className={estilos.accionesFila} style={{ flexWrap: "wrap", alignItems: "flex-end", marginTop: "var(--espacio-2)" }}>
+            <form action={cambiarFotoDeResena} encType="multipart/form-data" className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
+              <input type="hidden" name="id" value={resena.id} />
+              <EntradaFoto nombre="foto" id={`foto-${resena.id}`} soloFoto ladoMaximo={480} />
+              <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                Guardar foto
+              </button>
+            </form>
+            {foto && (
+              <form action={retirarFotoDeResena}>
+                <input type="hidden" name="id" value={resena.id} />
+                <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                  Quitar foto
+                </button>
+              </form>
+            )}
+          </div>
+        </details>
+      )}
     </li>
   );
 }
@@ -98,7 +133,7 @@ export default async function PaginaResenas({ searchParams }: { searchParams: Pr
           Pregúntale al cliente qué le parece el producto y escríbelo aquí con sus palabras. Sale en la página del
           producto, en «Por qué elegirlo», con el nombre de su negocio: por eso hace falta su permiso.
         </p>
-        <form action={guardarResena} className="formulario">
+        <form action={guardarResena} className="formulario" encType="multipart/form-data">
           <div className="campo">
             <label htmlFor="resena-producto">Producto</label>
             <select id="resena-producto" name="producto_id" required defaultValue={productoElegido}>
@@ -149,6 +184,14 @@ export default async function PaginaResenas({ searchParams }: { searchParams: Pr
               placeholder="Gratina muy bien y no se quema."
             />
             <span className="ayuda">Sin comillas: la web las pone. Corto se lee mejor.</span>
+          </div>
+          <div className="campo">
+            <label htmlFor="resena-foto">Foto (opcional)</label>
+            <EntradaFoto nombre="foto" id="resena-foto" opcional soloFoto ladoMaximo={480} />
+            <span className="ayuda">
+              Pequeña y redonda junto al nombre, como en un comentario de Instagram: el local, el dueño o el plato. Se
+              reduce sola.
+            </span>
           </div>
           <label className={estilos.casilla}>
             <input type="checkbox" name="permiso" value="1" />

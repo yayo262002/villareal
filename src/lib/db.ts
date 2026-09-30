@@ -87,6 +87,10 @@ async function migrar(cliente: Client): Promise<void> {
   if (!(await definicionDe(cliente, "resenas")).includes("con_permiso")) {
     await añadirColumna(cliente, "resenas", "con_permiso integer not null default 0");
   }
+  // Los clientes de antes reciben los siete días de crédito de siempre.
+  if (!(await definicionDe(cliente, "clientes")).includes("dias_credito")) {
+    await añadirColumna(cliente, "clientes", "dias_credito integer not null default 7");
+  }
 }
 
 /** Las descripciones se comparan sin importar si los saltos de línea son de Windows. */

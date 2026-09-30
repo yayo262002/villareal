@@ -15,8 +15,9 @@ Tiene dos partes:
   día, con su recibo por WhatsApp; las cuentas por pagar y pagadas y el
   estado de cuenta de cada cliente; los pedidos por entregar y la ruta de
   despacho, que los ordena desde la tienda y dice qué cargar; la foto de
-  cada nota en papel, las reseñas de cada producto, y un informe de cuánto
-  se vende, de qué y a quién.
+  cada nota en papel, las reseñas de cada producto, los proveedores (a
+  quién se le debe y los pagos que se les hacen), los días de crédito de
+  unos y otros, y un informe de cuánto se vende, de qué y a quién.
 
 ## Arrancar
 
@@ -120,6 +121,9 @@ src/lib/dibujos.ts        El dibujo de cada producto, en SVG
 src/lib/imagen-social.tsx La imagen que sale al compartir un enlace
 src/assets/fuentes/       Las fuentes de esas imágenes, con su licencia
 src/lib/cuentas.ts        Qué ventas están pagadas y cuáles por pagar
+src/lib/credito.ts        Los días de crédito: cuándo vence una nota y cuánto está vencido
+src/lib/vencimientos.ts   Cada cliente y cada proveedor con lo que tiene vencido
+src/lib/proveedores.ts    Proveedores, sus compras y los pagos que se les hacen
 src/lib/direcciones.ts    Lee una dirección y la sitúa en la cuadrícula
 src/lib/ruta.ts           El orden en que conviene visitar a los clientes
 src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho
@@ -147,6 +151,7 @@ src/lib/enlaces.ts        La dirección de la página de cada producto
 src/lib/resenas.ts        Las reseñas de cada producto, en la base
 src/lib/resenas-texto.ts  Deja limpia una reseña escrita; las reseñas de ejemplo
 src/components/resenas.tsx  Las reseñas, como se ven en la página del producto
+src/app/foto-resena/      Sirve la foto de una reseña a la web
 src/components/entrada-foto.tsx  Reduce la foto en el teléfono antes de subirla
 src/components/nav-panel.tsx     El menú del panel, con la sección abierta marcada
 src/app/admin/            El panel
@@ -194,6 +199,12 @@ datos/                    La base de datos (fuera de Git)
     producto y pide el permiso, y deja elegir a quién mandarlo. En la
     ficha de un cliente, «Pedirle una reseña» lo manda directo a él, por
     cada producto que ha comprado.
+  - **La foto.** Una reseña puede llevar una foto pequeña (el local, el
+    dueño del negocio, el plato) que sale redonda junto al nombre, como en
+    un comentario de una red social; sin foto van las iniciales. Se pone
+    al escribir la reseña o después, desde su tarjeta en el panel, y el
+    teléfono la reduce antes de subirla. La web la sirve en
+    `/foto-resena/[id]` solo mientras la reseña se vea.
   - **Reseñas de ejemplo.** El botón «Poner reseñas de ejemplo» carga unas
     de muestra para ver cómo queda la página. No las dijo nadie, así que
     **solo las ve el dueño**, con la sesión del panel abierta, marcadas
@@ -210,6 +221,13 @@ datos/                    La base de datos (fuera de Git)
   puse mis precios».
 - Las cuentas internas siguen en **dólares**.
 - Cada venta suma al saldo del cliente. Cada pago resta.
+- **Días de crédito.** Cada cliente tiene los suyos (7 si no se dice otra
+  cosa; se cambian en su ficha). Una nota vence a esos días de su fecha:
+  si pasado el plazo queda algo por pagar de ella, está **vencida**. El
+  Resumen, Clientes y Cuentas dicen cuánto está vencido y desde cuándo
+  («Vencida hace 3 días»), y quien tiene el plazo vencido va primero.
+  Lo mismo vale para lo que el negocio le debe a cada proveedor, con los
+  días que da el proveedor (`src/lib/credito.ts`).
 - Los mensajes de WhatsApp (recordatorio y nota) dicen el monto en dólares y,
   si hay tasa del día, también en bolívares.
 - Un pago en bolívares se guarda con la **tasa del día** que se escribió al
@@ -248,6 +266,11 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   se guarda siempre escrito igual (`0412-1234567`) y no se puede registrar
   dos veces, se escriba como se escriba. Tras guardar se vuelve al mismo
   formulario, para registrar el siguiente.
+- **Borrar un cliente.** Desde su ficha, «Eliminar cliente» lleva a una
+  pantalla que dice qué se lleva (notas, abonos, fotos y la deuda) y pide
+  la **clave del panel** otra vez, porque no tiene vuelta atrás. Las
+  claves malas cuentan como las de la entrada: cinco seguidas y hay que
+  esperar. Lo mismo para borrar un proveedor.
 - **Abonos.** Lo que el cliente paga, sea todo o una parte. Se anotan desde
   su ficha o desde Abonos y se aplican a sus notas más antiguas primero.
   En la ficha, cada abono tiene «Enviar recibo»: abre WhatsApp con lo que
@@ -290,6 +313,22 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     reparte.
 - **El formulario de venta** tiene seis filas de producto: dos a la vista y
   cuatro más en «Más productos». Son fijas porque no lleva JavaScript.
+
+## Proveedores
+
+- En Proveedores se registra a quien le vende al negocio (el de los quesos,
+  el de los huevos): nombre, teléfono y los **días de crédito que da**.
+- Desde su ficha se anota cada **compra** (fecha, qué se compró y el total
+  en dólares) y cada **pago** que se le hace, con los mismos métodos y la
+  misma tasa que los abonos de los clientes. Lo que se le debe es lo
+  comprado menos lo pagado; los pagos se aplican a las compras más
+  antiguas primero, igual que con los clientes, y cada compra sale como
+  pagada, abonada o por pagar, y vencida si pasó el plazo.
+- El Resumen enseña «Debo a proveedores» y «A quién le debo», con el plazo.
+- Una compra o un pago mal anotado se borra y se registra de nuevo. Borrar
+  un proveedor pide la clave del panel.
+- Las compras no tocan los productos ni sus costos: eso se sigue poniendo
+  en Productos.
 
 ## La web hacia fuera
 
@@ -335,6 +374,7 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - Fotos reales de los productos: hoy llevan un dibujo.
 - Las reseñas de verdad de cada producto: las que hay son de ejemplo y solo
   las ve el dueño.
+- Registrar a los proveedores y lo que se les debe.
 - Un dominio propio.
 - Facturación fiscal, cuando el negocio empiece a facturar. Hoy hay notas
   de entrega, que no son facturas.

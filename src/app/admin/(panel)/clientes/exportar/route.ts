@@ -17,12 +17,12 @@ export async function GET(): Promise<Response> {
 
   const clientes = await listarClientes();
   const cabecera = [
-    "Nombre", "Teléfono", "Cédula o RIF", "Dirección", "Tipo", "Nota",
+    "Nombre", "Teléfono", "Cédula o RIF", "Dirección", "Tipo", "Nota", "Días de crédito",
     "Comprado USD", "Pagado USD", "Saldo USD", "Última compra", "Cliente desde",
   ];
   const lineas = clientes.map((c) =>
     [
-      c.nombre, c.telefono, c.cedula_rif, c.direccion, c.tipo === "mayor" ? "Mayor" : "Detal", c.nota,
+      c.nombre, c.telefono, c.cedula_rif, c.direccion, c.tipo === "mayor" ? "Mayor" : "Detal", c.nota, c.dias_credito,
       c.total_comprado_usd, c.total_pagado_usd, c.saldo_usd, c.ultima_compra, c.creado_en.slice(0, 10),
     ]
       .map(celda)

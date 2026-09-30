@@ -13,6 +13,53 @@ export const ESQUEMA = `
     direccion text not null default '',
     tipo text not null default 'detal' check (tipo in ('detal', 'mayor')),
     nota text not null default '',
+    -- Cuántos días tiene para pagar cada nota. Pasados, lo pendiente está vencido.
+    dias_credito integer not null default 7,
+    creado_en text not null default (datetime('now'))
+  );
+
+  -- A quién le compra el negocio (el que le vende los quesos) y cuánto le
+  -- debe: cada compra suma y cada pago que se le hace resta, como con los
+  -- clientes pero al revés. Los días de crédito son los que da el proveedor.
+  create table if not exists proveedores (
+    id integer primary key autoincrement,
+    nombre text not null,
+    telefono text not null default '',
+    cedula_rif text not null default '',
+    direccion text not null default '',
+    nota text not null default '',
+    dias_credito integer not null default 7,
+    creado_en text not null default (datetime('now'))
+  );
+
+  -- Lo que se le compró a un proveedor. Sin líneas de producto: lo que se
+  -- compró se escribe en la descripción, y el total va en dólares.
+  create table if not exists compras (
+    id integer primary key autoincrement,
+    proveedor_id integer not null references proveedores(id),
+    fecha text not null,
+    descripcion text not null default '',
+    total_usd real not null,
+    nota text not null default '',
+    tasa real,
+    creado_en text not null default (datetime('now'))
+  );
+
+  -- Los pagos que el negocio le hace a un proveedor. Misma forma que pagos.
+  create table if not exists pagos_proveedores (
+    id integer primary key autoincrement,
+    proveedor_id integer not null references proveedores(id),
+    fecha text not null,
+    metodo text not null check (metodo in (
+      'pago_movil', 'transferencia', 'efectivo_bs', 'efectivo_usd',
+      'zelle', 'binance', 'otro'
+    )),
+    moneda text not null check (moneda in ('USD', 'VES')),
+    monto real not null,
+    tasa real,
+    monto_usd real not null,
+    referencia text not null default '',
+    nota text not null default '',
     creado_en text not null default (datetime('now'))
   );
 
@@ -113,6 +160,17 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- La foto que acompaña a una reseña (el local, el dueño del negocio, el
+  -- plato): pequeña, como la de un comentario en una red social. Aparte de
+  -- la tabla de reseñas para no cargar el blob cada vez que se listan.
+  create table if not exists fotos_resenas (
+    resena_id integer primary key references resenas(id) on delete cascade,
+    tipo text not null,
+    tamano integer not null,
+    datos blob not null,
+    actualizado_en text not null default (datetime('now'))
+  );
+
   -- Copias automáticas: cada noche se guarda aquí una copia completa de las
   -- tablas de arriba (un archivo SQLite en un blob). No entra en TABLAS,
   -- así una copia nunca contiene a las anteriores.
@@ -136,6 +194,8 @@ export const ESQUEMA = `
   create index if not exists pagos_cliente on pagos(cliente_id);
   create index if not exists adjuntos_cliente on adjuntos(cliente_id);
   create index if not exists resenas_producto on resenas(producto_id);
+  create index if not exists compras_proveedor on compras(proveedor_id);
+  create index if not exists pagos_proveedores_proveedor on pagos_proveedores(proveedor_id);
 `;
 
 /** Las tablas en orden de dependencias, para copiar o restaurar en orden. */
@@ -148,6 +208,10 @@ export const TABLAS = [
   "adjuntos",
   "ajustes",
   "resenas",
+  "fotos_resenas",
+  "proveedores",
+  "compras",
+  "pagos_proveedores",
 ] as const;
 
 /**

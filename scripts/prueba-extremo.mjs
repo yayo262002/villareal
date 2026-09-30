@@ -362,6 +362,14 @@ async function probarNegocio() {
     comprobar("ficha: la primera nota queda abonada con USD 6 pendientes", ficha.includes(">Abonada<") && ficha.includes(usd("6,00")));
     comprobar("ficha: recordar deuda y enviar nota por WhatsApp", ficha.includes("Recordar deuda por WhatsApp") && ficha.includes(">Enviar nota<") && ficha.includes("wa.me/584120000000"));
     comprobar("ficha: la dirección entra en la ruta y tiene mapa", ficha.includes("Entra en la ruta de despacho") && ficha.includes("google.com/maps/search"));
+    comprobar(
+      "ficha: la nota del 1 de septiembre pasó sus 7 días de crédito y sale vencida",
+      /Vencida hace \d+ días/.test(ficha) && legible(ficha).includes("Con el plazo vencido") && ficha.includes(usd("6,00")) && ficha.includes('name="dias_credito"'),
+    );
+    const resumen = legible((await pagina("/admin")).html);
+    comprobar("resumen: quien debe sale con su plazo vencido y lo que se debe a proveedores", /Vencida hace \d+ días/.test(resumen) && resumen.includes("Debo a proveedores") && resumen.includes("A quién le debo"));
+    const cuentasVencidas = legible((await pagina("/admin/cuentas")).html);
+    comprobar("cuentas: columna «Vence» y total con el plazo vencido", cuentasVencidas.includes(">Vence<") && /Vencida hace \d+ días/.test(cuentasVencidas) && cuentasVencidas.includes("Con el plazo vencido"));
 
     // La nota de entrega de la primera venta.
     const notaId = Math.min(...[...ficha.matchAll(/\/admin\/ventas\/(\d+)\/nota/g)].map((m) => Number(m[1])));
@@ -501,6 +509,21 @@ async function probarNegocio() {
     r = await enviar(`/admin/pagos/${pagoId}/eliminar`, 'name="id"', { id: String(pagoId) });
     comprobar("borrar un pago", r.destino.includes("Abono eliminado") && cerca((await cuentasDe(clienteId)).pagos, 0));
     comprobar("una venta ya borrada da 404", (await pagina(`/admin/ventas/${ventaId}/eliminar`)).status === 404);
+
+    // Borrar un cliente entero pide la clave del panel. En local se borra el
+    // cliente al detal, porque la cartera de después cuenta con el mayorista.
+    const aBorrar = enProduccion ? clienteId : limpiar[1];
+    const confirmacion = await pagina(`/admin/clientes/${aBorrar}/eliminar`);
+    comprobar("la pantalla de borrar un cliente dice qué se lleva y pide la clave", confirmacion.html.includes("Se borran con el cliente") && confirmacion.html.includes('name="clave"'));
+    r = await enviar(`/admin/clientes/${aBorrar}/eliminar`, 'name="clave"', { id: String(aBorrar), clave: "no-es-la-clave" });
+    comprobar("con una clave mala no se borra nada", r.destino.includes("La clave no es correcta") && (await consultar("select count(*) as n from clientes where id = ?", [aBorrar]))[0].n == 1, r.destino);
+    r = await enviar(`/admin/clientes/${aBorrar}/eliminar`, 'name="clave"', { id: String(aBorrar), clave: env.ADMIN_CLAVE });
+    const [rastro] = await consultar(
+      "select (select count(*) from clientes where id = ?) c, (select count(*) from ventas where cliente_id = ?) v, (select count(*) from pagos where cliente_id = ?) p",
+      [aBorrar, aBorrar, aBorrar],
+    );
+    comprobar(`con la clave buena se borra el cliente con todo lo suyo (${r.ms} ms)`, r.destino.includes("eliminado con todo lo suyo") && rastro.c == 0 && rastro.v == 0 && rastro.p == 0, `${r.destino} ${JSON.stringify(rastro)}`);
+    comprobar("un cliente ya borrado da 404", (await pagina(`/admin/clientes/${aBorrar}`)).status === 404);
   } finally {
     if (enProduccion) await borrarDeLaNube(limpiar);
   }
@@ -681,7 +704,31 @@ async function probarResenas() {
         r.destino.includes("no se publica") && !legible((await pagina(mozzarella, "")).html).includes("de ejemplo"),
         r.destino,
       );
-      const otra =Number((await consultar("select id from resenas where autor = 'Pizzería 33 de la prueba'"))[0].id);
+      const otra = Number((await consultar("select id from resenas where autor = 'Pizzería 33 de la prueba'"))[0].id);
+
+      // La foto de la reseña: se ve en la web mientras la reseña se vea.
+      const panelConOtra = (await pagina("/admin/resenas")).html;
+      const conFoto = new FormData();
+      conFoto.set(accionDe(panelConOtra, `id="foto-${otra}"`), "");
+      conFoto.set("id", String(otra));
+      conFoto.set("foto", new File([png], "local.png", { type: "image/png" }));
+      let respuestaFoto = await fetch(base + "/admin/resenas", { method: "POST", headers: { cookie }, body: conFoto, redirect: "manual" });
+      const publicaConFoto = legible((await pagina(mozzarella, "")).html);
+      const direccionFoto = publicaConFoto.match(/src="(\/foto-resena\/\d+\?v=\d+)"/)?.[1];
+      comprobar("ponerle una foto a una reseña: sale redonda junto al nombre", respuestaFoto.status === 303 && decodeURIComponent(respuestaFoto.headers.get("location") ?? "").includes("Foto puesta") && Boolean(direccionFoto), String(direccionFoto));
+      respuestaFoto = await fetch(base + direccionFoto);
+      comprobar("la foto de la reseña se sirve al público tal cual", respuestaFoto.status === 200 && Buffer.from(await respuestaFoto.arrayBuffer()).equals(png) && (respuestaFoto.headers.get("cache-control") ?? "").includes("public"));
+      const conFotoMala = new FormData();
+      conFotoMala.set(accionDe(panelConOtra, `id="foto-${otra}"`), "");
+      conFotoMala.set("id", String(otra));
+      conFotoMala.set("foto", new File(["hola"], "nota.txt", { type: "text/plain" }));
+      respuestaFoto = await fetch(base + "/admin/resenas", { method: "POST", headers: { cookie }, body: conFotoMala, redirect: "manual" });
+      comprobar("un archivo que no es foto se rechaza en la reseña", decodeURIComponent(respuestaFoto.headers.get("location") ?? "").includes("JPG, PNG o WebP"));
+      await enviar("/admin/resenas", `name="id" value="${otra}"`, { id: String(otra), publicada: "0" });
+      comprobar("escondida la reseña, su foto deja de servirse al público pero no al dueño", (await fetch(base + direccionFoto)).status === 404 && (await fetch(base + direccionFoto, { headers: { cookie } })).status === 200);
+      r = await enviar("/admin/resenas", ">Quitar foto<", { id: String(otra) });
+      comprobar("quitar la foto deja la reseña", r.destino.includes("Foto quitada") && (await fetch(base + direccionFoto, { headers: { cookie } })).status === 404 && (await consultar("select count(*) as n from resenas where id = ?", [otra]))[0].n == 1, r.destino);
+
       await enviar(`/admin/resenas/${otra}/eliminar`, 'name="id"', { id: String(otra) });
 
       r = await enviar("/admin/resenas", marca, { id: String(id), publicada: "0" });
@@ -715,6 +762,57 @@ async function probarResenas() {
         await nube.execute({ sql: "delete from resenas where autor = ?", args: [AUTOR_DE_PRUEBA] });
         const quedan = await nube.execute("select (select count(*) from resenas where de_ejemplo = 0) suyas, (select count(*) from resenas where de_ejemplo = 1) ejemplo");
         console.log("reseñas en la nube:", JSON.stringify({ ...quedan.rows[0] }));
+      } finally {
+        nube.close();
+      }
+    }
+  }
+}
+
+const PROVEEDOR_DE_PRUEBA = "Quesos de prueba (borrar)";
+
+/** Proveedores: a quién se le debe, con sus días de crédito, compras y pagos. Borrar pide la clave. */
+async function probarProveedores() {
+  try {
+    let r = await enviar("/admin/proveedores", 'name="dias_credito"', { nombre: PROVEEDOR_DE_PRUEBA, telefono: "0414-0000001", dias_credito: "7", cedula_rif: "", direccion: "", nota: "" });
+    const id = Number(r.destino.match(/\/admin\/proveedores\/(\d+)/)?.[1]);
+    comprobar(`alta de proveedor (${r.ms} ms)`, r.destino.includes("Proveedor guardado") && id > 0, r.destino);
+    if (!id) throw new Error("Sin proveedor no se puede seguir");
+
+    r = await enviar(`/admin/proveedores/${id}`, 'name="total_usd"', { proveedor_id: String(id), fecha: "2026-09-01", total_usd: "100", descripcion: "20 kg de mozzarella", nota: "" });
+    comprobar("una compra de USD 100 el 1 de septiembre", r.destino.includes("Compra registrada"), r.destino);
+    r = await enviar(`/admin/proveedores/${id}`, 'name="monto"', { proveedor_id: String(id), fecha: "2026-09-10", metodo: "efectivo_usd", monto: "40", tasa: "", volver_a: `/admin/proveedores/${id}` });
+    comprobar("un pago de USD 40 al proveedor", r.destino.includes("Pago al proveedor registrado"), r.destino);
+
+    const ficha = legible((await pagina(`/admin/proveedores/${id}`)).html);
+    comprobar(
+      "la ficha del proveedor: le debo USD 60 y la compra está vencida",
+      ficha.includes(`Le debo ${usd("60,00")}`) && ficha.includes("20 kg de mozzarella") && ficha.includes(">Abonada<") && /Vencida hace \d+ días/.test(ficha),
+    );
+    const lista = legible((await pagina("/admin/proveedores")).html);
+    comprobar("la lista de proveedores dice cuánto se le debe y desde cuándo", lista.includes(PROVEEDOR_DE_PRUEBA) && lista.includes(`Le debo ${usd("60,00")}`) && /Vencida hace \d+ días/.test(lista));
+    const resumen = legible((await pagina("/admin")).html);
+    comprobar("el resumen lo enseña en «A quién le debo»", resumen.indexOf(PROVEEDOR_DE_PRUEBA) > resumen.indexOf("A quién le debo"));
+
+    const [compra] = await consultar("select id from compras where proveedor_id = ?", [id]);
+    const [pago] = await consultar("select id from pagos_proveedores where proveedor_id = ?", [id]);
+    r = await enviar(`/admin/compras/${compra.id}/eliminar`, 'name="id"', { id: String(compra.id) });
+    comprobar("borrar una compra", r.destino.includes("Compra eliminada"), r.destino);
+    r = await enviar(`/admin/pagos-proveedor/${pago.id}/eliminar`, 'name="id"', { id: String(pago.id) });
+    comprobar("borrar un pago al proveedor", r.destino.includes("Pago eliminado"), r.destino);
+
+    r = await enviar(`/admin/proveedores/${id}/eliminar`, 'name="clave"', { id: String(id), clave: "no-es-la-clave" });
+    comprobar("borrar un proveedor con una clave mala no borra", r.destino.includes("La clave no es correcta"), r.destino);
+    r = await enviar(`/admin/proveedores/${id}/eliminar`, 'name="clave"', { id: String(id), clave: env.ADMIN_CLAVE });
+    comprobar("con la clave buena se borra el proveedor", r.destino.includes("eliminado con sus compras") && (await consultar("select count(*) as n from proveedores where id = ?", [id]))[0].n == 0, r.destino);
+  } finally {
+    if (enProduccion) {
+      const nube = createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
+      try {
+        for (const tabla of ["compras", "pagos_proveedores"]) {
+          await nube.execute({ sql: `delete from ${tabla} where proveedor_id in (select id from proveedores where nombre = ?)`, args: [PROVEEDOR_DE_PRUEBA] });
+        }
+        await nube.execute({ sql: "delete from proveedores where nombre = ?", args: [PROVEEDOR_DE_PRUEBA] });
       } finally {
         nube.close();
       }
@@ -758,6 +856,7 @@ try {
   if (!enProduccion) await probarPrecios();
   await probarNegocio();
   await probarResenas();
+  await probarProveedores();
   if (!enProduccion) {
     await probarCartera();
     await probarTareaDiaria();

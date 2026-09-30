@@ -1,5 +1,5 @@
 import "server-only";
-import { ejecutar, fila, filas } from "./db";
+import { ejecutar, fila, filas, transaccion } from "./db";
 import { redondear } from "./dinero";
 import { mismoTelefono } from "./whatsapp";
 
@@ -13,6 +13,8 @@ export type Cliente = {
   direccion: string;
   tipo: TipoCliente;
   nota: string;
+  /** Cuántos días tiene para pagar cada nota. */
+  dias_credito: number;
   creado_en: string;
 };
 
@@ -72,9 +74,9 @@ export async function buscarClientePorTelefono(telefono: string, salvoId?: numbe
 
 export async function crearCliente(datos: DatosCliente): Promise<number> {
   const r = await ejecutar(
-    `insert into clientes (nombre, telefono, cedula_rif, direccion, tipo, nota)
-     values (?, ?, ?, ?, ?, ?)`,
-    [datos.nombre, datos.telefono, datos.cedula_rif, datos.direccion, datos.tipo, datos.nota],
+    `insert into clientes (nombre, telefono, cedula_rif, direccion, tipo, nota, dias_credito)
+     values (?, ?, ?, ?, ?, ?, ?)`,
+    [datos.nombre, datos.telefono, datos.cedula_rif, datos.direccion, datos.tipo, datos.nota, datos.dias_credito],
   );
   return r.ultimoId;
 }
@@ -82,10 +84,37 @@ export async function crearCliente(datos: DatosCliente): Promise<number> {
 export async function actualizarCliente(id: number, datos: DatosCliente): Promise<void> {
   await ejecutar(
     `update clientes
-     set nombre = ?, telefono = ?, cedula_rif = ?, direccion = ?, tipo = ?, nota = ?
+     set nombre = ?, telefono = ?, cedula_rif = ?, direccion = ?, tipo = ?, nota = ?, dias_credito = ?
      where id = ?`,
-    [datos.nombre, datos.telefono, datos.cedula_rif, datos.direccion, datos.tipo, datos.nota, id],
+    [datos.nombre, datos.telefono, datos.cedula_rif, datos.direccion, datos.tipo, datos.nota, datos.dias_credito, id],
   );
+}
+
+/** Cuánto hay del cliente: para decirlo antes de borrarlo. */
+export async function loQueTieneElCliente(id: number): Promise<{ ventas: number; pagos: number; adjuntos: number }> {
+  const f = await fila<{ ventas: number; pagos: number; adjuntos: number }>(
+    `select
+       (select count(*) from ventas where cliente_id = ?) as ventas,
+       (select count(*) from pagos where cliente_id = ?) as pagos,
+       (select count(*) from adjuntos where cliente_id = ?) as adjuntos`,
+    [id, id, id],
+  );
+  return { ventas: Number(f?.ventas ?? 0), pagos: Number(f?.pagos ?? 0), adjuntos: Number(f?.adjuntos ?? 0) };
+}
+
+/**
+ * Borra un cliente con todo lo suyo: ventas con sus líneas, abonos y fotos.
+ * Todo o nada. Devuelve false si no existía. Quien llama ya pidió la clave.
+ */
+export async function eliminarCliente(id: number): Promise<boolean> {
+  return transaccion(async (tx) => {
+    await tx.execute({ sql: "delete from venta_lineas where venta_id in (select id from ventas where cliente_id = ?)", args: [id] });
+    for (const tabla of ["adjuntos", "ventas", "pagos"]) {
+      await tx.execute({ sql: `delete from ${tabla} where cliente_id = ?`, args: [id] });
+    }
+    const r = await tx.execute({ sql: "delete from clientes where id = ?", args: [id] });
+    return r.rowsAffected > 0;
+  });
 }
 
 /** Cuántos clientes deben algo y cuánto suman. Para el resumen del panel. */

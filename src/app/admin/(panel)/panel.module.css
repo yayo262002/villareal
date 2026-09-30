@@ -157,6 +157,21 @@
   color: var(--color-marca);
   font-weight: 700;
 }
+/* Una nota cuyo plazo ya pasó. */
+.vencida {
+  color: var(--color-error);
+  font-weight: 700;
+}
+/* La foto de una reseña en el panel: pequeña y redonda, como en la web. */
+.fotoResena {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--color-borde);
+  vertical-align: middle;
+  margin-right: var(--espacio-2);
+}
 
 .dosColumnas {
   display: grid;

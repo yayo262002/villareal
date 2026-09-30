@@ -2,7 +2,8 @@ import Link from "next/link";
 import { listarClientes } from "@/lib/clientes";
 import { listarVentas, type Venta } from "@/lib/ventas";
 import { NOMBRE_ESTADO, aplicarPagos, type CuentaDeVenta } from "@/lib/cuentas";
-import { fechaCorta, redondear, usd } from "@/lib/dinero";
+import { conVencimiento, describirVencimiento, type ConVencimiento } from "@/lib/credito";
+import { fechaCorta, hoy, redondear, usd } from "@/lib/dinero";
 import { negocio } from "@/config/negocio";
 import { enlaceWhatsappA, mensajeRecordatorio } from "@/lib/whatsapp";
 import { leerTasa } from "@/lib/ajustes";
@@ -29,14 +30,20 @@ export default async function PaginaCuentas() {
     ventasPorCliente.set(v.cliente_id, lista);
   }
 
-  const cuentas: CuentaDeVenta<Venta>[] = [];
+  const diasDeCredito = new Map(clientes.map((c) => [c.id, c.dias_credito]));
+  const fecha = hoy();
+  const cuentas: ConVencimiento<CuentaDeVenta<Venta>>[] = [];
   for (const [clienteId, lista] of ventasPorCliente) {
-    cuentas.push(...aplicarPagos(lista, pagadoPorCliente.get(clienteId) ?? 0));
+    cuentas.push(...conVencimiento(aplicarPagos(lista, pagadoPorCliente.get(clienteId) ?? 0), diasDeCredito.get(clienteId) ?? 7, fecha));
   }
   const ordenar = (a: Venta, b: Venta) => b.fecha.localeCompare(a.fecha) || b.id - a.id;
-  const porPagar = cuentas.filter((c) => c.estado !== "pagada").sort(ordenar);
+  // Las vencidas primero, la más atrasada arriba; después las que están en plazo.
+  const porPagar = cuentas
+    .filter((c) => c.estado !== "pagada")
+    .sort((a, b) => Number(b.vencida) - Number(a.vencida) || (a.vencida ? b.atraso - a.atraso : ordenar(a, b)));
   const pagadas = cuentas.filter((c) => c.estado === "pagada").sort(ordenar);
   const totalPendiente = redondear(porPagar.reduce((s, c) => s + c.pendiente_usd, 0));
+  const totalVencido = redondear(porPagar.filter((c) => c.vencida).reduce((s, c) => s + c.pendiente_usd, 0));
 
   // Un recordatorio por cliente con todas sus notas pendientes.
   const recordatorios = new Map<number, string | null>();
@@ -62,6 +69,10 @@ export default async function PaginaCuentas() {
         <div className={`${estilos.cifra} ${totalPendiente > 0 ? estilos["cifra--alerta"] : ""}`}>
           <dt>Por pagar</dt>
           <dd>{usd(totalPendiente)}</dd>
+        </div>
+        <div className={`${estilos.cifra} ${totalVencido > 0 ? estilos["cifra--alerta"] : ""}`}>
+          <dt>Con el plazo vencido</dt>
+          <dd>{usd(totalVencido)}</dd>
         </div>
         <div className={estilos.cifra}>
           <dt>Notas por pagar</dt>
@@ -91,6 +102,7 @@ export default async function PaginaCuentas() {
                   <th className="numero">Total</th>
                   <th className="numero">Pendiente</th>
                   <th>Estado</th>
+                  <th>Vence</th>
                   <th>
                     <span className="visualmente-oculto">Recordar</span>
                   </th>
@@ -109,6 +121,9 @@ export default async function PaginaCuentas() {
                       <span className={`${estilos.estado} ${estilos[`estado--${c.estado}`]}`}>
                         {NOMBRE_ESTADO[c.estado]}
                       </span>
+                    </td>
+                    <td>
+                      <span className={c.vencida ? estilos.vencida : undefined}>{describirVencimiento(c.atraso)}</span>
                     </td>
                     <td>
                       {recordatorios.get(c.cliente_id) ? (

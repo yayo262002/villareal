@@ -13,17 +13,29 @@ const TAMANO_SIN_TOCAR = 600 * 1024;
  * carga, el formulario sigue funcionando: sube la foto tal cual y el
  * servidor la rechaza solo si pasa de 4 MB.
  */
-export function EntradaFoto({ nombre, id }: { nombre: string; id: string }) {
+type Props = {
+  nombre: string;
+  id: string;
+  /** Sin esto, el campo se puede dejar vacío. */
+  opcional?: boolean;
+  /** Solo fotos, y de la galería o de la cámara, a elegir: para la foto de una reseña. */
+  soloFoto?: boolean;
+  /** A cuántos píxeles de lado se reduce. Las fotos pequeñas (una cara, un local) no necesitan 1600. */
+  ladoMaximo?: number;
+};
+
+export function EntradaFoto({ nombre, id, opcional = false, soloFoto = false, ladoMaximo = LADO_MAXIMO }: Props) {
   const [aviso, setAviso] = useState("");
 
   async function alElegir(evento: ChangeEvent<HTMLInputElement>) {
     const entrada = evento.currentTarget;
     const archivo = entrada.files?.[0];
     setAviso("");
-    if (!archivo || !archivo.type.startsWith("image/") || archivo.size <= TAMANO_SIN_TOCAR) return;
+    if (!archivo || !archivo.type.startsWith("image/")) return;
+    if (archivo.size <= TAMANO_SIN_TOCAR && ladoMaximo >= LADO_MAXIMO) return;
 
     try {
-      const reducida = await reducirImagen(archivo);
+      const reducida = await reducirImagen(archivo, ladoMaximo);
       const transferencia = new DataTransfer();
       transferencia.items.add(reducida);
       entrada.files = transferencia.files;
@@ -39,9 +51,9 @@ export function EntradaFoto({ nombre, id }: { nombre: string; id: string }) {
         id={id}
         name={nombre}
         type="file"
-        accept="image/*,application/pdf"
-        capture="environment"
-        required
+        accept={soloFoto ? "image/*" : "image/*,application/pdf"}
+        capture={soloFoto ? undefined : "environment"}
+        required={!opcional}
         onChange={alElegir}
       />
       {aviso && <span className="ayuda">{aviso}</span>}
@@ -49,9 +61,9 @@ export function EntradaFoto({ nombre, id }: { nombre: string; id: string }) {
   );
 }
 
-async function reducirImagen(archivo: File): Promise<File> {
+async function reducirImagen(archivo: File, ladoMaximo: number): Promise<File> {
   const imagen = await createImageBitmap(archivo);
-  const escala = Math.min(1, LADO_MAXIMO / Math.max(imagen.width, imagen.height));
+  const escala = Math.min(1, ladoMaximo / Math.max(imagen.width, imagen.height));
   const lienzo = document.createElement("canvas");
   lienzo.width = Math.round(imagen.width * escala);
   lienzo.height = Math.round(imagen.height * escala);

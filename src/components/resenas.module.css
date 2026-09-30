@@ -58,12 +58,21 @@
   color: var(--color-texto-suave);
   font-size: 14px;
 }
+.foto {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-superficie);
+  box-shadow: 0 0 0 1px var(--color-borde);
+}
 .iniciales {
   flex: none;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--color-marca-oscuro);
   color: var(--color-acento);

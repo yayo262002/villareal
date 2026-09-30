@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { listarClientes, resumenDeudas } from "@/lib/clientes";
+import { clientesConVencimiento, proveedoresConVencimiento } from "@/lib/vencimientos";
+import { describirVencimiento } from "@/lib/credito";
 import { listarPagos, totalCobradoUsd } from "@/lib/pagos";
 import { contarVentasPorEntregar, listarVentas, totalVendidoUsd, vendidoDesde } from "@/lib/ventas";
 import { numeroDeNota } from "@/lib/entregas";
-import { METODOS_PAGO, fechaCorta, formatearMonto, hoy, mesLegible, usd } from "@/lib/dinero";
+import { METODOS_PAGO, fechaCorta, formatearMonto, hoy, mesLegible, redondear, usd } from "@/lib/dinero";
 import { listarCopiasNube } from "@/lib/copias-nube";
 import { leerTasa } from "@/lib/ajustes";
 import { negocio } from "@/config/negocio";
@@ -17,7 +19,7 @@ export const metadata = { title: "Resumen" };
 export default async function PaginaResumen({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
   const mes = hoy().slice(0, 7);
-  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, tasa, porEntregar, vendidoEsteMes] =
+  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, tasa, porEntregar, vendidoEsteMes, conVencimiento, proveedores] =
     await Promise.all([
       listarClientes(),
       resumenDeudas(),
@@ -29,8 +31,16 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
       leerTasa(),
       contarVentasPorEntregar(),
       vendidoDesde(`${mes}-01`),
+      clientesConVencimiento(),
+      proveedoresConVencimiento(),
     ]);
-  const deudores = clientes.filter((c) => c.saldo_usd > 0).sort((a, b) => b.saldo_usd - a.saldo_usd);
+  // Quien debe: primero los que ya pasaron su plazo, con el más atrasado arriba.
+  const deudores = conVencimiento
+    .filter((c) => c.saldo_usd > 0)
+    .sort((a, b) => b.vencido_usd - a.vencido_usd || b.mayor_atraso - a.mayor_atraso || b.saldo_usd - a.saldo_usd);
+  const vencido = redondear(deudores.reduce((s, c) => s + c.vencido_usd, 0));
+  const acreedores = proveedores.filter((p) => p.saldo_usd > 0).sort((a, b) => b.vencido_usd - a.vencido_usd || b.saldo_usd - a.saldo_usd);
+  const debo = redondear(acreedores.reduce((s, p) => s + p.saldo_usd, 0));
   // Recordatorio corto (solo el saldo); el detalle de las notas está en la ficha.
   const recordatorio = (c: (typeof deudores)[number]) =>
     enlaceWhatsappA(
@@ -84,8 +94,18 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
           <dd>{usd(cobrado)}</dd>
         </div>
         <div className={`${estilos.cifra} ${deudas.total_por_cobrar_usd > 0 ? estilos["cifra--alerta"] : ""}`}>
-          <dt>Por pagar</dt>
+          <dt>Me deben</dt>
           <dd>{usd(deudas.total_por_cobrar_usd)}</dd>
+        </div>
+        <div className={`${estilos.cifra} ${vencido > 0 ? estilos["cifra--alerta"] : ""}`}>
+          <dt>Con el plazo vencido</dt>
+          <dd>{usd(vencido)}</dd>
+        </div>
+        <div className={`${estilos.cifra} ${debo > 0 ? estilos["cifra--alerta"] : ""}`}>
+          <dt>Debo a proveedores</dt>
+          <dd>
+            <Link href="/admin/proveedores">{usd(debo)}</Link>
+          </dd>
         </div>
       </dl>
 
@@ -101,6 +121,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                   <tr>
                     <th>Cliente</th>
                     <th className="numero">Debe</th>
+                    <th>Plazo</th>
                     <th>
                       <span className="visualmente-oculto">Recordar</span>
                     </th>
@@ -112,7 +133,16 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                       <td>
                         <Link href={`/admin/clientes/${c.id}`}>{c.nombre}</Link>
                       </td>
-                      <td className={`numero ${estilos.deuda}`}>{usd(c.saldo_usd)}</td>
+                      <td className={`numero ${c.vencido_usd > 0 ? estilos.vencida : estilos.deuda}`}>{usd(c.saldo_usd)}</td>
+                      <td>
+                        {c.vencido_usd > 0 ? (
+                          <span className={estilos.vencida}>{describirVencimiento(c.mayor_atraso)}</span>
+                        ) : c.proximo_vencimiento ? (
+                          <span className="ayuda">Vence el {fechaCorta(c.proximo_vencimiento)}</span>
+                        ) : (
+                          ""
+                        )}
+                      </td>
                       <td>
                         {recordatorio(c) && (
                           <a href={recordatorio(c)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
@@ -129,6 +159,46 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                   <Link href="/admin/cuentas">Ver todas las cuentas por pagar</Link>
                 </p>
               )}
+            </div>
+          )}
+        </section>
+
+        <section className="tarjeta">
+          <h2 className={estilos.subtitulo}>A quién le debo</h2>
+          {acreedores.length === 0 ? (
+            <p className="vacio">
+              No debes nada a ningún proveedor. <Link href="/admin/proveedores">Ver proveedores</Link>.
+            </p>
+          ) : (
+            <div className="tabla-envoltorio">
+              <table className="tabla">
+                <thead>
+                  <tr>
+                    <th>Proveedor</th>
+                    <th className="numero">Le debo</th>
+                    <th>Plazo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {acreedores.slice(0, 8).map((p) => (
+                    <tr key={p.id}>
+                      <td>
+                        <Link href={`/admin/proveedores/${p.id}`}>{p.nombre}</Link>
+                      </td>
+                      <td className={`numero ${p.vencido_usd > 0 ? estilos.vencida : estilos.deuda}`}>{usd(p.saldo_usd)}</td>
+                      <td>
+                        {p.vencido_usd > 0 ? (
+                          <span className={estilos.vencida}>{describirVencimiento(p.mayor_atraso)}</span>
+                        ) : p.proximo_vencimiento ? (
+                          <span className="ayuda">Vence el {fechaCorta(p.proximo_vencimiento)}</span>
+                        ) : (
+                          ""
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>

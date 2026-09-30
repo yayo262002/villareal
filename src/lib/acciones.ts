@@ -8,8 +8,22 @@ import {
   buscarCliente,
   buscarClientePorTelefono,
   crearCliente,
+  eliminarCliente,
   type TipoCliente,
 } from "./clientes";
+import {
+  actualizarProveedor,
+  buscarCompra,
+  buscarPagoProveedor,
+  buscarProveedor,
+  crearCompra,
+  crearProveedor,
+  eliminarCompra,
+  eliminarPagoProveedor,
+  eliminarProveedor,
+  registrarPagoProveedor,
+} from "./proveedores";
+import { leerDiasDeCredito } from "./credito";
 import { explicarMotivo, leerDireccion } from "./direcciones";
 import { telefonoLegible } from "./whatsapp";
 import {
@@ -39,8 +53,10 @@ import {
   crearResena,
   eliminarResena,
   esconderResena,
+  guardarFotoDeResena,
   ponerResenasDeEjemplo,
   publicarResena,
+  quitarFotoDeResena,
   quitarResenasDeEjemplo,
 } from "./resenas";
 import { leerResena } from "./resenas-texto";
@@ -98,6 +114,29 @@ function mensajeDe(error: unknown): string {
   return error instanceof Error ? error.message : "No se pudo guardar.";
 }
 
+/**
+ * Para lo que no tiene vuelta atrás, como borrar un cliente con todo lo
+ * suyo: además de la sesión se pide la clave del panel otra vez. Los
+ * fallos cuentan como los de la entrada, para que nadie la adivine desde
+ * aquí probando.
+ */
+async function exigirClave(datos: FormData, volverA: string): Promise<void> {
+  const direccion = await direccionDeLaPeticion();
+  if (await entradaBloqueada(direccion)) {
+    volverConError(volverA, `Demasiados intentos fallidos. Espera ${VENTANA_MINUTOS} minutos y vuelve a probar.`);
+  }
+  if (!claveEsCorrecta(texto(datos, "clave"))) {
+    await anotarEntradaFallida(direccion);
+    volverConError(volverA, "La clave no es correcta. No se borró nada.");
+  }
+}
+
+/** Un archivo de un formulario, o null si no se eligió ninguno. */
+function archivoDe(datos: FormData, campo: string): File | null {
+  const valor = datos.get(campo);
+  return valor instanceof File && valor.size > 0 ? valor : null;
+}
+
 // ---------- Sesión ----------
 
 export async function entrar(datos: FormData): Promise<void> {
@@ -134,6 +173,7 @@ function leerCliente(datos: FormData) {
     direccion: texto(datos, "direccion"),
     tipo,
     nota: texto(datos, "nota"),
+    dias_credito: leerDiasDeCredito(numero(datos, "dias_credito")),
   };
 }
 
@@ -179,6 +219,149 @@ export async function editarCliente(datos: FormData): Promise<void> {
 
   await actualizarCliente(id, cliente);
   volverConExito(`/admin/clientes/${id}`, `Datos guardados.${avisoDeDireccion(cliente.direccion)}`);
+}
+
+/**
+ * Borra un cliente con sus ventas, abonos y fotos. Pide la clave del panel:
+ * la confirmación está en `/admin/clientes/[id]/eliminar`.
+ */
+export async function borrarCliente(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const cliente = id ? await buscarCliente(id) : null;
+  if (!id || !cliente) volverConError("/admin/clientes", "No se encontró el cliente.");
+  await exigirClave(datos, `/admin/clientes/${id}/eliminar`);
+
+  await eliminarCliente(id);
+  volverConExito("/admin/clientes", `Cliente ${cliente.nombre} eliminado con todo lo suyo.`);
+}
+
+// ---------- Proveedores ----------
+
+function leerProveedor(datos: FormData) {
+  const telefono = telefonoLegible(texto(datos, "telefono"));
+  return {
+    nombre: texto(datos, "nombre") || telefono,
+    telefono,
+    cedula_rif: texto(datos, "cedula_rif"),
+    direccion: texto(datos, "direccion"),
+    nota: texto(datos, "nota"),
+    dias_credito: leerDiasDeCredito(numero(datos, "dias_credito")),
+  };
+}
+
+export async function guardarProveedor(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const proveedor = leerProveedor(datos);
+  if (!proveedor.nombre) volverConError("/admin/proveedores", "Escribe al menos el nombre o el teléfono.");
+  const id = await crearProveedor(proveedor);
+  redirect(`/admin/proveedores/${id}?ok=${encodeURIComponent(`Proveedor guardado: ${proveedor.nombre}.`)}`);
+}
+
+export async function editarProveedor(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  if (!id) volverConError("/admin/proveedores", "No se encontró el proveedor.");
+  const proveedor = leerProveedor(datos);
+  if (!proveedor.nombre) volverConError(`/admin/proveedores/${id}`, "Escribe al menos el nombre o el teléfono.");
+  await actualizarProveedor(id, proveedor);
+  volverConExito(`/admin/proveedores/${id}`, "Datos guardados.");
+}
+
+/** Pide la clave, como borrar un cliente. La confirmación está en `/admin/proveedores/[id]/eliminar`. */
+export async function borrarProveedor(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const proveedor = id ? await buscarProveedor(id) : null;
+  if (!id || !proveedor) volverConError("/admin/proveedores", "No se encontró el proveedor.");
+  await exigirClave(datos, `/admin/proveedores/${id}/eliminar`);
+
+  await eliminarProveedor(id);
+  volverConExito("/admin/proveedores", `Proveedor ${proveedor.nombre} eliminado con sus compras y sus pagos.`);
+}
+
+export async function guardarCompra(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const proveedorId = numero(datos, "proveedor_id");
+  const proveedor = proveedorId ? await buscarProveedor(proveedorId) : null;
+  if (!proveedorId || !proveedor) volverConError("/admin/proveedores", "No se encontró el proveedor.");
+  const volverA = `/admin/proveedores/${proveedorId}`;
+
+  const fecha = texto(datos, "fecha");
+  const total = numero(datos, "total_usd");
+  if (!fecha) volverConError(volverA, "Falta la fecha de la compra.");
+  if (total === null || total <= 0) volverConError(volverA, "Escribe el total de la compra en dólares.");
+
+  try {
+    const tasa = await leerTasa();
+    await crearCompra({
+      proveedor_id: proveedorId,
+      fecha,
+      descripcion: texto(datos, "descripcion"),
+      total_usd: total,
+      nota: texto(datos, "nota"),
+      tasa: tasa?.valor ?? null,
+    });
+  } catch (error) {
+    volverConError(volverA, mensajeDe(error));
+  }
+  volverConExito(volverA, "Compra registrada.");
+}
+
+/** La confirmación está en `/admin/compras/[id]/eliminar`. */
+export async function borrarCompra(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const compra = id ? await buscarCompra(id) : null;
+  if (!id || !compra) volverConError("/admin/proveedores", "No se encontró la compra.");
+  await eliminarCompra(id);
+  volverConExito(`/admin/proveedores/${compra.proveedor_id}`, "Compra eliminada.");
+}
+
+/** Un pago al proveedor. Mismo formulario que el abono de un cliente. */
+export async function guardarPagoProveedor(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const proveedorId = numero(datos, "proveedor_id");
+  const origen = volverA(datos, proveedorId ? `/admin/proveedores/${proveedorId}` : "/admin/proveedores");
+  const fecha = texto(datos, "fecha");
+  const metodo = texto(datos, "metodo");
+  const monto = numero(datos, "monto");
+  const tasa = numero(datos, "tasa");
+
+  if (!proveedorId || !(await buscarProveedor(proveedorId))) volverConError(origen, "Elige un proveedor.");
+  if (!fecha) volverConError(origen, "Falta la fecha.");
+  if (!esMetodoPago(metodo)) volverConError(origen, "Elige el método de pago.");
+  if (monto === null || monto <= 0) volverConError(origen, "El monto tiene que ser mayor que cero.");
+  const moneda = monedaDelMetodo(metodo);
+  if (moneda === "VES" && (tasa === null || tasa <= 0)) {
+    volverConError(origen, "Un pago en bolívares necesita la tasa del día (Bs por dólar).");
+  }
+
+  try {
+    await registrarPagoProveedor({
+      proveedor_id: proveedorId,
+      fecha,
+      metodo,
+      moneda,
+      monto,
+      tasa: moneda === "VES" ? tasa : null,
+      referencia: texto(datos, "referencia"),
+      nota: texto(datos, "nota"),
+    });
+  } catch (error) {
+    volverConError(origen, mensajeDe(error));
+  }
+  volverConExito(`/admin/proveedores/${proveedorId}`, "Pago al proveedor registrado.");
+}
+
+/** La confirmación está en `/admin/pagos-proveedor/[id]/eliminar`. */
+export async function borrarPagoProveedor(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const pago = id ? await buscarPagoProveedor(id) : null;
+  if (!id || !pago) volverConError("/admin/proveedores", "No se encontró el pago.");
+  await eliminarPagoProveedor(id);
+  volverConExito(`/admin/proveedores/${pago.proveedor_id}`, "Pago eliminado.");
 }
 
 // ---------- Productos ----------
@@ -440,7 +623,16 @@ export async function guardarResena(datos: FormData): Promise<void> {
   // La casilla dice que el cliente dio permiso para salir con su nombre.
   // Sin ella la reseña se guarda, pero escondida hasta tener el permiso.
   const conPermiso = texto(datos, "permiso") === "1";
-  await crearResena(productoId, lectura.datos, conPermiso);
+  const id = await crearResena(productoId, lectura.datos, conPermiso);
+  const foto = archivoDe(datos, "foto");
+  if (foto) {
+    try {
+      await guardarFotoDeResena(id, foto.type, new Uint8Array(await foto.arrayBuffer()));
+    } catch (error) {
+      // La reseña ya está guardada; solo falta la foto, y se dice.
+      volverConError("/admin/resenas", `Reseña guardada, pero sin la foto: ${mensajeDe(error)}`);
+    }
+  }
   volverConExito(
     "/admin/resenas",
     conPermiso
@@ -466,6 +658,31 @@ export async function alternarResena(datos: FormData): Promise<void> {
   }
   await esconderResena(id);
   volverConExito("/admin/resenas", "Reseña escondida. No se borró.");
+}
+
+/** Pone o cambia la foto de una reseña que ya existe. */
+export async function cambiarFotoDeResena(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const resena = id ? await buscarResena(id) : null;
+  if (!id || !resena) volverConError("/admin/resenas", "No se encontró la reseña.");
+  const foto = archivoDe(datos, "foto");
+  if (!foto) volverConError("/admin/resenas", "Elige una foto.");
+  try {
+    await guardarFotoDeResena(id, foto.type, new Uint8Array(await foto.arrayBuffer()));
+  } catch (error) {
+    volverConError("/admin/resenas", mensajeDe(error));
+  }
+  volverConExito("/admin/resenas", `Foto puesta en la reseña de ${resena.autor}.`);
+}
+
+export async function retirarFotoDeResena(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const resena = id ? await buscarResena(id) : null;
+  if (!id || !resena) volverConError("/admin/resenas", "No se encontró la reseña.");
+  await quitarFotoDeResena(id);
+  volverConExito("/admin/resenas", "Foto quitada. La reseña se queda.");
 }
 
 /** La confirmación está en `/admin/resenas/[id]/eliminar`. */

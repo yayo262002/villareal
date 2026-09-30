@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { negocio } from "@/config/negocio";
-import { listarClientes, type ClienteConSaldo } from "@/lib/clientes";
+import { clientesConVencimiento, type ClienteConVencimiento } from "@/lib/vencimientos";
+import { DIAS_DE_CREDITO_POR_DEFECTO, describirVencimiento } from "@/lib/credito";
 import { guardarCliente } from "@/lib/acciones";
 import { enlaceAlMapa, planDeDespacho } from "@/lib/despacho";
 import { explicarMotivo } from "@/lib/direcciones";
@@ -43,7 +44,7 @@ export default async function PaginaClientes({
   const orden: Orden = typeof parametros.orden === "string" && parametros.orden in ORDENES ? (parametros.orden as Orden) : "nombre";
   const nuevoId = typeof parametros.nuevo === "string" ? Number(parametros.nuevo) : 0;
 
-  const todos = await listarClientes();
+  const todos = await clientesConVencimiento();
   const nuevo = todos.find((c) => c.id === nuevoId);
   const clave = normalizar(busqueda);
   const filtrados = clave
@@ -55,12 +56,14 @@ export default async function PaginaClientes({
   // El orden de la ruta sirve también para saber quién no está ubicado.
   const plan = planDeDespacho({ direccion: negocio.direccion, ciudad: CIUDAD }, filtrados);
   const motivo = new Map(plan.sinUbicar.map((s) => [s.cliente.id, s.motivo]));
-  let clientes: ClienteConSaldo[];
+  let clientes: ClienteConVencimiento[];
   if (orden === "ruta") clientes = [...plan.ruta.paradas.map((p) => p.dato), ...plan.sinUbicar.map((s) => s.cliente)];
-  else if (orden === "deuda") clientes = [...filtrados].sort((a, b) => b.saldo_usd - a.saldo_usd);
+  // Los que más deben: primero lo vencido, después el saldo.
+  else if (orden === "deuda") clientes = [...filtrados].sort((a, b) => b.vencido_usd - a.vencido_usd || b.saldo_usd - a.saldo_usd);
   else clientes = filtrados;
 
   const porPagar = redondear(todos.reduce((s, c) => s + Math.max(0, c.saldo_usd), 0));
+  const vencido = redondear(todos.reduce((s, c) => s + c.vencido_usd, 0));
   const enlaceOrden = (o: Orden) => {
     const p = new URLSearchParams();
     if (busqueda) p.set("q", busqueda);
@@ -101,6 +104,12 @@ export default async function PaginaClientes({
           <dt>Por pagar</dt>
           <dd>{usd(porPagar)}</dd>
         </div>
+        {vencido > 0 && (
+          <div className={`${estilos.cifra} ${estilos["cifra--alerta"]}`}>
+            <dt>Con el plazo vencido</dt>
+            <dd>{usd(vencido)}</dd>
+          </div>
+        )}
       </dl>
 
       <section className="tarjeta">
@@ -146,9 +155,25 @@ export default async function PaginaClientes({
                   </select>
                 </div>
               </div>
-              <div className="campo">
-                <label htmlFor="nota">Nota</label>
-                <input id="nota" name="nota" type="text" placeholder="Portón azul, preguntar por María" />
+              <div className="formulario__fila">
+                <div className="campo">
+                  <label htmlFor="dias_credito">Días de crédito</label>
+                  <input
+                    id="dias_credito"
+                    name="dias_credito"
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    max="365"
+                    step="1"
+                    defaultValue={DIAS_DE_CREDITO_POR_DEFECTO}
+                  />
+                  <span className="ayuda">Pasados esos días desde la nota, lo que deba sale como vencido.</span>
+                </div>
+                <div className="campo">
+                  <label htmlFor="nota">Nota</label>
+                  <input id="nota" name="nota" type="text" placeholder="Portón azul, preguntar por María" />
+                </div>
               </div>
             </div>
           </details>
@@ -212,10 +237,15 @@ export default async function PaginaClientes({
                           {orden === "ruta" && !sinUbicar && <span className={estilos.carteraOrden}>{i + 1}</span>}
                           {c.nombre}
                         </Link>
-                        <span className={c.saldo_usd > 0 ? estilos.deuda : estilos.saldado}>
+                        <span className={c.vencido_usd > 0 ? estilos.vencida : c.saldo_usd > 0 ? estilos.deuda : estilos.saldado}>
                           {c.saldo_usd > 0 ? `Debe ${usd(c.saldo_usd)}` : c.saldo_usd < 0 ? `A favor ${usd(-c.saldo_usd)}` : "Al día"}
                         </span>
                       </div>
+                      {c.vencido_usd > 0 && (
+                        <p className={`${estilos.carteraDato} ${estilos.vencida}`}>
+                          {describirVencimiento(c.mayor_atraso)}: {usd(c.vencido_usd)}
+                        </p>
+                      )}
                       <p className={estilos.carteraDato}>
                         {c.direccion || <span className="ayuda">Sin dirección</span>}
                         {sinUbicar && c.direccion && <span className="ayuda"> · Fuera de la ruta. {explicarMotivo(sinUbicar)}</span>}
