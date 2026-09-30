@@ -186,6 +186,15 @@
   color: var(--color-marca);
   font-weight: 700;
 }
+/* Pasos de una explicación, numerados y con aire. */
+.pasos {
+  margin: 0 0 var(--espacio-4);
+  padding-left: var(--espacio-5);
+  display: grid;
+  gap: var(--espacio-2);
+  font-size: 16px;
+}
+
 /* Falta un dato que conviene tener, sin ser un error: se dice bajito. */
 .sinNombre {
   font-size: 13px;

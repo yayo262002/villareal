@@ -5,7 +5,11 @@ import { claveConfigurada, haySesion } from "@/lib/sesion";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../(panel)/panel.module.css";
 
-export const metadata = { title: "Entrar" };
+export const metadata = {
+  title: "Entrar",
+  manifest: "/admin/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "Panel", statusBarStyle: "default" as const },
+};
 
 export default async function PaginaEntrar({
   searchParams,

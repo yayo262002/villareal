@@ -7,6 +7,12 @@ import { salir } from "@/lib/acciones";
 import { NavPanel } from "@/components/nav-panel";
 import estilos from "./panel.module.css";
 
+/** El panel se instala en el teléfono como app propia, con su manifiesto. */
+export const metadata = {
+  manifest: "/admin/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "Panel", statusBarStyle: "default" as const },
+};
+
 const SECCIONES = [
   { ruta: "/admin", nombre: "Resumen" },
   { ruta: "/admin/clientes", nombre: "Clientes" },

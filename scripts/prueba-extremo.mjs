@@ -204,6 +204,18 @@ async function probarPresentacion(portada) {
   r = await fetch(base + "/manifest.webmanifest");
   const manifiesto = await r.json().catch(() => ({}));
   comprobar("se puede poner en la pantalla de inicio del teléfono", manifiesto.short_name === "Villa Real" && manifiesto.icons?.length >= 2);
+  r = await fetch(base + "/admin/manifest.webmanifest", { redirect: "manual" });
+  const manifiestoPanel = r.status === 200 ? await r.json().catch(() => ({})) : {};
+  comprobar(
+    "el panel tiene su propia app: manifiesto sin sesión, que abre en el panel",
+    r.status === 200 && manifiestoPanel.short_name === "Panel" && manifiestoPanel.start_url === "/admin" && manifiestoPanel.display === "standalone" && manifiestoPanel.shortcuts?.length === 4,
+    String(r.status),
+  );
+  const entrada = await pagina("/admin/entrar", "");
+  comprobar(
+    "la entrada enlaza el manifiesto del panel y se abre a pantalla completa en iPhone",
+    entrada.html.includes('href="/admin/manifest.webmanifest"') && entrada.html.includes('name="apple-mobile-web-app-title" content="Panel"'),
+  );
   for (const icono of ["/marca/icono-192.png", "/marca/icono-512.png", "/apple-icon.png"]) {
     r = await fetch(base + icono);
     comprobar(`icono ${icono}`, r.status === 200 && r.headers.get("content-type") === "image/png");
@@ -926,6 +938,7 @@ async function probarSinEscribir() {
     ["/admin/resenas", "Reseñas", "Reseña nueva"],
     ["/admin/proveedores", "Proveedores", "Proveedor nuevo"],
     ["/admin/caja", "Cierre del día", "Descargar para Excel"],
+    ["/admin/app", "Cómo ponerlo como app", "Añadir a pantalla de inicio"],
   ];
   const vistas = {};
   for (const [ruta, nombre, texto] of pantallas) {

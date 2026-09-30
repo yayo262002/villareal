@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * el layout del panel y en cada acción del servidor, que es donde importa.
  */
 const COOKIE_SESION = "villareal_sesion";
-const RUTAS_LIBRES = ["/admin/entrar"];
+const RUTAS_LIBRES = ["/admin/entrar", "/admin/manifest.webmanifest"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

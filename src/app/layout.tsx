@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   },
   description: negocio.descripcion,
   applicationName: negocio.nombre,
+  // En iPhone, puesta en la pantalla de inicio, abre a pantalla completa.
+  appleWebApp: { capable: true, title: negocio.nombreCorto, statusBarStyle: "default" },
   openGraph: {
     type: "website",
     locale: "es_VE",

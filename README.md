@@ -421,6 +421,13 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   las tareas quedan fuera de los buscadores.
 - **En el teléfono** la web se puede poner en la pantalla de inicio, con el
   león de icono. Manteniendo pulsado el icono sale el acceso al panel.
+- **El panel como app.** El panel tiene su propio manifiesto
+  (`/admin/manifest.webmanifest`, sin sesión): puesto en la pantalla de
+  inicio se llama «Panel», abre directamente en `/admin`, a pantalla
+  completa, y con atajos a venta, abono, despacho y cierre. Las
+  instrucciones para Android y iPhone están en `/admin/app`. No hay app de
+  tienda: publicarla en Google Play o en la App Store cuesta dinero y no
+  añade nada que esto no haga.
 - La dirección de la web está en `src/config/negocio.ts` (`web`). Con un
   dominio propio se cambia ahí y cambian los enlaces, el mapa del sitio y
   las vistas previas.

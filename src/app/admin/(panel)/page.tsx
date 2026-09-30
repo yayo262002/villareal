@@ -346,6 +346,14 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
       </section>
 
       <section className="tarjeta">
+        <h2 className={estilos.subtitulo}>El panel como app</h2>
+        <p className={estilos.ayuda} style={{ marginBottom: 0 }}>
+          Ponlo en la pantalla de inicio del teléfono: abre de un toque, a pantalla completa y con el león de icono.{" "}
+          <Link href="/admin/app">Cómo hacerlo</Link>.
+        </p>
+      </section>
+
+      <section className="tarjeta">
         <h2 className={estilos.subtitulo}>Copias de seguridad</h2>
         <p className={estilos.ayuda}>
           Todo lo que registras, fotos incluidas, cabe en un solo archivo. Cada noche se guarda una
