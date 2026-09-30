@@ -205,6 +205,42 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
         </section>
       )}
 
+      <section className={`tarjeta ${estilos.noImprimir}`} id="exportar">
+        <h2 className={estilos.subtitulo}>Descargar para Excel</h2>
+        <p className={estilos.ayuda}>
+          Todos los movimientos entre dos fechas: ventas, abonos, compras y pagos a proveedores. «Uno por uno» trae
+          una fila por cada movimiento; «Resumen por día», una fila por día. Con las fechas vacías baja todo.
+        </p>
+        <form method="get" action="/admin/caja/exportar" className="formulario">
+          <div className="formulario__fila">
+            <div className="campo">
+              <label htmlFor="desde">Desde</label>
+              <input id="desde" name="desde" type="date" defaultValue={`${fecha.slice(0, 7)}-01`} />
+            </div>
+            <div className="campo">
+              <label htmlFor="hasta">Hasta</label>
+              <input id="hasta" name="hasta" type="date" defaultValue={fecha} />
+            </div>
+          </div>
+          <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
+            <button type="submit" className="boton">
+              Movimientos, uno por uno
+            </button>
+            <button type="submit" name="forma" value="dias" className="boton boton--secundario">
+              Resumen por día
+            </button>
+          </div>
+        </form>
+        <div className={estilos.carteraAcciones} style={{ marginTop: "var(--espacio-3)" }}>
+          <a href={`/admin/caja/exportar?desde=${fecha}&hasta=${fecha}`} download>
+            Solo el {fechaCorta(fecha)}
+          </a>
+          <a href="/admin/caja/exportar" download>
+            Todo, desde el principio
+          </a>
+        </div>
+      </section>
+
       {dias.length > 0 && (
         <section className={`tarjeta ${estilos.noImprimir}`}>
           <h2 className={estilos.subtitulo}>Otros días con movimiento</h2>

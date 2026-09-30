@@ -125,6 +125,7 @@ src/lib/credito.ts        Los días de crédito: cuándo vence una nota y cuánt
 src/lib/vencimientos.ts   Cada cliente y cada proveedor con lo que tiene vencido
 src/lib/proveedores.ts    Proveedores, sus compras y los pagos que se les hacen
 src/lib/caja.ts           El cierre del día: vendido, entrado por método y salido
+src/lib/exportar.ts       Lo que se descarga para Excel: movimientos y resumen por día
 src/lib/direcciones.ts    Lee una dirección y la sitúa en la cuadrícula
 src/lib/ruta.ts           El orden en que conviene visitar a los clientes
 src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho
@@ -240,6 +241,12 @@ datos/                    La base de datos (fuera de Git)
   la caja en bolívares y en dólares aparte) y lo que salió a proveedores,
   con las notas, abonos y pagos de ese día. Se elige cualquier día y se
   imprime. El Resumen enseña arriba las tres cifras de hoy.
+- **Descargar para Excel** (en Cierre del día, y desde el Informe): todos
+  los movimientos entre dos fechas (ventas, abonos, compras y pagos a
+  proveedores), una fila por movimiento con cada monto en su columna, o
+  un resumen con una fila por día. Es un CSV con punto y coma y coma
+  decimal, que es lo que abre bien Excel en castellano
+  (`src/lib/exportar.ts`).
 - El **Informe** suma por mes, junto a lo vendido y cobrado, lo comprado y
   lo pagado a proveedores, y lo que entró neto (cobrado menos pagado).
 - Un pago en bolívares se guarda con la **tasa del día** que se escribió al

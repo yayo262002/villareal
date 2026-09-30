@@ -27,7 +27,12 @@ export default async function PaginaInforme() {
 
   return (
     <>
-      <h1 className={estilos.titulo}>Informe de ventas</h1>
+      <div className={estilos.encabezado}>
+        <h1 className={estilos.titulo}>Informe de ventas</h1>
+        <Link href="/admin/caja#exportar" className="boton boton--secundario">
+          Descargar movimientos (Excel)
+        </Link>
+      </div>
 
       <dl className={estilos.cifras}>
         <div className={estilos.cifra}>

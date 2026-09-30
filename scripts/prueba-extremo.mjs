@@ -500,6 +500,31 @@ async function probarNegocio() {
     const csv = Buffer.from(await respuesta.arrayBuffer());
     comprobar("lista de clientes para Excel", respuesta.status === 200 && csv[0] === 0xef && csv.toString("utf8").includes(`${nombre};0412-0000000`));
 
+    // Los movimientos para Excel: la venta del día 1 y el abono del día 20.
+    respuesta = await fetch(base + "/admin/caja/exportar?desde=2026-09-30&hasta=2026-09-01", { headers: { cookie } });
+    const movimientos = Buffer.from(await respuesta.arrayBuffer());
+    const textoMovimientos = movimientos.toString("utf8");
+    comprobar(
+      "movimientos para Excel: una fila por venta y por abono, con coma decimal y su tasa",
+      respuesta.status === 200 && movimientos[0] === 0xef && (respuesta.headers.get("content-disposition") ?? "").includes("movimientos-2026-09-01-a-2026-09-30.csv") &&
+        textoMovimientos.includes("Fecha;Tipo;Nota n.º;Cliente o proveedor;") &&
+        textoMovimientos.includes(`01/09/2026;Venta;${String(notaId).padStart(6, "0")};${nombre};`) && textoMovimientos.includes(";10,00;") &&
+        textoMovimientos.includes(`20/09/2026;Abono;;${nombre};;Pago móvil;146,00;Bs;36,5000;;4,00;`),
+      textoMovimientos.slice(0, 600),
+    );
+    respuesta = await fetch(base + "/admin/caja/exportar?forma=dias&desde=2026-09-20&hasta=2026-09-20", { headers: { cookie } });
+    const porDia = Buffer.from(await respuesta.arrayBuffer()).toString("utf8");
+    comprobar(
+      "resumen por día para Excel: lo que entró, en bolívares y en dólares aparte",
+      respuesta.status === 200 && (respuesta.headers.get("content-disposition") ?? "").includes("resumen-por-dia-2026-09-20.csv") &&
+        porDia.includes("Fecha;Notas;Vendido USD;Abonos;Entró USD;Entró en bolívares;Entró en dólares;") &&
+        (enProduccion ? porDia.includes("\r\n20/09/2026;") : porDia.includes("\r\n20/09/2026;0;0,00;1;4,00;146,00;0,00;0;0,00;0;0,00;4,00\r\n")),
+      porDia,
+    );
+    respuesta = await fetch(base + "/admin/caja/exportar", { redirect: "manual" });
+    comprobar("los movimientos no se descargan sin sesión", respuesta.status === 307 || respuesta.status === 401, String(respuesta.status));
+    comprobar("el cierre del día ofrece la descarga para Excel", (await pagina("/admin/caja")).html.includes("Descargar para Excel"));
+
     respuesta = await fetch(base + "/api/copia-automatica");
     comprobar("la copia automática sin clave se niega", respuesta.status === 401);
     respuesta = await fetch(base + "/api/copia-automatica", { headers: { authorization: "Bearer " + env.CRON_SECRET } });
