@@ -80,13 +80,13 @@ const legible = (html) => html.replaceAll("<!-- -->", "");
 
 let cookie = `villareal_sesion=${createHmac("sha256", env.ADMIN_CLAVE).update("panel-villareal-v1").digest("hex")}`;
 
-async function pagina(ruta, conCookie = cookie) {
+async function pagina(ruta, conCookie = cookie, aunqueNoSeaHtml = false) {
   const t = Date.now();
   const r = await fetch(base + ruta, { headers: { cookie: conCookie }, redirect: "manual" });
   return {
     status: r.status,
     cabeceras: r.headers,
-    html: r.status === 200 ? await r.text() : "",
+    html: r.status === 200 || aunqueNoSeaHtml ? await r.text() : "",
     destino: decodeURIComponent(r.headers.get("location") ?? ""),
     ms: Date.now() - t,
   };
@@ -142,7 +142,7 @@ async function arrancarServidor() {
   // pero definidas no las pisa, y la prueba nunca toca la nube.
   servidor = spawn(process.execPath, [path.join(raiz, "node_modules/next/dist/bin/next"), "start", "-p", String(puerto)], {
     cwd: raiz,
-    env: { ...process.env, ...env, TURSO_DATABASE_URL: "", TURSO_AUTH_TOKEN: "", RUTA_BASE_DATOS: rutaDb },
+    env: { ...process.env, ...env, TURSO_DATABASE_URL: "", TURSO_AUTH_TOKEN: "", RUTA_BASE_DATOS: rutaDb, MAPA_APAGADO: "1" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   servidor.stdout.on("data", (d) => (salidaServidor += d));
@@ -300,7 +300,7 @@ async function probarPrecios() {
 async function probarNegocio() {
   const nombre = "Bodega Prueba";
   let r = await enviar("/admin/clientes", 'name="cedula_rif"', {
-    nombre, telefono: "0412-0000000", direccion: "Carrera 19 con calle 25", tipo: "mayor",
+    nombre, telefono: "0412-0000000", direccion: "Carrera 19 con calle 25", tipo: "mayor", razon_social: "Bodega Prueba, C.A.",
   });
   const clienteId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
   comprobar(`alta de cliente mayorista (${r.ms} ms)`, r.destino.includes("Cliente guardado") && clienteId > 0, r.destino);
@@ -417,6 +417,12 @@ async function probarNegocio() {
       nota.html.includes(usd("10,00")) && nota.html.includes("No es una factura"),
   );
   comprobar("la nota dice las piezas junto a los kilos", legible(nota.html).includes("2 kg (2 pzas)"));
+  comprobar(
+    "la nota va a nombre de la razón social, a la atención del cliente",
+    legible(nota.html).includes("Señor(es)") && nota.html.includes("Bodega Prueba, C.A.") && legible(nota.html).includes("Atención") &&
+      (await pagina("/admin/clientes/exportar", cookie, true)).html.includes(`${nombre};Bodega Prueba, C.A.;0412-0000000`),
+  );
+  comprobar("la ficha entiende la dirección y dice la carrera primero", legible(ficha).includes("carrera 19 con calle 25"));
   comprobar("la nota dice lo abonado y lo que queda", nota.html.includes(usd("4,00")) && nota.html.includes(usd("6,00")) && nota.html.includes("Abonada"));
   const notaPorWhatsapp = decodeURIComponent(nota.html.match(/wa\.me\/584120000000\?text=([^"]+)"/)?.[1] ?? "");
   comprobar(
@@ -527,7 +533,7 @@ async function probarNegocio() {
   // Descargas.
   respuesta = await fetch(base + "/admin/clientes/exportar", { headers: { cookie } });
   const csv = Buffer.from(await respuesta.arrayBuffer());
-  comprobar("lista de clientes para Excel", respuesta.status === 200 && csv[0] === 0xef && csv.toString("utf8").includes(`${nombre};0412-0000000`));
+  comprobar("lista de clientes para Excel", respuesta.status === 200 && csv[0] === 0xef && csv.toString("utf8").includes(`${nombre};Bodega Prueba, C.A.;0412-0000000`));
 
   // Los movimientos para Excel: la venta del día 1 y el abono del día 20.
   respuesta = await fetch(base + "/admin/caja/exportar?desde=2026-09-30&hasta=2026-09-01", { headers: { cookie } });
@@ -601,7 +607,8 @@ async function probarCartera() {
 
   let r = await alta({ telefono: "0414 555 0101", direccion: "Calle 38 con carrera 28" });
   const cercaId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
-  comprobar("alta rápida: solo teléfono y dirección", r.destino.includes("Cliente guardado: 0414-5550101.") && !r.destino.includes("Ojo") && cercaId > 0, r.destino);
+  comprobar("alta rápida: solo teléfono y dirección, con su aviso de que falta el nombre", r.destino.includes("Cliente guardado: 0414-5550101. Sin nombre, por ahora.") && !r.destino.includes("Ojo") && cercaId > 0, r.destino);
+  comprobar("la cartera y la ficha lo dicen bajito", (await pagina("/admin/clientes")).html.includes("· sin nombre") && legible((await pagina(`/admin/clientes/${cercaId}`)).html).includes("Sin nombre: "));
 
   r = await alta({ telefono: "04245550102", direccion: "Carrera 22 entre calles 30 y 31", nombre: "Pizzería La Esquina" });
   comprobar("alta con nombre", r.destino.includes("Cliente guardado: Pizzería La Esquina."), r.destino);
@@ -613,6 +620,19 @@ async function probarCartera() {
     "la cartera avisa en amarillo de que esa dirección no se pudo comprobar, con el mapa y la ficha a mano",
     conAviso.includes("aviso--aviso") && conAviso.includes("no se pudo comprobar") && conAviso.includes("Urb. Del Este, casa 4") && conAviso.includes("google.com/maps/search") && conAviso.includes("Corregir la dirección"),
   );
+
+  r = await alta({ telefono: "0426-5550109", direccion: "Av. Libertador con calle 30", nombre: "En la avenida" });
+  const enLaAvenidaId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
+  comprobar("una avenida con nombre queda fuera de la ruta si el mapa no está (la prueba lo apaga)", r.destino.includes("Ojo: queda fuera de la ruta de despacho. A la dirección le falta la carrera"), r.destino);
+  const fichaAvenida = legible((await pagina(`/admin/clientes/${enLaAvenidaId}`)).html);
+  comprobar("la ficha ofrece buscarla en el mapa", fichaAvenida.includes("Buscar la dirección en el mapa") && fichaAvenida.includes("Tampoco") === false);
+  r = await enviar(`/admin/clientes/${enLaAvenidaId}`, ">Buscar la dirección en el mapa<", { id: String(enLaAvenidaId) });
+  comprobar("con el mapa apagado, buscar no la encuentra y lo dice", r.destino.includes("El mapa no encuentra esa dirección"), r.destino);
+
+  const carteraConFaltas = legible((await pagina("/admin/clientes")).html);
+  comprobar("la cartera ofrece buscar en el mapa a los que faltan", carteraConFaltas.includes("que el mapa todavía no ha buscado") && carteraConFaltas.includes("Buscar en el mapa a los que faltan"));
+  r = await enviar("/admin/clientes", ">Buscar en el mapa a los que faltan<", {});
+  comprobar("con el mapa apagado, a nadie sitúa y lo dice", r.destino.includes("El mapa situó a 0 de 2"), r.destino);
 
   r = await alta({ telefono: "+58 414 5550101", direccion: "Otra dirección" });
   comprobar("el mismo teléfono escrito de otra forma no se registra dos veces", r.destino.includes(`/admin/clientes/${cercaId}?error=`) && r.destino.includes("ya es de este cliente"), r.destino);
@@ -627,6 +647,7 @@ async function probarCartera() {
       { nombre: "0414-5550101", telefono: "0414-5550101" },
       { nombre: "0416-5550103", telefono: "0416-5550103" },
       { nombre: "Pizzería La Esquina", telefono: "0424-5550102" },
+      { nombre: "En la avenida", telefono: "0426-5550109" },
     ]),
     JSON.stringify(guardados),
   );
@@ -634,7 +655,7 @@ async function probarCartera() {
   // La cartera ordenada por la ruta: del más cercano a la tienda al más lejano, y al final los que no se ubican.
   const cartera = (await pagina("/admin/clientes?orden=ruta")).html;
   const lista = cartera.slice(cartera.indexOf("Por ruta desde la tienda"));
-  const posicion = (texto) => lista.indexOf(`>${texto}</a>`);
+  const posicion = (texto) => lista.indexOf(`>${texto}<`);
   const orden = ["0414-5550101", "Pizzería La Esquina", "Bodega Prueba", "0416-5550103"].map(posicion);
   comprobar(
     "cartera ordenada por la ruta desde la tienda",

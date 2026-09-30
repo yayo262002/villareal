@@ -180,6 +180,12 @@
   color: var(--color-marca);
   font-weight: 700;
 }
+/* Falta un dato que conviene tener, sin ser un error: se dice bajito. */
+.sinNombre {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-aviso);
+}
 /* Una nota cuyo plazo ya pasó. */
 .vencida {
   color: var(--color-error);

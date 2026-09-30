@@ -15,11 +15,11 @@ export async function GET(): Promise<Response> {
 
   const clientes = await listarClientes();
   const cabecera = [
-    "Nombre", "Teléfono", "Cédula o RIF", "Dirección", "Tipo", "Nota", "Días de crédito",
+    "Nombre", "Razón social", "Teléfono", "Cédula o RIF", "Dirección", "Tipo", "Nota", "Días de crédito",
     "Comprado USD", "Pagado USD", "Saldo USD", "Última compra", "Cliente desde",
   ];
   const filas = clientes.map((c) => [
-    c.nombre, c.telefono, c.cedula_rif, c.direccion, c.tipo === "mayor" ? "Mayor" : "Detal", c.nota, c.dias_credito,
+    c.nombre, c.razon_social, c.telefono, c.cedula_rif, c.direccion, c.tipo === "mayor" ? "Mayor" : "Detal", c.nota, c.dias_credito,
     numeroParaExcel(c.total_comprado_usd), numeroParaExcel(c.total_pagado_usd), numeroParaExcel(c.saldo_usd),
     c.ultima_compra ? fechaCorta(c.ultima_compra) : "", fechaCorta(fechaDeLaBase(c.creado_en)),
   ]);

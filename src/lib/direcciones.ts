@@ -16,7 +16,8 @@ export type Ubicacion = { calle: number; carrera: number };
 
 export type Lectura =
   | { ubicada: true; ubicacion: Ubicacion }
-  | { ubicada: false; motivo: string };
+  /** `parcial` guarda lo que sí se entendió (solo la calle o solo la carrera), por si el mapa completa lo demás. */
+  | { ubicada: false; motivo: string; parcial?: Partial<Ubicacion> };
 
 type Eje = "calle" | "carrera";
 
@@ -85,8 +86,8 @@ export function leerDireccion(direccion: string): Lectura {
   if (tieneCalle && tieneCarrera) {
     return { ubicada: true, ubicacion: { calle: media(valores.calle), carrera: media(valores.carrera) } };
   }
-  if (tieneCalle) return { ubicada: false, motivo: "falta la carrera" };
-  if (tieneCarrera) return { ubicada: false, motivo: "falta la calle" };
+  if (tieneCalle) return { ubicada: false, motivo: "falta la carrera", parcial: { calle: media(valores.calle) } };
+  if (tieneCarrera) return { ubicada: false, motivo: "falta la calle", parcial: { carrera: media(valores.carrera) } };
   return { ubicada: false, motivo: "no dice calle ni carrera" };
 }
 
@@ -105,9 +106,17 @@ export function cruceParaElMapa(ubicacion: Ubicacion, ciudad: string): string {
   return `Calle ${Math.floor(ubicacion.calle)} con Carrera ${Math.floor(ubicacion.carrera)}, ${ciudad}`;
 }
 
-/** «Calle 38, entre carreras 30 y 31»: la ubicación dicha en palabras, para comprobarla. */
+/**
+ * La ubicación dicha en palabras, para comprobarla, con la carrera primero
+ * como se dice en Barquisimeto: «carrera 19 con calle 25», «carrera 22,
+ * entre calles 30 y 31», «calle 38, entre carreras 30 y 31».
+ */
 export function describirUbicacion(u: Ubicacion): string {
-  const parte = (nombre: string, plural: string, n: number) =>
-    Number.isInteger(n) ? `${nombre} ${n}` : `entre ${plural} ${Math.floor(n)} y ${Math.ceil(n)}`;
-  return `${parte("calle", "calles", u.calle)}, ${parte("carrera", "carreras", u.carrera)}`;
+  const entre = (plural: string, n: number) => `entre ${plural} ${Math.floor(n)} y ${Math.ceil(n)}`;
+  const calleExacta = Number.isInteger(u.calle);
+  const carreraExacta = Number.isInteger(u.carrera);
+  if (calleExacta && carreraExacta) return `carrera ${u.carrera} con calle ${u.calle}`;
+  if (carreraExacta) return `carrera ${u.carrera}, ${entre("calles", u.calle)}`;
+  if (calleExacta) return `calle ${u.calle}, ${entre("carreras", u.carrera)}`;
+  return `${entre("carreras", u.carrera)}, ${entre("calles", u.calle)}`;
 }

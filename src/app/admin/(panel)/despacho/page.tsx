@@ -233,7 +233,7 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
                   {plan.ruta.paradas.map((parada, i) => {
                     const c = parada.dato;
                     const whatsapp = avisar(c);
-                    const mapa = enlaceAlMapa(c.direccion, CIUDAD);
+                    const mapa = enlaceAlMapa(c, CIUDAD);
                     return (
                       <li key={c.id} className={estilos.parada}>
                         <span className={estilos.paradaNumero}>{i + 1}</span>
@@ -244,7 +244,16 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
                             </Link>
                             {c.saldo_usd > 0 && <span className={estilos.deuda}>Debe {usd(c.saldo_usd)}</span>}
                           </div>
-                          <p className={estilos.carteraDato}>{c.direccion}</p>
+                          <p className={estilos.carteraDato}>
+                            {c.direccion}
+                            {parada.situacion.origen === "mapa" && (
+                              <span className="ayuda">
+                                {" "}
+                                · según el mapa: {parada.situacion.texto}
+                                {parada.situacion.aproximada ? " (aproximado)" : ""}
+                              </span>
+                            )}
+                          </p>
                           <p className={estilos.carteraDato}>
                             {c.telefono && c.telefono !== c.nombre ? `${c.telefono} · ` : ""}
                             {parada.cuadrasDesdeLaAnterior === 0
@@ -296,7 +305,7 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
               </p>
               <ul className={estilos.cartera}>
                 {plan.sinUbicar.map(({ cliente: c, motivo }) => {
-                  const mapa = enlaceAlMapa(c.direccion, CIUDAD);
+                  const mapa = enlaceAlMapa(c, CIUDAD);
                   return (
                     <li key={c.id} className={estilos.carteraCliente}>
                       <div className={estilos.carteraCabecera}>

@@ -87,6 +87,13 @@ async function migrar(cliente: Client): Promise<void> {
   if (!(await definicionDe(cliente, "resenas")).includes("con_permiso")) {
     await añadirColumna(cliente, "resenas", "con_permiso integer not null default 0");
   }
+  const clientes = await definicionDe(cliente, "clientes");
+  if (!clientes.includes("razon_social")) await añadirColumna(cliente, "clientes", "razon_social text not null default ''");
+  if (!clientes.includes("sitio")) {
+    await añadirColumna(cliente, "clientes", "lat real");
+    await añadirColumna(cliente, "clientes", "lon real");
+    await añadirColumna(cliente, "clientes", "sitio text not null default ''");
+  }
   if (!(await definicionDe(cliente, "venta_lineas")).includes("piezas")) {
     await añadirColumna(cliente, "venta_lineas", "piezas integer");
   }

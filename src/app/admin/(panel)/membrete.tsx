@@ -36,16 +36,23 @@ export function Membrete({ titulo, numero, fecha }: { titulo: string; numero?: R
 export function DatosDelCliente({
   cliente,
 }: {
-  cliente: { nombre: string; telefono: string; cedula_rif: string; direccion: string };
+  cliente: { nombre: string; telefono: string; cedula_rif: string; direccion: string; razon_social?: string };
 }) {
   // Quien se registró solo con el teléfono lo lleva como nombre: no se repite.
   const sinNombre = esSoloUnTelefono(cliente.nombre);
+  const razonSocial = cliente.razon_social?.trim() ?? "";
   return (
     <dl className={estilos.notaCliente}>
       <div>
-        <dt>Cliente</dt>
-        <dd>{sinNombre ? "Sin nombre registrado" : cliente.nombre}</dd>
+        <dt>{razonSocial ? "Señor(es)" : "Cliente"}</dt>
+        <dd>{razonSocial || (sinNombre ? "Sin nombre registrado" : cliente.nombre)}</dd>
       </div>
+      {razonSocial && !sinNombre && (
+        <div>
+          <dt>Atención</dt>
+          <dd>{cliente.nombre}</dd>
+        </div>
+      )}
       {cliente.telefono && (
         <div>
           <dt>Teléfono</dt>

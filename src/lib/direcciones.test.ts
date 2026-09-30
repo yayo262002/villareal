@@ -38,8 +38,11 @@ test("abreviaturas y la avenida 20, que es la carrera 20", () => {
   assert.deepEqual(ubicacion("Avenida 20 entre calles 28 y 29"), { calle: 28.5, carrera: 20 });
 });
 
-test("una dirección a medias no se adivina: se dice qué falta", () => {
+test("una dirección a medias no se adivina: se dice qué falta, y se guarda lo que sí se entendió", () => {
   assert.equal(ubicacion("Calle 38"), "falta la carrera");
+  const aMedias = leerDireccion("Av. Libertador con calle 30");
+  assert.deepEqual(aMedias, { ubicada: false, motivo: "falta la carrera", parcial: { calle: 30 } });
+  assert.deepEqual(leerDireccion("Carrera 19, frente a la plaza"), { ubicada: false, motivo: "falta la calle", parcial: { carrera: 19 } });
   assert.equal(ubicacion("Carrera 19, frente a la plaza"), "falta la calle");
   assert.equal(ubicacion("Frente a la plaza Bolívar"), "no dice calle ni carrera");
   assert.equal(ubicacion(""), "no tiene dirección");
@@ -64,6 +67,8 @@ test("números imposibles se ignoran", () => {
 
 test("la ubicación dicha en palabras y para el mapa", () => {
   assert.equal(describirUbicacion({ calle: 38, carrera: 30.5 }), "calle 38, entre carreras 30 y 31");
-  assert.equal(describirUbicacion({ calle: 30.5, carrera: 22 }), "entre calles 30 y 31, carrera 22");
+  assert.equal(describirUbicacion({ calle: 30.5, carrera: 22 }), "carrera 22, entre calles 30 y 31");
+  assert.equal(describirUbicacion({ calle: 25, carrera: 19 }), "carrera 19 con calle 25");
+  assert.equal(describirUbicacion({ calle: 25.5, carrera: 19.5 }), "entre carreras 19 y 20, entre calles 25 y 26");
   assert.equal(cruceParaElMapa({ calle: 38, carrera: 30.5 }, "Barquisimeto, Lara, Venezuela"), "Calle 38 con Carrera 30, Barquisimeto, Lara, Venezuela");
 });

@@ -20,9 +20,10 @@ import type { Ubicacion } from "./direcciones.ts";
 
 export type Parada<T> = { dato: T; ubicacion: Ubicacion };
 
-export type Ruta<T> = {
+/** Cualquier cosa con una ubicación en la cuadrícula puede ser una parada; lo demás que lleve, se conserva. */
+export type Ruta<P extends { ubicacion: Ubicacion }> = {
   /** Las paradas en el orden de visita. */
-  paradas: (Parada<T> & { cuadrasDesdeLaAnterior: number })[];
+  paradas: (P & { cuadrasDesdeLaAnterior: number })[];
   /** Las cuadras de toda la vuelta, contando el regreso a la tienda. */
   cuadras: number;
   cuadrasDeVuelta: number;
@@ -152,7 +153,7 @@ function mejorar(origen: Ubicacion, puntos: Ubicacion[], inicial: number[]): num
   return orden;
 }
 
-export function ordenarRuta<T>(origen: Ubicacion, paradas: Parada<T>[]): Ruta<T> {
+export function ordenarRuta<P extends { ubicacion: Ubicacion }>(origen: Ubicacion, paradas: P[]): Ruta<P> {
   const puntos = paradas.map((p) => p.ubicacion);
   const orden =
     paradas.length <= LIMITE_PARA_PROBARLO_TODO

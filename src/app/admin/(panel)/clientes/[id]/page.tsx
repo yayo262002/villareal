@@ -6,7 +6,7 @@ import { listarPagosDeCliente, ultimaTasa } from "@/lib/pagos";
 import { listarAdjuntosDeCliente } from "@/lib/adjuntos";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { conVencimiento, describirVencimiento } from "@/lib/credito";
-import { editarCliente, subirAdjunto } from "@/lib/acciones";
+import { editarCliente, situarClienteEnElMapa, subirAdjunto } from "@/lib/acciones";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { leerTasa } from "@/lib/ajustes";
 import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, hoy, usd } from "@/lib/dinero";
@@ -14,9 +14,9 @@ import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { negocio } from "@/config/negocio";
-import { enlaceAlMapa } from "@/lib/despacho";
-import { explicarMotivo, leerDireccion } from "@/lib/direcciones";
-import { enlaceWhatsappA, mensajeAbono, mensajeNota, mensajePedirResena, mensajeRecordatorio } from "@/lib/whatsapp";
+import { enlaceAlMapa, situar } from "@/lib/despacho";
+import { explicarMotivo } from "@/lib/direcciones";
+import { enlaceWhatsappA, esSoloUnTelefono, mensajeAbono, mensajeNota, mensajePedirResena, mensajeRecordatorio } from "@/lib/whatsapp";
 import { rutaProducto } from "@/lib/enlaces";
 import { direccionCompleta } from "@/config/negocio";
 import estilos from "../../panel.module.css";
@@ -42,8 +42,9 @@ export default async function PaginaCliente({
   ]);
   const cuentas = conVencimiento(aplicarPagos(ventas, cliente.total_pagado_usd), cliente.dias_credito, hoy());
   const vencido = cuentas.filter((c) => c.vencida).reduce((s, c) => s + c.pendiente_usd, 0);
-  const ubicacion = leerDireccion(cliente.direccion);
-  const mapa = enlaceAlMapa(cliente.direccion, `${negocio.localidad}, ${negocio.estado}, Venezuela`);
+  const ciudad = `${negocio.localidad}, ${negocio.estado}, Venezuela`;
+  const situacion = situar(cliente, ciudad);
+  const mapa = enlaceAlMapa(cliente, ciudad);
   const ventaDeAdjunto = new Map(ventas.map((v) => [v.id, v]));
 
   // Enlaces de WhatsApp: recordar la deuda y mandar cada nota. Solo si hay teléfono.
@@ -125,6 +126,12 @@ export default async function PaginaCliente({
             <Link href="/admin/clientes">← Clientes</Link>
           </p>
           <h1 className={estilos.titulo}>{cliente.nombre}</h1>
+          {cliente.razon_social && <p className={estilos.ayuda} style={{ marginBottom: 0 }}>{cliente.razon_social}</p>}
+          {esSoloUnTelefono(cliente.nombre) && (
+            <p className={estilos.sinNombre}>
+              Sin nombre: <Link href="#datos">ponlo en Datos</Link> cuando lo sepas.
+            </p>
+          )}
         </div>
         <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
           {recordatorio && (
@@ -182,9 +189,11 @@ export default async function PaginaCliente({
 
         <section className="tarjeta" id="datos">
           <h2 className={estilos.subtitulo}>Datos</h2>
-          {cliente.direccion && ubicacion.ubicada && (
+          {cliente.direccion && situacion.situada && (
             <p className={estilos.ayuda}>
-              Entra en la ruta de despacho.
+              {situacion.origen === "cuadricula" ? "Entra en la ruta de despacho: " : "Entra en la ruta según el mapa: "}
+              <strong>{situacion.texto}</strong>
+              {situacion.origen === "mapa" && situacion.aproximada ? " (aproximado)" : ""}.
               {mapa && (
                 <>
                   {" "}
@@ -195,10 +204,11 @@ export default async function PaginaCliente({
               )}
             </p>
           )}
-          {cliente.direccion && !ubicacion.ubicada && (
-            <p className="aviso aviso--aviso" style={{ marginBottom: "var(--espacio-4)" }}>
-              La dirección no se pudo comprobar: {explicarMotivo(ubicacion.motivo)} Queda fuera de la ruta de despacho.
-              Escríbela con la calle y la carrera, como «Carrera 19 con calle 25».
+          {cliente.direccion && !situacion.situada && (
+            <div className="aviso aviso--aviso" style={{ marginBottom: "var(--espacio-4)" }}>
+              La dirección no se pudo comprobar: {explicarMotivo(situacion.motivo)} Queda fuera de la ruta de despacho.
+              Escríbela con la calle y la carrera, como «Carrera 19 con calle 25», o con el nombre del sitio o de la
+              avenida.
               {mapa && (
                 <>
                   {" "}
@@ -207,13 +217,25 @@ export default async function PaginaCliente({
                   </a>
                 </>
               )}
-            </p>
+              <form action={situarClienteEnElMapa} style={{ marginTop: "var(--espacio-2)" }}>
+                <input type="hidden" name="id" value={cliente.id} />
+                <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                  Buscar la dirección en el mapa
+                </button>
+              </form>
+            </div>
           )}
           <form action={editarCliente} className="formulario">
             <input type="hidden" name="id" value={cliente.id} />
-            <div className="campo">
-              <label htmlFor="nombre">Nombre o negocio</label>
-              <input id="nombre" name="nombre" type="text" defaultValue={cliente.nombre} />
+            <div className="formulario__fila">
+              <div className="campo">
+                <label htmlFor="nombre">Nombre del cliente</label>
+                <input id="nombre" name="nombre" type="text" defaultValue={esSoloUnTelefono(cliente.nombre) ? "" : cliente.nombre} placeholder={cliente.telefono} />
+              </div>
+              <div className="campo">
+                <label htmlFor="razon_social">Razón social</label>
+                <input id="razon_social" name="razon_social" type="text" defaultValue={cliente.razon_social} placeholder="Tutto Pan, C.A." />
+              </div>
             </div>
             <div className="formulario__fila">
               <div className="campo">

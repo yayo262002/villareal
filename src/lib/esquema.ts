@@ -15,6 +15,12 @@ export const ESQUEMA = `
     nota text not null default '',
     -- Cuántos días tiene para pagar cada nota. Pasados, lo pendiente está vencido.
     dias_credito integer not null default 7,
+    -- El nombre legal del negocio, para la nota; el nombre es cómo se le llama.
+    razon_social text not null default '',
+    -- Dónde lo puso el mapa, si la dirección no dice calle y carrera.
+    lat real,
+    lon real,
+    sitio text not null default '',
     creado_en text not null default (datetime('now'))
   );
 

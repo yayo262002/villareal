@@ -2,9 +2,11 @@ import Link from "next/link";
 import { negocio } from "@/config/negocio";
 import { clientesConVencimiento, type ClienteConVencimiento } from "@/lib/vencimientos";
 import { DIAS_DE_CREDITO_POR_DEFECTO, describirVencimiento } from "@/lib/credito";
-import { guardarCliente } from "@/lib/acciones";
-import { enlaceAlMapa, planDeDespacho } from "@/lib/despacho";
-import { explicarMotivo, leerDireccion } from "@/lib/direcciones";
+import { guardarCliente, situarClientesQueFaltan } from "@/lib/acciones";
+import { necesitaElMapa } from "@/lib/mapa";
+import { enlaceAlMapa, planDeDespacho, situar } from "@/lib/despacho";
+import { explicarMotivo } from "@/lib/direcciones";
+import { esSoloUnTelefono } from "@/lib/whatsapp";
 import { fechaCorta, redondear, usd } from "@/lib/dinero";
 import { enlaceWhatsappA } from "@/lib/whatsapp";
 import { normalizar } from "@/lib/buscar";
@@ -40,8 +42,8 @@ export default async function PaginaClientes({
   const todos = await clientesConVencimiento();
   const nuevo = todos.find((c) => c.id === nuevoId);
   // Recién guardado: si su dirección no se entiende, se avisa aquí mismo, sin deshacer nada.
-  const direccionDelNuevo = nuevo ? leerDireccion(nuevo.direccion) : null;
-  const mapaDelNuevo = nuevo ? enlaceAlMapa(nuevo.direccion, CIUDAD) : null;
+  const situacionDelNuevo = nuevo ? situar(nuevo, CIUDAD) : null;
+  const mapaDelNuevo = nuevo ? enlaceAlMapa(nuevo, CIUDAD) : null;
   const clave = normalizar(busqueda);
   const filtrados = clave
     ? todos.filter((c) =>
@@ -58,6 +60,8 @@ export default async function PaginaClientes({
   else if (orden === "deuda") clientes = [...filtrados].sort((a, b) => b.vencido_usd - a.vencido_usd || b.saldo_usd - a.saldo_usd);
   else clientes = filtrados;
 
+  // Direcciones sin calle y carrera que el mapa aún no ha buscado: las de antes de tener mapa.
+  const faltanDelMapa = todos.filter((c) => necesitaElMapa(c.direccion) && c.lat === null).length;
   const porPagar = redondear(todos.reduce((s, c) => s + Math.max(0, c.saldo_usd), 0));
   const vencido = redondear(todos.reduce((s, c) => s + c.vencido_usd, 0));
   const enlaceOrden = (o: Orden) => {
@@ -84,12 +88,25 @@ export default async function PaginaClientes({
         </div>
       </div>
       <Avisos parametros={parametros} />
-      {nuevo && direccionDelNuevo && !direccionDelNuevo.ubicada && (
+      {nuevo && situacionDelNuevo && situacionDelNuevo.situada && situacionDelNuevo.origen === "mapa" && (
+        <p className={estilos.ayuda} style={{ marginBottom: 0 }}>
+          La dirección de {nuevo.nombre} no dice calle y carrera; el mapa la sitúa en <strong>{situacionDelNuevo.texto}</strong>
+          {situacionDelNuevo.aproximada ? " (aproximado)" : ""}.{" "}
+          {mapaDelNuevo && (
+            <a href={mapaDelNuevo} target="_blank" rel="noopener">
+              Compruébalo en el mapa
+            </a>
+          )}
+        </p>
+      )}
+      {nuevo && situacionDelNuevo && !situacionDelNuevo.situada && (
         <div className="aviso aviso--aviso">
           <strong>Ojo con la dirección de {nuevo.nombre}.</strong>{" "}
           {nuevo.direccion ? `«${nuevo.direccion}» no se pudo comprobar: ` : "No tiene dirección: "}
-          {explicarMotivo(direccionDelNuevo.motivo)} El cliente quedó guardado, pero fuera de la ruta de despacho.
-          Escríbela con la calle y la carrera, como «Carrera 19 con calle 25».{" "}
+          {explicarMotivo(situacionDelNuevo.motivo)}
+          {nuevo.direccion ? " Tampoco la encuentra el mapa." : ""} El cliente quedó guardado, pero fuera de la ruta de
+          despacho. Escríbela con la calle y la carrera, como «Carrera 19 con calle 25», o con el nombre del sitio o de
+          la avenida como lo conoce todo el mundo.{" "}
           {mapaDelNuevo && (
             <>
               <a href={mapaDelNuevo} target="_blank" rel="noopener">
@@ -106,6 +123,17 @@ export default async function PaginaClientes({
           <Link href={`/admin/clientes/${nuevo.id}`}>Abrir la ficha de {nuevo.nombre}</Link> para anotarle una venta o un
           abono.
         </p>
+      )}
+
+      {faltanDelMapa > 0 && (
+        <form action={situarClientesQueFaltan} className="aviso aviso--aviso" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--espacio-3)" }}>
+          <span>
+            {faltanDelMapa === 1 ? "Hay 1 cliente" : `Hay ${faltanDelMapa} clientes`} con una dirección sin calle y carrera que el mapa todavía no ha buscado.
+          </span>
+          <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+            Buscar en el mapa a los que faltan
+          </button>
+        </form>
       )}
 
       <dl className={estilos.cifras}>
@@ -148,9 +176,17 @@ export default async function PaginaClientes({
               <span className="ayuda">Con la calle y la carrera entra en la ruta de despacho.</span>
             </div>
           </div>
-          <div className="campo">
-            <label htmlFor="nombre">Nombre o negocio (opcional)</label>
-            <input id="nombre" name="nombre" type="text" autoComplete="off" />
+          <div className="formulario__fila">
+            <div className="campo">
+              <label htmlFor="nombre">Nombre del cliente (opcional)</label>
+              <input id="nombre" name="nombre" type="text" autoComplete="off" placeholder="Luis, Panadería Tuttopan" />
+              <span className="ayuda">Como lo llamas tú. Sin nombre queda con el teléfono, y se avisa.</span>
+            </div>
+            <div className="campo">
+              <label htmlFor="razon_social">Razón social (opcional)</label>
+              <input id="razon_social" name="razon_social" type="text" autoComplete="off" placeholder="Tutto Pan, C.A." />
+              <span className="ayuda">El nombre legal del negocio, para la nota.</span>
+            </div>
           </div>
           <details className={estilos.masDatos}>
             <summary>Más datos</summary>
@@ -241,14 +277,17 @@ export default async function PaginaClientes({
               <ul className={estilos.cartera}>
                 {clientes.map((c, i) => {
                   const whatsapp = enlaceWhatsappA(c.telefono, "Hola, le saluda " + negocio.nombre + ".");
-                  const mapa = enlaceAlMapa(c.direccion, CIUDAD);
+                  const mapa = enlaceAlMapa(c, CIUDAD);
                   const sinUbicar = motivo.get(c.id);
+                  const situacion = situar(c, CIUDAD);
+                  const sinNombre = esSoloUnTelefono(c.nombre);
                   return (
                     <li key={c.id} className={estilos.carteraCliente}>
                       <div className={estilos.carteraCabecera}>
                         <Link href={`/admin/clientes/${c.id}`} className={estilos.carteraNombre}>
                           {orden === "ruta" && !sinUbicar && <span className={estilos.carteraOrden}>{i + 1}</span>}
                           {c.nombre}
+                          {sinNombre && <span className={estilos.sinNombre}> · sin nombre</span>}
                         </Link>
                         <span className={c.vencido_usd > 0 ? estilos.vencida : c.saldo_usd > 0 ? estilos.deuda : estilos.saldado}>
                           {c.saldo_usd > 0 ? `Debe ${usd(c.saldo_usd)}` : c.saldo_usd < 0 ? `A favor ${usd(-c.saldo_usd)}` : "Al día"}
@@ -261,7 +300,16 @@ export default async function PaginaClientes({
                       )}
                       <p className={estilos.carteraDato}>
                         {c.direccion || <span className="ayuda">Sin dirección</span>}
+                        {c.razon_social && <span className="ayuda"> · {c.razon_social}</span>}
                         {sinUbicar && c.direccion && <span className="ayuda"> · Fuera de la ruta. {explicarMotivo(sinUbicar)}</span>}
+                        {situacion.situada && (
+                          <span className="ayuda">
+                            {" "}
+                            · {situacion.origen === "mapa" ? "según el mapa: " : ""}
+                            {situacion.texto}
+                            {situacion.origen === "mapa" && situacion.aproximada ? " (aproximado)" : ""}
+                          </span>
+                        )}
                       </p>
                       <p className={estilos.carteraDato}>
                         {c.telefono && c.telefono !== c.nombre ? `${c.telefono} · ` : ""}

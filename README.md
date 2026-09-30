@@ -135,7 +135,9 @@ src/lib/exportar.ts       Lo que se descarga para Excel: movimientos y resumen p
 src/lib/buscar.ts         Buscar sin tildes ni mayúsculas; una nota por su número
 src/lib/direcciones.ts    Lee una dirección y la sitúa en la cuadrícula
 src/lib/ruta.ts           El orden en que conviene visitar a los clientes
-src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho
+src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho; sitúa a cada cliente
+src/lib/plano.ts          La cuadrícula del centro puesta sobre el mapa de verdad
+src/lib/mapa.ts           Pregunta al mapa libre por una dirección sin calle y carrera
 src/lib/entregas.ts       Pedidos por entregar: qué lleva cada cliente y qué cargar
 src/lib/adjuntos.ts       Fotos de las notas de entrega
 src/lib/whatsapp.ts       Mensajes para WhatsApp: cobro, nota, recibo, en camino, pedir reseña
@@ -353,10 +355,27 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     menos de la mitad o a más del doble del de la lista (o del que se le
     cobró a ese cliente la última vez), o una línea de más de 1000 dólares.
     El formulario vuelve con todo lo escrito y una casilla para confirmar.
-- **La dirección del cliente** se comprueba al guardarla: si no dice calle
-  y carrera del centro, el cliente se guarda igual y sale un aviso en
-  amarillo con el motivo, el mapa y el enlace para corregirla. No se
-  comprueba contra un mapa de verdad: solo si se entiende.
+- **La dirección del cliente** se comprueba al guardarla. Si dice calle y
+  carrera, entra en la cuadrícula y se enseña como se dice aquí, «carrera
+  19 con calle 25». Si no (un centro comercial, una avenida con nombre, un
+  edificio), se le pregunta al mapa libre de OpenStreetMap, acotado a
+  Barquisimeto; lo que conteste se guarda con el cliente y se dice «según
+  el mapa: …» para que el dueño lo compruebe. Si tampoco el mapa la
+  encuentra, el cliente se guarda igual y sale un aviso en amarillo con el
+  motivo, el mapa y el enlace para corregirla; en la ficha hay un botón
+  para volver a buscarla.
+  - «Av. Libertador con calle 30»: se junta la calle escrita con la
+    carrera a la que cae la avenida según el mapa. Una avenida sola es un
+    punto cualquiera de ella, y se marca como aproximado.
+  - Cómo se ponen en el mismo plano la cuadrícula y el mapa está en
+    `src/lib/plano.ts`: una fórmula sacada de 605 cruces de OpenStreetMap.
+  - Con `MAPA_APAGADO=1` no se llama al mapa (las pruebas locales).
+- **Nombre y razón social.** El nombre del cliente es como lo llama el
+  dueño («Luis», «Panadería Tuttopan»); la razón social, el nombre legal
+  para la nota («Tutto Pan, C.A.»), que va como «Señor(es)» y deja el
+  nombre como «Atención». Los dos son opcionales: sin nombre, el cliente
+  queda con el teléfono y se dice bajito («sin nombre») en la cartera y en
+  la ficha, sin frenar nada.
 - **Buscar una venta.** En Ventas, por el nombre del cliente, por el número
   de la nota («26» o «000026») o por la fecha («30/09»). Sin buscar salen
   las últimas 50 (`src/lib/buscar.ts`).
@@ -431,5 +450,6 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - Un dominio propio.
 - Facturación fiscal, cuando el negocio empiece a facturar. Hoy hay notas
   de entrega, que no son facturas.
-- Las avenidas con nombre (Venezuela, Vargas, Morán…) no están en la
-  cuadrícula de la ruta: hay que escribir la calle y la carrera.
+- Las avenidas con nombre y los sitios conocidos entran en la ruta por el
+  mapa libre, con la precisión que tenga ese mapa: conviene comprobar en
+  la ficha dónde los puso.

@@ -15,6 +15,13 @@ export type Cliente = {
   nota: string;
   /** Cuántos días tiene para pagar cada nota. */
   dias_credito: number;
+  /** El nombre legal del negocio, para la nota. Puede faltar. */
+  razon_social: string;
+  /** Dónde lo puso el mapa, si hizo falta buscarlo; null si no. */
+  lat: number | null;
+  lon: number | null;
+  /** Cómo llama el mapa a ese sitio. */
+  sitio: string;
   creado_en: string;
 };
 
@@ -28,7 +35,9 @@ export type ClienteConSaldo = Cliente & {
   por_entregar: number;
 };
 
-export type DatosCliente = Omit<Cliente, "id" | "creado_en">;
+export type DatosCliente = Omit<Cliente, "id" | "creado_en" | "lat" | "lon" | "sitio">;
+
+export type SitioDelMapa = { lat: number; lon: number; sitio: string } | null;
 
 const CONSULTA_CON_SALDO = `
   select
@@ -72,22 +81,35 @@ export async function buscarClientePorTelefono(telefono: string, salvoId?: numbe
   return conTelefono.find((c) => c.id !== salvoId && mismoTelefono(c.telefono, telefono)) ?? null;
 }
 
-export async function crearCliente(datos: DatosCliente): Promise<number> {
+export async function crearCliente(datos: DatosCliente, sitio: SitioDelMapa = null): Promise<number> {
   const r = await ejecutar(
-    `insert into clientes (nombre, telefono, cedula_rif, direccion, tipo, nota, dias_credito)
-     values (?, ?, ?, ?, ?, ?, ?)`,
-    [datos.nombre, datos.telefono, datos.cedula_rif, datos.direccion, datos.tipo, datos.nota, datos.dias_credito],
+    `insert into clientes (nombre, telefono, cedula_rif, direccion, tipo, nota, dias_credito, razon_social, lat, lon, sitio)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      datos.nombre, datos.telefono, datos.cedula_rif, datos.direccion, datos.tipo, datos.nota, datos.dias_credito, datos.razon_social,
+      sitio?.lat ?? null, sitio?.lon ?? null, sitio?.sitio ?? "",
+    ],
   );
   return r.ultimoId;
 }
 
-export async function actualizarCliente(id: number, datos: DatosCliente): Promise<void> {
+/** Guarda los datos y, con ellos, lo que el mapa dijo de la dirección (o nada, si no hizo falta o no la encontró). */
+export async function actualizarCliente(id: number, datos: DatosCliente, sitio: SitioDelMapa = null): Promise<void> {
   await ejecutar(
     `update clientes
-     set nombre = ?, telefono = ?, cedula_rif = ?, direccion = ?, tipo = ?, nota = ?, dias_credito = ?
+     set nombre = ?, telefono = ?, cedula_rif = ?, direccion = ?, tipo = ?, nota = ?, dias_credito = ?, razon_social = ?,
+         lat = ?, lon = ?, sitio = ?
      where id = ?`,
-    [datos.nombre, datos.telefono, datos.cedula_rif, datos.direccion, datos.tipo, datos.nota, datos.dias_credito, id],
+    [
+      datos.nombre, datos.telefono, datos.cedula_rif, datos.direccion, datos.tipo, datos.nota, datos.dias_credito, datos.razon_social,
+      sitio?.lat ?? null, sitio?.lon ?? null, sitio?.sitio ?? "", id,
+    ],
   );
+}
+
+/** Solo lo que dijo el mapa, cuando se vuelve a buscar sin cambiar los datos. */
+export async function guardarSitio(id: number, sitio: SitioDelMapa): Promise<void> {
+  await ejecutar("update clientes set lat = ?, lon = ?, sitio = ? where id = ?", [sitio?.lat ?? null, sitio?.lon ?? null, sitio?.sitio ?? "", id]);
 }
 
 /** Cuánto hay del cliente: para decirlo antes de borrarlo. */

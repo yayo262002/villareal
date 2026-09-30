@@ -6,11 +6,15 @@ import { cerrarSesion, claveEsCorrecta, exigirSesion, iniciarSesion } from "./se
 import {
   actualizarCliente,
   buscarCliente,
+  listarClientes,
   buscarClientePorTelefono,
   crearCliente,
   eliminarCliente,
+  guardarSitio,
+  type SitioDelMapa,
   type TipoCliente,
 } from "./clientes";
+import { buscarEnElMapa, necesitaElMapa } from "./mapa";
 import {
   actualizarProveedor,
   buscarCompra,
@@ -25,7 +29,7 @@ import {
 } from "./proveedores";
 import { leerDiasDeCredito } from "./credito";
 import { explicarMotivo, leerDireccion } from "./direcciones";
-import { telefonoLegible } from "./whatsapp";
+import { esSoloUnTelefono, telefonoLegible } from "./whatsapp";
 import {
   actualizarProducto,
   buscarProducto,
@@ -175,13 +179,24 @@ function leerCliente(datos: FormData) {
     tipo,
     nota: texto(datos, "nota"),
     dias_credito: leerDiasDeCredito(numero(datos, "dias_credito")),
+    razon_social: texto(datos, "razon_social"),
   };
 }
 
+/**
+ * Si la dirección no dice calle y carrera, se le pregunta al mapa. Lo que
+ * conteste se guarda con el cliente; si no contesta, el cliente se guarda
+ * igual y se avisa.
+ */
+async function sitioDe(direccion: string): Promise<SitioDelMapa> {
+  return necesitaElMapa(direccion) ? await buscarEnElMapa(direccion) : null;
+}
+
 /** Lo que hay que decirle al dueño sobre la dirección: si sirve o no para la ruta. */
-function avisoDeDireccion(direccion: string): string {
+function avisoDeDireccion(direccion: string, sitio: SitioDelMapa): string {
   const lectura = leerDireccion(direccion);
   if (lectura.ubicada) return "";
+  if (sitio) return ` La dirección no dice calle y carrera, pero el mapa la sitúa en: ${sitio.sitio}. Compruébalo.`;
   return ` Ojo: queda fuera de la ruta de despacho. ${explicarMotivo(lectura.motivo)}`;
 }
 
@@ -199,10 +214,12 @@ export async function guardarCliente(datos: FormData): Promise<void> {
     volverConError(`/admin/clientes/${repetido.id}`, "Ese teléfono ya es de este cliente. No se registró otra vez.");
   }
 
-  const id = await crearCliente(cliente);
+  const sitio = await sitioDe(cliente.direccion);
+  const id = await crearCliente(cliente, sitio);
   revalidatePath("/admin", "layout");
+  const sinNombre = esSoloUnTelefono(cliente.nombre) ? " Sin nombre, por ahora." : "";
   redirect(
-    `/admin/clientes?ok=${encodeURIComponent(`Cliente guardado: ${cliente.nombre}.${avisoDeDireccion(cliente.direccion)}`)}&nuevo=${id}`,
+    `/admin/clientes?ok=${encodeURIComponent(`Cliente guardado: ${cliente.nombre}.${sinNombre}${avisoDeDireccion(cliente.direccion, sitio)}`)}&nuevo=${id}`,
   );
 }
 
@@ -218,8 +235,57 @@ export async function editarCliente(datos: FormData): Promise<void> {
     volverConError(`/admin/clientes/${id}`, `Ese teléfono ya es de otro cliente: ${repetido.nombre}.`);
   }
 
-  await actualizarCliente(id, cliente);
-  volverConExito(`/admin/clientes/${id}`, `Datos guardados.${avisoDeDireccion(cliente.direccion)}`);
+  // Si la dirección no cambió, lo que dijo el mapa sigue valiendo y no se vuelve a preguntar.
+  const anterior = await buscarCliente(id);
+  const mismaDireccion = anterior !== null && anterior.direccion.trim() === cliente.direccion.trim();
+  const sitio: SitioDelMapa =
+    mismaDireccion && anterior.lat !== null && anterior.lon !== null
+      ? { lat: anterior.lat, lon: anterior.lon, sitio: anterior.sitio }
+      : await sitioDe(cliente.direccion);
+  await actualizarCliente(id, cliente, sitio);
+  volverConExito(`/admin/clientes/${id}`, `Datos guardados.${avisoDeDireccion(cliente.direccion, sitio)}`);
+}
+
+/** Cuántos clientes se buscan en el mapa por cada pulsación: el mapa pide ir despacio, una consulta por segundo. */
+const CLIENTES_POR_TANDA = 8;
+
+/**
+ * El botón de la cartera «Buscar en el mapa a los que faltan»: los clientes
+ * cuya dirección no dice calle y carrera y a los que el mapa no ha situado
+ * todavía (los de antes de tener mapa, o los que fallaron). De ocho en ocho.
+ */
+export async function situarClientesQueFaltan(): Promise<void> {
+  await exigirSesion();
+  const pendientes = (await listarClientes()).filter((c) => necesitaElMapa(c.direccion) && c.lat === null);
+  const tanda = pendientes.slice(0, CLIENTES_POR_TANDA);
+  let situados = 0;
+  for (const [i, c] of tanda.entries()) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 1100));
+    const sitio = await buscarEnElMapa(c.direccion);
+    if (!sitio) continue;
+    await guardarSitio(c.id, sitio);
+    situados++;
+  }
+  const quedan = pendientes.length - tanda.length;
+  volverConExito(
+    "/admin/clientes?orden=ruta",
+    `El mapa situó a ${situados} de ${tanda.length}.${quedan > 0 ? ` Quedan ${quedan}: pulsa otra vez.` : ""}${tanda.length > situados ? " A los que no encontró, escríbeles la calle y la carrera o el nombre del sitio." : ""}`,
+  );
+}
+
+/** El botón «Buscar la dirección en el mapa» de la ficha: para volver a intentarlo o para los clientes de antes. */
+export async function situarClienteEnElMapa(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const cliente = id ? await buscarCliente(id) : null;
+  if (!id || !cliente) volverConError("/admin/clientes", "No se encontró el cliente.");
+  if (!cliente.direccion.trim()) volverConError(`/admin/clientes/${id}`, "Escribe primero la dirección.");
+  if (leerDireccion(cliente.direccion).ubicada) volverConError(`/admin/clientes/${id}`, "Esa dirección ya se entiende por su calle y su carrera: no hace falta el mapa.");
+
+  const sitio = await buscarEnElMapa(cliente.direccion);
+  await guardarSitio(id, sitio);
+  if (!sitio) volverConError(`/admin/clientes/${id}`, "El mapa no encuentra esa dirección. Prueba con el nombre del sitio o de la avenida, sin más detalles.");
+  volverConExito(`/admin/clientes/${id}`, `El mapa la sitúa en: ${sitio.sitio}. Compruébalo con «Ver en el mapa».`);
 }
 
 /**

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { enlaceAlMapa, planDeDespacho } from "./despacho.ts";
+import { enlaceAlMapa, planDeDespacho, situar } from "./despacho.ts";
 
 const TIENDA = { direccion: "Calle 38 entre carreras 30 y 31, local s/n, sector Centro", ciudad: "Barquisimeto, Lara, Venezuela" };
 const cliente = (id: number, direccion: string) => ({ id, direccion });
@@ -61,4 +61,42 @@ test("el mapa de una dirección suelta", () => {
   assert.equal(enlaceAlMapa("", "Barquisimeto"), null);
   assert.match(enlaceAlMapa("Carrera 19 con calle 25", "Barquisimeto")!, /query=Calle\+25\+con\+Carrera\+19%2C\+Barquisimeto|query=Calle%2025%20con%20Carrera%2019%2C%20Barquisimeto/);
   assert.match(enlaceAlMapa("Urb. Del Este, casa 4", "Barquisimeto")!, /Urb/);
+});
+
+test("un cliente que el mapa situó entra en la ruta aunque su dirección no diga calle ni carrera", () => {
+  const terepaima = { id: 5, direccion: "Centro Comercial Terepaima, local 12", lat: 10.0329393, lon: -69.2583231, sitio: "C.C. Terepaima II, Avenida Intercomunal" };
+  const situacion = situar(terepaima, "Barquisimeto");
+  assert.equal(situacion.situada, true);
+  if (!situacion.situada) return;
+  assert.equal(situacion.origen, "mapa");
+  assert.equal(situacion.texto, "C.C. Terepaima II, Avenida Intercomunal");
+  assert.equal(situacion.destino, "10.032939,-69.258323");
+  if (situacion.origen === "mapa") assert.equal(situacion.aproximada, false);
+
+  const plan = planDeDespacho(TIENDA, [terepaima, cliente(1, "Carrera 19 con calle 25")]);
+  assert.deepEqual(plan.ruta.paradas.map((p) => p.dato.id), [1, 5]);
+  assert.ok(plan.ruta.cuadras > 100, String(plan.ruta.cuadras));
+  const url = new URL(plan.enlaces[0].enlace);
+  assert.ok(url.searchParams.get("waypoints")!.includes("10.032939,-69.258323"));
+});
+
+test("una avenida con nombre y una calle: la calle escrita y la carrera de la avenida según el mapa", () => {
+  const enLaAvenida = { id: 6, direccion: "Av. Libertador con calle 30", lat: 10.0814088, lon: -69.3292434, sitio: "Avenida Libertador, Urbanización Obelisco (un punto de la avenida)" };
+  const situacion = situar(enLaAvenida, "Barquisimeto");
+  assert.equal(situacion.situada, true);
+  if (!situacion.situada || situacion.origen !== "mapa") return;
+  assert.equal(situacion.ubicacion.calle, 30);
+  assert.ok(situacion.ubicacion.carrera > 20 && situacion.ubicacion.carrera < 45, String(situacion.ubicacion.carrera));
+  assert.match(situacion.texto, /a la altura de la calle 30$/);
+  assert.equal(situacion.aproximada, false);
+  assert.match(situacion.destino, /^Calle 30 con Carrera \d+, Barquisimeto$/);
+  // La avenida sola, sin calle, es un punto cualquiera de ella: se dice.
+  const sola = situar({ ...enLaAvenida, direccion: "Avenida Libertador" }, "Barquisimeto");
+  assert.ok(sola.situada && sola.origen === "mapa" && sola.aproximada);
+});
+
+test("un punto del mapa fuera de los alrededores, o sin coordenadas, no sitúa", () => {
+  assert.equal(situar({ id: 7, direccion: "Urb. Del Este, casa 4", lat: 10.5, lon: -66.9, sitio: "Caracas" }, "Barquisimeto").situada, false);
+  assert.equal(situar({ id: 8, direccion: "Urb. Del Este, casa 4", lat: null, lon: null }, "Barquisimeto").situada, false);
+  assert.equal(situar({ id: 9, direccion: "" , lat: 10.03, lon: -69.25 }, "Barquisimeto").situada, false);
 });
