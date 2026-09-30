@@ -209,19 +209,30 @@
 }
 
 /* Un fieldset mide por defecto lo que su contenido: hay que dejarlo encoger. */
+/* Una fila por producto, como en la nota de papel: piezas, kilos y precio, con el nombre encima. */
 .filaVenta {
   min-width: 0;
   display: grid;
-  gap: var(--espacio-3);
-  grid-template-columns: minmax(0, 1fr);
+  gap: var(--espacio-2) var(--espacio-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: var(--espacio-3);
-  border: 1px dashed var(--color-borde);
+  border: 1px solid var(--color-borde);
   border-radius: var(--radio);
 }
-@media (min-width: 640px) {
-  .filaVenta {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
-  }
+.filaVenta--dos {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.filaVenta legend {
+  padding: 0 var(--espacio-1);
+  font-weight: 700;
+}
+.filaVenta .campo label {
+  font-size: 13px;
+}
+.filaVentaLista {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--color-texto-suave);
 }
 
 .accionesFila {

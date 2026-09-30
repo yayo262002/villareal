@@ -104,7 +104,19 @@ export function mensajeRecordatorio(datos: {
   return lineas.join("\n");
 }
 
-type Linea = { cantidad: number; unidad: string; producto_nombre: string; precio_unitario_usd: number; subtotal_usd: number };
+type Linea = {
+  cantidad: number;
+  unidad: string;
+  producto_nombre: string;
+  precio_unitario_usd: number;
+  subtotal_usd: number;
+  piezas?: number | null;
+};
+
+/** « (2 pzas)», o nada si no se anotaron. */
+function piezasDe(l: { piezas?: number | null }): string {
+  return l.piezas ? ` (${l.piezas} ${l.piezas === 1 ? "pza" : "pzas"})` : "";
+}
 
 /** La nota de una venta, para mandársela al cliente como comprobante. */
 export function mensajeNota(datos: {
@@ -123,7 +135,7 @@ export function mensajeNota(datos: {
   const titulo = datos.numero ? `Nota N.º ${datos.numero} del ${fechaCorta(datos.fecha)}` : `Nota del ${fechaCorta(datos.fecha)}`;
   const lineas = [`${datos.negocio} · ${titulo}`, `Cliente: ${datos.cliente}`, ""];
   for (const l of datos.lineas) {
-    lineas.push(`${formatearCantidad(l.cantidad)} ${nombreUnidad(l.unidad)} ${l.producto_nombre} × ${usd(l.precio_unitario_usd)} = ${usd(l.subtotal_usd)}`);
+    lineas.push(`${formatearCantidad(l.cantidad)} ${nombreUnidad(l.unidad)}${piezasDe(l)} ${l.producto_nombre} × ${usd(l.precio_unitario_usd)} = ${usd(l.subtotal_usd)}`);
   }
   lineas.push("", `Total: ${dolaresYBolivares(datos.total_usd, datos.tasa)}`);
   if (datos.saldo_usd > 0) {
@@ -192,7 +204,7 @@ export function mensajePedirResena(datos: {
 export function mensajeEnCamino(datos: {
   negocio: string;
   cliente: string;
-  lineas: Pick<Linea, "cantidad" | "unidad" | "producto_nombre">[];
+  lineas: Pick<Linea, "cantidad" | "unidad" | "producto_nombre" | "piezas">[];
   total_usd: number;
   tasa?: number | null;
 }): string {
@@ -203,7 +215,7 @@ export function mensajeEnCamino(datos: {
   }
   lineas.push("Vamos en camino con su pedido:");
   for (const l of datos.lineas) {
-    lineas.push(`• ${formatearCantidad(l.cantidad)} ${nombreUnidad(l.unidad)} ${l.producto_nombre}`);
+    lineas.push(`• ${formatearCantidad(l.cantidad)} ${nombreUnidad(l.unidad)}${piezasDe(l)} ${l.producto_nombre}`);
   }
   lineas.push(`Total: ${dolaresYBolivares(datos.total_usd, datos.tasa)}`);
   return lineas.join("\n");

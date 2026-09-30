@@ -43,7 +43,9 @@ import {
   entradaBloqueada,
   olvidarEntradasFallidas,
 } from "./intentos";
-import { buscarVenta, crearVenta, eliminarVenta, marcarEntrega, type LineaVenta } from "./ventas";
+import { buscarVenta, crearVenta, eliminarVenta, marcarEntrega, ultimoPrecioAlCliente, type LineaVenta } from "./ventas";
+import { lineaRellena, revisarFecha, revisarVenta, type LineaEscrita } from "./venta-sensata";
+import { listarProductos } from "./productos";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { buscarAdjunto, eliminarAdjunto, guardarAdjunto } from "./adjuntos";
@@ -60,8 +62,7 @@ import {
   quitarResenasDeEjemplo,
 } from "./resenas";
 import { leerResena } from "./resenas-texto";
-import { esMetodoPago, esUnidad, monedaDelMetodo, precioParaCliente } from "./dinero";
-import { FILAS_VENTA } from "./constantes";
+import { esMetodoPago, esUnidad, hoy, monedaDelMetodo, precioParaCliente } from "./dinero";
 
 /**
  * Todas las acciones del panel. Cada una comprueba la sesión primero: una
@@ -479,35 +480,69 @@ export async function alternarProducto(datos: FormData): Promise<void> {
 
 // ---------- Ventas ----------
 
+/**
+ * Guarda una venta como la nota de papel: por cada producto, las piezas si
+ * se anotaron, los kilos (o cartones) y el precio en dólares, que se
+ * escribe cada vez. Si algo no tiene sentido se vuelve al formulario con
+ * lo escrito y el motivo; si solo es raro (un precio muy distinto del de
+ * la lista), se pide confirmar.
+ */
 export async function guardarVenta(datos: FormData): Promise<void> {
   await exigirSesion();
   const clienteId = numero(datos, "cliente_id");
   const fecha = texto(datos, "fecha");
-  if (!clienteId) volverConError("/admin/ventas", "Elige un cliente.");
-  if (!fecha) volverConError("/admin/ventas", "Falta la fecha.");
-  const cliente = await buscarCliente(clienteId);
-  if (!cliente) volverConError("/admin/ventas", "No se encontró el cliente.");
+  const productos = await listarProductos(true);
 
-  const lineas: LineaVenta[] = [];
-  for (let i = 0; i < FILAS_VENTA; i++) {
-    const productoId = numero(datos, `producto_${i}`);
-    const cantidad = numero(datos, `cantidad_${i}`);
-    let precio = numero(datos, `precio_${i}`);
-    if (!productoId && cantidad === null && precio === null) continue;
-    if (!productoId || cantidad === null) {
-      volverConError("/admin/ventas", `La fila ${i + 1} está incompleta: producto y cantidad.`);
+  // Con lo escrito en la dirección, el formulario vuelve relleno.
+  const escrito = new URLSearchParams();
+  for (const campo of ["cliente_id", "fecha", "entrega", "nota"]) if (texto(datos, campo)) escrito.set(campo, texto(datos, campo));
+  for (const p of productos) {
+    for (const campo of ["piezas", "cantidad", "precio"]) {
+      const valor = texto(datos, `${campo}_${p.id}`);
+      if (valor) escrito.set(`${campo}_${p.id}`, valor);
     }
-    // Sin precio escrito se cobra el del producto: al mayor si el cliente
-    // es mayorista, al detal si no.
-    if (precio === null) {
-      const producto = await buscarProducto(productoId);
-      precio = producto ? precioParaCliente(producto, cliente.tipo) : null;
-      if (precio === null) {
-        volverConError("/admin/ventas", `La fila ${i + 1} no tiene precio y el producto tampoco: escríbelo.`);
-      }
-    }
-    lineas.push({ producto_id: productoId, cantidad, precio_unitario_usd: precio });
   }
+  // Con el tipo escrito aparte, TypeScript sabe que después de `volver` no se sigue.
+  const volver: (mensaje: string, confirmar?: boolean) => never = (mensaje, confirmar = false) => {
+    if (confirmar) escrito.set("confirmar", "1");
+    volverConError(`/admin/ventas?${escrito.toString()}`, mensaje);
+  };
+
+  if (!clienteId) volver("Elige un cliente.");
+  const cliente = await buscarCliente(clienteId);
+  if (!cliente) volver("No se encontró el cliente.");
+  const malaFecha = revisarFecha(fecha, hoy());
+  if (malaFecha) volver(malaFecha);
+
+  const escritas: (LineaEscrita & { producto_id: number })[] = [];
+  for (const p of productos) {
+    const linea = {
+      producto_id: p.id,
+      producto: p.nombre,
+      unidad: p.unidad,
+      piezas: numero(datos, `piezas_${p.id}`),
+      cantidad: numero(datos, `cantidad_${p.id}`),
+      precio: numero(datos, `precio_${p.id}`),
+      precioDeLista: precioParaCliente(p, cliente.tipo),
+      ultimoPrecio: null as number | null,
+    };
+    if (!lineaRellena(linea)) continue;
+    linea.ultimoPrecio = await ultimoPrecioAlCliente(clienteId, p.id);
+    escritas.push(linea);
+  }
+
+  const revision = revisarVenta(escritas);
+  if (revision.errores.length > 0) volver(revision.errores.join(" "));
+  if (revision.avisos.length > 0 && texto(datos, "confirmar") !== "1") {
+    volver(`${revision.avisos.join(" ")} Si es así, marca «Los precios y las cantidades son correctos» y guarda otra vez.`, true);
+  }
+
+  const lineas: LineaVenta[] = escritas.map((l) => ({
+    producto_id: l.producto_id,
+    cantidad: l.cantidad!,
+    precio_unitario_usd: l.precio!,
+    piezas: l.piezas,
+  }));
 
   // Lo que se lleva al cliente queda por entregar y entra en el despacho.
   const porEntregar = texto(datos, "entrega") === "despacho";
@@ -516,7 +551,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
     const tasa = await leerTasa();
     ventaId = await crearVenta(clienteId, fecha, lineas, texto(datos, "nota"), tasa?.valor ?? null, porEntregar);
   } catch (error) {
-    volverConError("/admin/ventas", mensajeDe(error));
+    volver(mensajeDe(error));
   }
   // A la nota de entrega, para mandarla o imprimirla en el momento.
   volverConExito(

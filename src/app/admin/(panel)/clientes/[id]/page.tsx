@@ -182,14 +182,28 @@ export default async function PaginaCliente({
 
         <section className="tarjeta" id="datos">
           <h2 className={estilos.subtitulo}>Datos</h2>
-          {cliente.direccion && (
+          {cliente.direccion && ubicacion.ubicada && (
             <p className={estilos.ayuda}>
-              {ubicacion.ubicada ? "Entra en la ruta de despacho." : `Fuera de la ruta de despacho. ${explicarMotivo(ubicacion.motivo)}`}
+              Entra en la ruta de despacho.
               {mapa && (
                 <>
                   {" "}
                   <a href={mapa} target="_blank" rel="noopener">
                     Ver en el mapa
+                  </a>
+                </>
+              )}
+            </p>
+          )}
+          {cliente.direccion && !ubicacion.ubicada && (
+            <p className="aviso aviso--aviso" style={{ marginBottom: "var(--espacio-4)" }}>
+              La dirección no se pudo comprobar: {explicarMotivo(ubicacion.motivo)} Queda fuera de la ruta de despacho.
+              Escríbela con la calle y la carrera, como «Carrera 19 con calle 25».
+              {mapa && (
+                <>
+                  {" "}
+                  <a href={mapa} target="_blank" rel="noopener">
+                    Buscarla en el mapa
                   </a>
                 </>
               )}

@@ -3,52 +3,83 @@ import { listarClientes } from "@/lib/clientes";
 import { listarProductos, type Producto } from "@/lib/productos";
 import { conLineas, listarVentas } from "@/lib/ventas";
 import { guardarVenta } from "@/lib/acciones";
-import { FILAS_VENTA, FILAS_VENTA_A_LA_VISTA } from "@/lib/constantes";
+import { leerTasa } from "@/lib/ajustes";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { ventaCoincide } from "@/lib/buscar";
-import { fechaCorta, hoy, nombreUnidad, usd } from "@/lib/dinero";
+import { fechaCorta, hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
+import { TotalDeVenta } from "@/components/total-de-venta";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Ventas" };
 
 const MAXIMO_AL_BUSCAR = 100;
 
-/** Una fila del formulario: producto, cantidad y precio. */
-function FilaDeVenta({ i, productos }: { i: number; productos: Producto[] }) {
+/** Lo que el formulario trae ya escrito: al volver con un aviso, nada se pierde. */
+type Escrito = Record<string, string | string[] | undefined>;
+function escrito(datos: Escrito, campo: string): string {
+  const valor = datos[campo];
+  return typeof valor === "string" ? valor : "";
+}
+
+/**
+ * Una fila por producto, como la nota de papel: piezas (si se anotan),
+ * kilos o cartones, y el precio en dólares que se escribe cada vez. El
+ * importe lo calcula el servidor con los kilos.
+ */
+function FilaDeVenta({ producto, datos }: { producto: Producto; datos: Escrito }) {
+  const porKilo = producto.unidad === "kg";
+  const unidad = porKilo ? "Kilos" : producto.unidad === "carton" ? "Cartones" : "Unidades";
+  const porUna = porKilo ? "USD por kilo" : producto.unidad === "carton" ? "USD por cartón" : "USD por unidad";
+  const lista = [
+    producto.precio_usd !== null ? `detal ${usd(producto.precio_usd)}` : "",
+    producto.precio_mayor_usd !== null ? `mayor ${usd(producto.precio_mayor_usd)}` : "",
+  ].filter(Boolean);
   return (
-    <fieldset className={estilos.filaVenta} style={{ border: "none", margin: 0 }}>
-      <legend className="visualmente-oculto">Producto {i + 1}</legend>
+    <fieldset className={`${estilos.filaVenta} ${porKilo ? "" : estilos["filaVenta--dos"]}`}>
+      <legend>{producto.nombre}</legend>
+      {/* Las piezas son cosa del queso: un cartón de huevos no tiene piezas. */}
+      {porKilo && (
+        <div className="campo">
+          <label htmlFor={`piezas_${producto.id}`}>Piezas</label>
+          <input
+            id={`piezas_${producto.id}`}
+            name={`piezas_${producto.id}`}
+            type="number"
+            inputMode="numeric"
+            step="1"
+            min="1"
+            placeholder="opcional"
+            defaultValue={escrito(datos, `piezas_${producto.id}`)}
+          />
+        </div>
+      )}
       <div className="campo">
-        <label htmlFor={`producto_${i}`}>Producto</label>
-        <select id={`producto_${i}`} name={`producto_${i}`} defaultValue="">
-          <option value="">{i === 0 ? "Elige un producto" : "(vacío)"}</option>
-          {productos.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nombre}
-              {p.precio_usd !== null ? ` · detal ${usd(p.precio_usd)}` : ""}
-              {p.precio_mayor_usd !== null ? ` · mayor ${usd(p.precio_mayor_usd)}` : ""}
-              {p.precio_usd !== null || p.precio_mayor_usd !== null ? ` / ${nombreUnidad(p.unidad)}` : ""}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="campo">
-        <label htmlFor={`cantidad_${i}`}>Cantidad</label>
-        <input id={`cantidad_${i}`} name={`cantidad_${i}`} type="number" inputMode="decimal" step="0.001" min="0.001" />
-      </div>
-      <div className="campo">
-        <label htmlFor={`precio_${i}`}>Precio USD por unidad</label>
+        <label htmlFor={`cantidad_${producto.id}`}>{unidad}</label>
         <input
-          id={`precio_${i}`}
-          name={`precio_${i}`}
+          id={`cantidad_${producto.id}`}
+          name={`cantidad_${producto.id}`}
+          type="number"
+          inputMode="decimal"
+          step={porKilo ? "0.001" : "1"}
+          min="0"
+          defaultValue={escrito(datos, `cantidad_${producto.id}`)}
+        />
+      </div>
+      <div className="campo">
+        <label htmlFor={`precio_${producto.id}`}>{porUna}</label>
+        <input
+          id={`precio_${producto.id}`}
+          name={`precio_${producto.id}`}
           type="number"
           inputMode="decimal"
           step="0.01"
           min="0"
-          placeholder="Vacío = el del producto"
+          placeholder={producto.precio_usd !== null ? String(producto.precio_usd) : ""}
+          defaultValue={escrito(datos, `precio_${producto.id}`)}
         />
       </div>
+      {lista.length > 0 && <span className={estilos.filaVentaLista}>En la lista: {lista.join(" · ")}</span>}
     </fieldset>
   );
 }
@@ -62,15 +93,17 @@ export default async function PaginaVentas({
   const clientePreseleccionado = typeof parametros.cliente === "string" ? parametros.cliente : "";
   const busqueda = typeof parametros.q === "string" ? parametros.q.trim() : "";
   // Sin buscar, las últimas 50. Buscando, se mira entre todas y se enseñan hasta 100.
-  const [clientes, productos, ventas] = await Promise.all([
+  // Si la venta volvió con un aviso, el formulario trae lo que se había escrito.
+  const pideConfirmar = parametros.confirmar === "1";
+  const [clientes, productos, tasa, ventas] = await Promise.all([
     listarClientes(),
     listarProductos(true),
+    leerTasa(),
     (busqueda
       ? listarVentas(100000).then((todas) => todas.filter((v) => ventaCoincide(v, busqueda)).slice(0, MAXIMO_AL_BUSCAR))
       : listarVentas(50)
     ).then(conLineas),
   ]);
-  const filas = Array.from({ length: FILAS_VENTA }, (_, i) => i);
 
   return (
     <>
@@ -88,7 +121,7 @@ export default async function PaginaVentas({
             <div className="formulario__fila">
               <div className="campo">
                 <label htmlFor="venta-cliente">Cliente</label>
-                <select id="venta-cliente" name="cliente_id" required defaultValue={clientePreseleccionado}>
+                <select id="venta-cliente" name="cliente_id" required defaultValue={escrito(parametros, "cliente_id") || clientePreseleccionado}>
                   <option value="" disabled>
                     Elige un cliente
                   </option>
@@ -101,35 +134,36 @@ export default async function PaginaVentas({
                 </select>
               </div>
               <div className="campo">
-                <label htmlFor="venta-fecha">Fecha</label>
-                <input id="venta-fecha" name="fecha" type="date" required defaultValue={hoy()} />
+                <label htmlFor="venta-fecha">Fecha de despacho</label>
+                <input id="venta-fecha" name="fecha" type="date" required max={hoy()} defaultValue={escrito(parametros, "fecha") || hoy()} />
+                <span className="ayuda">La de la nota de papel, aunque sea de días atrás: los días de crédito cuentan desde ahí.</span>
               </div>
             </div>
 
-            {filas.slice(0, FILAS_VENTA_A_LA_VISTA).map((i) => (
-              <FilaDeVenta key={i} i={i} productos={productos} />
+            {productos.map((p) => (
+              <FilaDeVenta key={p.id} producto={p} datos={parametros} />
             ))}
-            <details className={estilos.masDatos}>
-              <summary>Más productos</summary>
-              <div className="formulario" style={{ marginTop: "var(--espacio-3)" }}>
-                {filas.slice(FILAS_VENTA_A_LA_VISTA).map((i) => (
-                  <FilaDeVenta key={i} i={i} productos={productos} />
-                ))}
-              </div>
-            </details>
+            <TotalDeVenta productos={productos.map((p) => p.id)} tasa={tasa?.valor ?? null} />
+
+            {pideConfirmar && (
+              <label className={estilos.casilla}>
+                <input type="checkbox" name="confirmar" value="1" />
+                <span>Los precios y las cantidades son correctos: guardar igual</span>
+              </label>
+            )}
 
             <div className="formulario__fila">
               <div className="campo">
                 <label htmlFor="venta-entrega">Entrega</label>
-                <select id="venta-entrega" name="entrega" defaultValue="local">
+                <select id="venta-entrega" name="entrega" defaultValue={escrito(parametros, "entrega") || "local"}>
                   <option value="local">Ya entregada (se la lleva del local)</option>
                   <option value="despacho">Por entregar (va al despacho)</option>
                 </select>
                 <span className="ayuda">Lo que queda por entregar sale en la ruta de despacho.</span>
               </div>
               <div className="campo">
-                <label htmlFor="venta-nota">Nota</label>
-                <input id="venta-nota" name="nota" type="text" />
+                <label htmlFor="venta-nota">Observación</label>
+                <input id="venta-nota" name="nota" type="text" defaultValue={escrito(parametros, "nota")} />
               </div>
             </div>
             <div>

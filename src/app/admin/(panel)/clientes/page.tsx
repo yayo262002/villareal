@@ -4,7 +4,7 @@ import { clientesConVencimiento, type ClienteConVencimiento } from "@/lib/vencim
 import { DIAS_DE_CREDITO_POR_DEFECTO, describirVencimiento } from "@/lib/credito";
 import { guardarCliente } from "@/lib/acciones";
 import { enlaceAlMapa, planDeDespacho } from "@/lib/despacho";
-import { explicarMotivo } from "@/lib/direcciones";
+import { explicarMotivo, leerDireccion } from "@/lib/direcciones";
 import { fechaCorta, redondear, usd } from "@/lib/dinero";
 import { enlaceWhatsappA } from "@/lib/whatsapp";
 import { normalizar } from "@/lib/buscar";
@@ -39,6 +39,9 @@ export default async function PaginaClientes({
 
   const todos = await clientesConVencimiento();
   const nuevo = todos.find((c) => c.id === nuevoId);
+  // Recién guardado: si su dirección no se entiende, se avisa aquí mismo, sin deshacer nada.
+  const direccionDelNuevo = nuevo ? leerDireccion(nuevo.direccion) : null;
+  const mapaDelNuevo = nuevo ? enlaceAlMapa(nuevo.direccion, CIUDAD) : null;
   const clave = normalizar(busqueda);
   const filtrados = clave
     ? todos.filter((c) =>
@@ -81,6 +84,23 @@ export default async function PaginaClientes({
         </div>
       </div>
       <Avisos parametros={parametros} />
+      {nuevo && direccionDelNuevo && !direccionDelNuevo.ubicada && (
+        <div className="aviso aviso--aviso">
+          <strong>Ojo con la dirección de {nuevo.nombre}.</strong>{" "}
+          {nuevo.direccion ? `«${nuevo.direccion}» no se pudo comprobar: ` : "No tiene dirección: "}
+          {explicarMotivo(direccionDelNuevo.motivo)} El cliente quedó guardado, pero fuera de la ruta de despacho.
+          Escríbela con la calle y la carrera, como «Carrera 19 con calle 25».{" "}
+          {mapaDelNuevo && (
+            <>
+              <a href={mapaDelNuevo} target="_blank" rel="noopener">
+                Buscarla en el mapa
+              </a>
+              {" · "}
+            </>
+          )}
+          <Link href={`/admin/clientes/${nuevo.id}#datos`}>Corregir la dirección</Link>
+        </div>
+      )}
       {nuevo && (
         <p className={estilos.ayuda} style={{ marginBottom: 0 }}>
           <Link href={`/admin/clientes/${nuevo.id}`}>Abrir la ficha de {nuevo.nombre}</Link> para anotarle una venta o un

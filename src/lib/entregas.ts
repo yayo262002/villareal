@@ -10,6 +10,7 @@ export type LineaDePedido = {
   producto_nombre: string;
   unidad: string;
   cantidad: number;
+  piezas?: number | null;
 };
 
 export type Pedido = {
@@ -66,9 +67,14 @@ export function pedidosPorCliente<P extends Pedido>(pedidos: P[]): Map<number, P
   return porCliente;
 }
 
-/** «2 kg Queso mozzarella · 1 cartón Huevos»: lo que lleva una venta, en una línea. */
-export function resumenDeLineas(lineas: Pick<LineaDePedido, "cantidad" | "unidad" | "producto_nombre">[]): string {
-  return lineas.map((l) => `${cantidad(l.cantidad, l.unidad)} ${l.producto_nombre}`).join(" · ");
+/** «5 kg (2 pzas) Queso mozzarella · 1 cartón Huevos»: lo que lleva una venta, en una línea. */
+export function resumenDeLineas(lineas: Pick<LineaDePedido, "cantidad" | "unidad" | "producto_nombre" | "piezas">[]): string {
+  return lineas.map((l) => `${cantidad(l.cantidad, l.unidad)}${piezasDe(l)} ${l.producto_nombre}`).join(" · ");
+}
+
+/** « (2 pzas)», o nada si no se anotaron. */
+export function piezasDe(l: { piezas?: number | null }): string {
+  return l.piezas ? ` (${l.piezas} ${l.piezas === 1 ? "pza" : "pzas"})` : "";
 }
 
 /** «000012»: el número de una nota de entrega es el de su venta, con ceros delante. */

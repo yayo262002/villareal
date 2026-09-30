@@ -7,7 +7,7 @@ import { leerTasa } from "@/lib/ajustes";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { sumarDias } from "@/lib/credito";
 import { cambiarEntrega } from "@/lib/acciones";
-import { numeroDeNota } from "@/lib/entregas";
+import { numeroDeNota, piezasDe } from "@/lib/entregas";
 import { aBolivares, bs, cantidad, fechaCorta, fechaDeLaBase, usd } from "@/lib/dinero";
 import { enlaceWhatsappA, mensajeNota } from "@/lib/whatsapp";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
@@ -121,7 +121,10 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
               {venta.lineas.map((l) => (
                 <tr key={l.id}>
                   <td>{l.producto_nombre}</td>
-                  <td className="numero">{cantidad(l.cantidad, l.unidad)}</td>
+                  <td className="numero">
+                    {cantidad(l.cantidad, l.unidad)}
+                    {piezasDe(l)}
+                  </td>
                   <td className="numero">{usd(l.precio_unitario_usd)}</td>
                   <td className="numero">{usd(l.subtotal_usd)}</td>
                 </tr>

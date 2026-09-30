@@ -339,8 +339,24 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     con los que deben o con los que se elijan. La selección viaja en la
     dirección de la página, así una ruta se puede guardar o mandar a quien
     reparte.
-- **El formulario de venta** tiene seis filas de producto: dos a la vista y
-  cuatro más en «Más productos». Son fijas porque no lleva JavaScript.
+- **El formulario de venta** es como la nota de papel: una fila por
+  producto con las **piezas** (opcional; solo informa), los **kilos** (o
+  cartones) y el **precio en dólares**, que se escribe cada vez, como en la
+  nota. El importe sale de los kilos por el precio. El total se ve mientras
+  se escribe (es el único cálculo con JavaScript del formulario; sin él, lo
+  calcula el servidor al guardar).
+  - **Fecha de despacho.** Es la de la nota de papel, aunque sea de días
+    atrás: los días de crédito cuentan desde ahí. No puede ser de mañana.
+  - **Lo que no tiene sentido no se guarda** (`src/lib/venta-sensata.ts`):
+    sin kilos, sin precio, más de 1000 kilos, más de 500 piezas, un precio
+    de más de 1000 dólares. Lo que solo es raro pide confirmar: un precio a
+    menos de la mitad o a más del doble del de la lista (o del que se le
+    cobró a ese cliente la última vez), o una línea de más de 1000 dólares.
+    El formulario vuelve con todo lo escrito y una casilla para confirmar.
+- **La dirección del cliente** se comprueba al guardarla: si no dice calle
+  y carrera del centro, el cliente se guarda igual y sale un aviso en
+  amarillo con el motivo, el mapa y el enlace para corregirla. No se
+  comprueba contra un mapa de verdad: solo si se entiende.
 - **Buscar una venta.** En Ventas, por el nombre del cliente, por el número
   de la nota («26» o «000026») o por la fecha («30/09»). Sin buscar salen
   las últimas 50 (`src/lib/buscar.ts`).

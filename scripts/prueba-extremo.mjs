@@ -306,42 +306,61 @@ async function probarNegocio() {
   comprobar(`alta de cliente mayorista (${r.ms} ms)`, r.destino.includes("Cliente guardado") && clienteId > 0, r.destino);
   if (!clienteId) throw new Error("Sin cliente no se puede seguir");
 
-  const [producto] = await consultar("select id from productos order by id limit 1");
-  const productoId = String(producto.id);
-
-  r = await enviar("/admin/ventas", 'name="producto_0"', {
-    cliente_id: String(clienteId), fecha: "2026-09-01", producto_0: productoId, cantidad_0: "2", precio_0: "5", nota: "primera",
+  // La nota como la de papel: 2 piezas, 2 kilos de queso amarillo a USD 5, del 1 de septiembre, por entregar.
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', {
+    cliente_id: String(clienteId), fecha: "2026-09-01", piezas_1: "2", cantidad_1: "2", precio_1: "5", nota: "primera",
     entrega: "despacho",
   });
-  comprobar(`venta con precio escrito (${r.ms} ms)`, r.destino.includes("Venta registrada") && cerca((await cuentasDe(clienteId)).ventas, 10));
+  comprobar(`venta con piezas, kilos y precio (${r.ms} ms)`, r.destino.includes("Venta registrada") && cerca((await cuentasDe(clienteId)).ventas, 10), r.destino);
   const pedidoId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
   comprobar("la venta que se lleva al cliente queda por entregar", r.destino.includes("Queda por entregar") && pedidoId > 0, r.destino);
+  const [conPiezas] = await consultar("select piezas, cantidad, precio_unitario_usd from venta_lineas where venta_id = ?", [pedidoId]);
+  comprobar("las piezas quedan anotadas y el importe sale de los kilos", conPiezas.piezas == 2 && conPiezas.cantidad == 2 && conPiezas.precio_unitario_usd == 5, JSON.stringify(conPiezas));
 
-  let esperado = 10;
-  r = await enviar("/admin/ventas", 'name="producto_0"', {
-    cliente_id: String(clienteId), fecha: "2026-09-15", producto_0: "1", cantidad_0: "2", precio_0: "",
-  });
-  esperado += 14.96;
-  comprobar("al mayorista, sin precio escrito, se le cobra al mayor (2 × 7,48)", cerca((await cuentasDe(clienteId)).ventas, esperado), JSON.stringify(await cuentasDe(clienteId)));
+  // El precio se escribe cada vez: sin él no se guarda, y el formulario vuelve con lo escrito.
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2" });
+  comprobar(
+    "sin precio no se guarda y se vuelve con lo escrito",
+    r.destino.includes("escribe el precio en dólares") && r.destino.includes("cantidad_1=2") && r.destino.includes(`cliente_id=${clienteId}`),
+    r.destino,
+  );
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48" });
+  let esperado = 10 + 14.96;
+  comprobar("venta al mayorista a 7,48 el kilo (2 × 7,48)", cerca((await cuentasDe(clienteId)).ventas, esperado), JSON.stringify(await cuentasDe(clienteId)));
 
   r = await enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "Cliente Detal", telefono: "", tipo: "detal" });
   const detalId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
-  r = await enviar("/admin/ventas", 'name="producto_0"', {
-    cliente_id: String(detalId), fecha: "2026-09-15", producto_0: "1", cantidad_0: "2", precio_0: "",
-  });
-  comprobar("al cliente al detal se le cobra al detal (2 × 8,50)", cerca((await cuentasDe(detalId)).ventas, 17), JSON.stringify(await cuentasDe(detalId)));
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "8.5" });
+  comprobar("venta al detal (2 × 8,50)", cerca((await cuentasDe(detalId)).ventas, 17), JSON.stringify(await cuentasDe(detalId)));
 
-  r = await enviar("/admin/ventas", 'name="producto_0"', {
-    cliente_id: String(clienteId), fecha: "2026-09-15", producto_0: "3", cantidad_0: "1", precio_0: "",
-  });
-  comprobar("un producto sin precio no se vende sin escribirlo", r.destino.includes("no tiene precio"), r.destino);
+  // Un precio que se sale de lo normal avisa y no guarda hasta confirmar.
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "85" });
+  comprobar(
+    "un precio diez veces el de la lista avisa y pide confirmar",
+    r.destino.includes("se sale de lo normal") && r.destino.includes("en la lista está a") && r.destino.includes("la última vez le cobraste") &&
+      r.destino.includes("confirmar=1") && cerca((await cuentasDe(detalId)).ventas, 17),
+    r.destino,
+  );
+  const relleno = (await pagina(r.destino)).html;
+  comprobar("el formulario vuelve con lo escrito y la casilla de confirmar", relleno.includes('value="85"') && relleno.includes('name="confirmar"'), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "85", confirmar: "1" });
+  comprobar("confirmado, se guarda", r.destino.includes("Venta registrada") && cerca((await cuentasDe(detalId)).ventas, 17 + 85), r.destino);
+  const caraId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  await enviar(`/admin/ventas/${caraId}/eliminar`, 'name="id"', { id: String(caraId) });
 
-  // Un pedido largo: la primera fila y la última, que está en «Más productos».
-  r = await enviar("/admin/ventas", 'name="producto_0"', {
-    cliente_id: String(detalId), fecha: "2026-09-16", producto_0: "1", cantidad_0: "1", precio_0: "",
-    producto_5: "2", cantidad_5: "0.5", precio_5: "",
+  // Lo que no puede ser: una fecha de mañana, 5000 kilos, sin ningún producto.
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2031-01-01", cantidad_1: "1", precio_1: "8.5" });
+  comprobar("una fecha de despacho de mañana en adelante no vale", r.destino.includes("no puede ser de mañana"), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "5000", precio_1: "8.5" });
+  comprobar("5000 kilos no puede ser", r.destino.includes("kilos no puede ser"), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16" });
+  comprobar("una nota sin productos no se guarda", r.destino.includes("al menos un producto"), r.destino);
+
+  // Dos productos en la misma nota: 1 kilo de amarillo a 8,50 y medio kilo de mozzarella a 7.
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', {
+    cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "8.5", cantidad_2: "0.5", precio_2: "7",
   });
-  comprobar("una venta con productos en la última fila (8,50 + medio kilo a 7)", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
+  comprobar("una nota con dos productos (8,50 + medio kilo a 7)", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
 
   r = await enviar(`/admin/clientes/${clienteId}`, 'name="monto"', {
     cliente_id: String(clienteId), fecha: "2026-09-20", metodo: "pago_movil", monto: "146", tasa: "36.5",
@@ -397,6 +416,7 @@ async function probarNegocio() {
       nota.html.includes(nombre) && nota.html.includes("0412-0000000") && nota.html.includes("Carrera 19 con calle 25") &&
       nota.html.includes(usd("10,00")) && nota.html.includes("No es una factura"),
   );
+  comprobar("la nota dice las piezas junto a los kilos", legible(nota.html).includes("2 kg (2 pzas)"));
   comprobar("la nota dice lo abonado y lo que queda", nota.html.includes(usd("4,00")) && nota.html.includes(usd("6,00")) && nota.html.includes("Abonada"));
   const notaPorWhatsapp = decodeURIComponent(nota.html.match(/wa\.me\/584120000000\?text=([^"]+)"/)?.[1] ?? "");
   comprobar(
@@ -588,6 +608,11 @@ async function probarCartera() {
 
   r = await alta({ telefono: "0416-5550103", direccion: "Urb. Del Este, casa 4" });
   comprobar("una dirección fuera de la cuadrícula se guarda, con aviso", r.destino.includes("Cliente guardado") && r.destino.includes("Ojo: queda fuera de la ruta de despacho. La dirección parece una urbanización"), r.destino);
+  const conAviso = legible((await pagina(r.destino)).html);
+  comprobar(
+    "la cartera avisa en amarillo de que esa dirección no se pudo comprobar, con el mapa y la ficha a mano",
+    conAviso.includes("aviso--aviso") && conAviso.includes("no se pudo comprobar") && conAviso.includes("Urb. Del Este, casa 4") && conAviso.includes("google.com/maps/search") && conAviso.includes("Corregir la dirección"),
+  );
 
   r = await alta({ telefono: "+58 414 5550101", direccion: "Otra dirección" });
   comprobar("el mismo teléfono escrito de otra forma no se registra dos veces", r.destino.includes(`/admin/clientes/${cercaId}?error=`) && r.destino.includes("ya es de este cliente"), r.destino);

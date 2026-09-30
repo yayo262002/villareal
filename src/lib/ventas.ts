@@ -4,8 +4,11 @@ import { redondear } from "./dinero";
 
 export type LineaVenta = {
   producto_id: number;
+  /** Kilos, o cartones o unidades según el producto. De aquí sale el importe. */
   cantidad: number;
   precio_unitario_usd: number;
+  /** Cuántas piezas eran, si se anotó. Solo informa. */
+  piezas: number | null;
 };
 
 export type LineaVentaGuardada = LineaVenta & {
@@ -142,9 +145,9 @@ export async function crearVenta(
     const ventaId = Number(venta.rows[0].id);
     for (const l of lineas) {
       await tx.execute({
-        sql: `insert into venta_lineas (venta_id, producto_id, cantidad, precio_unitario_usd, subtotal_usd)
-              values (?, ?, ?, ?, ?)`,
-        args: [ventaId, l.producto_id, l.cantidad, l.precio_unitario_usd, redondear(l.cantidad * l.precio_unitario_usd)],
+        sql: `insert into venta_lineas (venta_id, producto_id, cantidad, precio_unitario_usd, subtotal_usd, piezas)
+              values (?, ?, ?, ?, ?, ?)`,
+        args: [ventaId, l.producto_id, l.cantidad, l.precio_unitario_usd, redondear(l.cantidad * l.precio_unitario_usd), l.piezas],
       });
     }
     return ventaId;
@@ -163,6 +166,18 @@ export async function eliminarVenta(id: number): Promise<boolean> {
     const r = await tx.execute({ sql: "delete from ventas where id = ?", args: [id] });
     return r.rowsAffected > 0;
   });
+}
+
+/** Lo que se le cobró a un cliente por un producto la última vez, para avisar si el precio de hoy se sale de lo normal. */
+export async function ultimoPrecioAlCliente(clienteId: number, productoId: number): Promise<number | null> {
+  const f = await fila<{ precio: number }>(
+    `select l.precio_unitario_usd as precio
+     from venta_lineas l join ventas v on v.id = l.venta_id
+     where v.cliente_id = ? and l.producto_id = ?
+     order by v.fecha desc, v.id desc limit 1`,
+    [clienteId, productoId],
+  );
+  return f ? Number(f.precio) : null;
 }
 
 export async function totalVendidoUsd(): Promise<number> {

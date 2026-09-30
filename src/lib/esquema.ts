@@ -110,7 +110,9 @@ export const ESQUEMA = `
     producto_id integer not null references productos(id),
     cantidad real not null,
     precio_unitario_usd real not null,
-    subtotal_usd real not null
+    subtotal_usd real not null,
+    -- Cuántas piezas (bloques de queso) eran. Solo informa: el importe sale de los kilos.
+    piezas integer
   );
 
   create table if not exists pagos (
