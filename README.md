@@ -97,6 +97,8 @@ tiene plan gratuito. Solo hay que poner dos variables; el código no cambia.
    - `TURSO_DATABASE_URL`: la URL de Turso.
    - `TURSO_AUTH_TOKEN`: el token de Turso.
    - `CRON_SECRET`: un texto largo al azar, para la copia automática.
+   - `ANTHROPIC_API_KEY` (opcional): para que la foto de cada nota se lea
+     sola. Se crea en https://console.anthropic.com y se paga por uso.
 4. Despliega. La primera visita crea las tablas y los productos iniciales
    (queso amarillo, mozzarella, pecorino y huevos) sin precio.
 
@@ -140,6 +142,9 @@ src/lib/plano.ts          La cuadrícula del centro puesta sobre el mapa de verd
 src/lib/mapa.ts           Pregunta al mapa libre por una dirección sin calle y carrera
 src/lib/entregas.ts       Pedidos por entregar: qué lleva cada cliente y qué cargar
 src/lib/adjuntos.ts       Fotos de las notas de entrega
+src/lib/fotos-en-espera.ts  La foto de la nota mientras el formulario va y vuelve
+src/lib/lector-de-notas.ts  Le enseña la foto de la nota a Claude: fecha, líneas, total, firma
+src/lib/nota-leida.ts     Interpreta lo leído y dice en qué no cuadra con lo anotado
 src/lib/whatsapp.ts       Mensajes para WhatsApp: cobro, nota, recibo, en camino, pedir reseña
 src/lib/copias-nube.ts    Copias automáticas guardadas en la base
 src/app/api/tarea-diaria/ Lo que Vercel hace solo cada mañana: tasa y copia
@@ -321,6 +326,21 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   - **Entregada** exige la **foto de la nota firmada** por el cliente (la
     hoja de papel). Se guarda como foto del cliente unida a esa venta,
     «Nota N.º 000012 firmada». Sin foto no se guarda la venta.
+  - **La foto se lee.** Con la clave `ANTHROPIC_API_KEY` puesta, al
+    guardar se le enseña la foto a Claude (`src/lib/lector-de-notas.ts`)
+    y se comprueba que sea una nota y no otra cosa, que su fecha sea la
+    fecha de despacho, que las líneas sumen lo que dice el total, que el
+    total sea el de lo anotado y que esté firmada. Lo que no cuadre vuelve
+    como aviso, con la casilla «Ya revisé la foto de la nota» para guardar
+    igual; nada se corrige solo (`src/lib/nota-leida.ts`). Lo mismo al
+    marcar entregado un pedido desde el despacho o desde la nota. Sin la
+    clave no se lee nada y todo sigue igual. Cada lectura cuesta una
+    fracción de centavo.
+  - **La foto no se pierde.** Al llegar se guarda en `fotos_en_espera`
+    (`src/lib/fotos-en-espera.ts`); si el formulario vuelve con un aviso
+    (un precio raro, la fecha de la nota), la trae por su número y no hay
+    que repetirla. Al guardar la venta pasa a ser su adjunto; las que
+    nadie reclama se limpian pasado un día.
   - **Por entregar** exige el **día previsto de entrega** (no anterior a
     la fecha de despacho). Esas ventas salen en Despacho con su ruta, con
     lo que lleva cada cliente, la suma de lo que hay que cargar
@@ -467,6 +487,8 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - Las reseñas de verdad de cada producto: las que hay son de ejemplo y solo
   las ve el dueño.
 - Registrar a los proveedores y lo que se les debe.
+- Poner `ANTHROPIC_API_KEY` en Vercel y en `.env.local` para que las
+  fotos de las notas se lean solas. Sin ella, la foto se guarda sin más.
 - Un dominio propio.
 - Facturación fiscal, cuando el negocio empiece a facturar. Hoy hay notas
   de entrega, que no son facturas.

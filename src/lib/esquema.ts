@@ -154,6 +154,18 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- La foto de la nota firmada mientras el formulario de la venta va y
+  -- vuelve con avisos: se guarda al llegar y pasa a adjuntos al guardar la
+  -- venta. En «lectura» va lo que el lector leyó de ella, para no leerla dos veces.
+  create table if not exists fotos_en_espera (
+    id integer primary key autoincrement,
+    tipo text not null,
+    tamano integer not null,
+    datos blob not null,
+    lectura text,
+    creado_en text not null default (datetime('now'))
+  );
+
   -- Reseñas: lo que dicen de cada producto los negocios que lo compran. Las
   -- escribe el dueño con las palabras del cliente y con su permiso: sin
   -- permiso anotado no salen en la web. Las de ejemplo sirven para ver cómo

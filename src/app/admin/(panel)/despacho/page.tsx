@@ -17,6 +17,8 @@ import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Ruta de despacho" };
+/** Marcar entregada puede incluir leer la foto de la nota, que tarda unos segundos. */
+export const maxDuration = 60;
 
 const CIUDAD = `${negocio.localidad}, ${negocio.estado}, Venezuela`;
 

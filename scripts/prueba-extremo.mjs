@@ -44,6 +44,8 @@ const png = Buffer.from(
 
 /** La foto de la nota firmada que exige cada entrega. */
 const fotoFirmada = () => new File([png], "nota-firmada.png", { type: "image/png" });
+/** Una «foto» con la lectura escrita dentro: el lector de las pruebas la saca de ahí en vez de mirar la imagen. */
+const fotoLeida = (lectura) => new File([png, JSON.stringify(lectura)], "nota-firmada.png", { type: "image/png" });
 
 let fallos = 0;
 function comprobar(nombre, condicion, detalle = "") {
@@ -145,7 +147,7 @@ async function arrancarServidor() {
   // pero definidas no las pisa, y la prueba nunca toca la nube.
   servidor = spawn(process.execPath, [path.join(raiz, "node_modules/next/dist/bin/next"), "start", "-p", String(puerto)], {
     cwd: raiz,
-    env: { ...process.env, ...env, TURSO_DATABASE_URL: "", TURSO_AUTH_TOKEN: "", RUTA_BASE_DATOS: rutaDb, MAPA_APAGADO: "1" },
+    env: { ...process.env, ...env, TURSO_DATABASE_URL: "", TURSO_AUTH_TOKEN: "", RUTA_BASE_DATOS: rutaDb, MAPA_APAGADO: "1", LECTOR_DE_NOTAS_FALSO: "1" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   servidor.stdout.on("data", (d) => (salidaServidor += d));
@@ -359,17 +361,28 @@ async function probarNegocio() {
   comprobar("venta al detal (2 × 8,50)", cerca((await cuentasDe(detalId)).ventas, 17), JSON.stringify(await cuentasDe(detalId)));
 
   // Un precio que se sale de lo normal avisa y no guarda hasta confirmar.
-  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "85" });
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "85", entrega: "local", foto: fotoFirmada() });
   comprobar(
     "un precio diez veces el de la lista avisa y pide confirmar",
     r.destino.includes("se sale de lo normal") && r.destino.includes("en la lista está a") && r.destino.includes("la última vez le cobraste") &&
       r.destino.includes("confirmar=1") && cerca((await cuentasDe(detalId)).ventas, 17),
     r.destino,
   );
+  // La foto que se puso no se pierde: queda aparcada y el formulario vuelve con su número.
+  const fotoAparcada = Number(r.destino.match(/foto_espera=(\d+)/)?.[1]);
   const relleno = (await pagina(r.destino)).html;
-  comprobar("el formulario vuelve con lo escrito y la casilla de confirmar", relleno.includes('value="85"') && relleno.includes('name="confirmar"'), r.destino);
-  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "85", confirmar: "1", entrega: "local", foto: fotoFirmada() });
-  comprobar("confirmado, se guarda", r.destino.includes("Venta registrada") && cerca((await cuentasDe(detalId)).ventas, 17 + 85), r.destino);
+  comprobar(
+    "el formulario vuelve con lo escrito, la casilla de confirmar y la foto ya guardada",
+    relleno.includes('value="85"') && relleno.includes('name="confirmar"') && fotoAparcada > 0 && relleno.includes(`name="foto_espera" value="${fotoAparcada}"`) && relleno.includes("ya está guardada"),
+    r.destino,
+  );
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "85", confirmar: "1", entrega: "local", foto_espera: String(fotoAparcada) });
+  comprobar(
+    "confirmado, se guarda con esa misma foto, sin repetirla",
+    r.destino.includes("Venta registrada") && cerca((await cuentasDe(detalId)).ventas, 17 + 85) && (await cuentasDe(detalId)).fotos === 2 &&
+      Number((await consultar("select count(*) as n from fotos_en_espera where id = ?", [fotoAparcada]))[0].n) === 0,
+    `${r.destino} ${JSON.stringify(await cuentasDe(detalId))}`,
+  );
   const caraId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
   await enviar(`/admin/ventas/${caraId}/eliminar`, 'name="id"', { id: String(caraId) });
 
@@ -387,6 +400,38 @@ async function probarNegocio() {
     entrega: "local", foto: fotoFirmada(),
   });
   comprobar("una nota con dos productos (8,50 + medio kilo a 7)", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
+
+  // La foto de la nota se lee: si no es una nota, o su fecha o su suma no cuadran, avisa y pide revisar.
+  const cuadra = { es_nota: true, fecha: "2026-09-16", lineas: [{ descripcion: "Mozzarella", precio: 7, importe: 3.5 }], total: 3.5, firmada: true };
+  const mediaMozzarella = { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_2: "0.5", precio_2: "7", entrega: "local" };
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida(cuadra) });
+  comprobar("la foto se lee y, si cuadra, se guarda diciéndolo", r.destino.includes("se leyó y cuadra con lo anotado"), r.destino);
+  const leidaId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida({ ...cuadra, es_nota: false }) });
+  comprobar("una foto que no es la nota avisa y no guarda", r.destino.includes("no parece una nota de entrega") && r.destino.includes("confirmar_nota=1") && r.destino.includes("foto_espera="), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida({ ...cuadra, fecha: "2026-09-12" }) });
+  comprobar("otra fecha en la nota avisa con las dos fechas", r.destino.includes("La nota dice 12/09/2026 y la fecha de despacho anotada es 16/09/2026"), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida({ ...cuadra, total: 5, firmada: false }) });
+  comprobar(
+    "una suma que no cuadra avisa: dentro de la nota, contra lo anotado, y la firma que falta",
+    r.destino.includes("revisa la suma") && r.destino.includes("lo anotado suma") && r.destino.includes("No se ve la firma"),
+    r.destino,
+  );
+  const fotoLeidaId = Number(r.destino.match(/foto_espera=(\d+)/)?.[1]);
+  const conReparos = (await pagina(r.destino)).html;
+  comprobar("el formulario vuelve con la foto guardada y la casilla de «ya revisé la foto»", conReparos.includes(`name="foto_espera" value="${fotoLeidaId}"`) && conReparos.includes('name="confirmar_nota"'), r.destino);
+  const fotosAntes = (await cuentasDe(detalId)).fotos;
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto_espera: String(fotoLeidaId), confirmar_nota: "1" });
+  comprobar(
+    "revisada y confirmada, se guarda con esa foto y sin leerla otra vez",
+    r.destino.includes("Venta registrada") && r.destino.includes("con los avisos que revisaste") && (await cuentasDe(detalId)).fotos === fotosAntes + 1,
+    `${r.destino} ${JSON.stringify(await cuentasDe(detalId))}`,
+  );
+  const confirmadaId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  comprobar("una foto que el lector no entiende no frena la venta, y se dice", (await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoFirmada() })).destino.includes("no se pudo leer esta vez"));
+  const sinLeerId = Number((await consultar("select max(id) as id from ventas"))[0].id);
+  for (const id of [leidaId, confirmadaId, sinLeerId]) await enviar(`/admin/ventas/${id}/eliminar`, 'name="id"', { id: String(id) });
+  comprobar("las ventas de la prueba de lectura se borran y la cuenta vuelve a como estaba", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
 
   r = await enviar(`/admin/clientes/${clienteId}`, 'name="monto"', {
     cliente_id: String(clienteId), fecha: "2026-09-20", metodo: "pago_movil", monto: "146", tasa: "36.5",
@@ -493,7 +538,21 @@ async function probarNegocio() {
   const marca = `name="id" value="${pedidoId}"`;
   r = await enviar("/admin/despacho?solo=entregas", marca, { id: String(pedidoId), entregada: "1", volver_a: "/admin/despacho?solo=entregas" });
   comprobar("entregar sin la foto de la nota firmada no marca nada", r.destino.includes("adjunta la foto de la nota firmada") && Number((await consultar("select por_entregar from ventas where id = ?", [pedidoId]))[0].por_entregar) === 1, r.destino);
-  r = await enviar("/admin/despacho?solo=entregas", marca, { id: String(pedidoId), entregada: "1", volver_a: "/admin/despacho?solo=entregas", foto: fotoFirmada() });
+  // La foto con otra fecha y sin firma no marca nada: vuelve a la nota con la foto guardada, y desde ahí se confirma y se vuelve al despacho.
+  r = await enviar("/admin/despacho?solo=entregas", marca, {
+    id: String(pedidoId), entregada: "1", volver_a: "/admin/despacho?solo=entregas",
+    foto: fotoLeida({ es_nota: true, fecha: "2026-01-01", lineas: [], total: 10, firmada: false }),
+  });
+  comprobar(
+    "una nota con otra fecha y sin firma no se marca: vuelve a la nota con la foto guardada",
+    r.destino.startsWith(`/admin/ventas/${pedidoId}/nota?foto_espera=`) && r.destino.includes("La nota dice 01/01/2026") && r.destino.includes("No se ve la firma") &&
+      r.destino.includes("volver_a=/admin/despacho?solo=entregas") && Number((await consultar("select por_entregar from ventas where id = ?", [pedidoId]))[0].por_entregar) === 1,
+    r.destino,
+  );
+  const fotoPedido = Number(r.destino.match(/foto_espera=(\d+)/)?.[1]);
+  const notaConReparos = (await pagina(r.destino)).html;
+  comprobar("la nota enseña la foto guardada, la casilla de revisada y vuelve al despacho", notaConReparos.includes(`name="foto_espera" value="${fotoPedido}"`) && notaConReparos.includes('name="confirmar_nota"') && notaConReparos.includes('name="volver_a" value="/admin/despacho?solo=entregas"'));
+  r = await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "1", volver_a: "/admin/despacho?solo=entregas", foto_espera: String(fotoPedido), confirmar_nota: "1" });
   let [entrega] = await consultar("select por_entregar, entregada_en from ventas where id = ?", [pedidoId]);
   comprobar(
     `marcar el pedido como entregado (${r.ms} ms)`,

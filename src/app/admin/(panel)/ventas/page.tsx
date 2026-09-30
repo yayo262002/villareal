@@ -10,9 +10,12 @@ import { fechaCorta, hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { TotalDeVenta } from "@/components/total-de-venta";
 import { EntradaFoto } from "@/components/entrada-foto";
+import { lectorDisponible } from "@/lib/lector-de-notas";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Ventas" };
+/** Guardar una venta puede incluir leer la foto de la nota, que tarda unos segundos. */
+export const maxDuration = 60;
 
 const MAXIMO_AL_BUSCAR = 100;
 
@@ -96,6 +99,10 @@ export default async function PaginaVentas({
   // Sin buscar, las últimas 50. Buscando, se mira entre todas y se enseñan hasta 100.
   // Si la venta volvió con un aviso, el formulario trae lo que se había escrito.
   const pideConfirmar = parametros.confirmar === "1";
+  const pideConfirmarNota = parametros.confirmar_nota === "1";
+  // La foto que se puso en el intento anterior sigue guardada: no hay que repetirla.
+  const fotoEnEspera = escrito(parametros, "foto_espera");
+  const seLee = lectorDisponible();
   const [clientes, productos, tasa, ventas] = await Promise.all([
     listarClientes(),
     listarProductos(true),
@@ -168,8 +175,20 @@ export default async function PaginaVentas({
               <div className="formulario__fila">
                 <div className="campo">
                   <label htmlFor="venta-foto">Si ya la entregaste: foto de la nota firmada</label>
+                  {fotoEnEspera && <input type="hidden" name="foto_espera" value={fotoEnEspera} />}
                   <EntradaFoto nombre="foto" id="venta-foto" opcional soloFoto />
-                  <span className="ayuda">La hoja con la firma del cliente. Obligatoria si ya se entregó.</span>
+                  <span className="ayuda">
+                    {fotoEnEspera
+                      ? "La foto que pusiste ya está guardada; solo pon otra si quieres cambiarla."
+                      : "La hoja con la firma del cliente. Obligatoria si ya se entregó."}
+                    {seLee && " Se lee sola: si no es la nota, o su fecha o su suma no cuadran con lo anotado, avisa."}
+                  </span>
+                  {pideConfirmarNota && (
+                    <label className={estilos.casilla}>
+                      <input type="checkbox" name="confirmar_nota" value="1" />
+                      <span>Ya revisé la foto de la nota: guardar igual</span>
+                    </label>
+                  )}
                 </div>
                 <div className="campo">
                   <label htmlFor="venta-entrega-prevista">Si queda por entregar: día previsto</label>

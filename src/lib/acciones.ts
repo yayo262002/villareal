@@ -53,6 +53,9 @@ import { listarProductos } from "./productos";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { TAMANO_MAXIMO_ADJUNTO, buscarAdjunto, eliminarAdjunto, esTipoAdjunto, guardarAdjunto } from "./adjuntos";
+import { anotarLecturaDeFoto, aparcarFoto, buscarFotoEnEspera, olvidarFotoEnEspera, pasarFotoAAdjuntos } from "./fotos-en-espera";
+import { lectorDisponible, leerNota } from "./lector-de-notas";
+import { compararNota, interpretarLectura, type NotaLeida } from "./nota-leida";
 import { guardarCopiaNube } from "./copias-nube";
 import {
   buscarResena,
@@ -66,7 +69,7 @@ import {
   quitarResenasDeEjemplo,
 } from "./resenas";
 import { leerResena } from "./resenas-texto";
-import { esMetodoPago, esUnidad, hoy, monedaDelMetodo, precioParaCliente } from "./dinero";
+import { esMetodoPago, esUnidad, hoy, monedaDelMetodo, precioParaCliente, redondear } from "./dinero";
 
 /**
  * Todas las acciones del panel. Cada una comprueba la sesión primero: una
@@ -142,26 +145,66 @@ function archivoDe(datos: FormData, campo: string): File | null {
   return valor instanceof File && valor.size > 0 ? valor : null;
 }
 
-/**
- * La foto de la nota firmada que exige una entrega. Se comprueba antes de
- * guardar nada, para que una foto mala no deje una venta a medias. Devuelve
- * el motivo si no vale.
- */
-function revisarFotoDeLaNota(foto: File | null): string | null {
-  if (!foto) return "Si ya la entregaste, adjunta la foto de la nota firmada por el cliente.";
+/** La foto de la nota firmada que exige una entrega: una foto, de menos de 4 MB. Devuelve el motivo si no vale. */
+function revisarFotoDeLaNota(foto: File): string | null {
   if (!esTipoAdjunto(foto.type) || foto.type === "application/pdf") return "La foto de la nota tiene que ser una foto (JPG, PNG o WebP).";
   if (foto.size > TAMANO_MAXIMO_ADJUNTO) return "La foto de la nota pesa más de 4 MB. Hazla con menos resolución.";
   return null;
 }
 
-async function guardarFotoDeLaNota(clienteId: number, ventaId: number, foto: File): Promise<void> {
-  await guardarAdjunto({
-    cliente_id: clienteId,
-    venta_id: ventaId,
-    descripcion: `Nota N.º ${numeroDeNota(ventaId)} firmada`,
-    tipo: foto.type,
-    contenido: new Uint8Array(await foto.arrayBuffer()),
-  });
+const SIN_FOTO = "Si ya la entregaste, adjunta la foto de la nota firmada por el cliente.";
+
+type FotoDeLaNota = { id: number; tipo: string; datos: Uint8Array; lectura: string | null };
+
+/**
+ * La foto de la nota firmada, recién hecha o aparcada de un intento
+ * anterior. La recién hecha se aparca en el momento: si el formulario
+ * vuelve con un aviso, la trae por su número y no hay que repetirla.
+ * `mala` es el motivo si la foto nueva no vale.
+ */
+async function recogerFotoDeLaNota(datos: FormData): Promise<{ foto: FotoDeLaNota | null; mala: string | null }> {
+  const nueva = archivoDe(datos, "foto");
+  if (nueva) {
+    const mala = revisarFotoDeLaNota(nueva);
+    if (mala) return { foto: null, mala };
+    const contenido = new Uint8Array(await nueva.arrayBuffer());
+    const id = await aparcarFoto(nueva.type, contenido);
+    return { foto: { id, tipo: nueva.type, datos: contenido, lectura: null }, mala: null };
+  }
+  const aparcada = await buscarFotoEnEspera(numero(datos, "foto_espera") ?? 0);
+  if (!aparcada) return { foto: null, mala: null };
+  return { foto: { id: aparcada.id, tipo: aparcada.tipo, datos: new Uint8Array(aparcada.datos), lectura: aparcada.lectura }, mala: null };
+}
+
+type Lectura = { nota: NotaLeida | null; intentada: boolean };
+
+/**
+ * Lee la nota con el lector, una sola vez por foto: lo leído se guarda con
+ * ella. `intentada` dice si hay lector; `nota` es null si no se pudo leer.
+ */
+async function leerLaNota(foto: FotoDeLaNota): Promise<Lectura> {
+  if (!lectorDisponible()) return { nota: null, intentada: false };
+  if (foto.lectura !== null) return { nota: interpretarLectura(foto.lectura), intentada: true };
+  const nota = await leerNota(foto);
+  if (nota) await anotarLecturaDeFoto(foto.id, JSON.stringify(nota));
+  return { nota, intentada: true };
+}
+
+/** Lo que se le dice al dueño de la lectura, después de guardar. */
+function comentarioDeLaLectura(lectura: Lectura, reparos: string[]): string {
+  if (!lectura.intentada) return "";
+  if (!lectura.nota) return " (La nota no se pudo leer esta vez.)";
+  return reparos.length === 0 ? " La nota se leyó y cuadra con lo anotado." : " La nota se leyó y se guardó con los avisos que revisaste.";
+}
+
+/** El aviso con lo que no cuadra, y qué hacer. */
+function avisoDeLaNota(reparos: string[], despues: string): string {
+  return `${reparos.join(" ")} Revisa la foto y lo anotado; si está bien así, marca «Ya revisé la foto de la nota» y ${despues}.`;
+}
+
+/** La foto aparcada pasa a ser la de esa venta. */
+async function guardarFotoDeLaNota(foto: FotoDeLaNota, clienteId: number, ventaId: number): Promise<void> {
+  await pasarFotoAAdjuntos(foto.id, clienteId, ventaId, `Nota N.º ${numeroDeNota(ventaId)} firmada`);
 }
 
 // ---------- Sesión ----------
@@ -590,9 +633,12 @@ export async function guardarVenta(datos: FormData): Promise<void> {
       if (valor) escrito.set(`${campo}_${p.id}`, valor);
     }
   }
+  // La foto de la nota se aparca desde el principio: si el formulario vuelve con un aviso, no hay que repetirla.
+  const { foto, mala: fotoMala } = await recogerFotoDeLaNota(datos);
+  if (foto) escrito.set("foto_espera", String(foto.id));
   // Con el tipo escrito aparte, TypeScript sabe que después de `volver` no se sigue.
-  const volver: (mensaje: string, confirmar?: boolean) => never = (mensaje, confirmar = false) => {
-    if (confirmar) escrito.set("confirmar", "1");
+  const volver: (mensaje: string, casilla?: "confirmar" | "confirmar_nota") => never = (mensaje, casilla) => {
+    if (casilla) escrito.set(casilla, "1");
     volverConError(`/admin/ventas?${escrito.toString()}`, mensaje);
   };
 
@@ -622,7 +668,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   const revision = revisarVenta(escritas);
   if (revision.errores.length > 0) volver(revision.errores.join(" "));
   if (revision.avisos.length > 0 && texto(datos, "confirmar") !== "1") {
-    volver(`${revision.avisos.join(" ")} Si es así, marca «Los precios y las cantidades son correctos» y guarda otra vez.`, true);
+    volver(`${revision.avisos.join(" ")} Si es así, marca «Los precios y las cantidades son correctos» y guarda otra vez.`, "confirmar");
   }
 
   const lineas: LineaVenta[] = escritas.map((l) => ({
@@ -631,17 +677,24 @@ export async function guardarVenta(datos: FormData): Promise<void> {
     precio_unitario_usd: l.precio!,
     piezas: l.piezas,
   }));
+  // El mismo total que calcula `crearVenta`, para compararlo con el de la nota.
+  const total = redondear(lineas.reduce((s, l) => s + l.cantidad * l.precio_unitario_usd, 0));
 
   // Lo que se lleva al cliente queda por entregar y entra en el despacho.
   // La entrega se elige a mano: si ya se entregó, va con la foto de la nota firmada; si no, con el día previsto.
   const entrega = texto(datos, "entrega");
   if (entrega !== "local" && entrega !== "despacho") volver("Elige si ya la entregaste o si queda por entregar.");
   const porEntregar = entrega === "despacho";
-  const foto = archivoDe(datos, "foto");
   const entregaPrevista = texto(datos, "entrega_prevista");
+  let lectura: Lectura = { nota: null, intentada: false };
+  let reparos: string[] = [];
   if (!porEntregar) {
-    const malaFoto = revisarFotoDeLaNota(foto);
-    if (malaFoto) volver(malaFoto);
+    if (fotoMala) volver(fotoMala);
+    if (!foto) volver(SIN_FOTO);
+    // La foto se lee: si no es la nota, o su fecha o su suma no cuadran con lo anotado, se avisa antes de guardar.
+    lectura = await leerLaNota(foto);
+    reparos = lectura.nota ? compararNota(lectura.nota, { fecha, total }) : [];
+    if (reparos.length > 0 && texto(datos, "confirmar_nota") !== "1") volver(avisoDeLaNota(reparos, "guarda otra vez"), "confirmar_nota");
   } else if (!/^\d{4}-\d{2}-\d{2}$/.test(entregaPrevista) || Number.isNaN(new Date(entregaPrevista + "T00:00:00Z").getTime())) {
     volver("Escribe el día previsto de entrega, para que el resumen te lo recuerde.");
   } else if (entregaPrevista < fecha) {
@@ -652,14 +705,19 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   try {
     const tasa = await leerTasa();
     ventaId = await crearVenta(clienteId, fecha, lineas, texto(datos, "nota"), tasa?.valor ?? null, porEntregar, porEntregar ? entregaPrevista : null);
-    if (!porEntregar && foto) await guardarFotoDeLaNota(clienteId, ventaId, foto);
+    if (!porEntregar && foto) await guardarFotoDeLaNota(foto, clienteId, ventaId);
+    else if (foto) await olvidarFotoEnEspera(foto.id);
   } catch (error) {
+    // Si la venta ya entró y solo falló la foto, no se vuelve al formulario: se anotaría dos veces.
+    if (ventaId) volverConExito(`/admin/ventas/${ventaId}/nota`, `Venta registrada, pero la foto de la nota no se guardó: ${mensajeDe(error)} Súbela desde la ficha del cliente.`);
     volver(mensajeDe(error));
   }
   // A la nota de entrega, para mandarla o imprimirla en el momento.
   volverConExito(
     `/admin/ventas/${ventaId}/nota`,
-    porEntregar ? "Venta registrada. Queda por entregar: ya está en el despacho y en el resumen." : "Venta registrada con la foto de la nota firmada.",
+    porEntregar
+      ? "Venta registrada. Queda por entregar: ya está en el despacho y en el resumen."
+      : `Venta registrada con la foto de la nota firmada.${comentarioDeLaLectura(lectura, reparos)}`,
   );
 }
 
@@ -676,17 +734,29 @@ export async function cambiarEntrega(datos: FormData): Promise<void> {
   const entregada = texto(datos, "entregada") === "1";
   const destino = volverA(datos, `/admin/ventas/${id}/nota`);
   // Entregar es entregar con la nota firmada: sin su foto no se marca.
-  const foto = archivoDe(datos, "foto");
+  const { foto, mala } = await recogerFotoDeLaNota(datos);
+  let lectura: Lectura = { nota: null, intentada: false };
+  let reparos: string[] = [];
   if (entregada) {
-    const malaFoto = revisarFotoDeLaNota(foto);
-    if (malaFoto) volverConError(destino, malaFoto);
+    if (mala) volverConError(destino, mala);
+    if (!foto) volverConError(destino, SIN_FOTO);
+    lectura = await leerLaNota(foto);
+    reparos = lectura.nota ? compararNota(lectura.nota, { fecha: venta.fecha, total: venta.total_usd }) : [];
+    if (reparos.length > 0 && texto(datos, "confirmar_nota") !== "1") {
+      // A la nota, que enseña la foto ya guardada y la casilla para confirmar, y sabe adónde volver después.
+      volverConError(
+        `/admin/ventas/${id}/nota?foto_espera=${foto.id}&confirmar_nota=1&volver_a=${encodeURIComponent(destino)}`,
+        avisoDeLaNota(reparos, "vuelve a marcarla entregada"),
+      );
+    }
   }
   await marcarEntrega(id, entregada);
-  if (entregada && foto) await guardarFotoDeLaNota(venta.cliente_id, id, foto);
+  if (entregada && foto) await guardarFotoDeLaNota(foto, venta.cliente_id, id);
+  else if (foto) await olvidarFotoEnEspera(foto.id);
   volverConExito(
     destino,
     entregada
-      ? `Nota ${numeroDeNota(id)} entregada a ${venta.cliente_nombre}, con su foto guardada.`
+      ? `Nota ${numeroDeNota(id)} entregada a ${venta.cliente_nombre}, con su foto guardada.${comentarioDeLaLectura(lectura, reparos)}`
       : `La nota ${numeroDeNota(id)} vuelve a estar por entregar.`,
   );
 }

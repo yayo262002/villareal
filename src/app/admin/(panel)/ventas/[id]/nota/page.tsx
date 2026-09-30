@@ -18,6 +18,9 @@ import estilos from "../../../panel.module.css";
 
 type Parametros = { params: Promise<{ id: string }>; searchParams: Promise<ParametrosAviso> };
 
+/** Marcar entregada puede incluir leer la foto de la nota, que tarda unos segundos. */
+export const maxDuration = 60;
+
 export async function generateMetadata({ params }: Parametros) {
   const { id } = await params;
   return { title: `Nota de entrega ${numeroDeNota(Number(id))}` };
@@ -35,6 +38,11 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
   if (!venta) notFound();
   const cliente = await buscarCliente(venta.cliente_id);
   if (!cliente) notFound();
+
+  // Si la foto vino con reparos desde el despacho, sigue guardada y se confirma desde aquí; después se vuelve adonde se estaba.
+  const fotoEnEspera = typeof parametros.foto_espera === "string" ? parametros.foto_espera : "";
+  const pideConfirmarNota = parametros.confirmar_nota === "1";
+  const volverA = typeof parametros.volver_a === "string" && parametros.volver_a.startsWith("/admin") ? parametros.volver_a : `/admin/ventas/${venta.id}/nota`;
 
   const [ventas, tasaDeHoy] = await Promise.all([listarVentasDeCliente(cliente.id), leerTasa()]);
   const cuenta = aplicarPagos(ventas, cliente.total_pagado_usd).find((c) => c.id === venta.id);
@@ -81,7 +89,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
         <form action={cambiarEntrega} className={estilos.entrega} encType="multipart/form-data">
           <input type="hidden" name="id" value={venta.id} />
           <input type="hidden" name="entregada" value={venta.por_entregar ? "1" : "0"} />
-          <input type="hidden" name="volver_a" value={`/admin/ventas/${venta.id}/nota`} />
+          <input type="hidden" name="volver_a" value={volverA} />
           {venta.por_entregar ? (
             <>
               <span className={`${estilos.estado} ${estilos["estado--parcial"]}`}>Por entregar</span>
@@ -90,9 +98,16 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
                 Está en la <Link href="/admin/despacho">ruta de despacho</Link>.
               </span>
               <label htmlFor="foto-entrega" className="ayuda">
-                Foto de la nota firmada:
+                {fotoEnEspera ? "La foto que pusiste ya está guardada; solo pon otra si quieres cambiarla:" : "Foto de la nota firmada:"}
               </label>
-              <EntradaFoto nombre="foto" id="foto-entrega" />
+              {fotoEnEspera && <input type="hidden" name="foto_espera" value={fotoEnEspera} />}
+              <EntradaFoto nombre="foto" id="foto-entrega" opcional={Boolean(fotoEnEspera)} />
+              {pideConfirmarNota && (
+                <label className={estilos.casilla}>
+                  <input type="checkbox" name="confirmar_nota" value="1" />
+                  <span>Ya revisé la foto de la nota: marcarla entregada igual</span>
+                </label>
+              )}
               <button type="submit" className={`boton ${estilos.botonPequeno}`}>
                 Marcar entregada
               </button>
