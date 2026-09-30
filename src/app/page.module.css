@@ -80,6 +80,20 @@
   line-height: 1.15;
   color: var(--color-marca-oscuro);
 }
+/* Lo que dijo un cliente, en una línea, con la raya dorada de las reseñas. */
+.cita {
+  padding: var(--espacio-2) var(--espacio-3);
+  border-left: 3px solid var(--color-acento);
+  background: var(--color-superficie-suave);
+  border-radius: 0 var(--radio) var(--radio) 0;
+  font-size: 15px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.cita span {
+  color: var(--color-texto-suave);
+  white-space: nowrap;
+}
 .acciones {
   display: grid;
   grid-template-columns: 1fr 1fr;

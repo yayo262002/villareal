@@ -86,6 +86,28 @@ export async function resenasDeProducto(productoId: number, conLasDeEjemplo: boo
   );
 }
 
+/** Una reseña cabe en la tarjeta de la portada si es corta. */
+export const LARGO_MAXIMO_DE_CITA = 120;
+
+export type Cita = { producto_id: number; autor: string; texto: string };
+
+/**
+ * Para la portada: de cada producto, la reseña más corta que se pueda
+ * enseñar al público (publicada, con permiso y de verdad). Ninguna de
+ * ejemplo llega aquí: la portada la ve todo el mundo.
+ */
+export async function citasParaLaPortada(): Promise<Map<number, Cita>> {
+  const cortas = await filas<Cita>(
+    `select producto_id, autor, texto from resenas
+     where publicada = 1 and con_permiso = 1 and de_ejemplo = 0 and length(texto) <= ?
+     order by producto_id, length(texto), id desc`,
+    [LARGO_MAXIMO_DE_CITA],
+  );
+  const porProducto = new Map<number, Cita>();
+  for (const cita of cortas) if (!porProducto.has(cita.producto_id)) porProducto.set(cita.producto_id, cita);
+  return porProducto;
+}
+
 export async function buscarResena(id: number): Promise<Resena | null> {
   return fila<Resena>(`${CONSULTA_RESENAS} where r.id = ?`, [id]);
 }

@@ -711,6 +711,11 @@ async function probarResenas() {
         r.destino.includes("Ya sale en la página") && legible((await pagina(mozzarella, "")).html).includes("«Al rallarla no se apelmaza.»"),
         r.destino,
       );
+      const portadaConCita = legible((await portadaCon("Al rallarla no se apelmaza")).html);
+      comprobar(
+        "la portada enseña una frase corta de un cliente de verdad, nunca una de ejemplo",
+        portadaConCita.includes("«Al rallarla no se apelmaza.» <span") && portadaConCita.includes("— Pizzería 33 de la prueba") && !portadaConCita.includes("de ejemplo"),
+      );
       const [ejemplo] = await consultar("select id from resenas where de_ejemplo = 1 limit 1");
       // Una de ejemplo no tiene botón de publicar: se intenta con el formulario de otra.
       r = await enviar("/admin/resenas", marca, { id: String(ejemplo.id), publicada: "1" });

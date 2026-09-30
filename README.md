@@ -187,6 +187,8 @@ datos/                    La base de datos (fuera de Git)
   «Ver detalles», que lleva a esa página, y «Pedir», que abre WhatsApp.
 - **Reseñas.** En la página de cada producto, «Por qué elegirlo» enseña
   primero lo que dicen los negocios que lo compran y después las ventajas.
+  En la portada, cada tarjeta lleva además la reseña más corta de ese
+  producto (hasta 120 letras), con el nombre de quien la dijo.
   El dueño le pide el comentario al cliente y lo escribe en el panel, en
   Reseñas, con las palabras del cliente: producto, quién lo dice, qué
   negocio es y qué dijo. Una reseña se puede esconder sin borrarla.

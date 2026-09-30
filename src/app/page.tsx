@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { enlaceMapa, enlaceWhatsapp, negocio, whatsappLegible } from "@/config/negocio";
 import { listarProductos } from "@/lib/productos";
 import { leerTasa } from "@/lib/ajustes";
+import { citasParaLaPortada } from "@/lib/resenas";
 import { rutaProducto } from "@/lib/enlaces";
 import {
   CabeceraPublica,
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
  * pendiente.
  */
 export default async function PaginaInicio() {
-  const [productos, tasa] = await Promise.all([listarProductos(true), leerTasa()]);
+  const [productos, tasa, citas] = await Promise.all([listarProductos(true), leerTasa(), citasParaLaPortada()]);
   const whatsapp = enlaceWhatsapp("Hola, quiero información sobre sus productos.");
   const mayor = enlaceWhatsapp("Hola, tengo un negocio y quiero precio al mayor.");
   const mapa = enlaceMapa();
@@ -59,6 +60,7 @@ export default async function PaginaInicio() {
               {productos.map((p) => {
                 const ruta = rutaProducto(p);
                 const pedir = enlaceWhatsapp(`Hola, quiero pedir ${p.nombre.toLowerCase()}.`);
+                const cita = citas.get(p.id);
                 return (
                   <li key={p.id} className={estilos.producto}>
                     <Link href={ruta} className={estilos.productoCabecera}>
@@ -66,6 +68,11 @@ export default async function PaginaInicio() {
                       <h2 className={estilos.nombre}>{p.nombre}</h2>
                     </Link>
                     <PreciosProducto producto={p} tasa={tasa?.valor ?? null} />
+                    {cita && (
+                      <p className={estilos.cita}>
+                        «{cita.texto}» <span>— {cita.autor}</span>
+                      </p>
+                    )}
                     <div className={estilos.acciones}>
                       <Link href={ruta} className="boton boton--secundario">
                         Ver detalles
