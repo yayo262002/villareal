@@ -50,6 +50,18 @@ import {
 import { buscarVenta, crearVenta, eliminarVenta, marcarEntrega, ultimoPrecioAlCliente, type LineaVenta } from "./ventas";
 import { lineaRellena, revisarFecha, revisarVenta, type LineaEscrita } from "./venta-sensata";
 import { listarProductos } from "./productos";
+import {
+  actualizarVariante,
+  buscarVariante,
+  cambiarActivaVariante,
+  crearVariante,
+  eliminarVariante,
+  guardarFotoDeVariante,
+  listarVariantes,
+  quitarFotoDeVariante,
+  type DatosVariante,
+} from "./variantes";
+import { vendiblesDe } from "./catalogo";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { TAMANO_MAXIMO_ADJUNTO, buscarAdjunto, eliminarAdjunto, esTipoAdjunto, guardarAdjunto } from "./adjuntos";
@@ -560,6 +572,92 @@ export async function editarProducto(datos: FormData): Promise<void> {
   volverConExito("/admin/productos", `«${nombre}» guardado. La web ya lo muestra así.`);
 }
 
+// ---------- Variantes: las marcas o presentaciones de un producto ----------
+
+/** Nombre, descripción, costo y precios de una variante, del formulario. */
+function leerVariante(datos: FormData): DatosVariante {
+  const nombre = texto(datos, "nombre");
+  if (!nombre) volverConError("/admin/productos", "La marca o presentación necesita un nombre («Kemmental», «Sortilegio 500 g»).");
+  const variante: DatosVariante = {
+    nombre,
+    descripcion: texto(datos, "descripcion"),
+    costo_usd: numero(datos, "costo_usd"),
+    precio_usd: numero(datos, "precio_usd"),
+    precio_mayor_usd: numero(datos, "precio_mayor_usd"),
+  };
+  for (const valor of [variante.costo_usd, variante.precio_usd, variante.precio_mayor_usd]) {
+    if (valor !== null && valor < 0) volverConError("/admin/productos", "Costo y precios no pueden ser negativos.");
+  }
+  return variante;
+}
+
+/** La foto de una variante, si viene en el formulario. */
+async function ponerFotoDeVariante(datos: FormData, varianteId: number): Promise<string> {
+  const foto = archivoDe(datos, "foto");
+  if (!foto) return "";
+  try {
+    await guardarFotoDeVariante(varianteId, foto.type, new Uint8Array(await foto.arrayBuffer()));
+    return " Con su foto.";
+  } catch (error) {
+    return ` La foto no se guardó: ${mensajeDe(error)}`;
+  }
+}
+
+export async function guardarVariante(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const productoId = numero(datos, "producto_id");
+  const producto = productoId ? await buscarProducto(productoId) : null;
+  if (!productoId || !producto) volverConError("/admin/productos", "No se encontró el producto.");
+  const variante = leerVariante(datos);
+  const id = await crearVariante(producto, variante);
+  const foto = await ponerFotoDeVariante(datos, id);
+  volverConExito("/admin/productos", `«${variante.nombre}» añadida a ${producto.nombre}.${foto} La web ya la enseña.`);
+}
+
+export async function editarVariante(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "variante_id");
+  const variante = id ? await buscarVariante(id) : null;
+  const producto = variante ? await buscarProducto(variante.producto_id) : null;
+  if (!id || !variante || !producto) volverConError("/admin/productos", "No se encontró la marca o presentación.");
+  const nueva = leerVariante(datos);
+  await actualizarVariante(id, producto, nueva);
+  const foto = await ponerFotoDeVariante(datos, id);
+  volverConExito("/admin/productos", `«${producto.nombre} ${nueva.nombre}» guardada.${foto}`);
+}
+
+export async function alternarVariante(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "variante_id");
+  const variante = id ? await buscarVariante(id) : null;
+  if (!id || !variante) volverConError("/admin/productos", "No se encontró la marca o presentación.");
+  const activa = texto(datos, "activo") === "1";
+  await cambiarActivaVariante(id, activa);
+  volverConExito("/admin/productos", activa ? `«${variante.nombre}» vuelve a estar en la web.` : `«${variante.nombre}» escondida: no sale en la web ni en las ventas.`);
+}
+
+export async function retirarFotoDeVariante(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "variante_id");
+  const variante = id ? await buscarVariante(id) : null;
+  if (!id || !variante) volverConError("/admin/productos", "No se encontró la marca o presentación.");
+  await quitarFotoDeVariante(id);
+  volverConExito("/admin/productos", `Foto quitada de «${variante.nombre}».`);
+}
+
+/** Solo se borra la que no se vendió nunca: las notas nombran a las demás. */
+export async function borrarVariante(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "variante_id");
+  const variante = id ? await buscarVariante(id) : null;
+  if (!id || !variante) volverConError("/admin/productos", "No se encontró la marca o presentación.");
+  const resultado = await eliminarVariante(id);
+  if (resultado === "con_ventas") {
+    volverConError("/admin/productos", `«${variante.nombre}» ya está en alguna nota de venta: no se puede borrar. Escóndela y dejará de salir en la web y en las ventas.`);
+  }
+  volverConExito("/admin/productos", `«${variante.nombre}» eliminada.`);
+}
+
 export async function confirmarPrecios(): Promise<void> {
   await exigirSesion();
   await quitarPreciosDeEjemplo();
@@ -622,15 +720,17 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   await exigirSesion();
   const clienteId = numero(datos, "cliente_id");
   const fecha = texto(datos, "fecha");
-  const productos = await listarProductos(true);
+  // Una fila por producto; de los que tienen marcas o presentaciones, una por cada una.
+  const [productos, variantes] = await Promise.all([listarProductos(true), listarVariantes()]);
+  const vendibles = vendiblesDe(productos, variantes);
 
   // Con lo escrito en la dirección, el formulario vuelve relleno.
   const escrito = new URLSearchParams();
   for (const campo of ["cliente_id", "fecha", "entrega", "entrega_prevista", "nota"]) if (texto(datos, campo)) escrito.set(campo, texto(datos, campo));
-  for (const p of productos) {
+  for (const v of vendibles) {
     for (const campo of ["piezas", "cantidad", "precio"]) {
-      const valor = texto(datos, `${campo}_${p.id}`);
-      if (valor) escrito.set(`${campo}_${p.id}`, valor);
+      const valor = texto(datos, `${campo}_${v.clave}`);
+      if (valor) escrito.set(`${campo}_${v.clave}`, valor);
     }
   }
   // La foto de la nota se aparca desde el principio: si el formulario vuelve con un aviso, no hay que repetirla.
@@ -648,20 +748,21 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   const malaFecha = revisarFecha(fecha, hoy());
   if (malaFecha) volver(malaFecha);
 
-  const escritas: (LineaEscrita & { producto_id: number })[] = [];
-  for (const p of productos) {
+  const escritas: (LineaEscrita & { producto_id: number; variante_id: number | null })[] = [];
+  for (const v of vendibles) {
     const linea = {
-      producto_id: p.id,
-      producto: p.nombre,
-      unidad: p.unidad,
-      piezas: numero(datos, `piezas_${p.id}`),
-      cantidad: numero(datos, `cantidad_${p.id}`),
-      precio: numero(datos, `precio_${p.id}`),
-      precioDeLista: precioParaCliente(p, cliente.tipo),
+      producto_id: v.producto_id,
+      variante_id: v.variante_id,
+      producto: v.nombre,
+      unidad: v.unidad,
+      piezas: numero(datos, `piezas_${v.clave}`),
+      cantidad: numero(datos, `cantidad_${v.clave}`),
+      precio: numero(datos, `precio_${v.clave}`),
+      precioDeLista: precioParaCliente(v, cliente.tipo),
       ultimoPrecio: null as number | null,
     };
     if (!lineaRellena(linea)) continue;
-    linea.ultimoPrecio = await ultimoPrecioAlCliente(clienteId, p.id);
+    linea.ultimoPrecio = await ultimoPrecioAlCliente(clienteId, v.producto_id, v.variante_id);
     escritas.push(linea);
   }
 
@@ -673,6 +774,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
 
   const lineas: LineaVenta[] = escritas.map((l) => ({
     producto_id: l.producto_id,
+    variante_id: l.variante_id,
     cantidad: l.cantidad!,
     precio_unitario_usd: l.precio!,
     piezas: l.piezas,

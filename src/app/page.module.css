@@ -80,6 +80,65 @@
   line-height: 1.15;
   color: var(--color-marca-oscuro);
 }
+/* «2 marcas o presentaciones», bajo el nombre, en la tarjeta de la portada. */
+.marcas {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+
+/* Las marcas o presentaciones en la página del producto: foto a la izquierda, lo demás al lado. */
+.variantes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--espacio-3);
+}
+.variante {
+  display: flex;
+  gap: var(--espacio-3);
+  align-items: flex-start;
+  padding: var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+.varianteFoto {
+  flex: none;
+  width: 112px;
+  height: 112px;
+  object-fit: cover;
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+.varianteDibujo {
+  flex: none;
+  width: 80px;
+  height: 80px;
+  margin: var(--espacio-3);
+}
+.varianteTexto {
+  min-width: 0;
+  display: grid;
+  gap: var(--espacio-2);
+}
+.varianteNombre {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--color-marca-oscuro);
+}
+.varianteDetalle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--color-texto-suave);
+}
+.varianteBoton {
+  justify-self: start;
+}
 /* Lo que dijo un cliente, en una línea, con la raya dorada de las reseñas. */
 .cita {
   padding: var(--espacio-2) var(--espacio-3);

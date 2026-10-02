@@ -47,6 +47,9 @@ const fotoFirmada = () => new File([png], "nota-firmada.png", { type: "image/png
 /** Una «foto» con la lectura escrita dentro: el lector de las pruebas la saca de ahí en vez de mirar la imagen. */
 const fotoLeida = (lectura) => new File([png, JSON.stringify(lectura)], "nota-firmada.png", { type: "image/png" });
 
+/** La marca de pecorino que se crea en la prueba de precios y se vende después. */
+let varianteSortilegio = 0;
+
 let fallos = 0;
 function comprobar(nombre, condicion, detalle = "") {
   console.log(`${condicion ? "ok   " : "FALLO"} ${nombre}${condicion ? "" : " → " + detalle}`);
@@ -112,8 +115,8 @@ async function portadaCon(texto) {
 }
 
 /** El identificador de la acción del formulario que contiene `marca`. */
-function accionDe(html, marca) {
-  const formulario = (html.match(/<form[\s\S]*?<\/form>/g) ?? []).find((f) => f.includes(marca));
+function accionDe(html, marca, segundaMarca = "") {
+  const formulario = (html.match(/<form[\s\S]*?<\/form>/g) ?? []).find((f) => f.includes(marca) && f.includes(segundaMarca));
   if (!formulario) throw new Error(`No hay formulario con ${marca}`);
   const accion = formulario.match(/name="(\$ACTION_ID_[a-f0-9]+)"/);
   if (!accion) throw new Error(`El formulario de ${marca} no lleva acción`);
@@ -121,11 +124,11 @@ function accionDe(html, marca) {
 }
 
 /** Envía un formulario como lo haría el navegador sin JavaScript. */
-async function enviar(ruta, marca, campos, conCookie = cookie, cabeceras = {}) {
+async function enviar(ruta, marca, campos, conCookie = cookie, cabeceras = {}, segundaMarca = "") {
   const { html, status } = await pagina(ruta, conCookie);
   if (status !== 200) throw new Error(`GET ${ruta} → ${status}`);
   const datos = new FormData();
-  datos.set(accionDe(html, marca), "");
+  datos.set(accionDe(html, marca, segundaMarca), "");
   for (const [k, v] of Object.entries(campos)) datos.set(k, v);
   const t = Date.now();
   const r = await fetch(base + ruta, { method: "POST", headers: { cookie: conCookie, ...cabeceras }, body: datos, redirect: "manual" });
@@ -311,6 +314,49 @@ async function probarPrecios() {
   comprobar("un producto que no existe da 404", (await pagina("/producto/999-nada", "")).status === 404 && (await pagina("/producto/queso", "")).status === 404);
   comprobar("web: huevos y pecorino rallado, sin precio inventado", web.includes("Huevos") && web.includes("Queso pecorino rallado") && web.includes("Consulta el precio del día"));
   comprobar("web: pedir cada producto por WhatsApp", web.includes("quiero%20pedir%20queso%20amarillo"));
+
+  // Marcas y presentaciones: dos bolsas de pecorino. La portada dice «desde» con la más barata; la página las enseña con su foto.
+  r = await enviar("/admin/productos", 'id="variante-nueva-4-nombre"', {
+    producto_id: "4", nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4", precio_mayor_usd: "3.8", foto: fotoFirmada(),
+  });
+  comprobar("añadir una marca con foto a un producto", r.destino.includes("«Sortilegio 500 g» añadida") && r.destino.includes("Con su foto"), r.destino);
+  varianteSortilegio = Number((await consultar("select max(id) as id from variantes"))[0].id);
+  r = await enviar("/admin/productos", 'id="variante-nueva-4-nombre"', { producto_id: "4", nombre: "Guaralac 500 g", descripcion: "", costo_usd: "", precio_usd: "3.5", precio_mayor_usd: "" });
+  comprobar("añadir otra sin foto", r.destino.includes("«Guaralac 500 g» añadida"), r.destino);
+  const guaralacId = Number((await consultar("select max(id) as id from variantes"))[0].id);
+  const portadaMarcas = (await portadaCon("Bs 127,75")).html;
+  comprobar(
+    "portada: el pecorino dice «desde» con la más barata al detal (3,50) y al mayor (3,80), y cuántas marcas hay",
+    portadaMarcas.includes("desde </span>Bs 127,75") && portadaMarcas.includes("desde </span>Bs 138,70") && portadaMarcas.includes("2 marcas o presentaciones"),
+    portadaMarcas.slice(Math.max(0, portadaMarcas.indexOf("pecorino rallado</h2>") - 100), portadaMarcas.indexOf("pecorino rallado</h2>") + 900).replace(/\s+/g, " "),
+  );
+  const fichaPecorino = await pagina("/producto/4-queso-pecorino-rallado", "");
+  comprobar(
+    "página del pecorino: las dos marcas, con foto, descripción, precio y su botón de pedir",
+    fichaPecorino.html.includes("Marcas y presentaciones") && fichaPecorino.html.includes("Sortilegio 500 g") && fichaPecorino.html.includes("Guaralac 500 g") &&
+      fichaPecorino.html.includes(`/foto-variante/${varianteSortilegio}?v=`) && fichaPecorino.html.includes("Rallado, semigraso, madurado") &&
+      fichaPecorino.html.includes("Bs 146,00") && fichaPecorino.html.includes("quiero%20pedir%20queso%20pecorino%20rallado%20sortilegio%20500%20g"),
+  );
+  const fotoVariante = await fetch(base + `/foto-variante/${varianteSortilegio}`);
+  comprobar("la foto de la marca se sirve a la web", fotoVariante.status === 200 && fotoVariante.headers.get("content-type") === "image/png");
+  comprobar("la vista previa del pecorino dice «desde»", (await fetch(base + "/producto/4-queso-pecorino-rallado/opengraph-image")).status === 200);
+  r = await enviar("/admin/productos", `id="variante-${varianteSortilegio}-nombre"`, { variante_id: String(varianteSortilegio), nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4.2", precio_mayor_usd: "3.8" });
+  comprobar("cambiar el precio de una marca", r.destino.includes("guardada") && (await pagina("/admin/productos")).html.includes('value="4.2"'), r.destino);
+  r = await enviar("/admin/productos", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "0" }, cookie, {}, 'name="activo"');
+  const portadaUna = (await portadaCon("Bs 153,30")).html;
+  comprobar(
+    "escondida una, queda el precio de la otra sin «desde» (4,20 = Bs 153,30) y la página ya no la enseña",
+    r.destino.includes("escondida") && !portadaUna.includes("desde </span>Bs 153,30") && !(await pagina("/producto/4", "")).html.includes("Guaralac"),
+    r.destino,
+  );
+  await enviar("/admin/productos", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "1" }, cookie, {}, 'name="activo"');
+  r = await enviar("/admin/productos", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio), activo: "0" }, cookie, {}, 'name="activo"');
+  comprobar(
+    "la foto de una marca escondida no se sirve al público, solo al dueño",
+    (await fetch(base + `/foto-variante/${varianteSortilegio}`)).status === 404 && (await fetch(base + `/foto-variante/${varianteSortilegio}`, { headers: { cookie } })).status === 200,
+  );
+  await enviar("/admin/productos", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio), activo: "1" }, cookie, {}, 'name="activo"');
+  await portadaCon("desde </span>Bs 127,75");
 }
 
 /** Alta de cliente, ventas, pago, cuentas, foto, descargas y borrados. */
@@ -400,6 +446,25 @@ async function probarNegocio() {
     entrega: "local", foto: fotoFirmada(),
   });
   comprobar("una nota con dos productos (8,50 + medio kilo a 7)", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
+
+  // Una marca concreta: la fila de la venta es la de esa marca, y la nota y el despacho la nombran.
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', {
+    cliente_id: String(detalId), fecha: "2026-09-16", [`cantidad_4-${varianteSortilegio}`]: "2", [`precio_4-${varianteSortilegio}`]: "4.2",
+    entrega: "despacho", entrega_prevista: "2026-09-17",
+  });
+  const ventaMarca = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  const [lineaMarca] = ventaMarca ? await consultar("select variante_id, subtotal_usd from venta_lineas where venta_id = ?", [ventaMarca]) : [{}];
+  comprobar(
+    "vender una marca concreta: la línea la guarda y la nota la nombra",
+    r.destino.includes("Venta registrada") && Number(lineaMarca.variante_id) === varianteSortilegio && cerca(Number(lineaMarca.subtotal_usd), 8.4) &&
+      (await pagina(`/admin/ventas/${ventaMarca}/nota`)).html.includes("Queso pecorino rallado Sortilegio 500 g"),
+    r.destino,
+  );
+  comprobar("el despacho dice qué cargar, con la marca", legible((await pagina(`/admin/despacho?solo=entregas`)).html).includes("Queso pecorino rallado Sortilegio 500 g"));
+  r = await enviar("/admin/productos", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio) }, cookie, {}, "Sí, eliminar");
+  comprobar("una marca ya vendida no se borra: se esconde", r.destino.includes("no se puede borrar"), r.destino);
+  await enviar(`/admin/ventas/${ventaMarca}/eliminar`, 'name="id"', { id: String(ventaMarca) });
+  comprobar("borrada la venta, la cuenta vuelve a como estaba", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
 
   // La foto de la nota se lee: si no es una nota, o su fecha o su suma no cuadran, avisa y pide revisar.
   const cuadra = { es_nota: true, fecha: "2026-09-16", lineas: [{ descripcion: "Mozzarella", precio: 7, importe: 3.5 }], total: 3.5, firmada: true };

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { direccionCompleta, enlaceCompartir, enlaceMapa, enlaceWhatsapp, negocio } from "@/config/negocio";
 import { buscarProducto, listarProductos, type Producto } from "@/lib/productos";
+import { direccionDeFotoDeVariante, variantesDeProducto, type Variante } from "@/lib/variantes";
+import { precioPublicado, type PrecioPublicado } from "@/lib/catalogo";
 import { leerTasa } from "@/lib/ajustes";
 import { resenasDeProducto } from "@/lib/resenas";
 import { haySesion } from "@/lib/sesion";
@@ -13,6 +15,7 @@ import {
   DatosEstructurados,
   LineaTasa,
   PiePublico,
+  PreciosEnLinea,
   PreciosProducto,
   datosDeLaTienda,
   ventajasDe,
@@ -58,10 +61,11 @@ export async function generateMetadata({ params }: Parametros): Promise<Metadata
   };
 }
 
-/** El producto y su precio, como los entienden los buscadores. */
-function datosDelProducto(producto: Producto): Record<string, unknown> {
+/** El producto y su precio, como los entienden los buscadores. Con marcas, los precios de todas. */
+function datosDelProducto(producto: Producto, publicado: PrecioPublicado, variantes: Variante[]): Record<string, unknown> {
   const ruta = direccionCompleta(rutaProducto(producto));
-  const precios = [producto.precio_usd, producto.precio_mayor_usd].filter((p): p is number => p !== null);
+  const conPrecios = variantes.length > 0 ? variantes : [publicado];
+  const precios = conPrecios.flatMap((v) => [v.precio_usd, v.precio_mayor_usd]).filter((p): p is number => p !== null);
   const oferta =
     precios.length === 0
       ? undefined
@@ -106,11 +110,13 @@ export default async function PaginaProducto({ params }: Parametros) {
   if (!producto) notFound();
 
   const esElDueno = await haySesion();
-  const [tasa, todos, resenas] = await Promise.all([
+  const [tasa, todos, resenas, variantes] = await Promise.all([
     leerTasa(),
     listarProductos(true),
     resenasDeProducto(producto.id, esElDueno),
+    variantesDeProducto(producto.id, true),
   ]);
+  const publicado = precioPublicado(producto, variantes);
   const ventajas = ventajasDe(producto.descripcion);
   const otros = todos.filter((p) => p.id !== producto.id);
   const nombre = producto.nombre.toLowerCase();
@@ -123,7 +129,7 @@ export default async function PaginaProducto({ params }: Parametros) {
 
   return (
     <>
-      <DatosEstructurados datos={datosDelProducto(producto)} />
+      <DatosEstructurados datos={datosDelProducto(producto, publicado, variantes)} />
       <CabeceraPublica />
 
       <main id="contenido" className={estilos.contenido}>
@@ -136,12 +142,15 @@ export default async function PaginaProducto({ params }: Parametros) {
             <header className={estilos.fichaCabecera}>
               <IlustracionProducto nombre={producto.nombre} className={estilos.dibujoGrande} />
               <h1 className={estilos.fichaNombre}>{producto.nombre}</h1>
-              <p className={estilos.fichaUnidad}>Se vende por {nombreUnidad(producto.unidad)}, al detal y al mayor</p>
+              <p className={estilos.fichaUnidad}>
+                Se vende por {nombreUnidad(producto.unidad)}, al detal y al mayor
+                {variantes.length >= 2 && ` · ${variantes.length} marcas o presentaciones`}
+              </p>
             </header>
 
             <div className={estilos.bloque}>
               <h2 className={estilos.bloqueTitulo}>Precio de hoy</h2>
-              <PreciosProducto producto={producto} tasa={tasa?.valor ?? null} />
+              <PreciosProducto producto={{ ...publicado, unidad: producto.unidad }} tasa={tasa?.valor ?? null} desde={publicado.desde} />
               <LineaTasa tasa={tasa} className={estilos.tasa} />
               {pedir && (
                 <a className={`boton boton--acento ${estilos.botonPedir}`} href={pedir} target="_blank" rel="noopener">
@@ -152,6 +161,39 @@ export default async function PaginaProducto({ params }: Parametros) {
                 Compartir este producto por WhatsApp
               </a>
             </div>
+
+            {/* Las marcas o presentaciones en que se vende, cada una con su foto y su precio. */}
+            {variantes.length > 0 && (
+              <div className={estilos.bloque}>
+                <h2 className={estilos.bloqueTitulo}>Marcas y presentaciones</h2>
+                <ul className={estilos.variantes}>
+                  {variantes.map((v) => {
+                    const foto = direccionDeFotoDeVariante(v);
+                    const pedirEsta = enlaceWhatsapp(`Hola, quiero pedir ${nombre} ${v.nombre.toLowerCase()}.`);
+                    return (
+                      <li key={v.id} className={estilos.variante}>
+                        {foto ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={foto} alt={`${producto.nombre} ${v.nombre}`} width={112} height={112} className={estilos.varianteFoto} loading="lazy" />
+                        ) : (
+                          <IlustracionProducto nombre={producto.nombre} className={estilos.varianteDibujo} />
+                        )}
+                        <div className={estilos.varianteTexto}>
+                          <h3 className={estilos.varianteNombre}>{v.nombre}</h3>
+                          {v.descripcion && <p className={estilos.varianteDetalle}>{v.descripcion}</p>}
+                          <PreciosEnLinea precios={v} unidad={producto.unidad} tasa={tasa?.valor ?? null} />
+                          {pedirEsta && (
+                            <a className={`boton boton--secundario ${estilos.varianteBoton}`} href={pedirEsta} target="_blank" rel="noopener">
+                              Pedir {v.nombre}
+                            </a>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
 
             {(resenas.length > 0 || ventajas.length > 0) && (
               <div className={estilos.bloque}>

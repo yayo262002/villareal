@@ -1,5 +1,7 @@
 import { negocio } from "@/config/negocio";
 import { buscarProducto } from "@/lib/productos";
+import { variantesDeProducto } from "@/lib/variantes";
+import { precioPublicado } from "@/lib/catalogo";
 import { nombreUnidad, usd } from "@/lib/dinero";
 import { idDeRuta } from "@/lib/enlaces";
 import { TAMANO_IMAGEN, imagenSocial } from "@/lib/imagen-social";
@@ -23,13 +25,15 @@ export default async function Imagen({ params }: { params: Promise<{ producto: s
     return imagenSocial({ titulo: negocio.nombre, detalle: negocio.lema });
   }
 
-  const precio = producto.precio_usd ?? producto.precio_mayor_usd;
+  // Con varias marcas, el precio es «desde» la más barata.
+  const publicado = precioPublicado(producto, await variantesDeProducto(producto.id, true));
+  const precio = publicado.precio_usd ?? publicado.precio_mayor_usd;
   return imagenSocial({
     antetitulo: "Precio del día",
     titulo: producto.nombre,
     detalle:
       precio !== null
-        ? `${usd(precio)} por ${nombreUnidad(producto.unidad)} · a tasa BCV`
+        ? `${publicado.desde ? "Desde " : ""}${usd(precio)} por ${nombreUnidad(producto.unidad)} · a tasa BCV`
         : "Consulta el precio del día",
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
     dibujo: <img src={dibujoComoDato(producto.nombre)} width={340} height={340} />,

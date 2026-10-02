@@ -1,0 +1,53 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { claveDe, nombreDeVenta, precioPublicado, vendiblesDe, type VarianteDeCatalogo } from "./catalogo.ts";
+
+const amarillo = { id: 1, nombre: "Queso amarillo", unidad: "kg", activo: 1, precio_usd: 8.5, precio_mayor_usd: 7.48 };
+const mozzarella = { id: 2, nombre: "Queso mozzarella", unidad: "kg", activo: 1, precio_usd: 7.7, precio_mayor_usd: null };
+const pecorino = { id: 3, nombre: "Queso pecorino rallado", unidad: "unidad", activo: 1, precio_usd: null, precio_mayor_usd: null };
+const oculto = { id: 4, nombre: "Huevos", unidad: "carton", activo: 0, precio_usd: 9, precio_mayor_usd: null };
+
+const kemmental: VarianteDeCatalogo = { id: 10, producto_id: 1, nombre: "Kemmental", activo: 1, precio_usd: 9, precio_mayor_usd: 8.2 };
+const legado: VarianteDeCatalogo = { id: 11, producto_id: 1, nombre: "El Legado", activo: 1, precio_usd: 8.5, precio_mayor_usd: null };
+const sortilegio: VarianteDeCatalogo = { id: 12, producto_id: 3, nombre: "Sortilegio 500 g", activo: 1, precio_usd: 4, precio_mayor_usd: 3.8 };
+const guaralac: VarianteDeCatalogo = { id: 13, producto_id: 3, nombre: "Guaralac 500 g", activo: 1, precio_usd: 3.5, precio_mayor_usd: null };
+
+test("sin variantes, el producto publica sus propios precios", () => {
+  assert.deepEqual(precioPublicado(amarillo, []), { precio_usd: 8.5, precio_mayor_usd: 7.48, desde: false, variantes: 0 });
+  // Las variantes escondidas no cuentan.
+  assert.deepEqual(precioPublicado(amarillo, [{ ...kemmental, activo: 0 }]), { precio_usd: 8.5, precio_mayor_usd: 7.48, desde: false, variantes: 0 });
+});
+
+test("con dos variantes con precio, «desde» el más barato de cada precio", () => {
+  assert.deepEqual(precioPublicado(amarillo, [kemmental, legado]), { precio_usd: 8.5, precio_mayor_usd: 8.2, desde: true, variantes: 2 });
+});
+
+test("con una sola variante activa es su precio, sin «desde»", () => {
+  assert.deepEqual(precioPublicado(amarillo, [kemmental, { ...legado, activo: 0 }]), { precio_usd: 9, precio_mayor_usd: 8.2, desde: false, variantes: 1 });
+});
+
+test("con variantes pero ninguna con precio, no hay precio: no se inventa el del producto", () => {
+  const sinPrecio = [{ ...kemmental, precio_usd: null, precio_mayor_usd: null }, { ...legado, precio_usd: null }];
+  assert.deepEqual(precioPublicado(amarillo, sinPrecio), { precio_usd: null, precio_mayor_usd: null, desde: false, variantes: 2 });
+});
+
+test("las filas de la venta: los productos sin variantes y, de los que las tienen, cada variante activa", () => {
+  const filas = vendiblesDe([amarillo, mozzarella, pecorino, oculto], [sortilegio, guaralac, { ...kemmental, activo: 0 }]);
+  assert.deepEqual(
+    filas.map((f) => [f.clave, f.nombre, f.precio_usd]),
+    [
+      ["1", "Queso amarillo", 8.5],
+      ["2", "Queso mozzarella", 7.7],
+      ["3-12", "Queso pecorino rallado Sortilegio 500 g", 4],
+      ["3-13", "Queso pecorino rallado Guaralac 500 g", 3.5],
+    ],
+  );
+  assert.deepEqual(filas[2], { clave: "3-12", producto_id: 3, variante_id: 12, nombre: "Queso pecorino rallado Sortilegio 500 g", unidad: "unidad", precio_usd: 4, precio_mayor_usd: 3.8 });
+});
+
+test("la clave y el nombre de venta", () => {
+  assert.equal(claveDe(3, null), "3");
+  assert.equal(claveDe(3, 12), "3-12");
+  assert.equal(nombreDeVenta("Queso amarillo", "Kemmental"), "Queso amarillo Kemmental");
+  assert.equal(nombreDeVenta("Queso amarillo", null), "Queso amarillo");
+});

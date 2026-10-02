@@ -125,6 +125,9 @@ src/lib/ajustes.ts        La tasa del día y los demás ajustes
 src/lib/tasa.ts           Cuándo se acepta una tasa que llega de fuera
 src/lib/tasa-oficial.ts   Trae la tasa del BCV
 src/lib/intentos.ts       Freno a quien pruebe claves en la entrada del panel
+src/lib/variantes.ts      Las marcas o presentaciones de un producto, con su foto
+src/lib/catalogo.ts       Qué precio publica un producto con marcas («desde») y las filas de la venta
+src/app/foto-variante/    Sirve la foto de una marca a la web
 src/lib/dibujos.ts        El dibujo de cada producto, en SVG
 src/lib/imagen-social.tsx La imagen que sale al compartir un enlace
 src/assets/fuentes/       Las fuentes de esas imágenes, con su licencia
@@ -200,6 +203,20 @@ datos/                    La base de datos (fuera de Git)
   precios, ventajas, cómo se paga y dónde está la tienda. En la portada
   cada tarjeta enseña el dibujo, el nombre y los precios, con dos botones:
   «Ver detalles», que lleva a esa página, y «Pedir», que abre WhatsApp.
+- **Marcas y presentaciones.** Un producto puede venderse de varias marcas
+  o en varios tamaños (queso amarillo Kemmental y El Legado; pecorino
+  Sortilegio y Guaralac en bolsa de 500 g). En Productos, cada producto
+  tiene «Marcas y presentaciones»: nombre, una línea para la web, costo y
+  precios (con el costo salen de los márgenes del producto) y una foto,
+  que el teléfono reduce antes de subir. La portada dice «desde» con el
+  precio más barato de las publicadas y cuántas hay; la página del
+  producto las enseña todas con su foto, su precio y su botón de pedir
+  (`src/lib/catalogo.ts`). Mientras haya alguna publicada, los precios del
+  producto no se usan. En la venta sale una fila por cada marca, la nota la
+  nombra («Queso pecorino rallado Sortilegio 500 g») y el despacho carga
+  cada marca aparte. Una marca ya vendida no se borra, se esconde. La foto
+  se sirve en `/foto-variante/[id]` solo mientras la marca y el producto
+  estén publicados.
 - **Reseñas.** En la página de cada producto, «Por qué elegirlo» enseña
   primero lo que dicen los negocios que lo compran y después las ventajas.
   En la portada, cada tarjeta lleva además la reseña más corta de ese
@@ -482,7 +499,9 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - Poner los precios reales del queso amarillo, los huevos y el pecorino
   rallado: los que hay son de ejemplo y el panel lo avisa. El de la
   mozzarella (7,70 USD el kilo) es real.
-- Confirmar si el pecorino rallado se vende por kilo.
+- Los precios de cada marca (Kemmental, El Legado, Sortilegio, Guaralac):
+  están creadas con su foto y sin precio. El pecorino se vende en bolsa de
+  500 g, por unidad.
 - Fotos reales de los productos: hoy llevan un dibujo.
 - Las reseñas de verdad de cada producto: las que hay son de ejemplo y solo
   las ve el dueño.

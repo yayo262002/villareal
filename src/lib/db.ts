@@ -97,9 +97,9 @@ async function migrar(cliente: Client): Promise<void> {
     await añadirColumna(cliente, "clientes", "lon real");
     await añadirColumna(cliente, "clientes", "sitio text not null default ''");
   }
-  if (!(await definicionDe(cliente, "venta_lineas")).includes("piezas")) {
-    await añadirColumna(cliente, "venta_lineas", "piezas integer");
-  }
+  const lineas = await definicionDe(cliente, "venta_lineas");
+  if (!lineas.includes("piezas")) await añadirColumna(cliente, "venta_lineas", "piezas integer");
+  if (!lineas.includes("variante_id")) await añadirColumna(cliente, "venta_lineas", "variante_id integer references variantes(id)");
   // Los clientes de antes reciben los siete días de crédito de siempre.
   if (!(await definicionDe(cliente, "clientes")).includes("dias_credito")) {
     await añadirColumna(cliente, "clientes", "dias_credito integer not null default 7");

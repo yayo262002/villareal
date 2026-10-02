@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { enlaceMapa, enlaceWhatsapp, negocio, whatsappLegible } from "@/config/negocio";
 import { listarProductos } from "@/lib/productos";
+import { agruparPorProducto, listarVariantes } from "@/lib/variantes";
+import { precioPublicado } from "@/lib/catalogo";
 import { leerTasa } from "@/lib/ajustes";
 import { citasParaLaPortada } from "@/lib/resenas";
 import { rutaProducto } from "@/lib/enlaces";
@@ -28,7 +30,8 @@ export const metadata: Metadata = {
  * pendiente.
  */
 export default async function PaginaInicio() {
-  const [productos, tasa, citas] = await Promise.all([listarProductos(true), leerTasa(), citasParaLaPortada()]);
+  const [productos, variantes, tasa, citas] = await Promise.all([listarProductos(true), listarVariantes(), leerTasa(), citasParaLaPortada()]);
+  const variantesDe = agruparPorProducto(variantes);
   const whatsapp = enlaceWhatsapp("Hola, quiero información sobre sus productos.");
   const mayor = enlaceWhatsapp("Hola, tengo un negocio y quiero precio al mayor.");
   const mapa = enlaceMapa();
@@ -61,13 +64,18 @@ export default async function PaginaInicio() {
                 const ruta = rutaProducto(p);
                 const pedir = enlaceWhatsapp(`Hola, quiero pedir ${p.nombre.toLowerCase()}.`);
                 const cita = citas.get(p.id);
+                // Con varias marcas, la tarjeta dice «desde» la más barata y cuántas hay.
+                const publicado = precioPublicado(p, variantesDe.get(p.id) ?? []);
                 return (
                   <li key={p.id} className={estilos.producto}>
                     <Link href={ruta} className={estilos.productoCabecera}>
                       <IlustracionProducto nombre={p.nombre} className={estilos.dibujo} />
-                      <h2 className={estilos.nombre}>{p.nombre}</h2>
+                      <span>
+                        <h2 className={estilos.nombre}>{p.nombre}</h2>
+                        {publicado.variantes >= 2 && <span className={estilos.marcas}>{`${publicado.variantes} marcas o presentaciones`}</span>}
+                      </span>
                     </Link>
-                    <PreciosProducto producto={p} tasa={tasa?.valor ?? null} />
+                    <PreciosProducto producto={{ ...publicado, unidad: p.unidad }} tasa={tasa?.valor ?? null} desde={publicado.desde} />
                     {cita && (
                       <p className={estilos.cita}>
                         «{cita.texto}» <span>— {cita.autor}</span>

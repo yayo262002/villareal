@@ -7,6 +7,7 @@ import { cantidad } from "./dinero.ts";
 
 export type LineaDePedido = {
   producto_id: number;
+  variante_id?: number | null;
   producto_nombre: string;
   unidad: string;
   cantidad: number;
@@ -22,6 +23,7 @@ export type Pedido = {
 
 export type Carga = {
   producto_id: number;
+  variante_id: number | null;
   producto: string;
   unidad: string;
   cantidad: number;
@@ -37,14 +39,18 @@ function redondearCantidad(n: number): number {
  * el orden en que los productos están en el panel.
  */
 export function cargaDe(pedidos: Pedido[]): Carga[] {
-  const porProducto = new Map<number, Carga>();
+  // Cada marca se carga aparte: dos quesos amarillos distintos no se suman.
+  const porProducto = new Map<string, Carga>();
   for (const pedido of pedidos) {
     for (const l of pedido.lineas) {
-      const carga = porProducto.get(l.producto_id);
+      const variante = l.variante_id ?? null;
+      const clave = `${l.producto_id}:${variante ?? 0}`;
+      const carga = porProducto.get(clave);
       if (carga) carga.cantidad = redondearCantidad(carga.cantidad + Number(l.cantidad));
       else {
-        porProducto.set(l.producto_id, {
+        porProducto.set(clave, {
           producto_id: l.producto_id,
+          variante_id: variante,
           producto: l.producto_nombre,
           unidad: l.unidad,
           cantidad: redondearCantidad(Number(l.cantidad)),
@@ -52,7 +58,7 @@ export function cargaDe(pedidos: Pedido[]): Carga[] {
       }
     }
   }
-  return [...porProducto.values()].sort((a, b) => a.producto_id - b.producto_id);
+  return [...porProducto.values()].sort((a, b) => a.producto_id - b.producto_id || (a.variante_id ?? 0) - (b.variante_id ?? 0));
 }
 
 /** Los pedidos de cada cliente, del más antiguo al más nuevo. */

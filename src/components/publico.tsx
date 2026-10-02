@@ -70,9 +70,10 @@ type ConPrecios = { unidad: string; precio_usd: number | null; precio_mayor_usd:
 /**
  * Las cajas de precio de un producto: al detal y al mayor, en bolívares si
  * hay tasa y en dólares debajo. Con un solo precio la caja se llama «Precio».
- * Sin ninguno, no se inventa: «Consulta el precio del día».
+ * Sin ninguno, no se inventa: «Consulta el precio del día». Con `desde`,
+ * es el más barato de varias marcas o presentaciones.
  */
-export function PreciosProducto({ producto, tasa }: { producto: ConPrecios; tasa: number | null }) {
+export function PreciosProducto({ producto, tasa, desde = false }: { producto: ConPrecios; tasa: number | null; desde?: boolean }) {
   const precios = [
     { nombre: "Al detal", usd: producto.precio_usd },
     { nombre: "Al mayor", usd: producto.precio_mayor_usd },
@@ -91,7 +92,10 @@ export function PreciosProducto({ producto, tasa }: { producto: ConPrecios; tasa
             className={`${estilos.precioCaja} ${precio.nombre === "Al mayor" ? estilos.precioCajaMayor : ""}`}
           >
             <dt>{precios.length === 1 ? "Precio" : precio.nombre}</dt>
-            <dd className={estilos.precio}>{enBs !== null ? bs(enBs) : usd(precio.usd)}</dd>
+            <dd className={estilos.precio}>
+              {desde && <span className={estilos.desde}>desde </span>}
+              {enBs !== null ? bs(enBs) : usd(precio.usd)}
+            </dd>
             <dd className={estilos.precioUsd}>
               {enBs !== null ? `${usd(precio.usd)} ` : ""}por {nombreUnidad(producto.unidad)}
             </dd>
@@ -99,6 +103,34 @@ export function PreciosProducto({ producto, tasa }: { producto: ConPrecios; tasa
         );
       })}
     </dl>
+  );
+}
+
+/**
+ * Los precios de una marca o presentación, en una línea: «Al detal Bs 310,25
+ * (USD 8,50) · Al mayor Bs 273,02 (USD 7,48)». Sin precio, lo de siempre.
+ */
+export function PreciosEnLinea({ precios, unidad, tasa }: { precios: Omit<ConPrecios, "unidad">; unidad?: string; tasa: number | null }) {
+  const lista = [
+    { nombre: "Al detal", usd: precios.precio_usd },
+    { nombre: "Al mayor", usd: precios.precio_mayor_usd },
+  ].filter((x): x is { nombre: string; usd: number } => x.usd !== null);
+  if (lista.length === 0) return <p className={estilos.precioPendiente}>Consulta el precio del día</p>;
+  return (
+    <p className={estilos.preciosLinea}>
+      {lista.map((precio, i) => {
+        const enBs = aBolivares(precio.usd, tasa);
+        return (
+          <span key={precio.nombre}>
+            {i > 0 && " · "}
+            {lista.length > 1 && `${precio.nombre} `}
+            <strong>{enBs !== null ? bs(enBs) : usd(precio.usd)}</strong>
+            {enBs !== null && <span className={estilos.precioUsd}> ({usd(precio.usd)})</span>}
+          </span>
+        );
+      })}
+      {unidad && <span className={estilos.precioUsd}> por {nombreUnidad(unidad)}</span>}
+    </p>
   );
 }
 

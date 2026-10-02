@@ -9,7 +9,7 @@ import { aBolivares, bs, usd } from "@/lib/dinero";
  * formulario. Necesita JavaScript; sin él no sale nada y el total lo
  * calcula el servidor al guardar, como siempre.
  */
-export function TotalDeVenta({ productos, tasa }: { productos: number[]; tasa: number | null }) {
+export function TotalDeVenta({ claves, tasa }: { claves: string[]; tasa: number | null }) {
   const [total, setTotal] = useState<number | null>(null);
   const sitio = useRef<HTMLParagraphElement>(null);
 
@@ -22,13 +22,13 @@ export function TotalDeVenta({ productos, tasa }: { productos: number[]; tasa: n
       return Number.isFinite(n) ? n : 0;
     };
     const calcular = () => {
-      const suma = productos.reduce((s, id) => s + leer(`cantidad_${id}`) * leer(`precio_${id}`), 0);
+      const suma = claves.reduce((s, clave) => s + leer(`cantidad_${clave}`) * leer(`precio_${clave}`), 0);
       setTotal(suma > 0 ? Math.round(suma * 100) / 100 : null);
     };
     calcular();
     formulario.addEventListener("input", calcular);
     return () => formulario.removeEventListener("input", calcular);
-  }, [productos]);
+  }, [claves]);
 
   const enBs = total !== null ? aBolivares(total, tasa) : null;
   return (

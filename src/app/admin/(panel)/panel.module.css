@@ -471,6 +471,40 @@
 .tarjetaApagada {
   opacity: 0.75;
 }
+
+/* Las marcas o presentaciones de un producto, dentro de su ficha. */
+.variantes {
+  margin-top: var(--espacio-4);
+  padding-top: var(--espacio-4);
+  border-top: 1px solid var(--color-borde);
+  display: grid;
+  gap: var(--espacio-3);
+}
+.variante {
+  padding: var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+.varianteTitulo {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  min-width: 0;
+}
+.fotoVariante {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+.subtituloPequeno {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
 .alternar {
   margin-top: var(--espacio-4);
   padding-top: var(--espacio-4);

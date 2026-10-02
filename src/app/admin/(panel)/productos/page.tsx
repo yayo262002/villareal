@@ -1,16 +1,24 @@
-import { listarProductos } from "@/lib/productos";
+import { listarProductos, type Producto } from "@/lib/productos";
+import { agruparPorProducto, direccionDeFotoDeVariante, listarVariantes, type Variante } from "@/lib/variantes";
+import { precioPublicado } from "@/lib/catalogo";
 import { hayPreciosDeEjemplo, leerAvisoTasa, leerTasa, tasaAutomatica } from "@/lib/ajustes";
 import {
   alternarProducto,
   alternarTasaAutomatica,
+  alternarVariante,
+  borrarVariante,
   cambiarTasa,
   traerTasaOficial,
   confirmarPrecios,
   editarProducto,
+  editarVariante,
   guardarProducto,
+  guardarVariante,
+  retirarFotoDeVariante,
 } from "@/lib/acciones";
 import { UNIDADES, aBolivares, bs, fechaCorta, fechaDeLaBase, nombreUnidad, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
+import { EntradaFoto } from "@/components/entrada-foto";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Productos" };
@@ -111,6 +119,52 @@ function CamposPrecio({
 }
 
 /**
+ * Los campos de una marca o presentación: nombre, una línea para la web,
+ * costo y precios (con el costo salen de los márgenes del producto), y la
+ * foto, que el teléfono reduce antes de subir.
+ */
+function CamposVariante({ id, variante, producto }: { id: string; variante: Variante | null; producto: Producto }) {
+  const conMargen = producto.margen_pct !== null || producto.margen_mayor_pct !== null;
+  return (
+    <>
+      <div className="formulario__fila">
+        <div className="campo">
+          <label htmlFor={`${id}-nombre`}>Marca o presentación</label>
+          <input id={`${id}-nombre`} name="nombre" type="text" required defaultValue={variante?.nombre ?? ""} placeholder="Kemmental · Sortilegio 500 g" />
+        </div>
+        <div className="campo">
+          <label htmlFor={`${id}-descripcion`}>Una línea sobre ella (se ve en la web)</label>
+          <input id={`${id}-descripcion`} name="descripcion" type="text" defaultValue={variante?.descripcion ?? ""} placeholder="Tipo Emmental, semiduro, madurado" />
+        </div>
+      </div>
+      <div className={estilos.filaTres}>
+        <div className="campo">
+          <label htmlFor={`${id}-costo`}>Lo que te cuesta, USD</label>
+          <input id={`${id}-costo`} name="costo_usd" type="number" inputMode="decimal" step="0.01" min="0" defaultValue={variante?.costo_usd ?? ""} />
+        </div>
+        <div className="campo">
+          <label htmlFor={`${id}-precio`}>Venta al detal, USD</label>
+          <input id={`${id}-precio`} name="precio_usd" type="number" inputMode="decimal" step="0.01" min="0" defaultValue={variante?.precio_usd ?? ""} placeholder={conMargen ? "Sale del costo" : ""} />
+        </div>
+        <div className="campo">
+          <label htmlFor={`${id}-precio-mayor`}>Venta al mayor, USD</label>
+          <input id={`${id}-precio-mayor`} name="precio_mayor_usd" type="number" inputMode="decimal" step="0.01" min="0" defaultValue={variante?.precio_mayor_usd ?? ""} placeholder={conMargen ? "Sale del costo" : ""} />
+        </div>
+      </div>
+      <span className="ayuda">
+        {conMargen
+          ? `Con el costo, los precios salen con los márgenes del producto (${producto.margen_pct ?? "–"} % al detal, ${producto.margen_mayor_pct ?? "–"} % al mayor). Sin margen vale el precio que escribas.`
+          : "Escribe los precios de venta, o el costo y ponle márgenes al producto para que salgan solos."}
+      </span>
+      <div className="campo">
+        <label htmlFor={`${id}-foto`}>{variante?.foto_version ? "Cambiar la foto" : "Foto (el paquete, por ejemplo)"}</label>
+        <EntradaFoto nombre="foto" id={`${id}-foto`} opcional soloFoto ladoMaximo={800} />
+      </div>
+    </>
+  );
+}
+
+/**
  * Productos y precios. El dueño escribe lo que le cuesta cada producto en
  * dólares y dos porcentajes, al detal y al mayor; los dos precios de venta
  * salen solos. La web los publica en bolívares con la tasa del día, que
@@ -123,14 +177,20 @@ export default async function PaginaProductos({
   searchParams: Promise<ParametrosAviso>;
 }) {
   const parametros = await searchParams;
-  const [productos, tasa, deEjemplo, automatica, avisoTasa] = await Promise.all([
+  const [productos, variantes, tasa, deEjemplo, automatica, avisoTasa] = await Promise.all([
     listarProductos(),
+    listarVariantes(),
     leerTasa(),
     hayPreciosDeEjemplo(),
     tasaAutomatica(),
     leerAvisoTasa(),
   ]);
-  const sinPrecio = productos.filter((p) => p.activo && p.precio_usd === null && p.precio_mayor_usd === null);
+  const variantesDe = agruparPorProducto(variantes);
+  // Un producto con marcas publica el precio de ellas: sin precio es que ninguna lo tiene.
+  const sinPrecio = productos.filter((p) => {
+    const publicado = precioPublicado(p, variantesDe.get(p.id) ?? []);
+    return p.activo && publicado.precio_usd === null && publicado.precio_mayor_usd === null;
+  });
   const tasaValor = tasa?.valor ?? null;
 
   const opcionesUnidad = Object.entries(UNIDADES).map(([valor, nombre]) => (
@@ -227,7 +287,10 @@ export default async function PaginaProductos({
       )}
 
       <section className={estilos.listaProductos}>
-        {productos.map((p) => (
+        {productos.map((p) => {
+          const suyas = variantesDe.get(p.id) ?? [];
+          const publicadas = suyas.filter((v) => v.activo).length;
+          return (
           <article key={p.id} className={`tarjeta ${p.activo ? "" : estilos.tarjetaApagada}`}>
             <div className={estilos.encabezado}>
               <h2 className={estilos.subtitulo} style={{ marginBottom: 0 }}>
@@ -256,6 +319,14 @@ export default async function PaginaProductos({
                 unidad={p.unidad}
               />
             </ul>
+
+            {publicadas > 0 && (
+              <p className="aviso aviso--aviso">
+                Este producto tiene {publicadas === 1 ? "una marca o presentación publicada" : `${publicadas} marcas o presentaciones publicadas`}: la web
+                enseña el precio de ellas{publicadas > 1 ? " («desde» la más barata)" : ""} y las ventas se anotan por marca. Los precios de aquí abajo no se usan
+                mientras haya alguna publicada.
+              </p>
+            )}
 
             <form action={editarProducto} className="formulario">
               <input type="hidden" name="id" value={p.id} />
@@ -326,8 +397,86 @@ export default async function PaginaProductos({
                 {p.activo ? "Ocultar de la web" : "Publicar en la web"}
               </button>
             </form>
+
+            {/* Las marcas o presentaciones en que se vende: cada una con su precio y su foto. */}
+            <section className={estilos.variantes} aria-label={`Marcas y presentaciones de ${p.nombre}`}>
+              <h3 className={estilos.subtituloPequeno}>Marcas y presentaciones</h3>
+              <p className={estilos.ayuda} style={{ marginBottom: 0 }}>
+                Si vendes el mismo producto de dos marcas o en dos tamaños, ponlas aquí con su precio y su foto. La portada dice «desde» con la más barata y la
+                página del producto las enseña todas. En la venta sale una fila por cada una.
+              </p>
+              {suyas.map((v) => {
+                const foto = direccionDeFotoDeVariante(v);
+                return (
+                  <article key={v.id} className={`${estilos.variante} ${v.activo ? "" : estilos.tarjetaApagada}`}>
+                    <div className={estilos.encabezado}>
+                      <div className={estilos.varianteTitulo}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {foto && <img src={foto} alt="" width={56} height={56} className={estilos.fotoVariante} />}
+                        <h4 className={estilos.subtituloPequeno}>{v.nombre}</h4>
+                      </div>
+                      <span className={`${estilos.estado} ${v.activo ? estilos["estado--pagada"] : estilos["estado--por_pagar"]}`}>
+                        {v.activo ? "En la web" : "Oculta"}
+                      </span>
+                    </div>
+                    <ul className={estilos.precioResumen}>
+                      <LineaPrecio nombre="Al detal" precio={v.precio_usd} margen={v.costo_usd !== null ? p.margen_pct : null} costo={v.costo_usd} tasa={tasaValor} unidad={p.unidad} />
+                      <LineaPrecio nombre="Al mayor" precio={v.precio_mayor_usd} margen={v.costo_usd !== null ? p.margen_mayor_pct : null} costo={v.costo_usd} tasa={tasaValor} unidad={p.unidad} />
+                    </ul>
+                    <form action={editarVariante} className="formulario" encType="multipart/form-data">
+                      <input type="hidden" name="variante_id" value={v.id} />
+                      <CamposVariante id={`variante-${v.id}`} variante={v} producto={p} />
+                      <div>
+                        <button type="submit" className="boton">
+                          Guardar {v.nombre}
+                        </button>
+                      </div>
+                    </form>
+                    <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginTop: "var(--espacio-3)" }}>
+                      <form action={alternarVariante}>
+                        <input type="hidden" name="variante_id" value={v.id} />
+                        <input type="hidden" name="activo" value={v.activo ? "0" : "1"} />
+                        <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                          {v.activo ? "Ocultar de la web" : "Publicar en la web"}
+                        </button>
+                      </form>
+                      {foto && (
+                        <form action={retirarFotoDeVariante}>
+                          <input type="hidden" name="variante_id" value={v.id} />
+                          <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                            Quitar la foto
+                          </button>
+                        </form>
+                      )}
+                      <details className={estilos.masDatos}>
+                        <summary>Eliminar</summary>
+                        <form action={borrarVariante} style={{ marginTop: "var(--espacio-2)" }}>
+                          <input type="hidden" name="variante_id" value={v.id} />
+                          <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                            Sí, eliminar «{v.nombre}»
+                          </button>
+                        </form>
+                      </details>
+                    </div>
+                  </article>
+                );
+              })}
+              <details className={estilos.masDatos}>
+                <summary>Añadir una marca o presentación</summary>
+                <form action={guardarVariante} className="formulario" encType="multipart/form-data" style={{ marginTop: "var(--espacio-3)" }}>
+                  <input type="hidden" name="producto_id" value={p.id} />
+                  <CamposVariante id={`variante-nueva-${p.id}`} variante={null} producto={p} />
+                  <div>
+                    <button type="submit" className="boton boton--secundario">
+                      Añadir a {p.nombre}
+                    </button>
+                  </div>
+                </form>
+              </details>
+            </section>
           </article>
-        ))}
+          );
+        })}
       </section>
 
       <section className="tarjeta">

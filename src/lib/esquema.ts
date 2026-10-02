@@ -86,6 +86,30 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- Las marcas o presentaciones en que se vende un producto (queso amarillo
+  -- Kemmental y El Legado; pecorino Sortilegio y Guaralac de 500 g). Cada
+  -- una con su costo, sus precios y su foto. La web publica «desde» la más
+  -- barata y la página del producto las enseña todas.
+  create table if not exists variantes (
+    id integer primary key autoincrement,
+    producto_id integer not null references productos(id),
+    nombre text not null,
+    descripcion text not null default '',
+    costo_usd real,
+    precio_usd real,
+    precio_mayor_usd real,
+    activo integer not null default 1,
+    creado_en text not null default (datetime('now'))
+  );
+
+  create table if not exists fotos_variantes (
+    variante_id integer primary key references variantes(id) on delete cascade,
+    tipo text not null,
+    tamano integer not null,
+    datos blob not null,
+    actualizado_en text not null default (datetime('now'))
+  );
+
   -- Ajustes sueltos del negocio, como la tasa del día.
   create table if not exists ajustes (
     clave text primary key,
@@ -120,7 +144,9 @@ export const ESQUEMA = `
     precio_unitario_usd real not null,
     subtotal_usd real not null,
     -- Cuántas piezas (bloques de queso) eran. Solo informa: el importe sale de los kilos.
-    piezas integer
+    piezas integer,
+    -- Qué marca o presentación se vendió, si el producto las tiene.
+    variante_id integer references variantes(id)
   );
 
   create table if not exists pagos (
@@ -224,6 +250,8 @@ export const ESQUEMA = `
 export const TABLAS = [
   "clientes",
   "productos",
+  "variantes",
+  "fotos_variantes",
   "ventas",
   "venta_lineas",
   "pagos",

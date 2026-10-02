@@ -15,9 +15,22 @@ const pedidos = [
 
 test("la carga suma cada producto de todos los pedidos, en el orden del panel", () => {
   assert.deepEqual(cargaDe(pedidos), [
-    { producto_id: 1, producto: "Queso amarillo", unidad: "kg", cantidad: 1.25 },
-    { producto_id: 2, producto: "Queso mozzarella", unidad: "kg", cantidad: 7.5 },
-    { producto_id: 3, producto: "Huevos", unidad: "carton", cantidad: 3 },
+    { producto_id: 1, variante_id: null, producto: "Queso amarillo", unidad: "kg", cantidad: 1.25 },
+    { producto_id: 2, variante_id: null, producto: "Queso mozzarella", unidad: "kg", cantidad: 7.5 },
+    { producto_id: 3, variante_id: null, producto: "Huevos", unidad: "carton", cantidad: 3 },
+  ]);
+});
+
+test("cada marca se carga aparte: dos quesos amarillos distintos no se suman", () => {
+  const kemmental = { producto_id: 1, variante_id: 10, producto_nombre: "Queso amarillo Kemmental", unidad: "kg" };
+  const legado = { producto_id: 1, variante_id: 11, producto_nombre: "Queso amarillo El Legado", unidad: "kg" };
+  const carga = cargaDe([
+    { id: 1, cliente_id: 1, fecha: "2026-09-01", lineas: [{ ...kemmental, cantidad: 2 }, { ...legado, cantidad: 1 }] },
+    { id: 2, cliente_id: 2, fecha: "2026-09-01", lineas: [{ ...kemmental, cantidad: 0.5 }] },
+  ]);
+  assert.deepEqual(carga, [
+    { producto_id: 1, variante_id: 10, producto: "Queso amarillo Kemmental", unidad: "kg", cantidad: 2.5 },
+    { producto_id: 1, variante_id: 11, producto: "Queso amarillo El Legado", unidad: "kg", cantidad: 1 },
   ]);
 });
 

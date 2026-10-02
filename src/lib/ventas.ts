@@ -10,15 +10,28 @@ export type LineaVenta = {
   precio_unitario_usd: number;
   /** Cuántas piezas eran, si se anotó. Solo informa. */
   piezas: number | null;
+  /** Qué marca o presentación, si el producto las tiene. */
+  variante_id?: number | null;
 };
 
 export type LineaVentaGuardada = LineaVenta & {
   id: number;
   venta_id: number;
   subtotal_usd: number;
+  /** El producto con su variante, si la hay: «Queso amarillo Kemmental». */
   producto_nombre: string;
+  variante_nombre: string | null;
   unidad: string;
 };
+
+/** Las líneas con el nombre de su producto y, si la tiene, de su variante. */
+const CONSULTA_LINEAS = `
+  select l.*, vr.nombre as variante_nombre, p.unidad,
+         case when vr.nombre is null then p.nombre else p.nombre || ' ' || vr.nombre end as producto_nombre
+  from venta_lineas l
+  join productos p on p.id = l.producto_id
+  left join variantes vr on vr.id = l.variante_id
+`;
 
 export type Venta = {
   id: number;
@@ -76,14 +89,7 @@ export async function marcarEntrega(id: number, entregada: boolean): Promise<boo
 }
 
 export async function lineasDeVenta(ventaId: number): Promise<LineaVentaGuardada[]> {
-  return filas<LineaVentaGuardada>(
-    `select l.*, p.nombre as producto_nombre, p.unidad
-     from venta_lineas l
-     join productos p on p.id = l.producto_id
-     where l.venta_id = ?
-     order by l.id`,
-    [ventaId],
-  );
+  return filas<LineaVentaGuardada>(`${CONSULTA_LINEAS} where l.venta_id = ? order by l.id`, [ventaId]);
 }
 
 /** Las líneas de varias ventas en una sola consulta, agrupadas por venta. */
@@ -91,14 +97,7 @@ export async function lineasDeVentas(ventaIds: number[]): Promise<Map<number, Li
   const porVenta = new Map<number, LineaVentaGuardada[]>();
   if (ventaIds.length === 0) return porVenta;
   const huecos = ventaIds.map(() => "?").join(", ");
-  const lineas = await filas<LineaVentaGuardada>(
-    `select l.*, p.nombre as producto_nombre, p.unidad
-     from venta_lineas l
-     join productos p on p.id = l.producto_id
-     where l.venta_id in (${huecos})
-     order by l.id`,
-    ventaIds,
-  );
+  const lineas = await filas<LineaVentaGuardada>(`${CONSULTA_LINEAS} where l.venta_id in (${huecos}) order by l.id`, ventaIds);
   for (const l of lineas) {
     const lista = porVenta.get(l.venta_id) ?? [];
     lista.push(l);
@@ -149,9 +148,9 @@ export async function crearVenta(
     const ventaId = Number(venta.rows[0].id);
     for (const l of lineas) {
       await tx.execute({
-        sql: `insert into venta_lineas (venta_id, producto_id, cantidad, precio_unitario_usd, subtotal_usd, piezas)
-              values (?, ?, ?, ?, ?, ?)`,
-        args: [ventaId, l.producto_id, l.cantidad, l.precio_unitario_usd, redondear(l.cantidad * l.precio_unitario_usd), l.piezas],
+        sql: `insert into venta_lineas (venta_id, producto_id, cantidad, precio_unitario_usd, subtotal_usd, piezas, variante_id)
+              values (?, ?, ?, ?, ?, ?, ?)`,
+        args: [ventaId, l.producto_id, l.cantidad, l.precio_unitario_usd, redondear(l.cantidad * l.precio_unitario_usd), l.piezas, l.variante_id ?? null],
       });
     }
     return ventaId;
@@ -173,13 +172,13 @@ export async function eliminarVenta(id: number): Promise<boolean> {
 }
 
 /** Lo que se le cobró a un cliente por un producto la última vez, para avisar si el precio de hoy se sale de lo normal. */
-export async function ultimoPrecioAlCliente(clienteId: number, productoId: number): Promise<number | null> {
+export async function ultimoPrecioAlCliente(clienteId: number, productoId: number, varianteId: number | null = null): Promise<number | null> {
   const f = await fila<{ precio: number }>(
     `select l.precio_unitario_usd as precio
      from venta_lineas l join ventas v on v.id = l.venta_id
-     where v.cliente_id = ? and l.producto_id = ?
+     where v.cliente_id = ? and l.producto_id = ? and l.variante_id is ?
      order by v.fecha desc, v.id desc limit 1`,
-    [clienteId, productoId],
+    [clienteId, productoId, varianteId],
   );
   return f ? Number(f.precio) : null;
 }
@@ -237,14 +236,15 @@ export async function ventasPorMes(): Promise<VentasPorMes[]> {
 export async function ventasPorProducto(desde?: string): Promise<VentasPorProducto[]> {
   const filtro = desde ? "where v.fecha >= ?" : "";
   return filas<VentasPorProducto>(
-    `select p.nombre as producto, p.unidad,
+    `select case when vr.nombre is null then p.nombre else p.nombre || ' ' || vr.nombre end as producto, p.unidad,
             coalesce(sum(l.cantidad), 0) as cantidad,
             coalesce(sum(l.subtotal_usd), 0) as vendido_usd
      from venta_lineas l
      join productos p on p.id = l.producto_id
+     left join variantes vr on vr.id = l.variante_id
      join ventas v on v.id = l.venta_id
      ${filtro}
-     group by p.id
+     group by p.id, l.variante_id
      order by vendido_usd desc`,
     desde ? [desde] : [],
   );

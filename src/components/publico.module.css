@@ -98,6 +98,21 @@
   font-size: 16px;
   color: var(--color-texto-suave);
 }
+/* «desde Bs 127,75»: el más barato de varias marcas. */
+.desde {
+  font-size: 0.6em;
+  font-weight: 600;
+  color: var(--color-texto-suave);
+}
+.preciosLinea {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.preciosLinea strong {
+  color: var(--color-marca);
+}
 
 .pie {
   border-top: 1px solid var(--color-borde);
