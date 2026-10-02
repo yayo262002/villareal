@@ -2,7 +2,8 @@
 
 Web y sistema de gestión para un local de quesos en Barquisimeto, Venezuela:
 queso amarillo, mozzarella, pecorino rallado, huevos y lo que se vaya
-añadiendo. Vende al detal y al mayor.
+añadiendo. Vende solo al mayor: a pizzerías, panaderías, restaurantes y
+bodegas.
 
 Tiene dos partes:
 
@@ -179,15 +180,13 @@ datos/                    La base de datos (fuera de Git)
 
 ## Cómo funcionan las cuentas
 
-- Cada producto tiene un **costo en dólares** (lo que paga el negocio) y
-  **dos márgenes** en porcentaje, al detal y al mayor. De ahí salen los dos
-  precios de venta en dólares: costo 6,80 con margen 25 % vende al detal a
-  8,50, y con margen 10 % al mayor a 7,48. Si se prefiere, cada precio se
-  escribe directamente. Un producto puede no tener precio al mayor.
-- **A quién se le cobra cuál.** El cliente está marcado como «detal» o
-  «mayor». Al anotar una venta con el precio vacío, al mayorista se le
-  cobra el precio al mayor y a los demás el de detal. Escribir el precio a
-  mano siempre manda.
+- **Solo al mayor.** El negocio vende al mayor, así que cada producto
+  tiene **un precio**, el de mayor. Sale del **costo en dólares** (lo que
+  paga el negocio) más un **margen** en porcentaje: costo 6,80 con margen
+  25 % vende a 8,50. Si se prefiere, el precio se escribe directamente. La
+  web lo llama «Precio al mayor» y no habla de detal en ningún sitio. Las
+  columnas del precio al detal de antes (`precio_mayor_usd`,
+  `margen_mayor_pct`, `clientes.tipo`) siguen en la base pero no se usan.
 - La web publica los precios en **bolívares** con la **tasa del día**. Al
   cambiar la tasa cambian todos los precios en bolívares a la vez. Sin
   tasa, la web muestra dólares.
@@ -216,11 +215,13 @@ datos/                    La base de datos (fuera de Git)
   nombra («Queso pecorino rallado Sortilegio 500 g») y el despacho carga
   cada marca aparte. Una marca ya vendida no se borra, se esconde. La foto
   se sirve en `/foto-variante/[id]` solo mientras la marca y el producto
-  estén publicados.
+  estén publicados, y se enseña sin su fondo blanco (se funde con el fondo
+  de la página): conviene fotografiar los paquetes sobre fondo blanco o
+  muy claro.
 - **Reseñas.** En la página de cada producto, «Por qué elegirlo» enseña
   primero lo que dicen los negocios que lo compran y después las ventajas.
-  En la portada, cada tarjeta lleva además la reseña más corta de ese
-  producto (hasta 120 letras), con el nombre de quien la dijo.
+  Las reseñas solo se ven dentro de la página del producto: la portada no
+  enseña ninguna.
   El dueño le pide el comentario al cliente y lo escribe en el panel, en
   Reseñas, con las palabras del cliente: producto, quién lo dice, qué
   negocio es y qué dijo. Una reseña se puede esconder sin borrarla.

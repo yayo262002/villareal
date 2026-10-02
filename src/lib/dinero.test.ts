@@ -6,7 +6,6 @@ import {
   aBolivares,
   aDolares,
   precioDeVenta,
-  precioParaCliente,
   esMetodoPago,
   fechaCorta,
   fechaDeLaBase,
@@ -86,16 +85,6 @@ test("el precio de venta es el costo más el margen", () => {
   assert.equal(precioDeVenta(null, 25), null);
   assert.equal(precioDeVenta(6.8, null), null);
   assert.equal(precioDeVenta(-1, 25), null);
-});
-
-test("al mayorista se le cobra al mayor y a los demás al detal", () => {
-  const dos = { precio_usd: 8.5, precio_mayor_usd: 7.48 };
-  assert.equal(precioParaCliente(dos, "mayor"), 7.48);
-  assert.equal(precioParaCliente(dos, "detal"), 8.5);
-  // Sin precio al mayor, el mayorista paga el de detal.
-  assert.equal(precioParaCliente({ precio_usd: 8.5, precio_mayor_usd: null }, "mayor"), 8.5);
-  assert.equal(precioParaCliente({ precio_usd: 8.5 }, "mayor"), 8.5);
-  assert.equal(precioParaCliente({ precio_usd: null, precio_mayor_usd: null }, "detal"), null);
 });
 
 test("el precio en bolívares usa la tasa del día", () => {

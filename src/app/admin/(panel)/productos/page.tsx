@@ -124,7 +124,7 @@ function CamposPrecio({
  * foto, que el teléfono reduce antes de subir.
  */
 function CamposVariante({ id, variante, producto }: { id: string; variante: Variante | null; producto: Producto }) {
-  const conMargen = producto.margen_pct !== null || producto.margen_mayor_pct !== null;
+  const conMargen = producto.margen_pct !== null;
   return (
     <>
       <div className="formulario__fila">
@@ -143,18 +143,14 @@ function CamposVariante({ id, variante, producto }: { id: string; variante: Vari
           <input id={`${id}-costo`} name="costo_usd" type="number" inputMode="decimal" step="0.01" min="0" defaultValue={variante?.costo_usd ?? ""} />
         </div>
         <div className="campo">
-          <label htmlFor={`${id}-precio`}>Venta al detal, USD</label>
+          <label htmlFor={`${id}-precio`}>Precio al mayor, USD</label>
           <input id={`${id}-precio`} name="precio_usd" type="number" inputMode="decimal" step="0.01" min="0" defaultValue={variante?.precio_usd ?? ""} placeholder={conMargen ? "Sale del costo" : ""} />
-        </div>
-        <div className="campo">
-          <label htmlFor={`${id}-precio-mayor`}>Venta al mayor, USD</label>
-          <input id={`${id}-precio-mayor`} name="precio_mayor_usd" type="number" inputMode="decimal" step="0.01" min="0" defaultValue={variante?.precio_mayor_usd ?? ""} placeholder={conMargen ? "Sale del costo" : ""} />
         </div>
       </div>
       <span className="ayuda">
         {conMargen
-          ? `Con el costo, los precios salen con los márgenes del producto (${producto.margen_pct ?? "–"} % al detal, ${producto.margen_mayor_pct ?? "–"} % al mayor). Sin margen vale el precio que escribas.`
-          : "Escribe los precios de venta, o el costo y ponle márgenes al producto para que salgan solos."}
+          ? `Con el costo, el precio sale con el margen del producto (${producto.margen_pct} %). Sin margen vale el precio que escribas.`
+          : "Escribe el precio de venta, o el costo y ponle margen al producto para que salga solo."}
       </span>
       <div className="campo">
         <label htmlFor={`${id}-foto`}>{variante?.foto_version ? "Cambiar la foto" : "Foto (el paquete, por ejemplo)"}</label>
@@ -165,9 +161,9 @@ function CamposVariante({ id, variante, producto }: { id: string; variante: Vari
 }
 
 /**
- * Productos y precios. El dueño escribe lo que le cuesta cada producto en
- * dólares y dos porcentajes, al detal y al mayor; los dos precios de venta
- * salen solos. La web los publica en bolívares con la tasa del día, que
+ * Productos y precios. El negocio vende solo al mayor: cada producto tiene
+ * un precio, que sale de lo que cuesta en dólares más el porcentaje del
+ * dueño. La web lo publica en bolívares con la tasa del día, que
  * también se pone aquí. Cada producto es una ficha con todo lo suyo y un
  * solo botón de guardar, pensada para el teléfono.
  */
@@ -189,7 +185,7 @@ export default async function PaginaProductos({
   // Un producto con marcas publica el precio de ellas: sin precio es que ninguna lo tiene.
   const sinPrecio = productos.filter((p) => {
     const publicado = precioPublicado(p, variantesDe.get(p.id) ?? []);
-    return p.activo && publicado.precio_usd === null && publicado.precio_mayor_usd === null;
+    return p.activo && publicado.precio_usd === null;
   });
   const tasaValor = tasa?.valor ?? null;
 
@@ -302,22 +298,7 @@ export default async function PaginaProductos({
             </div>
 
             <ul className={estilos.precioResumen}>
-              <LineaPrecio
-                nombre="Al detal"
-                precio={p.precio_usd}
-                margen={p.margen_pct}
-                costo={p.costo_usd}
-                tasa={tasaValor}
-                unidad={p.unidad}
-              />
-              <LineaPrecio
-                nombre="Al mayor"
-                precio={p.precio_mayor_usd}
-                margen={p.margen_mayor_pct}
-                costo={p.costo_usd}
-                tasa={tasaValor}
-                unidad={p.unidad}
-              />
+              <LineaPrecio nombre="Precio al mayor" precio={p.precio_usd} margen={p.margen_pct} costo={p.costo_usd} tasa={tasaValor} unidad={p.unidad} />
             </ul>
 
             {publicadas > 0 && (
@@ -357,7 +338,7 @@ export default async function PaginaProductos({
               </div>
               <div className={estilos.filaDos}>
                 <CamposPrecio
-                  titulo="Al detal"
+                  titulo="Precio al mayor"
                   id={String(p.id)}
                   campoMargen="margen_pct"
                   campoPrecio="precio_usd"
@@ -365,20 +346,8 @@ export default async function PaginaProductos({
                   precio={p.precio_usd}
                   ejemploMargen="25"
                 />
-                <CamposPrecio
-                  titulo="Al mayor"
-                  id={`mayor-${p.id}`}
-                  campoMargen="margen_mayor_pct"
-                  campoPrecio="precio_mayor_usd"
-                  margen={p.margen_mayor_pct}
-                  precio={p.precio_mayor_usd}
-                  ejemploMargen="10"
-                />
               </div>
-              <span className="ayuda">
-                Con el costo y un margen, ese precio de venta sale solo. Sin margen vale el precio que escribas. Si dejas
-                vacío lo de «Al mayor», el producto solo tiene precio al detal.
-              </span>
+              <span className="ayuda">Con el costo y el margen, el precio de venta sale solo. Sin margen vale el precio que escribas.</span>
               <div className="campo">
                 <label htmlFor={`descripcion-${p.id}`}>Ventajas (una por línea, se ven en la web)</label>
                 <textarea id={`descripcion-${p.id}`} name="descripcion" rows={3} defaultValue={p.descripcion ?? ""} />
@@ -420,8 +389,7 @@ export default async function PaginaProductos({
                       </span>
                     </div>
                     <ul className={estilos.precioResumen}>
-                      <LineaPrecio nombre="Al detal" precio={v.precio_usd} margen={v.costo_usd !== null ? p.margen_pct : null} costo={v.costo_usd} tasa={tasaValor} unidad={p.unidad} />
-                      <LineaPrecio nombre="Al mayor" precio={v.precio_mayor_usd} margen={v.costo_usd !== null ? p.margen_mayor_pct : null} costo={v.costo_usd} tasa={tasaValor} unidad={p.unidad} />
+                      <LineaPrecio nombre="Precio al mayor" precio={v.precio_usd} margen={v.costo_usd !== null ? p.margen_pct : null} costo={v.costo_usd} tasa={tasaValor} unidad={p.unidad} />
                     </ul>
                     <form action={editarVariante} className="formulario" encType="multipart/form-data">
                       <input type="hidden" name="variante_id" value={v.id} />
@@ -500,22 +468,13 @@ export default async function PaginaProductos({
           </div>
           <div className={estilos.filaDos}>
             <CamposPrecio
-              titulo="Al detal"
+              titulo="Precio al mayor"
               id="nuevo"
               campoMargen="margen_pct"
               campoPrecio="precio_usd"
               margen={null}
               precio={null}
               ejemploMargen="25"
-            />
-            <CamposPrecio
-              titulo="Al mayor"
-              id="nuevo-mayor"
-              campoMargen="margen_mayor_pct"
-              campoPrecio="precio_mayor_usd"
-              margen={null}
-              precio={null}
-              ejemploMargen="10"
             />
           </div>
           <span className="ayuda">Déjalo todo vacío si todavía no sabes los precios.</span>

@@ -9,7 +9,7 @@ export const contentType = "image/png";
 export default function Imagen() {
   return imagenSocial({
     antetitulo: negocio.localidad,
-    titulo: "Quesos y huevos, al mayor y al detal",
+    titulo: "Quesos y huevos al mayor",
     detalle: "Precios del día, a tasa BCV",
   });
 }

@@ -250,21 +250,6 @@ export async function ventasPorProducto(desde?: string): Promise<VentasPorProduc
   );
 }
 
-export type VentasPorTipo = { tipo: "detal" | "mayor"; ventas: number; vendido_usd: number };
-
-/** Cuánto se vende a clientes al detal y cuánto a mayoristas. */
-export async function ventasPorTipo(desde?: string): Promise<VentasPorTipo[]> {
-  const filtro = desde ? "where v.fecha >= ?" : "";
-  return filas<VentasPorTipo>(
-    `select c.tipo as tipo, count(*) as ventas, coalesce(sum(v.total_usd), 0) as vendido_usd
-     from ventas v
-     join clientes c on c.id = v.cliente_id
-     ${filtro}
-     group by c.tipo
-     order by c.tipo`,
-    desde ? [desde] : [],
-  );
-}
 
 /** Los clientes que más compran. */
 export async function ventasPorCliente(limite = 10, desde?: string): Promise<VentasPorCliente[]> {

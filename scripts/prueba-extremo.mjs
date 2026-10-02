@@ -277,39 +277,40 @@ async function probarPrecios() {
 
   r = await enviar("/admin/productos", 'id="precio-1"', {
     id: "1", nombre: "Queso amarillo", unidad: "kg", costo_usd: "6.8",
-    margen_pct: "25", precio_usd: "", margen_mayor_pct: "10", precio_mayor_usd: "",
+    margen_pct: "25", precio_usd: "",
   });
-  comprobar("costo 6,80 con 25 % y 10 %", r.destino.includes("guardado"), r.destino);
+  comprobar("costo 6,80 con 25 %", r.destino.includes("guardado"), r.destino);
 
   const panel = (await pagina("/admin/productos")).html;
   comprobar(
-    "panel: detal USD 8,50 = Bs 310,25 y mayor USD 7,48 = Bs 273,02",
-    panel.includes('value="8.5"') && panel.includes("Bs 310,25") && panel.includes('value="7.48"') && panel.includes("Bs 273,02"),
+    "panel: precio al mayor USD 8,50 = Bs 310,25, y nada de detal",
+    panel.includes('value="8.5"') && panel.includes("Bs 310,25") && panel.includes("Precio al mayor") && !panel.includes("Al detal"),
   );
 
   r = await enviar("/admin/productos", 'id="precio-2"', {
     id: "2", nombre: "Queso mozzarella", unidad: "kg", costo_usd: "",
-    margen_pct: "20", precio_usd: "", margen_mayor_pct: "", precio_mayor_usd: "",
+    margen_pct: "20", precio_usd: "",
   });
   comprobar("un margen sin costo se rechaza", r.destino.includes("hace falta el costo"), r.destino);
 
   r = await enviar("/admin/productos", 'id="precio-2"', {
     id: "2", nombre: "Queso mozzarella", unidad: "kg", costo_usd: "",
-    margen_pct: "", precio_usd: "7", margen_mayor_pct: "", precio_mayor_usd: "",
+    margen_pct: "", precio_usd: "7",
   });
   comprobar("un precio escrito a mano se acepta", r.destino.includes("guardado"), r.destino);
 
   // Bs 255,50 es el último cambio: la mozzarella a USD 7 con la tasa a 36,50.
   const web = (await portadaCon("Bs 255,50")).html;
-  comprobar("web: los dos precios del queso amarillo en bolívares", web.includes("Al detal") && web.includes("Al mayor") && web.includes("Bs 310,25") && web.includes("Bs 273,02"));
-  comprobar("web: dólares y tasa", web.includes(usd("8,50")) && web.includes(usd("7,48")) && web.includes("36,50"));
-  comprobar("web: un solo precio se llama «Precio»", web.includes(">Precio<") && web.includes("Bs 255,50"));
+  comprobar("web: el precio al mayor del queso amarillo en bolívares, y nada de detal", web.includes(">Precio al mayor<") && web.includes("Bs 310,25") && !web.includes("al detal") && !web.includes("Al detal"));
+  comprobar("web: dólares y tasa", web.includes(usd("8,50")) && web.includes("36,50"));
+  comprobar("web: la mozzarella a 7 (Bs 255,50)", web.includes("Bs 255,50"));
+  comprobar("portada: sin reseñas; van dentro de cada producto", !web.includes("«"));
   comprobar("portada: cada producto con su dibujo y su enlace a los detalles", (web.match(/href="\/producto\/\d+-[a-z-]+"/g) ?? []).length >= 8 && (web.match(/aria-label="Dibujo de /g) ?? []).length === 4);
   comprobar("portada: los detalles ya no están en la portada", !web.includes("no se desborona"));
   const ficha = await pagina("/producto/2-queso-mozzarella", "");
   comprobar("página de la mozzarella: ventajas, precio y pedir", ficha.status === 200 && ficha.html.includes("Perfecta para rallar") && ficha.html.includes("no se desborona") && ficha.html.includes("Bs 255,50") && ficha.html.includes("quiero%20pedir%20queso%20mozzarella"));
   const fichaAmarillo = await pagina("/producto/1-cualquier-nombre", "");
-  comprobar("página del queso amarillo: los dos precios y sus detalles", fichaAmarillo.html.includes("Bs 310,25") && fichaAmarillo.html.includes("Bs 273,02") && fichaAmarillo.html.includes("Por qué elegirlo") && fichaAmarillo.html.includes("Otros productos"));
+  comprobar("página del queso amarillo: el precio al mayor y sus detalles", fichaAmarillo.html.includes("Bs 310,25") && fichaAmarillo.html.includes("Solo al mayor") && fichaAmarillo.html.includes("Por qué elegirlo") && fichaAmarillo.html.includes("Otros productos"));
   comprobar("todos los productos tienen detalles", (await Promise.all([3, 4].map((id) => pagina(`/producto/${id}`, "")))).every((p) => p.status === 200 && p.html.includes("Por qué elegirlo")));
   comprobar("un producto que no existe da 404", (await pagina("/producto/999-nada", "")).status === 404 && (await pagina("/producto/queso", "")).status === 404);
   comprobar("web: huevos y pecorino rallado, sin precio inventado", web.includes("Huevos") && web.includes("Queso pecorino rallado") && web.includes("Consulta el precio del día"));
@@ -317,17 +318,17 @@ async function probarPrecios() {
 
   // Marcas y presentaciones: dos bolsas de pecorino. La portada dice «desde» con la más barata; la página las enseña con su foto.
   r = await enviar("/admin/productos", 'id="variante-nueva-4-nombre"', {
-    producto_id: "4", nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4", precio_mayor_usd: "3.8", foto: fotoFirmada(),
+    producto_id: "4", nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4", foto: fotoFirmada(),
   });
   comprobar("añadir una marca con foto a un producto", r.destino.includes("«Sortilegio 500 g» añadida") && r.destino.includes("Con su foto"), r.destino);
   varianteSortilegio = Number((await consultar("select max(id) as id from variantes"))[0].id);
-  r = await enviar("/admin/productos", 'id="variante-nueva-4-nombre"', { producto_id: "4", nombre: "Guaralac 500 g", descripcion: "", costo_usd: "", precio_usd: "3.5", precio_mayor_usd: "" });
+  r = await enviar("/admin/productos", 'id="variante-nueva-4-nombre"', { producto_id: "4", nombre: "Guaralac 500 g", descripcion: "", costo_usd: "", precio_usd: "3.5" });
   comprobar("añadir otra sin foto", r.destino.includes("«Guaralac 500 g» añadida"), r.destino);
   const guaralacId = Number((await consultar("select max(id) as id from variantes"))[0].id);
   const portadaMarcas = (await portadaCon("Bs 127,75")).html;
   comprobar(
-    "portada: el pecorino dice «desde» con la más barata al detal (3,50) y al mayor (3,80), y cuántas marcas hay",
-    portadaMarcas.includes("desde </span>Bs 127,75") && portadaMarcas.includes("desde </span>Bs 138,70") && portadaMarcas.includes("2 marcas o presentaciones"),
+    "portada: el pecorino dice «desde» con la más barata (3,50) y cuántas marcas hay",
+    portadaMarcas.includes("desde </span>Bs 127,75") && portadaMarcas.includes("2 marcas o presentaciones"),
     portadaMarcas.slice(Math.max(0, portadaMarcas.indexOf("pecorino rallado</h2>") - 100), portadaMarcas.indexOf("pecorino rallado</h2>") + 900).replace(/\s+/g, " "),
   );
   const fichaPecorino = await pagina("/producto/4-queso-pecorino-rallado", "");
@@ -340,7 +341,7 @@ async function probarPrecios() {
   const fotoVariante = await fetch(base + `/foto-variante/${varianteSortilegio}`);
   comprobar("la foto de la marca se sirve a la web", fotoVariante.status === 200 && fotoVariante.headers.get("content-type") === "image/png");
   comprobar("la vista previa del pecorino dice «desde»", (await fetch(base + "/producto/4-queso-pecorino-rallado/opengraph-image")).status === 200);
-  r = await enviar("/admin/productos", `id="variante-${varianteSortilegio}-nombre"`, { variante_id: String(varianteSortilegio), nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4.2", precio_mayor_usd: "3.8" });
+  r = await enviar("/admin/productos", `id="variante-${varianteSortilegio}-nombre"`, { variante_id: String(varianteSortilegio), nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4.2" });
   comprobar("cambiar el precio de una marca", r.destino.includes("guardada") && (await pagina("/admin/productos")).html.includes('value="4.2"'), r.destino);
   r = await enviar("/admin/productos", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "0" }, cookie, {}, 'name="activo"');
   const portadaUna = (await portadaCon("Bs 153,30")).html;
@@ -363,10 +364,10 @@ async function probarPrecios() {
 async function probarNegocio() {
   const nombre = "Bodega Prueba";
   let r = await enviar("/admin/clientes", 'name="cedula_rif"', {
-    nombre, telefono: "0412-0000000", direccion: "Carrera 19 con calle 25", tipo: "mayor", razon_social: "Bodega Prueba, C.A.",
+    nombre, telefono: "0412-0000000", direccion: "Carrera 19 con calle 25", razon_social: "Bodega Prueba, C.A.",
   });
   const clienteId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
-  comprobar(`alta de cliente mayorista (${r.ms} ms)`, r.destino.includes("Cliente guardado") && clienteId > 0, r.destino);
+  comprobar(`alta de cliente (${r.ms} ms)`, r.destino.includes("Cliente guardado") && clienteId > 0, r.destino);
   if (!clienteId) throw new Error("Sin cliente no se puede seguir");
 
   // La nota como la de papel: 2 piezas, 2 kilos de queso amarillo a USD 5, del 1 de septiembre, por entregar.
@@ -399,12 +400,12 @@ async function probarNegocio() {
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "local", foto: fotoFirmada() });
   comprobar("entregada con la foto: se guarda y la foto queda con la venta", r.destino.includes("con la foto de la nota firmada") && (await cuentasDe(clienteId)).fotos === 1, `${r.destino} ${JSON.stringify(await cuentasDe(clienteId))}`);
   let esperado = 10 + 14.96;
-  comprobar("venta al mayorista a 7,48 el kilo (2 × 7,48)", cerca((await cuentasDe(clienteId)).ventas, esperado), JSON.stringify(await cuentasDe(clienteId)));
+  comprobar("venta a 7,48 el kilo (2 × 7,48)", cerca((await cuentasDe(clienteId)).ventas, esperado), JSON.stringify(await cuentasDe(clienteId)));
 
-  r = await enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "Cliente Detal", telefono: "", tipo: "detal" });
+  r = await enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "Cliente Detal", telefono: "" });
   const detalId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "8.5", entrega: "local", foto: fotoFirmada() });
-  comprobar("venta al detal (2 × 8,50)", cerca((await cuentasDe(detalId)).ventas, 17), JSON.stringify(await cuentasDe(detalId)));
+  comprobar("otra venta (2 × 8,50)", cerca((await cuentasDe(detalId)).ventas, 17), JSON.stringify(await cuentasDe(detalId)));
 
   // Un precio que se sale de lo normal avisa y no guarda hasta confirmar.
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_1: "1", precio_1: "85", entrega: "local", foto: fotoFirmada() });
@@ -656,11 +657,11 @@ async function probarNegocio() {
   const cuentas = await pagina("/admin/cuentas");
   comprobar(`cuentas por pagar (${cuentas.ms} ms)`, cuentas.html.includes(nombre) && cuentas.html.includes(">Recordar</a>"));
   const informe = await pagina("/admin/informe");
-  comprobar(`informe con detal y mayor (${informe.ms} ms)`, informe.html.includes("Al detal y al mayor") && informe.html.includes("Al mayor") && informe.html.includes(nombre));
+  comprobar(`informe por producto y por cliente, sin detal (${informe.ms} ms)`, informe.html.includes("Por producto") && informe.html.includes(nombre) && !informe.html.includes("Al detal"));
   const busca = await pagina(`/admin/clientes?q=${encodeURIComponent(nombre.slice(0, 6).toUpperCase())}`);
   comprobar("buscador de clientes sin distinguir mayúsculas", busca.html.includes(nombre) && busca.html.includes("Ver todos"));
   const productos = await pagina("/admin/productos");
-  comprobar("panel de productos con los dos precios", productos.html.includes("Al detal") && productos.html.includes("Al mayor") && productos.html.includes("Tasa del día"));
+  comprobar("panel de productos con el precio al mayor", productos.html.includes("Precio al mayor") && !productos.html.includes("Al detal") && productos.html.includes("Tasa del día"));
 
   // Foto de la nota.
   const datos = new FormData();
@@ -758,7 +759,7 @@ async function probarNegocio() {
 
 /** Solo en local: el alta rápida, los repetidos y el orden de la ruta. */
 async function probarCartera() {
-  const alta = (campos) => enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "", telefono: "", direccion: "", tipo: "detal", ...campos });
+  const alta = (campos) => enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "", telefono: "", direccion: "", ...campos });
 
   let r = await alta({ telefono: "0414 555 0101", direccion: "Calle 38 con carrera 28" });
   const cercaId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
@@ -939,10 +940,11 @@ async function probarResenas() {
     r.destino.includes("Ya sale en la página") && legible((await pagina(mozzarella, "")).html).includes("«Al rallarla no se apelmaza.»"),
     r.destino,
   );
-  const portadaConCita = legible((await portadaCon("Al rallarla no se apelmaza")).html);
+  // Las reseñas van dentro de la página del producto: la portada no enseña ninguna.
+  const portadaSinCitas = legible((await pagina("/", "")).html);
   comprobar(
-    "la portada enseña una frase corta de un cliente de verdad, nunca una de ejemplo",
-    portadaConCita.includes("«Al rallarla no se apelmaza.» <span") && portadaConCita.includes("— Pizzería 33 de la prueba") && !portadaConCita.includes("de ejemplo"),
+    "la portada no enseña reseñas: están dentro de cada producto",
+    !portadaSinCitas.includes("Al rallarla no se apelmaza") && !portadaSinCitas.includes("Pizzería 33 de la prueba") && !portadaSinCitas.includes("de ejemplo"),
   );
   const [ejemplo] = await consultar("select id from resenas where de_ejemplo = 1 limit 1");
   // Una de ejemplo no tiene botón de publicar: se intenta con el formulario de otra.

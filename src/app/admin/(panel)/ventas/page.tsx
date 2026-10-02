@@ -38,10 +38,7 @@ function FilaDeVenta({ producto, datos }: { producto: Vendible; datos: Escrito }
   const porKilo = producto.unidad === "kg";
   const unidad = porKilo ? "Kilos" : producto.unidad === "carton" ? "Cartones" : "Unidades";
   const porUna = porKilo ? "USD por kilo" : producto.unidad === "carton" ? "USD por cartón" : "USD por unidad";
-  const lista = [
-    producto.precio_usd !== null ? `detal ${usd(producto.precio_usd)}` : "",
-    producto.precio_mayor_usd !== null ? `mayor ${usd(producto.precio_mayor_usd)}` : "",
-  ].filter(Boolean);
+  const lista = producto.precio_usd !== null ? [usd(producto.precio_usd)] : [];
   return (
     <fieldset className={`${estilos.filaVenta} ${porKilo ? "" : estilos["filaVenta--dos"]}`}>
       <legend>{producto.nombre}</legend>
@@ -141,7 +138,6 @@ export default async function PaginaVentas({
                   {clientes.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.rotulo}
-                      {c.tipo === "mayor" ? " (al mayor)" : ""}
                     </option>
                   ))}
                 </select>

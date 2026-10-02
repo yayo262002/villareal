@@ -261,13 +261,6 @@ export default async function PaginaCliente({
             </div>
             <div className="formulario__fila">
               <div className="campo">
-                <label htmlFor="tipo">Le vendes</label>
-                <select id="tipo" name="tipo" defaultValue={cliente.tipo}>
-                  <option value="detal">Al detal</option>
-                  <option value="mayor">Al mayor</option>
-                </select>
-              </div>
-              <div className="campo">
                 <label htmlFor="dias_credito">Días de crédito</label>
                 <input
                   id="dias_credito"

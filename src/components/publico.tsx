@@ -65,71 +65,46 @@ export function LineaTasa({ tasa, className }: { tasa: Tasa | null; className?: 
   );
 }
 
-type ConPrecios = { unidad: string; precio_usd: number | null; precio_mayor_usd: number | null };
+type ConPrecios = { unidad: string; precio_usd: number | null };
 
 /**
- * Las cajas de precio de un producto: al detal y al mayor, en bolívares si
- * hay tasa y en dólares debajo. Con un solo precio la caja se llama «Precio».
- * Sin ninguno, no se inventa: «Consulta el precio del día». Con `desde`,
- * es el más barato de varias marcas o presentaciones.
+ * La caja de precio de un producto: el precio al mayor, en bolívares si
+ * hay tasa y en dólares debajo. Sin precio no se inventa: «Consulta el
+ * precio del día». Con `desde`, es el más barato de varias marcas.
  */
 export function PreciosProducto({ producto, tasa, desde = false }: { producto: ConPrecios; tasa: number | null; desde?: boolean }) {
-  const precios = [
-    { nombre: "Al detal", usd: producto.precio_usd },
-    { nombre: "Al mayor", usd: producto.precio_mayor_usd },
-  ].filter((x): x is { nombre: string; usd: number } => x.usd !== null);
-
-  if (precios.length === 0) {
+  if (producto.precio_usd === null) {
     return <p className={estilos.precioPendiente}>Consulta el precio del día</p>;
   }
+  const enBs = aBolivares(producto.precio_usd, tasa);
   return (
-    <dl className={`${estilos.precios} ${precios.length === 1 ? estilos.preciosUno : ""}`}>
-      {precios.map((precio) => {
-        const enBs = aBolivares(precio.usd, tasa);
-        return (
-          <div
-            key={precio.nombre}
-            className={`${estilos.precioCaja} ${precio.nombre === "Al mayor" ? estilos.precioCajaMayor : ""}`}
-          >
-            <dt>{precios.length === 1 ? "Precio" : precio.nombre}</dt>
-            <dd className={estilos.precio}>
-              {desde && <span className={estilos.desde}>desde </span>}
-              {enBs !== null ? bs(enBs) : usd(precio.usd)}
-            </dd>
-            <dd className={estilos.precioUsd}>
-              {enBs !== null ? `${usd(precio.usd)} ` : ""}por {nombreUnidad(producto.unidad)}
-            </dd>
-          </div>
-        );
-      })}
+    <dl className={`${estilos.precios} ${estilos.preciosUno}`}>
+      <div className={estilos.precioCaja}>
+        <dt>Precio al mayor</dt>
+        <dd className={estilos.precio}>
+          {desde && <span className={estilos.desde}>desde </span>}
+          {enBs !== null ? bs(enBs) : usd(producto.precio_usd)}
+        </dd>
+        <dd className={estilos.precioUsd}>
+          {enBs !== null ? `${usd(producto.precio_usd)} ` : ""}por {nombreUnidad(producto.unidad)}
+        </dd>
+      </div>
     </dl>
   );
 }
 
 /**
- * Los precios de una marca o presentación, en una línea: «Al detal Bs 310,25
- * (USD 8,50) · Al mayor Bs 273,02 (USD 7,48)». Sin precio, lo de siempre.
+ * El precio de una marca o presentación, en una línea: «Bs 310,25 (USD 8,50)
+ * por kg · al mayor». Sin precio, lo de siempre.
  */
-export function PreciosEnLinea({ precios, unidad, tasa }: { precios: Omit<ConPrecios, "unidad">; unidad?: string; tasa: number | null }) {
-  const lista = [
-    { nombre: "Al detal", usd: precios.precio_usd },
-    { nombre: "Al mayor", usd: precios.precio_mayor_usd },
-  ].filter((x): x is { nombre: string; usd: number } => x.usd !== null);
-  if (lista.length === 0) return <p className={estilos.precioPendiente}>Consulta el precio del día</p>;
+export function PreciosEnLinea({ precios, unidad, tasa }: { precios: { precio_usd: number | null }; unidad?: string; tasa: number | null }) {
+  if (precios.precio_usd === null) return <p className={estilos.precioPendiente}>Consulta el precio del día</p>;
+  const enBs = aBolivares(precios.precio_usd, tasa);
   return (
     <p className={estilos.preciosLinea}>
-      {lista.map((precio, i) => {
-        const enBs = aBolivares(precio.usd, tasa);
-        return (
-          <span key={precio.nombre}>
-            {i > 0 && " · "}
-            {lista.length > 1 && `${precio.nombre} `}
-            <strong>{enBs !== null ? bs(enBs) : usd(precio.usd)}</strong>
-            {enBs !== null && <span className={estilos.precioUsd}> ({usd(precio.usd)})</span>}
-          </span>
-        );
-      })}
-      {unidad && <span className={estilos.precioUsd}> por {nombreUnidad(unidad)}</span>}
+      <strong>{enBs !== null ? bs(enBs) : usd(precios.precio_usd)}</strong>
+      {enBs !== null && <span className={estilos.precioUsd}> ({usd(precios.precio_usd)})</span>}
+      <span className={estilos.precioUsd}>{unidad ? ` por ${nombreUnidad(unidad)}` : ""} · al mayor</span>
     </p>
   );
 }

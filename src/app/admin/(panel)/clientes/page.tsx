@@ -196,13 +196,6 @@ export default async function PaginaClientes({
                   <label htmlFor="cedula_rif">Cédula o RIF</label>
                   <input id="cedula_rif" name="cedula_rif" type="text" placeholder="V-12345678" />
                 </div>
-                <div className="campo">
-                  <label htmlFor="tipo">Le vendes</label>
-                  <select id="tipo" name="tipo" defaultValue="detal">
-                    <option value="detal">Al detal</option>
-                    <option value="mayor">Al mayor</option>
-                  </select>
-                </div>
               </div>
               <div className="formulario__fila">
                 <div className="campo">
@@ -312,12 +305,12 @@ export default async function PaginaClientes({
                         )}
                       </p>
                       <p className={estilos.carteraDato}>
-                        {c.telefono && c.telefono !== c.nombre ? `${c.telefono} · ` : ""}
-                        {c.tipo === "mayor" ? "Al mayor" : "Al detal"}
-                        {c.ultima_compra ? ` · compró el ${fechaCorta(c.ultima_compra)}` : ""}
+                        {[c.telefono && c.telefono !== c.nombre ? c.telefono : "", c.ultima_compra ? `compró el ${fechaCorta(c.ultima_compra)}` : ""]
+                          .filter(Boolean)
+                          .join(" · ")}
                         {c.por_entregar > 0 && (
                           <>
-                            {" · "}
+                            {(c.telefono && c.telefono !== c.nombre) || c.ultima_compra ? " · " : ""}
                             <Link href="/admin/despacho" className={estilos.deuda}>
                               {c.por_entregar === 1 ? "1 pedido por entregar" : `${c.por_entregar} pedidos por entregar`}
                             </Link>

@@ -6,9 +6,9 @@ import type { Producto } from "./productos";
 /**
  * Las variantes de un producto: las marcas o presentaciones en que se
  * vende (queso amarillo Kemmental y El Legado; pecorino Sortilegio y
- * Guaralac en bolsa de 500 g). Cada una tiene su costo, sus precios y su
- * foto; la web las enseña en la página del producto y publica «desde» la
- * más barata (`catalogo.ts`).
+ * Guaralac en bolsa de 500 g). Cada una tiene su costo, su precio al
+ * mayor y su foto; la web las enseña en la página del producto y publica
+ * «desde» la más barata (`catalogo.ts`).
  */
 
 export type Variante = {
@@ -19,15 +19,15 @@ export type Variante = {
   /** Una línea: «Tipo Emmental, semiduro, madurado». */
   descripcion: string;
   costo_usd: number | null;
+  /** El precio al mayor en dólares. null: sin precio todavía. */
   precio_usd: number | null;
-  precio_mayor_usd: number | null;
   activo: number;
   creado_en: string;
   /** Cuándo se puso la foto, o null si no tiene. Va en la dirección de la foto para que no se quede una vieja en caché. */
   foto_version: string | null;
 };
 
-export type DatosVariante = Pick<Variante, "nombre" | "descripcion" | "costo_usd" | "precio_usd" | "precio_mayor_usd">;
+export type DatosVariante = Pick<Variante, "nombre" | "descripcion" | "costo_usd" | "precio_usd">;
 
 export type FotoDeVariante = { variante_id: number; tipo: string; tamano: number; datos: ArrayBuffer; actualizado_en: string };
 
@@ -36,7 +36,8 @@ export const TIPOS_DE_FOTO = ["image/jpeg", "image/png", "image/webp"] as const;
 export const TAMANO_MAXIMO_DE_FOTO = 2 * 1024 * 1024;
 
 const CONSULTA = `
-  select v.*, f.actualizado_en as foto_version
+  select v.id, v.producto_id, v.nombre, v.descripcion, v.costo_usd, v.precio_usd, v.activo, v.creado_en,
+         f.actualizado_en as foto_version
   from variantes v
   left join fotos_variantes f on f.variante_id = v.id
 `;
@@ -66,33 +67,30 @@ export function agruparPorProducto(variantes: Variante[]): Map<number, Variante[
 }
 
 /**
- * Los precios de una variante salen de su costo con los márgenes del
- * producto, igual que los del producto; sin costo, vale el precio escrito.
+ * El precio de una variante sale de su costo con el margen del producto,
+ * igual que el del producto; sin costo, vale el precio escrito.
  */
-function resolver(datos: DatosVariante, producto: Producto): { detal: number | null; mayor: number | null } {
-  return {
-    detal: precioDeVenta(datos.costo_usd, producto.margen_pct) ?? datos.precio_usd,
-    mayor: precioDeVenta(datos.costo_usd, producto.margen_mayor_pct) ?? datos.precio_mayor_usd,
-  };
+function resolver(datos: DatosVariante, producto: Producto): number | null {
+  return precioDeVenta(datos.costo_usd, producto.margen_pct) ?? datos.precio_usd;
 }
 
 export async function crearVariante(producto: Producto, datos: DatosVariante): Promise<number> {
-  const precios = resolver(datos, producto);
-  const r = await ejecutar(
-    "insert into variantes (producto_id, nombre, descripcion, costo_usd, precio_usd, precio_mayor_usd) values (?, ?, ?, ?, ?, ?)",
-    [producto.id, datos.nombre, datos.descripcion, datos.costo_usd, precios.detal, precios.mayor],
-  );
+  const r = await ejecutar("insert into variantes (producto_id, nombre, descripcion, costo_usd, precio_usd) values (?, ?, ?, ?, ?)", [
+    producto.id,
+    datos.nombre,
+    datos.descripcion,
+    datos.costo_usd,
+    resolver(datos, producto),
+  ]);
   return r.ultimoId;
 }
 
 export async function actualizarVariante(id: number, producto: Producto, datos: DatosVariante): Promise<void> {
-  const precios = resolver(datos, producto);
-  await ejecutar("update variantes set nombre = ?, descripcion = ?, costo_usd = ?, precio_usd = ?, precio_mayor_usd = ? where id = ?", [
+  await ejecutar("update variantes set nombre = ?, descripcion = ?, costo_usd = ?, precio_usd = ? where id = ?", [
     datos.nombre,
     datos.descripcion,
     datos.costo_usd,
-    precios.detal,
-    precios.mayor,
+    resolver(datos, producto),
     id,
   ]);
 }

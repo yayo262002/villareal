@@ -105,13 +105,13 @@
   border-radius: var(--radio);
   background: var(--color-superficie-suave);
 }
+/* La foto del paquete sin su fondo blanco: se funde con el fondo de la tarjeta. */
 .varianteFoto {
   flex: none;
   width: 112px;
   height: 112px;
-  object-fit: cover;
-  border-radius: var(--radio);
-  background: var(--color-superficie);
+  object-fit: contain;
+  mix-blend-mode: multiply;
 }
 .varianteDibujo {
   flex: none;

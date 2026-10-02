@@ -69,9 +69,10 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
-  -- Cada producto tiene dos precios de venta en dólares, al detal y al mayor.
-  -- Cada uno sale del costo más su margen; la web los muestra en bolívares
-  -- con la tasa del día (tabla ajustes).
+  -- Cada producto tiene su precio de venta al mayor en dólares, que sale del
+  -- costo más el margen; la web lo muestra en bolívares con la tasa del día
+  -- (tabla ajustes). Las columnas «mayor» quedaron de cuando había dos
+  -- precios (detal y mayor): ya no se usan.
   create table if not exists productos (
     id integer primary key autoincrement,
     nombre text not null,
@@ -297,11 +298,12 @@ export const RECONSTRUIR_PRODUCTOS = `
 // La descripción de la mozzarella son palabras del dueño; una ventaja por
 // línea. Las de los demás describen para qué se usa el producto, sin
 // prometer nada que no se sepa. Solo se ponen si el producto no tiene ninguna.
-export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion: string }[] = [
+export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion: string; descripcionAnterior?: string }[] = [
   {
     nombre: "Queso amarillo",
     unidad: "kg",
-    descripcion: "Para sándwiches, arepas y hamburguesas\nFunde bien al calentar\nSe vende por kilo, al detal y al mayor",
+    descripcion: "Para sándwiches, arepas y hamburguesas\nFunde bien al calentar\nSe vende por kilo, al mayor",
+    descripcionAnterior: "Para sándwiches, arepas y hamburguesas\nFunde bien al calentar\nSe vende por kilo, al detal y al mayor",
   },
   {
     nombre: "Queso mozzarella",
@@ -312,7 +314,8 @@ export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion:
   {
     nombre: "Huevos",
     unidad: "carton",
-    descripcion: "Se venden por cartón\nPara negocios y para la casa\nAl detal y al mayor",
+    descripcion: "Se venden por cartón\nPara panaderías, restaurantes y bodegas\nSolo al mayor",
+    descripcionAnterior: "Se venden por cartón\nPara negocios y para la casa\nAl detal y al mayor",
   },
   {
     nombre: "Queso pecorino rallado",

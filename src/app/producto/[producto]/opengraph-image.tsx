@@ -27,13 +27,13 @@ export default async function Imagen({ params }: { params: Promise<{ producto: s
 
   // Con varias marcas, el precio es «desde» la más barata.
   const publicado = precioPublicado(producto, await variantesDeProducto(producto.id, true));
-  const precio = publicado.precio_usd ?? publicado.precio_mayor_usd;
+  const precio = publicado.precio_usd;
   return imagenSocial({
     antetitulo: "Precio del día",
     titulo: producto.nombre,
     detalle:
       precio !== null
-        ? `${publicado.desde ? "Desde " : ""}${usd(precio)} por ${nombreUnidad(producto.unidad)} · a tasa BCV`
+        ? `${publicado.desde ? "Desde " : ""}${usd(precio)} por ${nombreUnidad(producto.unidad)} · al mayor, a tasa BCV`
         : "Consulta el precio del día",
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
     dibujo: <img src={dibujoComoDato(producto.nombre)} width={340} height={340} />,

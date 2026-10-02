@@ -37,7 +37,7 @@ async function productoDe(segmento: string) {
 function resumenDe(producto: Producto): string {
   const ventajas = ventajasDe(producto.descripcion);
   const detalle = ventajas.length > 0 ? `${ventajas.join(". ")}. ` : "";
-  return `${producto.nombre} en ${negocio.localidad}. ${detalle}Al detal y al mayor, a tasa BCV.`;
+  return `${producto.nombre} en ${negocio.localidad}. ${detalle}Solo al mayor, a tasa BCV.`;
 }
 
 export async function generateMetadata({ params }: Parametros): Promise<Metadata> {
@@ -65,7 +65,7 @@ export async function generateMetadata({ params }: Parametros): Promise<Metadata
 function datosDelProducto(producto: Producto, publicado: PrecioPublicado, variantes: Variante[]): Record<string, unknown> {
   const ruta = direccionCompleta(rutaProducto(producto));
   const conPrecios = variantes.length > 0 ? variantes : [publicado];
-  const precios = conPrecios.flatMap((v) => [v.precio_usd, v.precio_mayor_usd]).filter((p): p is number => p !== null);
+  const precios = conPrecios.map((v) => v.precio_usd).filter((p): p is number => p !== null);
   const oferta =
     precios.length === 0
       ? undefined
@@ -143,7 +143,7 @@ export default async function PaginaProducto({ params }: Parametros) {
               <IlustracionProducto nombre={producto.nombre} className={estilos.dibujoGrande} />
               <h1 className={estilos.fichaNombre}>{producto.nombre}</h1>
               <p className={estilos.fichaUnidad}>
-                Se vende por {nombreUnidad(producto.unidad)}, al detal y al mayor
+                Solo al mayor, por {nombreUnidad(producto.unidad)}
                 {variantes.length >= 2 && ` · ${variantes.length} marcas o presentaciones`}
               </p>
             </header>

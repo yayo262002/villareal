@@ -140,6 +140,9 @@ async function sembrar(cliente: Client): Promise<void> {
       });
     } else if (p.descripcion && !String(hay.rows[0].descripcion ?? "")) {
       await cliente.execute({ sql: "update productos set descripcion = ? where id = ?", args: [p.descripcion, hay.rows[0].id] });
+    } else if (p.descripcionAnterior && mismoTexto(hay.rows[0].descripcion, p.descripcionAnterior)) {
+      // El texto de siembra cambió y el dueño no había tocado el viejo: se pone el nuevo.
+      await cliente.execute({ sql: "update productos set descripcion = ? where id = ?", args: [p.descripcion, hay.rows[0].id] });
     }
   }
 }

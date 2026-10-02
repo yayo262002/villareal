@@ -5,7 +5,6 @@ import { listarProductos } from "@/lib/productos";
 import { agruparPorProducto, listarVariantes } from "@/lib/variantes";
 import { precioPublicado } from "@/lib/catalogo";
 import { leerTasa } from "@/lib/ajustes";
-import { citasParaLaPortada } from "@/lib/resenas";
 import { rutaProducto } from "@/lib/enlaces";
 import {
   CabeceraPublica,
@@ -24,13 +23,14 @@ export const metadata: Metadata = {
 
 /**
  * La web pública, pensada para abrirse en el teléfono desde un mensaje de
- * WhatsApp: los productos con su dibujo y su precio en bolívares, y nada
- * antes. Los detalles de cada uno están en su propia página. Lo que no está
+ * WhatsApp: los productos con su dibujo y su precio al mayor en bolívares,
+ * y nada antes. Los detalles y las reseñas de cada uno están en su propia
+ * página, no aquí. Lo que no está
  * configurado (tasa, precios) no se inventa: se omite o se dice que está
  * pendiente.
  */
 export default async function PaginaInicio() {
-  const [productos, variantes, tasa, citas] = await Promise.all([listarProductos(true), listarVariantes(), leerTasa(), citasParaLaPortada()]);
+  const [productos, variantes, tasa] = await Promise.all([listarProductos(true), listarVariantes(), leerTasa()]);
   const variantesDe = agruparPorProducto(variantes);
   const whatsapp = enlaceWhatsapp("Hola, quiero información sobre sus productos.");
   const mayor = enlaceWhatsapp("Hola, tengo un negocio y quiero precio al mayor.");
@@ -53,7 +53,7 @@ export default async function PaginaInicio() {
             <LineaTasa tasa={tasa} className={estilos.tasa} />
           </div>
           <p className={estilos.entradilla}>
-            Quesos y huevos, al detal y al mayor, en el centro de {negocio.localidad}.
+            Quesos y huevos al mayor, en el centro de {negocio.localidad}.
           </p>
 
           {productos.length === 0 ? (
@@ -63,7 +63,6 @@ export default async function PaginaInicio() {
               {productos.map((p) => {
                 const ruta = rutaProducto(p);
                 const pedir = enlaceWhatsapp(`Hola, quiero pedir ${p.nombre.toLowerCase()}.`);
-                const cita = citas.get(p.id);
                 // Con varias marcas, la tarjeta dice «desde» la más barata y cuántas hay.
                 const publicado = precioPublicado(p, variantesDe.get(p.id) ?? []);
                 return (
@@ -76,11 +75,6 @@ export default async function PaginaInicio() {
                       </span>
                     </Link>
                     <PreciosProducto producto={{ ...publicado, unidad: p.unidad }} tasa={tasa?.valor ?? null} desde={publicado.desde} />
-                    {cita && (
-                      <p className={estilos.cita}>
-                        «{cita.texto}» <span>— {cita.autor}</span>
-                      </p>
-                    )}
                     <div className={estilos.acciones}>
                       <Link href={ruta} className="boton boton--secundario">
                         Ver detalles
@@ -114,7 +108,7 @@ export default async function PaginaInicio() {
               <h2 id="titulo-mayor" className={estilos.mayorTitulo}>
                 ¿Tienes pizzería, panadería o restaurante?
               </h2>
-              <p>Vendemos al mayor. Escríbenos y te pasamos el precio según la cantidad que necesites.</p>
+              <p>Vendemos solo al mayor. Escríbenos y te pasamos el precio según la cantidad que necesites.</p>
               <a className="boton boton--acento" href={mayor} target="_blank" rel="noopener">
                 Pedir precio al mayor
               </a>

@@ -5,7 +5,8 @@
  * lleva el formulario de venta. Cálculo puro, con pruebas.
  */
 
-export type Precios = { precio_usd: number | null; precio_mayor_usd: number | null };
+/** El precio al mayor en dólares, o null si todavía no está. */
+export type Precios = { precio_usd: number | null };
 
 export type VarianteDeCatalogo = Precios & { id: number; producto_id: number; nombre: string; activo: number };
 
@@ -24,23 +25,16 @@ function menor(valores: (number | null)[]): number | null {
 }
 
 /**
- * Lo que publica un producto: sus propios precios si no tiene variantes
- * activas; si las tiene, el más barato de cada precio, y «desde» cuando
- * hay dos o más con precio. Sin ninguna variante con precio, no hay
- * precio: la web dice «consulta el precio del día», no se inventa.
+ * Lo que publica un producto: su propio precio si no tiene variantes
+ * activas; si las tiene, el más barato de ellas, y «desde» cuando hay dos
+ * o más con precio. Sin ninguna variante con precio, no hay precio: la web
+ * dice «consulta el precio del día», no se inventa.
  */
 export function precioPublicado(producto: Precios, variantes: VarianteDeCatalogo[]): PrecioPublicado {
   const activas = variantes.filter((v) => v.activo === 1);
-  if (activas.length === 0) {
-    return { precio_usd: producto.precio_usd, precio_mayor_usd: producto.precio_mayor_usd, desde: false, variantes: 0 };
-  }
-  const conPrecio = activas.filter((v) => v.precio_usd !== null || v.precio_mayor_usd !== null).length;
-  return {
-    precio_usd: menor(activas.map((v) => v.precio_usd)),
-    precio_mayor_usd: menor(activas.map((v) => v.precio_mayor_usd)),
-    desde: conPrecio >= 2,
-    variantes: activas.length,
-  };
+  if (activas.length === 0) return { precio_usd: producto.precio_usd, desde: false, variantes: 0 };
+  const conPrecio = activas.filter((v) => v.precio_usd !== null).length;
+  return { precio_usd: menor(activas.map((v) => v.precio_usd)), desde: conPrecio >= 2, variantes: activas.length };
 }
 
 /** Una fila del formulario de venta: un producto sin variantes, o una variante concreta. */
@@ -73,7 +67,7 @@ export function vendiblesDe(productos: ProductoDeCatalogo[], variantes: Variante
     if (p.activo !== 1) continue;
     const suyas = variantes.filter((v) => v.producto_id === p.id && v.activo === 1);
     if (suyas.length === 0) {
-      lista.push({ clave: claveDe(p.id, null), producto_id: p.id, variante_id: null, nombre: p.nombre, unidad: p.unidad, precio_usd: p.precio_usd, precio_mayor_usd: p.precio_mayor_usd });
+      lista.push({ clave: claveDe(p.id, null), producto_id: p.id, variante_id: null, nombre: p.nombre, unidad: p.unidad, precio_usd: p.precio_usd });
       continue;
     }
     for (const v of suyas) {
@@ -84,7 +78,6 @@ export function vendiblesDe(productos: ProductoDeCatalogo[], variantes: Variante
         nombre: nombreDeVenta(p.nombre, v.nombre),
         unidad: p.unidad,
         precio_usd: v.precio_usd,
-        precio_mayor_usd: v.precio_mayor_usd,
       });
     }
   }

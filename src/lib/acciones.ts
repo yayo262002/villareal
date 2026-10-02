@@ -81,7 +81,7 @@ import {
   quitarResenasDeEjemplo,
 } from "./resenas";
 import { leerResena } from "./resenas-texto";
-import { esMetodoPago, esUnidad, hoy, monedaDelMetodo, precioParaCliente, redondear } from "./dinero";
+import { esMetodoPago, esUnidad, hoy, monedaDelMetodo, redondear } from "./dinero";
 
 /**
  * Todas las acciones del panel. Cada una comprueba la sesión primero: una
@@ -245,7 +245,8 @@ export async function salir(): Promise<void> {
 
 function leerCliente(datos: FormData) {
   const nombre = texto(datos, "nombre");
-  const tipo = texto(datos, "tipo") === "mayor" ? "mayor" : ("detal" as TipoCliente);
+  // El negocio vende solo al mayor: todos los clientes son mayoristas.
+  const tipo: TipoCliente = "mayor";
   const telefono = telefonoLegible(texto(datos, "telefono"));
   return {
     // Quien se registra solo con el teléfono lleva el teléfono como nombre.
@@ -519,13 +520,11 @@ function leerPrecios(datos: FormData): PreciosProducto {
     costo_usd: numero(datos, "costo_usd"),
     margen_pct: numero(datos, "margen_pct"),
     precio_usd: numero(datos, "precio_usd"),
-    margen_mayor_pct: numero(datos, "margen_mayor_pct"),
-    precio_mayor_usd: numero(datos, "precio_mayor_usd"),
   };
   for (const valor of Object.values(precios)) {
-    if (valor !== null && valor < 0) volverConError("/admin/productos", "Costo, márgenes y precios no pueden ser negativos.");
+    if (valor !== null && valor < 0) volverConError("/admin/productos", "Costo, margen y precio no pueden ser negativos.");
   }
-  if (precios.costo_usd === null && (precios.margen_pct !== null || precios.margen_mayor_pct !== null)) {
+  if (precios.costo_usd === null && precios.margen_pct !== null) {
     volverConError("/admin/productos", "Para usar un margen hace falta el costo. Escríbelo, o pon el precio de venta a mano.");
   }
   return precios;
@@ -566,8 +565,6 @@ export async function editarProducto(datos: FormData): Promise<void> {
     costo_usd: precios.costo_usd,
     margen_pct: precios.margen_pct,
     precio_usd: precios.precio_usd,
-    margen_mayor_pct: precios.margen_mayor_pct,
-    precio_mayor_usd: precios.precio_mayor_usd,
   });
   volverConExito("/admin/productos", `«${nombre}» guardado. La web ya lo muestra así.`);
 }
@@ -583,9 +580,8 @@ function leerVariante(datos: FormData): DatosVariante {
     descripcion: texto(datos, "descripcion"),
     costo_usd: numero(datos, "costo_usd"),
     precio_usd: numero(datos, "precio_usd"),
-    precio_mayor_usd: numero(datos, "precio_mayor_usd"),
   };
-  for (const valor of [variante.costo_usd, variante.precio_usd, variante.precio_mayor_usd]) {
+  for (const valor of [variante.costo_usd, variante.precio_usd]) {
     if (valor !== null && valor < 0) volverConError("/admin/productos", "Costo y precios no pueden ser negativos.");
   }
   return variante;
@@ -758,7 +754,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
       piezas: numero(datos, `piezas_${v.clave}`),
       cantidad: numero(datos, `cantidad_${v.clave}`),
       precio: numero(datos, `precio_${v.clave}`),
-      precioDeLista: precioParaCliente(v, cliente.tipo),
+      precioDeLista: v.precio_usd,
       ultimoPrecio: null as number | null,
     };
     if (!lineaRellena(linea)) continue;

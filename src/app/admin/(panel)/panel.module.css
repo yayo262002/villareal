@@ -496,9 +496,8 @@
   flex: none;
   width: 56px;
   height: 56px;
-  object-fit: cover;
-  border-radius: var(--radio);
-  background: var(--color-superficie);
+  object-fit: contain;
+  mix-blend-mode: multiply;
 }
 .subtituloPequeno {
   margin: 0;
