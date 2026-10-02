@@ -152,10 +152,17 @@ export default async function PaginaProducto({ params }: Parametros) {
               <h2 className={estilos.bloqueTitulo}>Precio de hoy</h2>
               <PreciosProducto producto={{ ...publicado, unidad: producto.unidad }} tasa={tasa?.valor ?? null} desde={publicado.desde} />
               <LineaTasa tasa={tasa} className={estilos.tasa} />
-              {pedir && (
-                <a className={`boton boton--acento ${estilos.botonPedir}`} href={pedir} target="_blank" rel="noopener">
-                  Pedir por WhatsApp
+              {variantes.length > 0 ? (
+                // Se pide desde la marca elegida, más abajo: así el mensaje dice cuál es.
+                <a className={`boton boton--secundario ${estilos.botonPedir}`} href="#marcas">
+                  Elige la marca o presentación para pedir ↓
                 </a>
+              ) : (
+                pedir && (
+                  <a className={`boton boton--acento ${estilos.botonPedir}`} href={pedir} target="_blank" rel="noopener">
+                    Pedir por WhatsApp
+                  </a>
+                )
               )}
               <a className={estilos.compartir} href={compartir} target="_blank" rel="noopener">
                 Compartir este producto por WhatsApp
@@ -164,7 +171,7 @@ export default async function PaginaProducto({ params }: Parametros) {
 
             {/* Las marcas o presentaciones en que se vende, cada una con su foto y su precio. */}
             {variantes.length > 0 && (
-              <div className={estilos.bloque}>
+              <div className={estilos.bloque} id="marcas">
                 <h2 className={estilos.bloqueTitulo}>Marcas y presentaciones</h2>
                 <ul className={estilos.variantes}>
                   {variantes.map((v) => {
@@ -183,8 +190,8 @@ export default async function PaginaProducto({ params }: Parametros) {
                           {v.descripcion && <p className={estilos.varianteDetalle}>{v.descripcion}</p>}
                           <PreciosEnLinea precios={v} unidad={producto.unidad} tasa={tasa?.valor ?? null} />
                           {pedirEsta && (
-                            <a className={`boton boton--secundario ${estilos.varianteBoton}`} href={pedirEsta} target="_blank" rel="noopener">
-                              Pedir {v.nombre}
+                            <a className={`boton ${estilos.varianteBoton}`} href={pedirEsta} target="_blank" rel="noopener">
+                              {`Pedir ${v.nombre}`}
                             </a>
                           )}
                         </div>

@@ -210,7 +210,10 @@ datos/                    La base de datos (fuera de Git)
   que el teléfono reduce antes de subir. La portada dice «desde» con el
   precio más barato de las publicadas y cuántas hay; la página del
   producto las enseña todas con su foto, su precio y su botón de pedir
-  (`src/lib/catalogo.ts`). Mientras haya alguna publicada, los precios del
+  (`src/lib/catalogo.ts`). Con dos o más marcas, la tarjeta de la portada
+  no lleva «Pedir» (sería pedir a ciegas): lleva «Ver las 2 opciones y
+  pedir», que abre la lista de marcas, y el botón de pedir está en cada
+  marca, con su precio, para que el mensaje de WhatsApp diga cuál es. Mientras haya alguna publicada, los precios del
   producto no se usan. En la venta sale una fila por cada marca, la nota la
   nombra («Queso pecorino rallado Sortilegio 500 g») y el despacho carga
   cada marca aparte. Una marca ya vendida no se borra, se esconde. La foto

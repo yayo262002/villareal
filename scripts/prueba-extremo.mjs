@@ -328,7 +328,8 @@ async function probarPrecios() {
   const portadaMarcas = (await portadaCon("Bs 127,75")).html;
   comprobar(
     "portada: el pecorino dice «desde» con la más barata (3,50) y cuántas marcas hay",
-    portadaMarcas.includes("desde </span>Bs 127,75") && portadaMarcas.includes("2 marcas o presentaciones"),
+    portadaMarcas.includes("desde </span>Bs 127,75") && portadaMarcas.includes("2 marcas o presentaciones") &&
+      portadaMarcas.includes('href="/producto/4-queso-pecorino-rallado#marcas"') && portadaMarcas.includes("Ver las 2 opciones y pedir"),
     portadaMarcas.slice(Math.max(0, portadaMarcas.indexOf("pecorino rallado</h2>") - 100), portadaMarcas.indexOf("pecorino rallado</h2>") + 900).replace(/\s+/g, " "),
   );
   const fichaPecorino = await pagina("/producto/4-queso-pecorino-rallado", "");
@@ -337,6 +338,11 @@ async function probarPrecios() {
     fichaPecorino.html.includes("Marcas y presentaciones") && fichaPecorino.html.includes("Sortilegio 500 g") && fichaPecorino.html.includes("Guaralac 500 g") &&
       fichaPecorino.html.includes(`/foto-variante/${varianteSortilegio}?v=`) && fichaPecorino.html.includes("Rallado, semigraso, madurado") &&
       fichaPecorino.html.includes("Bs 146,00") && fichaPecorino.html.includes("quiero%20pedir%20queso%20pecorino%20rallado%20sortilegio%20500%20g"),
+  );
+  comprobar(
+    "con marcas, se pide desde la marca elegida: el botón de arriba lleva a las marcas y cada una tiene el suyo",
+    fichaPecorino.html.includes('href="#marcas"') && fichaPecorino.html.includes('id="marcas"') && fichaPecorino.html.includes(">Pedir Sortilegio 500 g<") &&
+      !fichaPecorino.html.includes(">Pedir por WhatsApp<"),
   );
   const fotoVariante = await fetch(base + `/foto-variante/${varianteSortilegio}`);
   comprobar("la foto de la marca se sirve a la web", fotoVariante.status === 200 && fotoVariante.headers.get("content-type") === "image/png");

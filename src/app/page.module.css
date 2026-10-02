@@ -158,6 +158,10 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--espacio-3);
 }
+/* Un solo botón, a todo el ancho: «Ver las 2 opciones y pedir». */
+.accionesUna {
+  grid-template-columns: 1fr;
+}
 
 .notaPrecios {
   margin-top: var(--espacio-4);

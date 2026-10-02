@@ -75,16 +75,25 @@ export default async function PaginaInicio() {
                       </span>
                     </Link>
                     <PreciosProducto producto={{ ...publicado, unidad: p.unidad }} tasa={tasa?.valor ?? null} desde={publicado.desde} />
-                    <div className={estilos.acciones}>
-                      <Link href={ruta} className="boton boton--secundario">
-                        Ver detalles
-                      </Link>
-                      {pedir && (
-                        <a className="boton" href={pedir} target="_blank" rel="noopener">
-                          Pedir
-                        </a>
-                      )}
-                    </div>
+                    {publicado.variantes >= 2 ? (
+                      // Con varias marcas no se pide a ciegas: primero se ven las opciones con su precio, y se pide desde la elegida.
+                      <div className={`${estilos.acciones} ${estilos.accionesUna}`}>
+                        <Link href={`${ruta}#marcas`} className="boton">
+                          {`Ver las ${publicado.variantes} opciones y pedir`}
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className={estilos.acciones}>
+                        <Link href={ruta} className="boton boton--secundario">
+                          Ver detalles
+                        </Link>
+                        {pedir && (
+                          <a className="boton" href={pedir} target="_blank" rel="noopener">
+                            Pedir
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}
