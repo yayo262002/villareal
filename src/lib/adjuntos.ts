@@ -11,6 +11,8 @@ export type Adjunto = {
   id: number;
   cliente_id: number;
   venta_id: number | null;
+  /** El abono al que pertenece, si es la captura de un pago. */
+  pago_id: number | null;
   descripcion: string;
   tipo: string;
   tamano: number;
@@ -28,7 +30,7 @@ export function esTipoAdjunto(tipo: string): tipo is (typeof TIPOS_ADJUNTO)[numb
   return (TIPOS_ADJUNTO as readonly string[]).includes(tipo);
 }
 
-const SIN_DATOS = "id, cliente_id, venta_id, descripcion, tipo, tamano, creado_en";
+const SIN_DATOS = "id, cliente_id, venta_id, pago_id, descripcion, tipo, tamano, creado_en";
 
 export async function listarAdjuntosDeCliente(clienteId: number): Promise<Adjunto[]> {
   return filas<Adjunto>(`select ${SIN_DATOS} from adjuntos where cliente_id = ? order by id desc`, [clienteId]);

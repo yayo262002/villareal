@@ -33,7 +33,7 @@ export default async function PaginaPagos({
             Primero <Link href="/admin/clientes">registra un cliente</Link>.
           </p>
         ) : (
-          <FormularioPago clientes={clientes} ultimaTasa={tasa} volverA="/admin/pagos" />
+          <FormularioPago clientes={clientes} ultimaTasa={tasa} volverA="/admin/pagos" parametros={parametros} />
         )}
       </section>
 

@@ -33,13 +33,13 @@ export async function anotarLecturaDeFoto(id: number, lectura: string): Promise<
   await ejecutar("update fotos_en_espera set lectura = ? where id = ?", [lectura, id]);
 }
 
-/** La foto pasa a ser un adjunto de esa venta y deja de estar en espera. */
-export async function pasarFotoAAdjuntos(id: number, clienteId: number, ventaId: number, descripcion: string): Promise<void> {
+/** La foto pasa a ser un adjunto del cliente, unido a esa venta o a ese abono, y deja de estar en espera. */
+export async function pasarFotoAAdjuntos(id: number, clienteId: number, ventaId: number | null, descripcion: string, pagoId: number | null = null): Promise<void> {
   await transaccion(async (tx) => {
     const r = await tx.execute({
-      sql: `insert into adjuntos (cliente_id, venta_id, descripcion, tipo, tamano, datos)
-            select ?, ?, ?, tipo, tamano, datos from fotos_en_espera where id = ?`,
-      args: [clienteId, ventaId, descripcion, id],
+      sql: `insert into adjuntos (cliente_id, venta_id, pago_id, descripcion, tipo, tamano, datos)
+            select ?, ?, ?, ?, tipo, tamano, datos from fotos_en_espera where id = ?`,
+      args: [clienteId, ventaId, pagoId, descripcion, id],
     });
     if (r.rowsAffected === 0) throw new Error("La foto de la nota ya no está: vuelve a hacerla.");
     await tx.execute({ sql: "delete from fotos_en_espera where id = ?", args: [id] });

@@ -68,8 +68,9 @@ import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { TAMANO_MAXIMO_ADJUNTO, buscarAdjunto, eliminarAdjunto, esTipoAdjunto, guardarAdjunto } from "./adjuntos";
 import { anotarLecturaDeFoto, aparcarFoto, buscarFotoEnEspera, olvidarFotoEnEspera, pasarFotoAAdjuntos } from "./fotos-en-espera";
-import { lectorDisponible, leerNota } from "./lector-de-notas";
+import { lectorDisponible, leerCaptura, leerNota } from "./lector-de-notas";
 import { compararNota, interpretarLectura, type NotaLeida } from "./nota-leida";
+import { compararCaptura, describirCaptura, interpretarCaptura, propuestaDesdeCaptura, type CapturaLeida } from "./captura-leida";
 import { guardarCopiaNube } from "./copias-nube";
 import {
   buscarResena,
@@ -83,7 +84,7 @@ import {
   quitarResenasDeEjemplo,
 } from "./resenas";
 import { leerResena } from "./resenas-texto";
-import { esMetodoPago, esUnidad, hoy, monedaDelMetodo, redondear } from "./dinero";
+import { esMetodoPago, esUnidad, fechaCorta, hoy, monedaDelMetodo, redondear } from "./dinero";
 
 /**
  * Todas las acciones del panel. Cada una comprueba la sesión primero: una
@@ -202,6 +203,17 @@ async function leerLaNota(foto: FotoDeLaNota): Promise<Lectura> {
   const nota = await leerNota(foto);
   if (nota) await anotarLecturaDeFoto(foto.id, JSON.stringify(nota));
   return { nota, intentada: true };
+}
+
+type LecturaDeCaptura = { captura: CapturaLeida | null; intentada: boolean };
+
+/** Lee la captura de un pago con el lector, una sola vez por foto: lo leído se guarda con ella. */
+async function leerLaCaptura(foto: FotoDeLaNota): Promise<LecturaDeCaptura> {
+  if (!lectorDisponible()) return { captura: null, intentada: false };
+  if (foto.lectura !== null) return { captura: interpretarCaptura(foto.lectura), intentada: true };
+  const captura = await leerCaptura(foto);
+  if (captura) await anotarLecturaDeFoto(foto.id, JSON.stringify(captura));
+  return { captura, intentada: true };
 }
 
 /** Lo que se le dice al dueño de la lectura, después de guardar. */
@@ -899,6 +911,13 @@ export async function borrarVenta(datos: FormData): Promise<void> {
 
 // ---------- Pagos ----------
 
+/**
+ * Registra un abono. Con la captura del pago (pago móvil, transferencia),
+ * la captura se aparca al llegar y se guarda con el abono; si hay lector,
+ * se lee: con el monto vacío, el formulario vuelve relleno con lo leído y
+ * el equivalente en dólares a la tasa del día; con el monto escrito, se
+ * comprueba contra la captura y lo que no cuadra se avisa.
+ */
 export async function guardarPago(datos: FormData): Promise<void> {
   await exigirSesion();
   const origen = volverA(datos, "/admin/pagos");
@@ -908,18 +927,59 @@ export async function guardarPago(datos: FormData): Promise<void> {
   const monto = numero(datos, "monto");
   const tasa = numero(datos, "tasa");
 
-  if (!clienteId) volverConError(origen, "Elige un cliente.");
-  if (!fecha) volverConError(origen, "Falta la fecha.");
-  if (!esMetodoPago(metodo)) volverConError(origen, "Elige el método de pago.");
-  if (monto === null || monto <= 0) volverConError(origen, "El monto tiene que ser mayor que cero.");
+  // La captura se aparca desde el principio: si el formulario vuelve, no hay que repetirla.
+  const { foto, mala: fotoMala } = await recogerFotoDeLaNota(datos);
+  if (fotoMala) volverConError(origen, fotoMala);
+  // Con lo escrito en la dirección, el formulario vuelve relleno.
+  const escrito = new URLSearchParams();
+  for (const campo of ["cliente_id", "fecha", "metodo", "monto", "tasa", "referencia", "nota"]) if (texto(datos, campo)) escrito.set(campo, texto(datos, campo));
+  if (foto) escrito.set("foto_espera", String(foto.id));
+  const volver: (mensaje: string, como?: "error" | "ok", casilla?: boolean) => never = (mensaje, como = "error", casilla = false) => {
+    if (casilla) escrito.set("confirmar_captura", "1");
+    const destino = `${origen}${origen.includes("?") ? "&" : "?"}${escrito.toString()}`;
+    if (como === "ok") volverConExito(destino, mensaje);
+    volverConError(destino, mensaje);
+  };
 
-  const moneda = monedaDelMetodo(metodo);
-  if (moneda === "VES" && (tasa === null || tasa <= 0)) {
-    volverConError(origen, "Un pago en bolívares necesita la tasa del día (Bs por dólar).");
+  if (!clienteId) volver("Elige un cliente.");
+
+  // Con la captura y sin monto, se lee y el formulario vuelve relleno para revisar.
+  let lectura: LecturaDeCaptura = { captura: null, intentada: false };
+  if (foto) lectura = await leerLaCaptura(foto);
+  if (lectura.captura && (monto === null || monto <= 0)) {
+    const tasaDelDia = (await leerTasa())?.valor ?? tasa;
+    const propuesta = propuestaDesdeCaptura(lectura.captura, tasaDelDia, hoy());
+    if (propuesta) {
+      escrito.set("metodo", propuesta.metodo);
+      escrito.set("monto", String(propuesta.monto));
+      escrito.set("fecha", propuesta.fecha);
+      if (propuesta.referencia) escrito.set("referencia", propuesta.referencia);
+      if (propuesta.tasa) escrito.set("tasa", String(propuesta.tasa));
+      escrito.set("leida", "1");
+      volver(`${describirCaptura(lectura.captura, propuesta)} Revisa y pulsa «Registrar abono».`, "ok");
+    }
+    volver(lectura.captura.esComprobante ? "No pude sacar el monto de la captura. Escríbelo tú y guarda: la captura queda con el abono." : "Esa foto no parece el comprobante de un pago. Si lo es, escribe el monto y guarda.");
   }
 
+  if (!fecha) volver("Falta la fecha.");
+  if (!esMetodoPago(metodo)) volver("Elige el método de pago.");
+  if (monto === null || monto <= 0) volver(foto ? "Escribe el monto, o déjalo vacío para que se lea de la captura." : "El monto tiene que ser mayor que cero.");
+
+  const moneda = monedaDelMetodo(metodo);
+  if (moneda === "VES" && (tasa === null || tasa <= 0)) volver("Un pago en bolívares necesita la tasa del día (Bs por dólar).");
+
+  // Con el monto escrito, la captura se comprueba: lo que no cuadre se avisa antes de guardar.
+  let reparos: string[] = [];
+  if (lectura.captura) {
+    reparos = compararCaptura(lectura.captura, { monto, moneda, fecha });
+    if (reparos.length > 0 && texto(datos, "confirmar_captura") !== "1") {
+      volver(`${reparos.join(" ")} Revisa la captura y lo escrito; si está bien así, marca «Ya revisé la captura» y guarda otra vez.`, "error", true);
+    }
+  }
+
+  let pagoId = 0;
   try {
-    await registrarPago({
+    pagoId = await registrarPago({
       cliente_id: clienteId,
       fecha,
       metodo,
@@ -929,10 +989,14 @@ export async function guardarPago(datos: FormData): Promise<void> {
       referencia: texto(datos, "referencia"),
       nota: texto(datos, "nota"),
     });
+    if (foto) await pasarFotoAAdjuntos(foto.id, clienteId, null, `Captura del abono del ${fechaCorta(fecha)}`, pagoId);
   } catch (error) {
-    volverConError(origen, mensajeDe(error));
+    // Si el abono ya entró y solo falló la captura, no se vuelve al formulario: se anotaría dos veces.
+    if (pagoId) volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado, pero la captura no se guardó: ${mensajeDe(error)}`);
+    volver(mensajeDe(error));
   }
-  volverConExito(`/admin/clientes/${clienteId}`, "Abono registrado. Abajo, en Abonos, puedes mandarle el recibo.");
+  const comentario = !foto ? "" : lectura.intentada && !lectura.captura ? " (La captura no se pudo leer; queda guardada igual.)" : reparos.length > 0 ? " Guardado con los avisos que revisaste." : "";
+  volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado${foto ? " con su captura" : ""}.${comentario} Abajo, en Abonos, puedes mandarle el recibo.`);
 }
 
 /** Igual que `borrarVenta`: la confirmación está en `/admin/pagos/[id]/eliminar`. */

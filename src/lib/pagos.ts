@@ -16,6 +16,8 @@ export type Pago = {
   monto_usd: number;
   referencia: string;
   nota: string;
+  /** Cuántas capturas (comprobantes) tiene guardadas: 0 o 1 normalmente. */
+  con_comprobante: number;
   creado_en: string;
 };
 
@@ -31,7 +33,8 @@ export type DatosPago = {
 };
 
 const CONSULTA_PAGOS = `
-  select p.*, ${ROTULO_DEL_CLIENTE} as cliente_nombre
+  select p.*, ${ROTULO_DEL_CLIENTE} as cliente_nombre,
+         (select count(*) from adjuntos a where a.pago_id = p.id) as con_comprobante
   from pagos p
   join clientes c on c.id = p.cliente_id
 `;
@@ -50,6 +53,8 @@ export async function buscarPago(id: number): Promise<Pago | null> {
 
 /** Borra un pago. Devuelve false si no existía. */
 export async function eliminarPago(id: number): Promise<boolean> {
+  // La captura se queda con el cliente, sin abono: en Turso no se puede contar con la clave foránea.
+  await ejecutar("update adjuntos set pago_id = null where pago_id = ?", [id]);
   const r = await ejecutar("delete from pagos where id = ?", [id]);
   return r.cambios > 0;
 }

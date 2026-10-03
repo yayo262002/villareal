@@ -505,6 +505,36 @@ async function probarNegocio() {
   for (const id of [leidaId, confirmadaId, sinLeerId]) await enviar(`/admin/ventas/${id}/eliminar`, 'name="id"', { id: String(id) });
   comprobar("las ventas de la prueba de lectura se borran y la cuenta vuelve a como estaba", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
 
+  // La captura del pago se lee sola: sin monto, rellena el abono; con monto, lo comprueba; y queda guardada con el abono.
+  const capturaBs = { es_comprobante: true, metodo: "pago_movil", moneda: "VES", monto: 3650, fecha: "2026-09-21", referencia: "004512", banco: "Banesco" };
+  const fichaDetal = `/admin/clientes/${detalId}`;
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-16", metodo: "pago_movil", monto: "", tasa: "36.5", volver_a: fichaDetal, foto: fotoLeida(capturaBs) });
+  comprobar(
+    "sin monto, la captura se lee: monto, método, fecha y referencia, y el equivalente en dólares a la tasa del día",
+    r.destino.includes("Leí la captura") && r.destino.includes("monto=3650") && r.destino.includes("metodo=pago_movil") && r.destino.includes("fecha=2026-09-21") &&
+      r.destino.includes("referencia=004512") && r.destino.includes("foto_espera=") && r.destino.includes("100,00"),
+    r.destino,
+  );
+  const capturaEspera = Number(r.destino.match(/foto_espera=(\d+)/)?.[1]);
+  const abonoLeido = (await pagina(r.destino)).html;
+  comprobar(
+    "el formulario del abono vuelve relleno con lo leído y con la captura ya guardada",
+    abonoLeido.includes('value="3650"') && abonoLeido.includes('value="004512"') && abonoLeido.includes(`name="foto_espera" value="${capturaEspera}"`),
+  );
+  r = await enviar(fichaDetal, 'name="monto"', {
+    cliente_id: String(detalId), fecha: "2026-09-21", metodo: "pago_movil", monto: "3650", tasa: "36.5", referencia: "004512", volver_a: fichaDetal, foto_espera: String(capturaEspera),
+  });
+  const [captura] = await consultar("select a.id, a.pago_id, p.monto_usd from adjuntos a join pagos p on p.id = a.pago_id where a.cliente_id = ?", [detalId]);
+  comprobar(
+    "al guardar, el abono entra en dólares (3650 / 36,5 = 100) y la captura queda unida a él, con su enlace en la ficha",
+    r.destino.includes("Abono registrado con su captura") && Boolean(captura) && cerca(Number(captura?.monto_usd), 100) && (await pagina(fichaDetal)).html.includes(`/admin/adjuntos/${captura?.id}`),
+    `${r.destino} ${JSON.stringify(captura)}`,
+  );
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "pago_movil", monto: "3000", tasa: "36.5", volver_a: fichaDetal, foto: fotoLeida(capturaBs) });
+  comprobar("con un monto que no es el de la captura, avisa y pide revisar", r.destino.includes("La captura dice Bs 3.650,00 y escribiste Bs 3.000,00") && r.destino.includes("confirmar_captura=1"), r.destino);
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "pago_movil", monto: "3000", tasa: "36.5", volver_a: fichaDetal, foto: fotoLeida({ ...capturaBs, es_comprobante: false }) });
+  comprobar("una foto que no es un comprobante avisa", r.destino.includes("no parece el comprobante"), r.destino);
+
   r = await enviar(`/admin/clientes/${clienteId}`, 'name="monto"', {
     cliente_id: String(clienteId), fecha: "2026-09-20", metodo: "pago_movil", monto: "146", tasa: "36.5",
     volver_a: `/admin/clientes/${clienteId}`,
@@ -664,7 +694,8 @@ async function probarNegocio() {
   comprobar(
     "el cliente abre su cuenta con el enlace, sin clave: su nombre, lo pendiente, su nota y su abono, y nada de otros",
     cuenta.status === 200 && textoCuenta.includes(nombre) && textoCuenta.includes("Tienes pendiente") && textoCuenta.includes(usd("20,96")) &&
-      textoCuenta.includes(`Nota ${numeroDelPedido}`) && textoCuenta.includes("Pago móvil") && !textoCuenta.includes("Cliente Detal"),
+      textoCuenta.includes(`Nota ${numeroDelPedido}`) && textoCuenta.includes("Pago móvil") && !textoCuenta.includes("Cliente Detal") &&
+      textoCuenta.includes("días pendiente") && textoCuenta.includes("Queso amarillo ×"),
     `${cuenta.status} ${textoCuenta.slice(0, 400)}`,
   );
   comprobar(

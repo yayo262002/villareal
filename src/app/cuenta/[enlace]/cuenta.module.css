@@ -105,6 +105,15 @@
   font-size: 15px;
   color: var(--color-texto-suave);
 }
+/* Lo que llevaba la nota, línea a línea. */
+.notaLineas {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--color-texto-suave);
+  font-variant-numeric: tabular-nums;
+}
 .notaImporte {
   margin: 0;
   font-size: 16px;

@@ -6,14 +6,21 @@ import { conLineas, listarVentasDeCliente } from "@/lib/ventas";
 import { listarPagosDeCliente } from "@/lib/pagos";
 import { leerTasa } from "@/lib/ajustes";
 import { aplicarPagos, movimientosDeCuenta } from "@/lib/cuentas";
-import { conVencimiento, describirVencimiento } from "@/lib/credito";
-import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
-import { METODOS_PAGO, aBolivares, bs, fechaCorta, hoy, usd } from "@/lib/dinero";
+import { conVencimiento, describirVencimiento, diasEntre } from "@/lib/credito";
+import { numeroDeNota, piezasDe } from "@/lib/entregas";
+import { METODOS_PAGO, aBolivares, bs, cantidad, fechaCorta, hoy, usd } from "@/lib/dinero";
 import { esEnlaceValido } from "@/lib/enlace-cuenta";
 import { CabeceraPublica, LineaTasa, PiePublico } from "@/components/publico";
 import estilos from "./cuenta.module.css";
 
 type Parametros = { params: Promise<{ enlace: string }> };
+
+/** «Lleva 12 días pendiente», «Lleva 1 día pendiente», «Es de hoy». */
+function diasPendiente(desde: string, hoy: string): string {
+  const dias = diasEntre(desde, hoy);
+  if (dias <= 0) return "Es de hoy";
+  return `Lleva ${dias} ${dias === 1 ? "día" : "días"} pendiente`;
+}
 
 /** Es la cuenta privada de un cliente: los buscadores no la indexan y no sale en el mapa del sitio. */
 export const metadata: Metadata = { title: "Su cuenta", robots: { index: false, follow: false } };
@@ -58,6 +65,7 @@ export default async function PaginaCuenta({ params }: Parametros) {
                 <span className={estilos.saldoRotulo}>Tienes pendiente</span>
                 <strong className={estilos.saldoCifra}>{usd(cliente.saldo_usd)}</strong>
                 {saldoBs !== null && tasa && <span className={estilos.saldoBs}>{bs(saldoBs)} a la tasa de hoy</span>}
+                {pendientes.length > 0 && <span className={estilos.saldoBs}>{`La nota más antigua ${diasPendiente(pendientes[0].fecha, fecha).toLowerCase()}`}</span>}
               </>
             ) : cliente.saldo_usd < 0 ? (
               <>
@@ -83,17 +91,20 @@ export default async function PaginaCuenta({ params }: Parametros) {
                       <strong>Nota {numeroDeNota(c.id)}</strong>
                       <span>{fechaCorta(c.fecha)}</span>
                     </div>
-                    {c.lineas.length > 0 && <p className={estilos.notaDetalle}>{resumenDeLineas(c.lineas)}</p>}
+                    {c.lineas.length > 0 && (
+                      <ul className={estilos.notaLineas}>
+                        {c.lineas.map((l) => (
+                          <li key={l.id}>{`${cantidad(l.cantidad, l.unidad)}${piezasDe(l)} ${l.producto_nombre} × ${usd(l.precio_unitario_usd)} = ${usd(l.subtotal_usd)}`}</li>
+                        ))}
+                      </ul>
+                    )}
                     <p className={estilos.notaImporte}>
                       {c.pendiente_usd < c.total_usd ? `${usd(c.total_usd)} · abonado ${usd(c.total_usd - c.pendiente_usd)} · quedan ` : ""}
                       <strong>{usd(c.pendiente_usd)}</strong>
                     </p>
-                    {c.vence && (
-                      <p className={c.vencida ? estilos.vencida : estilos.plazo}>
-                        {describirVencimiento(c.atraso)}
-                        {c.vencida ? "" : ` (${fechaCorta(c.vence)})`}
-                      </p>
-                    )}
+                    <p className={c.vencida ? estilos.vencida : estilos.plazo}>
+                      {`${diasPendiente(c.fecha, fecha)}${c.vence ? ` · ${describirVencimiento(c.atraso)}${c.vencida ? "" : ` (${fechaCorta(c.vence)})`}` : ""}`}
+                    </p>
                   </li>
                 ))}
               </ul>
@@ -129,6 +140,7 @@ export default async function PaginaCuenta({ params }: Parametros) {
                       <span className={estilos.movimientoConcepto}>
                         {m.tipo === "venta" ? `Nota ${numeroDeNota(m.id)}` : `Abono · ${p ? METODOS_PAGO[p.metodo] : ""}`}
                         {p && p.moneda === "VES" && p.tasa ? ` · ${bs(p.monto)} a ${bs(p.tasa)} por dólar` : ""}
+                        {p && Number(p.con_comprobante) > 0 ? " · con comprobante ✓" : ""}
                       </span>
                       <span className={m.tipo === "venta" ? estilos.movimientoCompra : estilos.movimientoAbono}>
                         {m.tipo === "venta" ? `+ ${usd(m.cargo_usd)}` : `− ${usd(m.abono_usd)}`}

@@ -149,6 +149,7 @@ src/lib/adjuntos.ts       Fotos de las notas de entrega
 src/lib/fotos-en-espera.ts  La foto de la nota mientras el formulario va y vuelve
 src/lib/lector-de-notas.ts  Le enseña la foto de la nota a Claude: fecha, líneas, total, firma
 src/lib/nota-leida.ts     Interpreta lo leído y dice en qué no cuadra con lo anotado
+src/lib/captura-leida.ts  Lo leído en la captura de un pago: rellena el abono o avisa si no cuadra
 src/lib/whatsapp.ts       Mensajes para WhatsApp: cobro, nota, recibo, en camino, pedir reseña, el enlace de cuenta
 src/lib/enlace-cuenta.ts  El enlace personal de cada cliente: cómo se hace y adónde lleva
 src/app/cuenta/           La cuenta de un cliente, para él, con su enlace y sin clave
@@ -333,6 +334,17 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   su ficha o desde Abonos y se aplican a sus notas más antiguas primero.
   En la ficha, cada abono tiene «Enviar recibo»: abre WhatsApp con lo que
   se recibió (en bolívares, con su tasa) y cómo queda la cuenta hoy.
+  - **La captura del pago.** Al registrar un abono se adjunta la captura
+    del pago móvil o de la transferencia: queda guardada con el abono
+    (enlace «Captura» en su fila; `adjuntos.pago_id`). Con la clave
+    `ANTHROPIC_API_KEY`, la captura se **lee sola**: si el monto se deja
+    vacío, el formulario vuelve relleno con el monto en bolívares, el
+    método, la fecha y la referencia leídos, y dice el equivalente en
+    dólares a la tasa del día, para revisar y guardar; si el monto se
+    escribió, se comprueba contra la captura (monto, moneda, fecha) y lo
+    que no cuadre vuelve como aviso con la casilla «Ya revisé la captura»
+    (`src/lib/captura-leida.ts`). Nada se guarda sin que el dueño pulse.
+    Sin la clave, la captura solo se guarda.
 - **Estado de cuenta.** En la ficha del cliente, «Estado de cuenta»
   (`/admin/clientes/7/estado`): cada compra y cada abono en su orden, con
   el saldo que deja cada uno (`movimientosDeCuenta` en `src/lib/cuentas.ts`).
@@ -342,9 +354,10 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   cuenta» le da una dirección personal (`/cuenta/abcdefghjkmnpq`, catorce
   letras y números al azar, sin 0, o, 1, l ni i) que se le manda por
   WhatsApp. Con ella ve en su teléfono, sin clave, lo que tiene pendiente
-  (en dólares y en bolívares a la tasa de hoy), cada nota por pagar con su
-  plazo, sus abonos y todos sus movimientos, y tiene botones para avisar un
-  pago o pedir. Solo ve lo suyo. El recordatorio de deuda lleva el enlace.
+  (en dólares y en bolívares a la tasa de hoy), cada nota por pagar con lo
+  que llevaba línea a línea, cuántos días lleva pendiente y su plazo, sus
+  abonos (y si tienen comprobante) y todos sus movimientos, y tiene botones
+  para avisar un pago o pedir. Solo ve lo suyo. El recordatorio de deuda lleva el enlace.
   Si se compartió de más, «Renovar el enlace» pone otro y el anterior deja
   de funcionar. Los buscadores no la indexan (`robots.txt` y `noindex`).
 - **Nota de entrega.** Cada venta tiene la suya, numerada con el número de

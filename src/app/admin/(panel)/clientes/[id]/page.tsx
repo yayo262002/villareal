@@ -49,6 +49,8 @@ export default async function PaginaCliente({
   const situacion = situar(cliente, ciudad);
   const mapa = enlaceAlMapa(cliente, ciudad);
   const ventaDeAdjunto = new Map(ventas.map((v) => [v.id, v]));
+  // La captura de cada abono, para enlazarla desde su fila.
+  const capturaDe = new Map(adjuntos.filter((a) => a.pago_id).map((a) => [a.pago_id, a.id]));
 
   // Enlaces de WhatsApp: recordar la deuda y mandar cada nota. Solo si hay teléfono.
   const pendientes = cuentas.filter((c) => c.pendiente_usd > 0).sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -243,6 +245,7 @@ export default async function PaginaCliente({
             clienteFijo={cliente.id}
             ultimaTasa={tasa}
             volverA={`/admin/clientes/${cliente.id}`}
+            parametros={parametros}
           />
         </section>
 
@@ -470,6 +473,11 @@ export default async function PaginaCliente({
                       {enlaceRecibo(p) && (
                         <a href={enlaceRecibo(p)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
                           Enviar recibo
+                        </a>
+                      )}
+                      {capturaDe.has(p.id) && (
+                        <a href={`/admin/adjuntos/${capturaDe.get(p.id)}`} target="_blank" rel="noopener" className="enlace-fila">
+                          Captura
                         </a>
                       )}
                       <Link href={`/admin/pagos/${p.id}/eliminar`} className="enlace-fila">

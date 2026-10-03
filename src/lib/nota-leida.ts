@@ -34,7 +34,7 @@ export type VentaAnotada = { fecha: string; total: number };
 const CENTAVO = 0.011;
 
 /** Un número como lo devuelve el lector: número, o texto con coma o punto. Lo demás es null. */
-function numeroLeido(valor: unknown): number | null {
+export function numeroLeido(valor: unknown): number | null {
   if (typeof valor === "number") return Number.isFinite(valor) ? valor : null;
   if (typeof valor !== "string") return null;
   const limpio = valor.replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
@@ -42,7 +42,7 @@ function numeroLeido(valor: unknown): number | null {
   return limpio !== "" && Number.isFinite(n) ? n : null;
 }
 
-function fechaLeida(valor: unknown): string | null {
+export function fechaLeida(valor: unknown): string | null {
   if (typeof valor !== "string") return null;
   const m = valor.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return null;
@@ -59,7 +59,8 @@ function booleanoLeido(valor: unknown): boolean | null {
  * texto o en una valla de código. Lo que no encaje se deja en null; si ni
  * siquiera es un JSON con la forma esperada, null del todo.
  */
-export function interpretarLectura(texto: string): NotaLeida | null {
+/** El JSON que viene en la respuesta del lector, aunque venga envuelto en texto; null si no hay uno. */
+export function objetoLeido(texto: string): Record<string, unknown> | null {
   const inicio = texto.indexOf("{");
   const fin = texto.lastIndexOf("}");
   if (inicio < 0 || fin <= inicio) return null;
@@ -69,8 +70,12 @@ export function interpretarLectura(texto: string): NotaLeida | null {
   } catch {
     return null;
   }
-  if (!crudo || typeof crudo !== "object") return null;
-  const o = crudo as Record<string, unknown>;
+  return crudo && typeof crudo === "object" ? (crudo as Record<string, unknown>) : null;
+}
+
+export function interpretarLectura(texto: string): NotaLeida | null {
+  const o = objetoLeido(texto);
+  if (!o) return null;
   const esNota = booleanoLeido(o.es_nota ?? o.esNota);
   if (esNota === null) return null;
   const lineas: LineaLeida[] = Array.isArray(o.lineas)

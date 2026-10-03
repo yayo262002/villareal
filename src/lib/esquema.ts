@@ -176,6 +176,8 @@ export const ESQUEMA = `
     id integer primary key autoincrement,
     cliente_id integer not null references clientes(id),
     venta_id integer references ventas(id) on delete set null,
+    -- La captura de un pago va unida a su abono.
+    pago_id integer references pagos(id) on delete set null,
     descripcion text not null default '',
     tipo text not null,
     tamano integer not null,
