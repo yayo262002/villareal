@@ -97,6 +97,16 @@ export function nombreUnidad(unidad: string): string {
   return (UNIDADES as Record<string, string>)[unidad] ?? unidad;
 }
 
+/** La unidad en palabras, para «se vende por kilo»: «kilo», «cartón», «unidad». */
+export function unidadEnPalabras(unidad: string): string {
+  return unidad === "kg" ? "kilo" : nombreUnidad(unidad);
+}
+
+/** Una tasa como se lee aquí, con coma: «365,40». */
+export function tasaLegible(tasa: number): string {
+  return formatoBs.format(tasa);
+}
+
 export function cantidad(n: number, unidad: string): string {
   const num = new Intl.NumberFormat("es-VE", { maximumFractionDigits: 3 }).format(n);
   return `${num} ${nombreUnidad(unidad)}`;

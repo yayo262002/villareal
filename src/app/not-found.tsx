@@ -16,7 +16,7 @@ export default function NoEncontrada() {
         <section className={`${estilos.seccion} ${estilos.mensaje}`}>
           <h1 className={estilos.titulo}>No encontramos esa página</h1>
           <p>Puede que el enlace esté mal escrito o que el producto ya no esté a la venta.</p>
-          <div className={estilos.acciones}>
+          <div className={`${estilos.acciones} ${estilos.accionesApiladas}`}>
             <Link href="/" className="boton">
               Ver los productos
             </Link>

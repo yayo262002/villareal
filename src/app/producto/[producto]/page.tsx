@@ -8,7 +8,7 @@ import { precioPublicado, type PrecioPublicado } from "@/lib/catalogo";
 import { leerTasa } from "@/lib/ajustes";
 import { resenasDeProducto } from "@/lib/resenas";
 import { haySesion } from "@/lib/sesion";
-import { nombreUnidad } from "@/lib/dinero";
+import { unidadEnPalabras } from "@/lib/dinero";
 import { idDeRuta, rutaProducto } from "@/lib/enlaces";
 import {
   CabeceraPublica,
@@ -143,7 +143,7 @@ export default async function PaginaProducto({ params }: Parametros) {
               <IlustracionProducto nombre={producto.nombre} className={estilos.dibujoGrande} />
               <h1 className={estilos.fichaNombre}>{producto.nombre}</h1>
               <p className={estilos.fichaUnidad}>
-                Solo al mayor, por {nombreUnidad(producto.unidad)}
+                Solo al mayor, por {unidadEnPalabras(producto.unidad)}
                 {variantes.length >= 2 && ` · ${variantes.length} marcas o presentaciones`}
               </p>
             </header>
@@ -155,7 +155,7 @@ export default async function PaginaProducto({ params }: Parametros) {
               {variantes.length > 0 ? (
                 // Se pide desde la marca elegida, más abajo: así el mensaje dice cuál es.
                 <a className={`boton boton--secundario ${estilos.botonPedir}`} href="#marcas">
-                  Elige la marca o presentación para pedir ↓
+                  Elige la marca para pedir ↓
                 </a>
               ) : (
                 pedir && (
@@ -190,8 +190,8 @@ export default async function PaginaProducto({ params }: Parametros) {
                           {v.descripcion && <p className={estilos.varianteDetalle}>{v.descripcion}</p>}
                           <PreciosEnLinea precios={v} unidad={producto.unidad} tasa={tasa?.valor ?? null} />
                           {pedirEsta && (
-                            <a className={`boton ${estilos.varianteBoton}`} href={pedirEsta} target="_blank" rel="noopener">
-                              {`Pedir ${v.nombre}`}
+                            <a className={`boton ${estilos.varianteBoton}`} href={pedirEsta} target="_blank" rel="noopener" aria-label={`Pedir ${v.nombre}`}>
+                              Pedir
                             </a>
                           )}
                         </div>

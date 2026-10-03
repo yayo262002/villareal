@@ -107,6 +107,7 @@
 }
 /* Lo que llevaba la nota, línea a línea. */
 .notaLineas {
+  list-style: disc;
   margin: 0;
   padding-left: 18px;
   font-size: 15px;

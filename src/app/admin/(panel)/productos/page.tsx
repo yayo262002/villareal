@@ -304,8 +304,8 @@ export default async function PaginaProductos({
             {publicadas > 0 && (
               <p className="aviso aviso--aviso">
                 Este producto tiene {publicadas === 1 ? "una marca o presentación publicada" : `${publicadas} marcas o presentaciones publicadas`}: la web
-                enseña el precio de ellas{publicadas > 1 ? " («desde» la más barata)" : ""} y las ventas se anotan por marca. Los precios de aquí abajo no se usan
-                mientras haya alguna publicada.
+                enseña el precio de ellas{publicadas > 1 ? " («desde» la más barata)" : ""} y las ventas se anotan por marca. El precio de aquí abajo no se usa
+                mientras haya alguna publicada; el margen sí: con él sale el precio de cada marca a partir de su costo.
               </p>
             )}
 

@@ -11,7 +11,7 @@ import { editarCliente, situarClienteEnElMapa, subirAdjunto,
 } from "@/lib/acciones";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { leerTasa } from "@/lib/ajustes";
-import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, hoy, usd } from "@/lib/dinero";
+import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, hoy, usd, tasaLegible } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
 import { EntradaFoto } from "@/components/entrada-foto";
@@ -175,48 +175,6 @@ export default async function PaginaCliente({
       )}
       <Avisos parametros={parametros} />
 
-      {/* El enlace personal con el que el cliente ve su cuenta, sin clave. */}
-      <section className="tarjeta" id="enlace">
-        <h2 className={estilos.subtitulo}>Su enlace de cuenta</h2>
-        {cliente.enlace ? (
-          <>
-            <p className={estilos.ayuda}>
-              Con este enlace ve en su teléfono lo que tiene pendiente, sus notas y sus abonos, siempre al día y sin clave. Es solo suyo: si lo
-              compartió de más, renuévalo y el anterior deja de funcionar.
-            </p>
-            <p className={estilos.enlaceDeCuenta}>
-              <a href={direccionDeCuenta(cliente.enlace)} target="_blank" rel="noopener">
-                {direccionDeCuenta(cliente.enlace)}
-              </a>
-            </p>
-            <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
-              {mandarEnlace && (
-                <a href={mandarEnlace} target="_blank" rel="noopener" className="boton boton--acento">
-                  Mandárselo por WhatsApp
-                </a>
-              )}
-              <form action={cambiarEnlaceDeCuenta}>
-                <input type="hidden" name="id" value={cliente.id} />
-                <input type="hidden" name="enlace_de_cuenta" value="renovar" />
-                <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
-                  Renovar el enlace
-                </button>
-              </form>
-            </div>
-          </>
-        ) : (
-          <form action={cambiarEnlaceDeCuenta}>
-            <p className={estilos.ayuda}>
-              Crea su enlace personal y mándaselo por WhatsApp: con él ve lo que tiene pendiente, sus notas y sus abonos, siempre al día y sin clave.
-            </p>
-            <input type="hidden" name="id" value={cliente.id} />
-            <input type="hidden" name="enlace_de_cuenta" value="crear" />
-            <button type="submit" className="boton">
-              Crear su enlace de cuenta
-            </button>
-          </form>
-        )}
-      </section>
 
       <dl className={estilos.cifras}>
         <div className={estilos.cifra}>
@@ -403,7 +361,7 @@ export default async function PaginaCliente({
                         "—"
                       )}
                     </td>
-                    <td data-label="Observación">{v.nota || "—"}</td>
+                    <td data-label="Observación" data-vacio={v.nota ? undefined : ""}>{v.nota || "—"}</td>
                     <td className={estilos.accionesFila}>
                       <Link href={`/admin/ventas/${v.id}/nota`}>Ver nota</Link>
                       {enlaceNota(v) && (
@@ -466,9 +424,9 @@ export default async function PaginaCliente({
                     <td data-label="Fecha">{fechaCorta(p.fecha)}</td>
                     <td data-label="Método">{METODOS_PAGO[p.metodo]}</td>
                     <td data-label="Monto" className="numero">{formatearMonto(p.monto, p.moneda)}</td>
-                    <td data-label="Tasa" className="numero">{p.tasa ? p.tasa.toFixed(2) : "—"}</td>
+                    <td data-label="Tasa" className="numero" data-vacio={p.tasa ? undefined : ""}>{p.tasa ? tasaLegible(p.tasa) : "—"}</td>
                     <td data-label="En USD" className="numero">{usd(p.monto_usd)}</td>
-                    <td data-label="Referencia">{p.referencia || "—"}</td>
+                    <td data-label="Referencia" data-vacio={p.referencia ? undefined : ""}>{p.referencia || "—"}</td>
                     <td className={estilos.accionesFila}>
                       {enlaceRecibo(p) && (
                         <a href={enlaceRecibo(p)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
@@ -489,6 +447,49 @@ export default async function PaginaCliente({
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      {/* El enlace personal con el que el cliente ve su cuenta, sin clave. */}
+      <section className="tarjeta" id="enlace">
+        <h2 className={estilos.subtitulo}>Su enlace de cuenta</h2>
+        {cliente.enlace ? (
+          <>
+            <p className={estilos.ayuda}>
+              Con este enlace ve en su teléfono lo que tiene pendiente, sus notas y sus abonos, siempre al día y sin clave. Es solo suyo: si lo
+              compartió de más, renuévalo y el anterior deja de funcionar.
+            </p>
+            <p className={estilos.enlaceDeCuenta}>
+              <a href={direccionDeCuenta(cliente.enlace)} target="_blank" rel="noopener">
+                {direccionDeCuenta(cliente.enlace)}
+              </a>
+            </p>
+            <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
+              {mandarEnlace && (
+                <a href={mandarEnlace} target="_blank" rel="noopener" className="boton boton--acento">
+                  Mandárselo por WhatsApp
+                </a>
+              )}
+              <form action={cambiarEnlaceDeCuenta}>
+                <input type="hidden" name="id" value={cliente.id} />
+                <input type="hidden" name="enlace_de_cuenta" value="renovar" />
+                <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                  Renovar el enlace
+                </button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <form action={cambiarEnlaceDeCuenta}>
+            <p className={estilos.ayuda}>
+              Crea su enlace personal y mándaselo por WhatsApp: con él ve lo que tiene pendiente, sus notas y sus abonos, siempre al día y sin clave.
+            </p>
+            <input type="hidden" name="id" value={cliente.id} />
+            <input type="hidden" name="enlace_de_cuenta" value="crear" />
+            <button type="submit" className="boton">
+              Crear su enlace de cuenta
+            </button>
+          </form>
         )}
       </section>
 

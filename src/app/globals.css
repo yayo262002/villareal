@@ -224,6 +224,11 @@ textarea {
     border-bottom: none;
     padding-bottom: 0;
   }
+  /* Un dato vacío («—») no ocupa una línea en la ficha. */
+  .tabla--fichas td[data-vacio],
+  .tabla--fichas td.numero[data-vacio] {
+    display: none;
+  }
   .tabla--fichas td,
   .tabla--fichas td.numero {
     /* flow-root: la celda crece con su etiqueta, aunque la etiqueta ocupe dos líneas. */

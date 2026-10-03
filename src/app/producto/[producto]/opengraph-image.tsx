@@ -2,7 +2,7 @@ import { negocio } from "@/config/negocio";
 import { buscarProducto } from "@/lib/productos";
 import { variantesDeProducto } from "@/lib/variantes";
 import { precioPublicado } from "@/lib/catalogo";
-import { nombreUnidad, usd } from "@/lib/dinero";
+import { unidadEnPalabras, usd } from "@/lib/dinero";
 import { idDeRuta } from "@/lib/enlaces";
 import { TAMANO_IMAGEN, imagenSocial } from "@/lib/imagen-social";
 import { dibujoComoDato } from "@/lib/dibujos";
@@ -33,7 +33,7 @@ export default async function Imagen({ params }: { params: Promise<{ producto: s
     titulo: producto.nombre,
     detalle:
       precio !== null
-        ? `${publicado.desde ? "Desde " : ""}${usd(precio)} por ${nombreUnidad(producto.unidad)} · al mayor, a tasa BCV`
+        ? `${publicado.desde ? "Desde " : ""}${usd(precio)} por ${unidadEnPalabras(producto.unidad)} · al mayor, a tasa BCV`
         : "Consulta el precio del día",
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
     dibujo: <img src={dibujoComoDato(producto.nombre)} width={340} height={340} />,

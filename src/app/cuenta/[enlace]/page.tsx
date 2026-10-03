@@ -130,7 +130,7 @@ export default async function PaginaCuenta({ params }: Parametros) {
 
           {movimientos.length > 0 && (
             <details className={estilos.historial}>
-              <summary>Todos los movimientos ({movimientos.length})</summary>
+              <summary>Ver todos los movimientos ({movimientos.length})</summary>
               <ol className={estilos.movimientos}>
                 {movimientos.map((m) => {
                   const p = m.tipo === "abono" ? pago.get(m.id) : undefined;

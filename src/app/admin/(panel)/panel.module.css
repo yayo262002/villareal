@@ -121,6 +121,8 @@
   font-size: 26px;
   font-weight: 800;
   color: var(--color-marca-oscuro);
+  /* Un título largo se parte por donde se lee bien: «Comercializadora / Villa Real». */
+  text-wrap: balance;
 }
 .subtitulo {
   font-size: 18px;
@@ -726,10 +728,34 @@
   gap: var(--espacio-2);
   font-size: 18px;
 }
+/* La cantidad a un lado y el producto al otro, aunque el nombre ocupe dos líneas. */
+.carga li {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: var(--espacio-2);
+  align-items: baseline;
+}
 .carga strong {
-  display: inline-block;
-  min-width: 96px;
   font-variant-numeric: tabular-nums;
+}
+
+/* Dos botones que en el teléfono van uno debajo del otro, a todo el ancho. */
+.accionesApiladas {
+  display: grid;
+  gap: var(--espacio-3);
+}
+.accionesApiladas > * {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
+.accionesApiladas form {
+  display: contents;
+}
+@media (min-width: 560px) {
+  .accionesApiladas {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* Elegir a quién se despacha: una casilla por cliente, fácil de tocar. */

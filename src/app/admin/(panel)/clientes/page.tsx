@@ -29,6 +29,12 @@ type Orden = keyof typeof ORDENES;
  * dirección basta. Debajo, todos los clientes con su saldo, ordenados por
  * nombre, por la ruta de despacho o por lo que deben.
  */
+/** Dos direcciones que dicen lo mismo, escritas distinto: «Carrera 19 con calle 25» y «carrera 19 con calle 25». */
+function mismoTexto(a: string, b: string): boolean {
+  const limpiar = (t: string) => t.toLowerCase().replace(/[.,]/g, "").replace(/\s+/g, " ").trim();
+  return limpiar(a) === limpiar(b);
+}
+
 export default async function PaginaClientes({
   searchParams,
 }: {
@@ -243,7 +249,7 @@ export default async function PaginaClientes({
                 id="buscar"
                 name="q"
                 type="search"
-                placeholder="Buscar por nombre, teléfono o dirección"
+                placeholder="Nombre, teléfono o dirección"
                 defaultValue={busqueda}
               />
               {orden !== "nombre" && <input type="hidden" name="orden" value={orden} />}
@@ -293,24 +299,28 @@ export default async function PaginaClientes({
                       )}
                       <p className={estilos.carteraDato}>
                         {c.direccion || <span className="ayuda">Sin dirección</span>}
-                        {c.razon_social && !sinNombre && <span className="ayuda"> · {c.nombre}</span>}
                         {sinUbicar && c.direccion && <span className="ayuda"> · Fuera de la ruta. {explicarMotivo(sinUbicar)}</span>}
-                        {situacion.situada && (
+                        {/* Dónde la pone la cuadrícula o el mapa, solo si añade algo a lo escrito. */}
+                        {situacion.situada && (situacion.origen === "mapa" || !mismoTexto(c.direccion, situacion.texto)) && (
                           <span className="ayuda">
                             {" "}
-                            · {situacion.origen === "mapa" ? "según el mapa: " : ""}
+                            · {situacion.origen === "mapa" ? "según el mapa: " : "en la cuadrícula: "}
                             {situacion.texto}
                             {situacion.origen === "mapa" && situacion.aproximada ? " (aproximado)" : ""}
                           </span>
                         )}
                       </p>
                       <p className={estilos.carteraDato}>
-                        {[c.telefono && c.telefono !== c.nombre ? c.telefono : "", c.ultima_compra ? `compró el ${fechaCorta(c.ultima_compra)}` : ""]
+                        {[
+                          c.razon_social && !sinNombre ? c.nombre : "",
+                          c.telefono && c.telefono !== c.nombre ? c.telefono : "",
+                          c.ultima_compra ? `compró el ${fechaCorta(c.ultima_compra)}` : "",
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
                         {c.por_entregar > 0 && (
                           <>
-                            {(c.telefono && c.telefono !== c.nombre) || c.ultima_compra ? " · " : ""}
+                            {(c.razon_social && !sinNombre) || (c.telefono && c.telefono !== c.nombre) || c.ultima_compra ? " · " : ""}
                             <Link href="/admin/despacho" className={estilos.deuda}>
                               {c.por_entregar === 1 ? "1 pedido por entregar" : `${c.por_entregar} pedidos por entregar`}
                             </Link>

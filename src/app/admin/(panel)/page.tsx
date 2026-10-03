@@ -360,7 +360,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
           copia en la nube (se conservan las últimas 14). Descarga una de vez en cuando y guárdala en
           Drive o en otro teléfono: con ese archivo se recupera todo.
         </p>
-        <div className={estilos.accionesFila}>
+        <div className={estilos.accionesApiladas}>
           <a href="/admin/copia" download className="boton boton--secundario">
             Descargar copia de ahora
           </a>

@@ -351,7 +351,7 @@ async function probarPrecios() {
   );
   comprobar(
     "con marcas, se pide desde la marca elegida: el botón de arriba lleva a las marcas y cada una tiene el suyo",
-    fichaPecorino.html.includes('href="#marcas"') && fichaPecorino.html.includes('id="marcas"') && fichaPecorino.html.includes(">Pedir Sortilegio 500 g<") &&
+    fichaPecorino.html.includes('href="#marcas"') && fichaPecorino.html.includes('id="marcas"') && fichaPecorino.html.includes('aria-label="Pedir Sortilegio 500 g"') &&
       !fichaPecorino.html.includes(">Pedir por WhatsApp<"),
   );
   const fotoVariante = await fetch(base + `/foto-variante/${varianteSortilegio}`);
@@ -906,7 +906,7 @@ async function probarCartera() {
   // La cartera ordenada por la ruta: del más cercano a la tienda al más lejano, y al final los que no se ubican.
   const cartera = (await pagina("/admin/clientes?orden=ruta")).html;
   const lista = cartera.slice(cartera.indexOf("Por ruta desde la tienda"));
-  const posicion = (texto) => lista.indexOf(`>${texto}<`);
+  const posicion = (texto) => lista.indexOf(texto);
   const orden = ["0414-5550101", "Pizzería La Esquina", "Bodega Prueba", "0416-5550103"].map(posicion);
   comprobar(
     "cartera ordenada por la ruta desde la tienda",

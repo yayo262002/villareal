@@ -129,7 +129,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
         <DatosDelCliente cliente={cliente} />
 
         <div className="tabla-envoltorio">
-          <table className="tabla">
+          <table className="tabla tabla--fichas">
             <thead>
               <tr>
                 <th>Producto</th>
@@ -141,13 +141,13 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
             <tbody>
               {venta.lineas.map((l) => (
                 <tr key={l.id}>
-                  <td>{l.producto_nombre}</td>
-                  <td className="numero">
+                  <td data-label="Producto">{l.producto_nombre}</td>
+                  <td data-label="Cantidad" className="numero">
                     {cantidad(l.cantidad, l.unidad)}
                     {piezasDe(l)}
                   </td>
-                  <td className="numero">{usd(l.precio_unitario_usd)}</td>
-                  <td className="numero">{usd(l.subtotal_usd)}</td>
+                  <td data-label="Precio" className="numero">{usd(l.precio_unitario_usd)}</td>
+                  <td data-label="Importe" className="numero">{usd(l.subtotal_usd)}</td>
                 </tr>
               ))}
             </tbody>
@@ -174,7 +174,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
               <div>
                 <dt>Queda por pagar de esta nota</dt>
                 <dd>
-                  {usd(cuenta.pendiente_usd)} · {NOMBRE_ESTADO[cuenta.estado]}
+                  {usd(cuenta.pendiente_usd)} · <span style={{ whiteSpace: "nowrap" }}>{NOMBRE_ESTADO[cuenta.estado]}</span>
                 </dd>
               </div>
               {cuenta.pendiente_usd > 0 && (

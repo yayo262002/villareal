@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { enlaceWhatsapp, negocio } from "@/config/negocio";
 import type { Tasa } from "@/lib/ajustes";
-import { aBolivares, bs, fechaCorta, fechaDeLaBase, nombreUnidad, usd } from "@/lib/dinero";
+import { aBolivares, bs, fechaCorta, fechaDeLaBase, unidadEnPalabras, usd } from "@/lib/dinero";
 import estilos from "./publico.module.css";
 
 /**
@@ -86,7 +86,7 @@ export function PreciosProducto({ producto, tasa, desde = false }: { producto: C
           {enBs !== null ? bs(enBs) : usd(producto.precio_usd)}
         </dd>
         <dd className={estilos.precioUsd}>
-          {enBs !== null ? `${usd(producto.precio_usd)} ` : ""}por {nombreUnidad(producto.unidad)}
+          {enBs !== null ? `${usd(producto.precio_usd)} ` : ""}por {unidadEnPalabras(producto.unidad)}
         </dd>
       </div>
     </dl>
@@ -104,7 +104,7 @@ export function PreciosEnLinea({ precios, unidad, tasa }: { precios: { precio_us
     <p className={estilos.preciosLinea}>
       <strong>{enBs !== null ? bs(enBs) : usd(precios.precio_usd)}</strong>
       {enBs !== null && <span className={estilos.precioUsd}> ({usd(precios.precio_usd)})</span>}
-      <span className={estilos.precioUsd}>{unidad ? ` por ${nombreUnidad(unidad)}` : ""} · al mayor</span>
+      <span className={estilos.precioUsd}>{unidad ? ` por ${unidadEnPalabras(unidad)}` : ""} · al mayor</span>
     </p>
   );
 }

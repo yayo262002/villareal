@@ -5,7 +5,7 @@ import { ultimaTasa } from "@/lib/pagos";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { conVencimiento, describirVencimiento } from "@/lib/credito";
 import { editarProveedor, guardarCompra, guardarPagoProveedor } from "@/lib/acciones";
-import { METODOS_PAGO, fechaCorta, formatearMonto, hoy, usd } from "@/lib/dinero";
+import { METODOS_PAGO, fechaCorta, formatearMonto, hoy, usd, tasaLegible } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
 import estilos from "../../panel.module.css";
@@ -202,9 +202,9 @@ export default async function PaginaProveedor({
                     <td data-label="Fecha">{fechaCorta(p.fecha)}</td>
                     <td data-label="Método">{METODOS_PAGO[p.metodo]}</td>
                     <td data-label="Monto" className="numero">{formatearMonto(p.monto, p.moneda)}</td>
-                    <td data-label="Tasa" className="numero">{p.tasa ? p.tasa.toFixed(2) : "—"}</td>
+                    <td data-label="Tasa" className="numero" data-vacio={p.tasa ? undefined : ""}>{p.tasa ? tasaLegible(p.tasa) : "—"}</td>
                     <td data-label="En USD" className="numero">{usd(p.monto_usd)}</td>
-                    <td data-label="Referencia">{p.referencia || "—"}</td>
+                    <td data-label="Referencia" data-vacio={p.referencia ? undefined : ""}>{p.referencia || "—"}</td>
                     <td>
                       <Link href={`/admin/pagos-proveedor/${p.id}/eliminar`} className="enlace-fila">
                         Eliminar
