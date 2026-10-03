@@ -88,36 +88,38 @@
   color: var(--color-texto-suave);
 }
 
-/* Las marcas o presentaciones en la página del producto: foto a la izquierda, lo demás al lado. */
+/* Las marcas o presentaciones en la página del producto: tarjetas iguales, con la foto grande arriba. */
 .variantes {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: var(--espacio-3);
 }
 .variante {
   display: flex;
-  gap: var(--espacio-3);
-  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--espacio-2);
   padding: var(--espacio-3);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
   background: var(--color-superficie-suave);
 }
-/* La foto del paquete sin su fondo blanco: se funde con el fondo de la tarjeta. */
+/* La foto, cuadrada y a todo el ancho de la tarjeta; el fondo blanco del paquete se funde con el de la tarjeta. */
 .varianteFoto {
-  flex: none;
-  width: 112px;
-  height: 112px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
   object-fit: contain;
   mix-blend-mode: multiply;
 }
 .varianteDibujo {
-  flex: none;
-  width: 80px;
-  height: 80px;
-  margin: var(--espacio-3);
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  padding: 14%;
 }
 .varianteTexto {
   min-width: 0;
@@ -137,7 +139,8 @@
   color: var(--color-texto-suave);
 }
 .varianteBoton {
-  justify-self: start;
+  justify-self: stretch;
+  text-align: center;
 }
 /* Lo que dijo un cliente, en una línea, con la raya dorada de las reseñas. */
 .cita {

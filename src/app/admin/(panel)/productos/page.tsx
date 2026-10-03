@@ -154,7 +154,7 @@ function CamposVariante({ id, variante, producto }: { id: string; variante: Vari
       </span>
       <div className="campo">
         <label htmlFor={`${id}-foto`}>{variante?.foto_version ? "Cambiar la foto" : "Foto (el paquete, por ejemplo)"}</label>
-        <EntradaFoto nombre="foto" id={`${id}-foto`} opcional soloFoto ladoMaximo={800} />
+        <EntradaFoto nombre="foto" id={`${id}-foto`} opcional soloFoto ladoMaximo={1200} />
       </div>
     </>
   );

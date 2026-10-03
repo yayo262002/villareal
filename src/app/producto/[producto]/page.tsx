@@ -181,7 +181,7 @@ export default async function PaginaProducto({ params }: Parametros) {
                       <li key={v.id} className={estilos.variante}>
                         {foto ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={foto} alt={`${producto.nombre} ${v.nombre}`} width={112} height={112} className={estilos.varianteFoto} loading="lazy" />
+                          <img src={foto} alt={`${producto.nombre} ${v.nombre}`} width={800} height={800} className={estilos.varianteFoto} loading="lazy" />
                         ) : (
                           <IlustracionProducto nombre={producto.nombre} className={estilos.varianteDibujo} />
                         )}

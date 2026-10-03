@@ -2,6 +2,7 @@ import "server-only";
 import { ejecutar, fila, filas } from "./db";
 import { precioDeVenta } from "./dinero";
 import type { Producto } from "./productos";
+import { normalizarFotoDeProducto } from "./foto-producto";
 
 /**
  * Las variantes de un producto: las marcas o presentaciones en que se
@@ -115,11 +116,12 @@ export async function buscarFotoDeVariante(varianteId: number): Promise<FotoDeVa
   return fila<FotoDeVariante>("select * from fotos_variantes where variante_id = ?", [varianteId]);
 }
 
-/** Pone o cambia la foto de una variante. */
-export async function guardarFotoDeVariante(varianteId: number, tipo: string, datos: Uint8Array): Promise<void> {
-  if (!(TIPOS_DE_FOTO as readonly string[]).includes(tipo)) throw new Error("La foto tiene que ser JPG, PNG o WebP.");
-  if (datos.byteLength === 0) throw new Error("La foto está vacía.");
-  if (datos.byteLength > TAMANO_MAXIMO_DE_FOTO) throw new Error("La foto pesa más de 2 MB. Elige una más pequeña.");
+/** Pone o cambia la foto de una variante: se guarda cuadrada, con el producto llenándola (`foto-producto.ts`). */
+export async function guardarFotoDeVariante(varianteId: number, tipoOriginal: string, original: Uint8Array): Promise<void> {
+  if (!(TIPOS_DE_FOTO as readonly string[]).includes(tipoOriginal)) throw new Error("La foto tiene que ser JPG, PNG o WebP.");
+  if (original.byteLength === 0) throw new Error("La foto está vacía.");
+  if (original.byteLength > TAMANO_MAXIMO_DE_FOTO) throw new Error("La foto pesa más de 2 MB. Elige una más pequeña.");
+  const { datos, tipo } = await normalizarFotoDeProducto(original, tipoOriginal);
   await ejecutar(
     `insert into fotos_variantes (variante_id, tipo, tamano, datos, actualizado_en) values (?, ?, ?, ?, datetime('now'))
      on conflict (variante_id) do update set tipo = excluded.tipo, tamano = excluded.tamano, datos = excluded.datos, actualizado_en = datetime('now')`,

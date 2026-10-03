@@ -17,6 +17,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import sharp from "sharp";
 
 const raiz = process.cwd();
 const urlWeb = process.argv.find((a) => a.startsWith("--url="))?.slice(6) ?? null;
@@ -44,6 +45,15 @@ const png = Buffer.from(
 
 /** La foto de la nota firmada que exige cada entrega. */
 const fotoFirmada = () => new File([png], "nota-firmada.png", { type: "image/png" });
+/** La foto de un producto como las de catálogo: alto y blanco, con el paquete (rojo) pequeño en el medio. */
+async function fotoDeProducto() {
+  const png = await sharp({ create: { width: 300, height: 600, channels: 3, background: "#ffffff" } })
+    .composite([{ input: await sharp({ create: { width: 100, height: 100, channels: 3, background: "#d02020" } }).png().toBuffer(), left: 100, top: 250 }])
+    .png()
+    .toBuffer();
+  return new File([png], "paquete.png", { type: "image/png" });
+}
+
 /** Una «foto» con la lectura escrita dentro: el lector de las pruebas la saca de ahí en vez de mirar la imagen. */
 const fotoLeida = (lectura) => new File([png, JSON.stringify(lectura)], "nota-firmada.png", { type: "image/png" });
 
@@ -349,6 +359,21 @@ async function probarPrecios() {
   comprobar("la vista previa del pecorino dice «desde»", (await fetch(base + "/producto/4-queso-pecorino-rallado/opengraph-image")).status === 200);
   r = await enviar("/admin/productos", `id="variante-${varianteSortilegio}-nombre"`, { variante_id: String(varianteSortilegio), nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4.2" });
   comprobar("cambiar el precio de una marca", r.destino.includes("guardada") && (await pagina("/admin/productos")).html.includes('value="4.2"'), r.destino);
+  r = await enviar("/admin/productos", `id="variante-${varianteSortilegio}-nombre"`, {
+    variante_id: String(varianteSortilegio), nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4.2", foto: await fotoDeProducto(),
+  });
+  const fotoGuardada = await fetch(base + `/foto-variante/${varianteSortilegio}`);
+  const fotoBuffer = Buffer.from(await fotoGuardada.arrayBuffer());
+  const fotoMeta = await sharp(fotoBuffer).metadata();
+  const pixeles = await sharp(fotoBuffer).raw().toBuffer();
+  const pixel = (x, y) => [pixeles[(y * 800 + x) * 3], pixeles[(y * 800 + x) * 3 + 1], pixeles[(y * 800 + x) * 3 + 2]];
+  const esRojo = ([r2, g, b]) => r2 > 150 && g < 90 && b < 90;
+  comprobar(
+    "la foto de una marca se guarda cuadrada (800 × 800, JPEG) y sin el fondo que sobra: el paquete llena la foto",
+    r.destino.includes("Con su foto") && fotoGuardada.headers.get("content-type") === "image/jpeg" && fotoMeta.width === 800 && fotoMeta.height === 800 &&
+      esRojo(pixel(400, 400)) && esRojo(pixel(45, 45)) && esRojo(pixel(755, 755)) && !esRojo(pixel(10, 10)),
+    `${r.destino} ${fotoGuardada.headers.get("content-type")} ${fotoMeta.width}x${fotoMeta.height} centro=${pixel(400, 400)} esquina=${pixel(45, 45)}`,
+  );
   r = await enviar("/admin/productos", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "0" }, cookie, {}, 'name="activo"');
   const portadaUna = (await portadaCon("Bs 153,30")).html;
   comprobar(

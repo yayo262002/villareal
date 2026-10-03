@@ -221,9 +221,12 @@ datos/                    La base de datos (fuera de Git)
   nombra («Queso pecorino rallado Sortilegio 500 g») y el despacho carga
   cada marca aparte. Una marca ya vendida no se borra, se esconde. La foto
   se sirve en `/foto-variante/[id]` solo mientras la marca y el producto
-  estén publicados, y se enseña sin su fondo blanco (se funde con el fondo
-  de la página): conviene fotografiar los paquetes sobre fondo blanco o
-  muy claro.
+  estén publicados. Al guardarla se recorta el fondo liso que sobre, se
+  centra el producto en un cuadrado de 800 px con un poco de aire y se
+  guarda como JPEG (`src/lib/foto-producto.ts`): así todas las marcas se
+  ven del mismo tamaño y el producto llena su foto. En la web se enseña sin
+  su fondo blanco (se funde con el fondo de la página): conviene
+  fotografiar los paquetes sobre fondo blanco o muy claro.
 - **Reseñas.** En la página de cada producto, «Por qué elegirlo» enseña
   primero lo que dicen los negocios que lo compran y después las ventajas.
   Las reseñas solo se ven dentro de la página del producto: la portada no
