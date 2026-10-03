@@ -195,6 +195,16 @@
   font-size: 16px;
 }
 
+/* El enlace de cuenta del cliente, entero y seleccionable, aunque sea largo. */
+.enlaceDeCuenta {
+  margin: 0 0 var(--espacio-3);
+  padding: var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
 /* Falta un dato que conviene tener, sin ser un error: se dice bajito. */
 .sinNombre {
   font-size: 13px;

@@ -1,0 +1,202 @@
+/* La cuenta de un cliente, en su teléfono: una cifra grande y lo demás debajo. */
+
+.contenido {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--espacio-5) var(--espacio-4) var(--espacio-7);
+}
+.seccion {
+  display: grid;
+  gap: var(--espacio-4);
+}
+.antetitulo {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-texto-suave);
+}
+.titulo {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--color-marca-oscuro);
+  overflow-wrap: anywhere;
+}
+.fecha {
+  margin: calc(-1 * var(--espacio-3)) 0 0;
+  font-size: 15px;
+  color: var(--color-texto-suave);
+}
+
+/* Lo que debe, a la vista: la caja va en el verde de la marca; al día, en el verde claro de éxito. */
+.saldo {
+  display: grid;
+  gap: var(--espacio-1);
+  padding: var(--espacio-5) var(--espacio-4);
+  border-radius: var(--radio-grande);
+  background: var(--color-marca);
+  color: var(--color-marca-texto);
+  text-align: center;
+}
+.saldoAlDia {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+.saldoRotulo {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.9;
+}
+.saldoCifra {
+  font-size: clamp(32px, 9vw, 44px);
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.saldoBs {
+  font-size: 16px;
+  opacity: 0.9;
+}
+.tasa {
+  margin: calc(-1 * var(--espacio-2)) 0 0;
+  font-size: 14px;
+  color: var(--color-texto-suave);
+  text-align: center;
+}
+.subtitulo {
+  margin: var(--espacio-2) 0 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--color-marca-oscuro);
+}
+
+/* Cada nota por pagar es una ficha. */
+.notas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--espacio-3);
+}
+.nota {
+  display: grid;
+  gap: var(--espacio-1);
+  padding: var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+.notaCabecera {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  font-size: 17px;
+}
+.notaCabecera span {
+  color: var(--color-texto-suave);
+}
+.notaDetalle {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-texto-suave);
+}
+.notaImporte {
+  margin: 0;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.notaImporte strong {
+  font-size: 20px;
+  color: var(--color-marca-oscuro);
+}
+.plazo {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-texto-suave);
+}
+.vencida {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-error);
+}
+
+.acciones {
+  display: grid;
+  gap: var(--espacio-3);
+  margin-top: var(--espacio-2);
+}
+.ayuda {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-texto-suave);
+}
+
+/* Todos los movimientos, plegados: fecha y concepto arriba, importe y saldo abajo. */
+.historial summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  color: var(--color-marca);
+}
+.movimientos {
+  list-style: none;
+  margin: var(--espacio-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--espacio-2);
+}
+.movimiento {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px var(--espacio-3);
+  padding: var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.movimientoFecha {
+  color: var(--color-texto-suave);
+}
+.movimientoConcepto {
+  grid-column: 1;
+  overflow-wrap: anywhere;
+}
+.movimientoCompra {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+  font-weight: 700;
+}
+.movimientoAbono {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+  font-weight: 700;
+  color: var(--color-exito);
+}
+.movimientoSaldo {
+  grid-column: 2;
+  grid-row: 2;
+  text-align: right;
+  color: var(--color-texto-suave);
+}
+.movimientoSaldo::before {
+  content: "Saldo ";
+}
+
+.pie {
+  margin: var(--espacio-3) 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-texto-suave);
+}

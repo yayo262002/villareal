@@ -6,7 +6,9 @@ import { listarPagosDeCliente, ultimaTasa } from "@/lib/pagos";
 import { listarAdjuntosDeCliente } from "@/lib/adjuntos";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { conVencimiento, describirVencimiento } from "@/lib/credito";
-import { editarCliente, situarClienteEnElMapa, subirAdjunto } from "@/lib/acciones";
+import { editarCliente, situarClienteEnElMapa, subirAdjunto,
+  cambiarEnlaceDeCuenta,
+} from "@/lib/acciones";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { leerTasa } from "@/lib/ajustes";
 import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, hoy, usd } from "@/lib/dinero";
@@ -16,7 +18,8 @@ import { EntradaFoto } from "@/components/entrada-foto";
 import { negocio } from "@/config/negocio";
 import { enlaceAlMapa, situar } from "@/lib/despacho";
 import { explicarMotivo } from "@/lib/direcciones";
-import { enlaceWhatsappA, esSoloUnTelefono, mensajeAbono, mensajeNota, mensajePedirResena, mensajeRecordatorio } from "@/lib/whatsapp";
+import { enlaceWhatsappA, esSoloUnTelefono, mensajeAbono, mensajeEnlaceDeCuenta, mensajeNota, mensajePedirResena, mensajeRecordatorio } from "@/lib/whatsapp";
+import { direccionDeCuenta } from "@/lib/enlace-cuenta";
 import { rutaProducto } from "@/lib/enlaces";
 import { direccionCompleta } from "@/config/negocio";
 import estilos from "../../panel.module.css";
@@ -53,9 +56,20 @@ export default async function PaginaCliente({
     cliente.saldo_usd > 0
       ? enlaceWhatsappA(
           cliente.telefono,
-          mensajeRecordatorio({ negocio: negocio.nombre, cliente: cliente.nombre, saldo_usd: cliente.saldo_usd, pendientes, tasa }),
+          mensajeRecordatorio({
+            negocio: negocio.nombre,
+            cliente: cliente.nombre,
+            saldo_usd: cliente.saldo_usd,
+            pendientes,
+            tasa,
+            enlace: cliente.enlace ? direccionDeCuenta(cliente.enlace) : null,
+          }),
         )
       : null;
+  // Para mandarle su enlace personal, con el que ve su cuenta sin clave.
+  const mandarEnlace = cliente.enlace
+    ? enlaceWhatsappA(cliente.telefono, mensajeEnlaceDeCuenta({ negocio: negocio.nombre, cliente: cliente.nombre, enlace: direccionDeCuenta(cliente.enlace) }))
+    : null;
   const enlaceNota = (v: (typeof cuentas)[number]) =>
     enlaceWhatsappA(
       cliente.telefono,
@@ -158,6 +172,49 @@ export default async function PaginaCliente({
         </p>
       )}
       <Avisos parametros={parametros} />
+
+      {/* El enlace personal con el que el cliente ve su cuenta, sin clave. */}
+      <section className="tarjeta" id="enlace">
+        <h2 className={estilos.subtitulo}>Su enlace de cuenta</h2>
+        {cliente.enlace ? (
+          <>
+            <p className={estilos.ayuda}>
+              Con este enlace ve en su teléfono lo que tiene pendiente, sus notas y sus abonos, siempre al día y sin clave. Es solo suyo: si lo
+              compartió de más, renuévalo y el anterior deja de funcionar.
+            </p>
+            <p className={estilos.enlaceDeCuenta}>
+              <a href={direccionDeCuenta(cliente.enlace)} target="_blank" rel="noopener">
+                {direccionDeCuenta(cliente.enlace)}
+              </a>
+            </p>
+            <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
+              {mandarEnlace && (
+                <a href={mandarEnlace} target="_blank" rel="noopener" className="boton boton--acento">
+                  Mandárselo por WhatsApp
+                </a>
+              )}
+              <form action={cambiarEnlaceDeCuenta}>
+                <input type="hidden" name="id" value={cliente.id} />
+                <input type="hidden" name="enlace_de_cuenta" value="renovar" />
+                <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                  Renovar el enlace
+                </button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <form action={cambiarEnlaceDeCuenta}>
+            <p className={estilos.ayuda}>
+              Crea su enlace personal y mándaselo por WhatsApp: con él ve lo que tiene pendiente, sus notas y sus abonos, siempre al día y sin clave.
+            </p>
+            <input type="hidden" name="id" value={cliente.id} />
+            <input type="hidden" name="enlace_de_cuenta" value="crear" />
+            <button type="submit" className="boton">
+              Crear su enlace de cuenta
+            </button>
+          </form>
+        )}
+      </section>
 
       <dl className={estilos.cifras}>
         <div className={estilos.cifra}>

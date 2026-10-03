@@ -89,6 +89,8 @@ export function mensajeRecordatorio(datos: {
   pendientes: Pendiente[];
   /** Tasa del día; con ella el saldo va también en bolívares. */
   tasa?: number | null;
+  /** La dirección de su cuenta, si el cliente tiene enlace: así la ve al día. */
+  enlace?: string | null;
 }): string {
   const lineas = [`${saludo(datos.cliente)}, le saluda ${datos.negocio}.`];
   lineas.push(`Tiene pendiente ${dolaresYBolivares(datos.saldo_usd, datos.tasa)}:`);
@@ -96,12 +98,23 @@ export function mensajeRecordatorio(datos: {
     const parte = p.pendiente_usd < p.total_usd ? ` (quedan ${usd(p.pendiente_usd)})` : "";
     lineas.push(`• Nota del ${fechaCorta(p.fecha)}: ${usd(p.total_usd)}${parte}${plazoDe(p)}`);
   }
+  if (datos.enlace) lineas.push(`Puede ver su cuenta al día aquí: ${datos.enlace}`);
   lineas.push(
     datos.tasa
       ? `Puede pagar en dólares o en bolívares a ${bs(datos.tasa)} por dólar. ¡Gracias!`
       : "Puede pagar en dólares o en bolívares a la tasa del día. ¡Gracias!",
   );
   return lineas.join("\n");
+}
+
+/** Para mandarle al cliente su enlace personal, la primera vez o cuando se renueva. */
+export function mensajeEnlaceDeCuenta(datos: { negocio: string; cliente: string; enlace: string }): string {
+  return [
+    `${saludo(datos.cliente)}, le saluda ${datos.negocio}.`,
+    "Aquí puede ver su cuenta con nosotros, siempre al día: lo pendiente, sus notas y sus abonos.",
+    datos.enlace,
+    "Es un enlace personal suyo y no hace falta clave. Guárdelo y no lo comparta.",
+  ].join("\n");
 }
 
 type Linea = {

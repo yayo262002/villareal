@@ -97,6 +97,8 @@ async function migrar(cliente: Client): Promise<void> {
     await añadirColumna(cliente, "clientes", "lon real");
     await añadirColumna(cliente, "clientes", "sitio text not null default ''");
   }
+  if (!clientes.includes("enlace")) await añadirColumna(cliente, "clientes", "enlace text");
+  await cliente.execute("create unique index if not exists clientes_enlace on clientes(enlace)");
   const lineas = await definicionDe(cliente, "venta_lineas");
   if (!lineas.includes("piezas")) await añadirColumna(cliente, "venta_lineas", "piezas integer");
   if (!lineas.includes("variante_id")) await añadirColumna(cliente, "venta_lineas", "variante_id integer references variantes(id)");

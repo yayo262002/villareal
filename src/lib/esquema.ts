@@ -21,6 +21,8 @@ export const ESQUEMA = `
     lat real,
     lon real,
     sitio text not null default '',
+    -- El enlace personal con el que el cliente ve su cuenta sin clave. Null hasta que se crea.
+    enlace text,
     creado_en text not null default (datetime('now'))
   );
 

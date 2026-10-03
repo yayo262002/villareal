@@ -22,6 +22,8 @@ export type Cliente = {
   lon: number | null;
   /** Cómo llama el mapa a ese sitio. */
   sitio: string;
+  /** El enlace personal con el que ve su cuenta sin clave (`enlace-cuenta.ts`); null hasta que se crea. */
+  enlace: string | null;
   creado_en: string;
 };
 
@@ -48,7 +50,7 @@ export type ClienteConSaldo = Cliente & {
   por_entregar: number;
 };
 
-export type DatosCliente = Omit<Cliente, "id" | "creado_en" | "lat" | "lon" | "sitio">;
+export type DatosCliente = Omit<Cliente, "id" | "creado_en" | "lat" | "lon" | "sitio" | "enlace">;
 
 export type SitioDelMapa = { lat: number; lon: number; sitio: string } | null;
 
@@ -83,6 +85,17 @@ export async function listarClientes(): Promise<ClienteConSaldo[]> {
 export async function buscarCliente(id: number): Promise<ClienteConSaldo | null> {
   const f = await fila<ClienteConSaldo>(`${CONSULTA_CON_SALDO} where c.id = ?`, [id]);
   return f ? conSaldo(f) : null;
+}
+
+/** El cliente dueño de ese enlace personal, con su saldo. Null si nadie lo tiene. */
+export async function buscarClientePorEnlace(enlace: string): Promise<ClienteConSaldo | null> {
+  const f = await fila<ClienteConSaldo>(`${CONSULTA_CON_SALDO} where c.enlace = ?`, [enlace]);
+  return f ? conSaldo(f) : null;
+}
+
+/** Pone (o cambia) el enlace personal de un cliente. */
+export async function ponerEnlace(id: number, enlace: string): Promise<void> {
+  await ejecutar("update clientes set enlace = ? where id = ?", [enlace, id]);
 }
 
 /**

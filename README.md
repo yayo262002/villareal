@@ -149,7 +149,9 @@ src/lib/adjuntos.ts       Fotos de las notas de entrega
 src/lib/fotos-en-espera.ts  La foto de la nota mientras el formulario va y vuelve
 src/lib/lector-de-notas.ts  Le enseña la foto de la nota a Claude: fecha, líneas, total, firma
 src/lib/nota-leida.ts     Interpreta lo leído y dice en qué no cuadra con lo anotado
-src/lib/whatsapp.ts       Mensajes para WhatsApp: cobro, nota, recibo, en camino, pedir reseña
+src/lib/whatsapp.ts       Mensajes para WhatsApp: cobro, nota, recibo, en camino, pedir reseña, el enlace de cuenta
+src/lib/enlace-cuenta.ts  El enlace personal de cada cliente: cómo se hace y adónde lleva
+src/app/cuenta/           La cuenta de un cliente, para él, con su enlace y sin clave
 src/lib/copias-nube.ts    Copias automáticas guardadas en la base
 src/app/api/tarea-diaria/ Lo que Vercel hace solo cada mañana: tasa y copia
 src/app/api/copia-automatica/  Solo la copia, para lanzarla aparte
@@ -336,6 +338,15 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   el saldo que deja cada uno (`movimientosDeCuenta` en `src/lib/cuentas.ts`).
   Se imprime o se guarda como PDF. En el teléfono cada movimiento es una
   ficha; en papel, una fila con sus columnas.
+- **El enlace de cuenta del cliente.** En su ficha, «Crear su enlace de
+  cuenta» le da una dirección personal (`/cuenta/abcdefghjkmnpq`, catorce
+  letras y números al azar, sin 0, o, 1, l ni i) que se le manda por
+  WhatsApp. Con ella ve en su teléfono, sin clave, lo que tiene pendiente
+  (en dólares y en bolívares a la tasa de hoy), cada nota por pagar con su
+  plazo, sus abonos y todos sus movimientos, y tiene botones para avisar un
+  pago o pedir. Solo ve lo suyo. El recordatorio de deuda lleva el enlace.
+  Si se compartió de más, «Renovar el enlace» pone otro y el anterior deja
+  de funcionar. Los buscadores no la indexan (`robots.txt` y `noindex`).
 - **Nota de entrega.** Cada venta tiene la suya, numerada con el número de
   la venta (`/admin/ventas/12/nota`): datos del negocio y del cliente, lo
   entregado, el total en dólares y en bolívares a la tasa del día de la

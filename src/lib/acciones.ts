@@ -13,6 +13,7 @@ import {
   guardarSitio,
   type SitioDelMapa,
   type TipoCliente,
+  ponerEnlace,
 } from "./clientes";
 import { buscarEnElMapa, necesitaElMapa } from "./mapa";
 import {
@@ -62,6 +63,7 @@ import {
   type DatosVariante,
 } from "./variantes";
 import { vendiblesDe } from "./catalogo";
+import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { TAMANO_MAXIMO_ADJUNTO, buscarAdjunto, eliminarAdjunto, esTipoAdjunto, guardarAdjunto } from "./adjuntos";
@@ -507,6 +509,27 @@ export async function borrarPagoProveedor(datos: FormData): Promise<void> {
   if (!id || !pago) volverConError("/admin/proveedores", "No se encontró el pago.");
   await eliminarPagoProveedor(id);
   volverConExito(`/admin/proveedores/${pago.proveedor_id}`, "Pago eliminado.");
+}
+
+// ---------- El enlace de cuenta del cliente ----------
+
+/**
+ * El enlace personal con el que el cliente ve su cuenta sin clave. Se crea
+ * una vez; «renovar» pone otro y el anterior deja de funcionar, por si se
+ * compartió de más.
+ */
+export async function cambiarEnlaceDeCuenta(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const cliente = id ? await buscarCliente(id) : null;
+  if (!id || !cliente) volverConError("/admin/clientes", "No se encontró el cliente.");
+  const renovar = texto(datos, "enlace_de_cuenta") === "renovar";
+  if (cliente.enlace && !renovar) volverConExito(`/admin/clientes/${id}#enlace`, "Este cliente ya tiene su enlace.");
+  await ponerEnlace(id, nuevoEnlace());
+  volverConExito(
+    `/admin/clientes/${id}#enlace`,
+    renovar ? "Enlace renovado: el anterior ya no funciona. Mándale el nuevo." : "Enlace creado. Mándaselo por WhatsApp: con él ve su cuenta al día.",
+  );
 }
 
 // ---------- Productos ----------

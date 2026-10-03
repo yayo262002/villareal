@@ -652,6 +652,39 @@ async function probarNegocio() {
       textoEstado.includes("Abono · Pago móvil") && textoEstado.includes("Saldo por pagar") && textoEstado.includes(usd("4,00")),
   );
   comprobar("el estado de cuenta de un cliente que no existe da 404", (await pagina("/admin/clientes/999999/estado")).status === 404);
+
+  // El enlace personal del cliente: con él ve su cuenta sin clave; sin él, nada.
+  let fichaEnlace = (await pagina(`/admin/clientes/${clienteId}`)).html;
+  comprobar("sin enlace, la ficha ofrece crearlo", fichaEnlace.includes("Crear su enlace de cuenta") && !fichaEnlace.includes("/cuenta/"));
+  r = await enviar(`/admin/clientes/${clienteId}`, 'name="enlace_de_cuenta" value="crear"', { id: String(clienteId), enlace_de_cuenta: "crear" });
+  const [{ enlace }] = await consultar("select enlace from clientes where id = ?", [clienteId]);
+  comprobar("crear el enlace de cuenta", r.destino.includes("Enlace creado") && /^[a-hj-km-np-z2-9]{14}$/.test(String(enlace)), `${r.destino} ${enlace}`);
+  const cuenta = await pagina(`/cuenta/${enlace}`, "");
+  const textoCuenta = legible(cuenta.html);
+  comprobar(
+    "el cliente abre su cuenta con el enlace, sin clave: su nombre, lo pendiente, su nota y su abono, y nada de otros",
+    cuenta.status === 200 && textoCuenta.includes(nombre) && textoCuenta.includes("Tienes pendiente") && textoCuenta.includes(usd("20,96")) &&
+      textoCuenta.includes(`Nota ${numeroDelPedido}`) && textoCuenta.includes("Pago móvil") && !textoCuenta.includes("Cliente Detal"),
+    `${cuenta.status} ${textoCuenta.slice(0, 400)}`,
+  );
+  comprobar(
+    "la cuenta no se indexa ni sale a los buscadores",
+    cuenta.html.includes('name="robots"') && cuenta.html.includes("noindex") && (await (await fetch(base + "/robots.txt")).text()).includes("/cuenta"),
+  );
+  comprobar("un enlace que no existe o mal escrito da 404", (await pagina("/cuenta/abcdefghjkmnpq", "")).status === 404 && (await pagina("/cuenta/x", "")).status === 404);
+  fichaEnlace = (await pagina(`/admin/clientes/${clienteId}`)).html;
+  comprobar(
+    "la ficha enseña el enlace, lo manda por WhatsApp y el recordatorio de deuda lo lleva",
+    fichaEnlace.includes(`/cuenta/${enlace}`) && fichaEnlace.includes("Mandárselo por WhatsApp") &&
+      decodeURIComponent(fichaEnlace.match(/wa\.me\/584120000000\?text=([^"]*Tiene%20pendiente[^"]*)"/)?.[1] ?? "").includes(`/cuenta/${enlace}`),
+  );
+  r = await enviar(`/admin/clientes/${clienteId}`, 'name="enlace_de_cuenta" value="renovar"', { id: String(clienteId), enlace_de_cuenta: "renovar" });
+  const [{ enlace: enlaceNuevo }] = await consultar("select enlace from clientes where id = ?", [clienteId]);
+  comprobar(
+    "renovar el enlace: el viejo deja de funcionar y el nuevo abre",
+    r.destino.includes("renovado") && enlaceNuevo !== enlace && (await pagina(`/cuenta/${enlace}`, "")).status === 404 && (await pagina(`/cuenta/${enlaceNuevo}`, "")).status === 200,
+    r.destino,
+  );
   const recibo = decodeURIComponent(ficha.match(/href="https:\/\/wa\.me\/584120000000\?text=([^"]*Recibimos[^"]*)"/)?.[1] ?? "");
   comprobar(
     "ficha: estado de cuenta y recibo del abono por WhatsApp",
@@ -1149,6 +1182,7 @@ try {
   const primera = web.html.match(/href="(\/producto\/\d+[a-z0-9-]*)"/)?.[1];
   const detalle = primera ? await pagina(primera, "") : null;
   comprobar("la página de un producto abre desde la portada", Boolean(detalle) && detalle.status === 200 && detalle.html.includes("Cómo comprar") && detalle.html.includes("Todos los productos"), String(primera));
+  comprobar("una cuenta de cliente inventada da 404", (await pagina("/cuenta/abcdefghjkmnpq", "")).status === 404 && (await pagina("/cuenta/nada", "")).status === 404);
 
   await probarPresentacion(web);
   await probarEntrada();

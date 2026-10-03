@@ -8,6 +8,7 @@ import {
   mensajeEnCamino,
   mensajeNota,
   mensajePedirResena,
+  mensajeEnlaceDeCuenta,
   mensajeRecordatorio,
   mismoTelefono,
   numeroWhatsapp,
@@ -232,4 +233,20 @@ test("pedir una reseña sin saber a quién: saluda sin nombre y no inventa enlac
   assert.match(texto, /este producto: huevos\./);
   assert.doesNotMatch(texto, /Aquí saldría/);
   assert.match(mensajePedirResena({ negocio: "Villa Real", cliente: "0412-1234567", producto: "Huevos" }), /^Hola, le saluda/);
+});
+
+test("el recordatorio lleva el enlace de la cuenta si el cliente lo tiene, antes de cómo pagar", () => {
+  const sinEnlace = mensajeRecordatorio({ negocio: "Villa Real", cliente: "Ana", saldo_usd: 5, pendientes: [] });
+  assert.doesNotMatch(sinEnlace, /su cuenta al día/);
+  const conEnlace = mensajeRecordatorio({ negocio: "Villa Real", cliente: "Ana", saldo_usd: 5, pendientes: [], enlace: "https://villareal.test/cuenta/abcdefghjkmnpq" });
+  const lineas = conEnlace.split("\n");
+  assert.equal(lineas[lineas.length - 2], "Puede ver su cuenta al día aquí: https://villareal.test/cuenta/abcdefghjkmnpq");
+  assert.match(lineas[lineas.length - 1], /^Puede pagar/);
+});
+
+test("el mensaje con el enlace de la cuenta lo lleva en su propia línea y dice que es personal", () => {
+  const texto = mensajeEnlaceDeCuenta({ negocio: "Villa Real", cliente: "Ana", enlace: "https://villareal.test/cuenta/abcdefghjkmnpq" });
+  assert.match(texto, /^Hola Ana, le saluda Villa Real\./);
+  assert.ok(texto.split("\n").includes("https://villareal.test/cuenta/abcdefghjkmnpq"));
+  assert.match(texto, /no lo comparta/);
 });

@@ -10,6 +10,7 @@ import { conVencimiento } from "@/lib/credito";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { METODOS_PAGO, aBolivares, bs, fechaCorta, hoy, usd } from "@/lib/dinero";
 import { enlaceWhatsappA, mensajeRecordatorio } from "@/lib/whatsapp";
+import { direccionDeCuenta } from "@/lib/enlace-cuenta";
 import { BotonImprimir } from "@/components/boton-imprimir";
 import { DatosDelCliente, Membrete } from "../../../membrete";
 import estilos from "../../../panel.module.css";
@@ -59,6 +60,7 @@ export default async function PaginaEstadoDeCuenta({ params }: Parametros) {
             saldo_usd: cliente.saldo_usd,
             pendientes,
             tasa: tasa?.valor,
+            enlace: cliente.enlace ? direccionDeCuenta(cliente.enlace) : null,
           }),
         )
       : null;
