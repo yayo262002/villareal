@@ -1,9 +1,7 @@
 import "server-only";
 import { filas } from "./db";
 import { METODOS_PAGO, redondear, type MetodoPago, type Moneda } from "./dinero";
-import { lineasDeVentas, type LineaVentaGuardada } from "./ventas";
-import type { Movimientos } from "./exportar";
-import { ROTULO_DEL_CLIENTE } from "./clientes";
+import { movimientosEntreCon, type MovimientosCompletos } from "./movimientos";
 
 /**
  * El cierre del día: lo que se vendió, lo que entró (abonos de clientes,
@@ -65,49 +63,15 @@ export async function cierreDelDia(fecha: string): Promise<CierreDelDia> {
   };
 }
 
-/** Cuántas ventas se piden de una vez al buscar sus líneas: la base no admite listas sin fin. */
-const VENTAS_POR_CONSULTA = 400;
-
 /**
  * Todo lo que se movió entre dos fechas, las dos incluidas: ventas con sus
  * productos, abonos de los clientes, compras y pagos a proveedores. Sin
- * fecha por un lado, no hay límite por ese lado. Para descargarlo en Excel.
+ * fecha por un lado, no hay límite por ese lado. Para el Excel y para las
+ * estadísticas. La consulta vive en `movimientos.ts`; aquí se corre con la
+ * conexión de la web.
  */
-export async function movimientosEntre(desde: string | null, hasta: string | null): Promise<Movimientos> {
-  const periodo = [desde ?? "0000-01-01", hasta ?? "9999-12-31"];
-  const [ventas, abonos, compras, pagos] = await Promise.all([
-    filas<Omit<Movimientos["ventas"][number], "lineas">>(
-      `select v.id, v.fecha, v.total_usd, v.nota, ${ROTULO_DEL_CLIENTE} as cliente_nombre
-       from ventas v join clientes c on c.id = v.cliente_id
-       where v.fecha between ? and ? order by v.fecha, v.id`,
-      periodo,
-    ),
-    filas<Movimientos["abonos"][number]>(
-      `select p.id, p.fecha, p.metodo, p.moneda, p.monto, p.tasa, p.monto_usd, p.referencia, p.nota, ${ROTULO_DEL_CLIENTE} as cliente_nombre
-       from pagos p join clientes c on c.id = p.cliente_id
-       where p.fecha between ? and ? order by p.fecha, p.id`,
-      periodo,
-    ),
-    filas<Movimientos["compras"][number]>(
-      `select c.id, c.fecha, c.descripcion, c.total_usd, c.nota, p.nombre as proveedor_nombre
-       from compras c join proveedores p on p.id = c.proveedor_id
-       where c.fecha between ? and ? order by c.fecha, c.id`,
-      periodo,
-    ),
-    filas<Movimientos["pagos"][number]>(
-      `select g.id, g.fecha, g.metodo, g.moneda, g.monto, g.tasa, g.monto_usd, g.referencia, g.nota, p.nombre as proveedor_nombre
-       from pagos_proveedores g join proveedores p on p.id = g.proveedor_id
-       where g.fecha between ? and ? order by g.fecha, g.id`,
-      periodo,
-    ),
-  ]);
-
-  const lineas = new Map<number, LineaVentaGuardada[]>();
-  for (let i = 0; i < ventas.length; i += VENTAS_POR_CONSULTA) {
-    const tanda = await lineasDeVentas(ventas.slice(i, i + VENTAS_POR_CONSULTA).map((v) => v.id));
-    for (const [ventaId, suyas] of tanda) lineas.set(ventaId, suyas);
-  }
-  return { ventas: ventas.map((v) => ({ ...v, lineas: lineas.get(v.id) ?? [] })), abonos, compras, pagos };
+export async function movimientosEntre(desde: string | null, hasta: string | null): Promise<MovimientosCompletos> {
+  return movimientosEntreCon(filas, desde, hasta);
 }
 
 /** Los días con movimiento (ventas, abonos o pagos), del más reciente al más antiguo. */

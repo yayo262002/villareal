@@ -46,3 +46,6 @@ next-env.d.ts
 
 # copias de seguridad hechas con npm run copia
 /copias/
+
+# los Excel que deja npm run copia cada noche
+/exportaciones/

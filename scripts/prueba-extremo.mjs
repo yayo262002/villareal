@@ -264,6 +264,7 @@ async function probarTareaDiaria() {
   r = await fetch(base + "/api/tarea-diaria", { headers: { authorization: "Bearer " + env.CRON_SECRET } });
   const resultado = await r.json().catch(() => ({}));
   comprobar("la tarea diaria guarda la copia", resultado.copia?.estado === "guardada", JSON.stringify(resultado));
+  comprobar("la tarea diaria exporta el día anterior (o dice que no hubo movimientos)", ["guardada", "sin_movimientos"].includes(resultado.exportacion?.estado), JSON.stringify(resultado.exportacion));
   comprobar(
     "una tasa que salta demasiado no entra sola",
     ["rechazada", "sin_respuesta"].includes(resultado.tasa?.estado),
@@ -746,12 +747,53 @@ async function probarNegocio() {
   const cuenta = await pagina(`/cuenta/${enlace}`, "");
   const textoCuenta = legible(cuenta.html);
   comprobar(
-    "el cliente abre su cuenta con el enlace, sin clave: su nombre, lo pendiente, su nota y su abono, y nada de otros",
+    "el cliente abre su cuenta con el enlace, sin clave: su nombre, lo pendiente, sus notas por pagar y su último abono, y nada de otros",
     cuenta.status === 200 && textoCuenta.includes(nombre) && textoCuenta.includes("Tienes pendiente") && textoCuenta.includes(usd("20,96")) &&
-      textoCuenta.includes(`Nota ${numeroDelPedido}`) && textoCuenta.includes("Pago móvil") && !textoCuenta.includes("Cliente Detal") &&
-      textoCuenta.includes("días pendiente") && textoCuenta.includes("Queso amarillo ×"),
+      textoCuenta.includes("2 notas por pagar") && textoCuenta.includes(`Nota ${numeroDelPedido}`) && textoCuenta.includes("Pago móvil") &&
+      !textoCuenta.includes("Cliente Detal") && textoCuenta.includes("días pendiente") && textoCuenta.includes("Queso amarillo ×") &&
+      cuenta.html.includes(`href="/cuenta/${enlace}/notas"`) && cuenta.html.includes(`href="/cuenta/${enlace}/abonos"`),
     `${cuenta.status} ${textoCuenta.slice(0, 400)}`,
   );
+  const notasDelCliente = await pagina(`/cuenta/${enlace}/notas`, "");
+  comprobar(
+    "sus notas: por pagar y pagadas, cada una con su estado y su enlace",
+    notasDelCliente.status === 200 && legible(notasDelCliente.html).includes("Abonada") && legible(notasDelCliente.html).includes("Por pagar") &&
+      notasDelCliente.html.includes(`href="/cuenta/${enlace}/nota/${pedidoId}"`),
+    String(notasDelCliente.status),
+  );
+  const notaDelCliente = legible((await pagina(`/cuenta/${enlace}/nota/${pedidoId}`, "")).html);
+  comprobar(
+    "la nota entera para el cliente: lo que llevaba, el total, lo abonado, lo que queda y pedir lo mismo",
+    notaDelCliente.includes(`Nota ${numeroDelPedido}`) && notaDelCliente.includes("Queso amarillo") && notaDelCliente.includes(usd("10,00")) &&
+      notaDelCliente.includes(usd("4,00")) && notaDelCliente.includes(usd("6,00")) && notaDelCliente.includes("Pedir lo mismo otra vez") &&
+      notaDelCliente.includes("Fecha límite de pago"),
+    notaDelCliente.slice(0, 600),
+  );
+  const [abonoDelCliente] = await consultar("select id from pagos where cliente_id = ? order by id desc limit 1", [clienteId]);
+  const abonosDelCliente = await pagina(`/cuenta/${enlace}/abonos`, "");
+  comprobar(
+    "sus abonos, con el método, los bolívares con su tasa, el comprobante y el enlace al recibo",
+    abonosDelCliente.status === 200 && legible(abonosDelCliente.html).includes("Pago móvil") && legible(abonosDelCliente.html).includes("Bs 146,00") &&
+      legible(abonosDelCliente.html).includes("con comprobante") && abonosDelCliente.html.includes(`href="/cuenta/${enlace}/abono/${abonoDelCliente.id}"`),
+    String(abonosDelCliente.status),
+  );
+  const reciboDelCliente = await pagina(`/cuenta/${enlace}/abono/${abonoDelCliente.id}`, "");
+  const comprobanteDelCliente = reciboDelCliente.html.match(new RegExp(`/cuenta/${enlace}/comprobante/(\\d+)`))?.[1];
+  comprobar(
+    "el recibo de un abono: monto, tasa, método y el comprobante que mandó, que se sirve solo con su enlace",
+    reciboDelCliente.status === 200 && legible(reciboDelCliente.html).includes("Recibo de abono") && legible(reciboDelCliente.html).includes(usd("4,00")) &&
+      Boolean(comprobanteDelCliente) && (await fetch(base + `/cuenta/${enlace}/comprobante/${comprobanteDelCliente}`)).status === 200 &&
+      (await fetch(base + `/cuenta/abcdefghjkmnpq/comprobante/${comprobanteDelCliente}`)).status === 404,
+    `${reciboDelCliente.status} ${comprobanteDelCliente}`,
+  );
+  const [ventaAjena] = await consultar("select id from ventas where cliente_id <> ? order by id limit 1", [clienteId]);
+  comprobar(
+    "la nota o el abono de otro cliente, o uno que no existe, dan 404",
+    (await pagina(`/cuenta/${enlace}/nota/${ventaAjena.id}`, "")).status === 404 && (await pagina(`/cuenta/${enlace}/nota/999999`, "")).status === 404 &&
+      (await pagina(`/cuenta/${enlace}/abono/999999`, "")).status === 404,
+  );
+  const movimientosDelCliente = legible((await pagina(`/cuenta/${enlace}/movimientos`, "")).html);
+  comprobar("sus movimientos, con el saldo después de cada uno", movimientosDelCliente.includes("Todos los movimientos") && movimientosDelCliente.includes("Saldo") && movimientosDelCliente.includes("Pago móvil"));
   comprobar(
     "la cuenta no se indexa ni sale a los buscadores",
     cuenta.html.includes('name="robots"') && cuenta.html.includes("noindex") && (await (await fetch(base + "/robots.txt")).text()).includes("/cuenta"),
@@ -780,8 +822,29 @@ async function probarNegocio() {
 
   const cuentas = await pagina("/admin/cuentas");
   comprobar(`cuentas por pagar (${cuentas.ms} ms)`, cuentas.html.includes(nombre) && cuentas.html.includes(">Recordar</a>"));
-  const informe = await pagina("/admin/informe");
-  comprobar(`informe por producto y por cliente, sin detal (${informe.ms} ms)`, informe.html.includes("Por producto") && informe.html.includes(nombre) && !informe.html.includes("Al detal"));
+  const informe = await pagina("/admin/estadisticas?periodo=todo");
+  const textoInforme = legible(informe.html);
+  comprobar(
+    `estadísticas: por producto, por cliente, cómo pagaron, por día de la semana, todos los movimientos, y nada de detal (${informe.ms} ms)`,
+    textoInforme.includes("Por producto") && textoInforme.includes(nombre) && textoInforme.includes("Cómo pagaron") && textoInforme.includes("Pago móvil") &&
+      textoInforme.includes("Por día de la semana") && textoInforme.includes("Todos los movimientos") && textoInforme.includes("Exportaciones diarias") && !textoInforme.includes("Al detal"),
+  );
+  const estadisticasDelMes = legible((await pagina("/admin/estadisticas?desde=2026-09-01&hasta=2026-09-30")).html);
+  comprobar("estadísticas de un período a medida: septiembre, con la venta de prueba", estadisticasDelMes.includes("Período del 01/09/2026 al 30/09/2026") && estadisticasDelMes.includes(nombre));
+  comprobar("el enlace viejo del informe lleva a estadísticas", (await pagina("/admin/informe")).destino.includes("/admin/estadisticas"));
+  // La tarea diaria rehace las exportaciones de un rango: aquí, septiembre, mientras sus movimientos existen.
+  const respuestaTarea = await fetch(base + "/api/tarea-diaria?desde=2026-09-01&hasta=2026-09-30", { headers: { authorization: "Bearer " + env.CRON_SECRET } });
+  const rehecha = await respuestaTarea.json().catch(() => ({}));
+  const excelDelDia = await fetch(base + "/admin/exportaciones/2026-09-20", { headers: { cookie } });
+  const textoExcel = Buffer.from(await excelDelDia.arrayBuffer()).toString("utf8");
+  comprobar(
+    "las exportaciones de septiembre se guardan día a día y el Excel del 20 se baja desde el panel",
+    rehecha.exportacion?.estado === "guardada" && rehecha.exportacion.dias >= 3 && excelDelDia.status === 200 && (excelDelDia.headers.get("content-disposition") ?? "").includes("movimientos-2026-09-20.csv") &&
+      textoExcel.includes("20/09/2026;Abono;;Bodega Prueba, C.A.;;Pago móvil;146,00;Bs;36,5000;;4,00;"),
+    `${JSON.stringify(rehecha.exportacion)} ${excelDelDia.status} ${textoExcel.slice(0, 200)}`,
+  );
+  comprobar("un día sin movimientos no tiene Excel, y sin sesión no se baja ninguno", (await fetch(base + "/admin/exportaciones/2026-09-02", { headers: { cookie } })).status === 404 && (await fetch(base + "/admin/exportaciones/2026-09-20", { redirect: "manual" })).status !== 200);
+  comprobar("las estadísticas listan la exportación del 20 de septiembre", (await pagina("/admin/estadisticas")).html.includes('href="/admin/exportaciones/2026-09-20"'));
   const busca = await pagina(`/admin/clientes?q=${encodeURIComponent(nombre.slice(0, 6).toUpperCase())}`);
   comprobar("buscador de clientes sin distinguir mayúsculas", busca.html.includes(nombre) && busca.html.includes("Ver todos"));
   const productos = await pagina("/admin/productos");
@@ -1149,8 +1212,8 @@ async function probarProveedores() {
     "la ficha del proveedor: le debo USD 60 y la compra está vencida (y el informe suma compras y pagos)",
     ficha.includes(`Le debo ${usd("60,00")}`) && ficha.includes("20 kg de mozzarella") && ficha.includes(">Abonada<") && /Vencida hace \d+ días/.test(ficha),
   );
-  const informe = legible((await pagina("/admin/informe")).html);
-  comprobar("el informe suma por mes lo comprado y lo pagado a proveedores", informe.includes("Pagado a proveedores") && informe.includes("Entró neto") && informe.includes(usd("100,00")));
+  const informe = legible((await pagina("/admin/estadisticas")).html);
+  comprobar("las estadísticas suman por mes lo comprado y lo pagado a proveedores", informe.includes("Pagado a proveedores") && informe.includes("Entró neto") && informe.includes(usd("100,00")));
   const lista = legible((await pagina("/admin/proveedores")).html);
   comprobar("la lista de proveedores dice cuánto se le debe y desde cuándo", lista.includes(PROVEEDOR_DE_PRUEBA) && lista.includes(`Le debo ${usd("60,00")}`) && /Vencida hace \d+ días/.test(lista));
   const resumen = legible((await pagina("/admin")).html);
@@ -1183,7 +1246,7 @@ async function probarSinEscribir() {
     ["/admin/pagos", "Abonos", "Registrar abono"],
     ["/admin/despacho", "Despacho", "Ruta de despacho"],
     ["/admin/cuentas", "Cuentas", "Cuentas por pagar"],
-    ["/admin/informe", "Informe", "Por mes"],
+    ["/admin/estadisticas", "Estadísticas", "Por mes"],
     ["/admin/productos", "Productos", "Tasa del día"],
     ["/admin/resenas", "Reseñas", "Reseña nueva"],
     ["/admin/proveedores", "Proveedores", "Proveedor nuevo"],

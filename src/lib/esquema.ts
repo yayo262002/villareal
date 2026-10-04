@@ -227,6 +227,15 @@ export const ESQUEMA = `
   -- Copias automáticas: cada noche se guarda aquí una copia completa de las
   -- tablas de arriba (un archivo SQLite en un blob). No entra en TABLAS,
   -- así una copia nunca contiene a las anteriores.
+  -- El Excel de cada día, que la tarea diaria guarda sola cada mañana.
+  create table if not exists exportaciones (
+    fecha text primary key,
+    csv text not null,
+    movimientos integer not null default 0,
+    tamano integer not null default 0,
+    creado_en text not null default (datetime('now'))
+  );
+
   create table if not exists copias_automaticas (
     id integer primary key autoincrement,
     creado_en text not null default (datetime('now')),
@@ -267,6 +276,7 @@ export const TABLAS = [
   "proveedores",
   "compras",
   "pagos_proveedores",
+  "exportaciones",
 ] as const;
 
 /**

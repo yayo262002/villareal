@@ -20,7 +20,7 @@ const SECCIONES = [
   { ruta: "/admin/pagos", nombre: "Abonos" },
   { ruta: "/admin/despacho", nombre: "Despacho" },
   { ruta: "/admin/cuentas", nombre: "Cuentas" },
-  { ruta: "/admin/informe", nombre: "Informe" },
+  { ruta: "/admin/estadisticas", nombre: "Estadísticas" },
   { ruta: "/admin/productos", nombre: "Productos" },
   { ruta: "/admin/resenas", nombre: "Reseñas" },
   { ruta: "/admin/proveedores", nombre: "Proveedores" },

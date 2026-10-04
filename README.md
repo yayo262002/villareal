@@ -72,9 +72,10 @@ ahora» que baja el mismo archivo.
 
 **Copias automáticas.** En Vercel, cada mañana a las 10:00 UTC (las 6 en
 Venezuela) se llama a `/api/tarea-diaria` (cron en `vercel.json`), que trae
-la tasa del BCV y guarda una copia completa en la tabla
-`copias_automaticas` de la propia base. Se conservan las 14 últimas y se
-descargan desde el Resumen. La llamada del cron lleva la variable
+la tasa del BCV, guarda una copia completa en la tabla
+`copias_automaticas` de la propia base y guarda el Excel de los movimientos
+del día anterior (tabla `exportaciones`). Se conservan las 14 últimas
+copias y se descargan desde el Resumen; los Excel, desde Estadísticas. La llamada del cron lleva la variable
 `CRON_SECRET`; el botón «Guardar copia en la nube» hace la copia a mano. Estas copias protegen de borrar algo por error, no de
 perder la cuenta de Turso: por eso conviene bajar el archivo de vez en cuando.
 
@@ -137,6 +138,12 @@ src/lib/credito.ts        Los días de crédito: cuándo vence una nota y cuánt
 src/lib/vencimientos.ts   Cada cliente y cada proveedor con lo que tiene vencido
 src/lib/proveedores.ts    Proveedores, sus compras y los pagos que se les hacen
 src/lib/caja.ts           El cierre del día: vendido, entrado por método y salido
+src/lib/movimientos.ts    Todo lo que se movió entre dos fechas (lo usan la web y el guion de copias)
+src/lib/estadisticas.ts   Lo que se saca de los movimientos: por producto, por cliente, por método, por día
+src/lib/exportaciones.ts  El Excel de cada día, guardado solo por la tarea diaria
+src/lib/exportaciones-locales.ts  Los Excel que deja npm run copia en el ordenador
+src/lib/cuenta-cliente.ts Lo que un cliente ve de su cuenta con su enlace
+src/components/cuenta.tsx El marco, las pestañas y las tarjetas de la cuenta del cliente
 src/lib/exportar.ts       Lo que se descarga para Excel: movimientos y resumen por día
 src/lib/buscar.ts         Buscar sin tildes ni mayúsculas; una nota por su número
 src/lib/direcciones.ts    Lee una dirección y la sitúa en la cuadrícula
@@ -288,8 +295,25 @@ datos/                    La base de datos (fuera de Git)
   un resumen con una fila por día. Es un CSV con punto y coma y coma
   decimal, que es lo que abre bien Excel en castellano
   (`src/lib/exportar.ts`).
-- El **Informe** suma por mes, junto a lo vendido y cobrado, lo comprado y
-  lo pagado a proveedores, y lo que entró neto (cobrado menos pagado).
+- **Estadísticas** (`/admin/estadisticas`): se elige un período (este mes,
+  mes pasado, 30 o 90 días, este año, todo, o dos fechas) y de él se ve
+  cuánto se vendió y cobró (con el ticket medio y los kilos), lo comprado y
+  pagado a proveedores y lo que entró neto; por cobrar, vencido, deuda con
+  proveedores y pedidos por entregar a hoy; la evolución día a día; por
+  producto y marca; por cliente (lo comprado y lo abonado); cómo pagaron
+  (por método y moneda); por día de la semana; por mes (todos los meses); y
+  la lista de absolutamente todos los movimientos del período, cada uno con
+  su enlace. Abajo, las descargas para Excel (`src/lib/estadisticas.ts`).
+  El enlace viejo `/admin/informe` lleva aquí.
+- **Exportación diaria.** Cada mañana a las 6 (hora de Venezuela), la tarea
+  diaria de Vercel guarda en la base el Excel con los movimientos del día
+  anterior (y rehace el de anteayer, por si se anotó algo tarde); se
+  conservan 90 días y se bajan desde Estadísticas → «Exportaciones
+  diarias» (`src/lib/exportaciones.ts`, `/admin/exportaciones/[fecha]`).
+  Además, `npm run copia` (la tarea de las 8 de la noche en el ordenador
+  del dueño) deja en `exportaciones/` el Excel de hoy, el de ayer y el de
+  todo desde el principio (`movimientos-todo.csv`); esa carpeta está en
+  OneDrive, así que quedan también en la nube.
 - Un pago en bolívares se guarda con la **tasa del día** que se escribió al
   registrarlo, y se convierte a dólares en ese momento. Si la tasa cambia
   mañana, el pago de hoy no se mueve. Un monto que no llega a un centavo
@@ -361,10 +385,16 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   cuenta» le da una dirección personal (`/cuenta/abcdefghjkmnpq`, catorce
   letras y números al azar, sin 0, o, 1, l ni i) que se le manda por
   WhatsApp. Con ella ve en su teléfono, sin clave, lo que tiene pendiente
-  (en dólares y en bolívares a la tasa de hoy), cada nota por pagar con lo
-  que llevaba línea a línea, cuántos días lleva pendiente y su plazo, sus
-  abonos (y si tienen comprobante) y todos sus movimientos, y tiene botones
-  para avisar un pago o pedir. Solo ve lo suyo. El recordatorio de deuda lleva el enlace.
+  (en dólares y en bolívares a la tasa de hoy) y, en pestañas, **Resumen**
+  (las notas por pagar, cada una con lo que llevaba, lo abonado en una
+  barra, cuántos días lleva pendiente y su plazo; su último abono; botones
+  para avisar un pago o pedir), **Notas** (todas, por pagar y pagadas, con
+  su estado y el enlace a cada una: la nota entera con el total en dólares
+  y en bolívares del día de la venta, lo abonado, lo que queda, la fecha
+  límite y «Pedir lo mismo otra vez»), **Abonos** (cada uno con su recibo:
+  monto, tasa, método, referencia, el comprobante que mandó y cómo quedó su
+  cuenta) y **Movimientos** (el estado de cuenta). Solo lo suyo: una nota o
+  un abono de otro cliente dan 404 (`src/lib/cuenta-cliente.ts`). Solo ve lo suyo. El recordatorio de deuda lleva el enlace.
   Si se compartió de más, «Renovar el enlace» pone otro y el anterior deja
   de funcionar. Los buscadores no la indexan (`robots.txt` y `noindex`).
 - **Nota de entrega.** Cada venta tiene la suya, numerada con el número de

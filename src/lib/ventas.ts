@@ -24,14 +24,8 @@ export type LineaVentaGuardada = LineaVenta & {
   unidad: string;
 };
 
-/** Las líneas con el nombre de su producto y, si la tiene, de su variante. */
-const CONSULTA_LINEAS = `
-  select l.*, vr.nombre as variante_nombre, p.unidad,
-         case when vr.nombre is null then p.nombre else p.nombre || ' ' || vr.nombre end as producto_nombre
-  from venta_lineas l
-  join productos p on p.id = l.producto_id
-  left join variantes vr on vr.id = l.variante_id
-`;
+/** Las líneas con el nombre de su producto y, si la tiene, de su variante: la consulta está en `movimientos.ts`. */
+import { CONSULTA_LINEAS } from "./movimientos";
 
 export type Venta = {
   id: number;
