@@ -428,7 +428,7 @@ async function probarNegocio() {
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "despacho" });
   comprobar("por entregar sin el día previsto, no se guarda", r.destino.includes("día previsto de entrega"), r.destino);
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "despacho", entrega_prevista: "2026-09-10" });
-  comprobar("el día previsto no puede ser antes del despacho", r.destino.includes("no puede ser antes de la fecha de despacho"), r.destino);
+  comprobar("el día previsto no puede ser antes de la fecha de la nota", r.destino.includes("no puede ser antes de la fecha de la nota"), r.destino);
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "local", entrega_prevista: "2026-10-27", foto: fotoFirmada() });
   comprobar("«ya la entregué» con un día previsto de entrega no se guarda", r.destino.includes("Marcaste «Sí, ya la entregué» y a la vez pusiste un día previsto de entrega (27/10/2026)"), r.destino);
   const dentroDeDosMeses = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -513,7 +513,7 @@ async function probarNegocio() {
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida({ ...cuadra, es_nota: false }) });
   comprobar("una foto que no es la nota avisa y no guarda", r.destino.includes("no parece una nota de entrega") && r.destino.includes("confirmar_nota=1") && r.destino.includes("foto_espera="), r.destino);
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida({ ...cuadra, fecha: "2026-09-12" }) });
-  comprobar("otra fecha en la nota avisa con las dos fechas", r.destino.includes("La nota dice 12/09/2026 y la fecha de despacho anotada es 16/09/2026"), r.destino);
+  comprobar("otra fecha en la nota avisa con las dos fechas", r.destino.includes("La nota dice 12/09/2026 y anotaste 16/09/2026 como fecha de la nota"), r.destino);
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida({ ...cuadra, total: 5, firmada: false }) });
   comprobar(
     "una suma que no cuadra avisa: dentro de la nota, contra lo anotado, y la firma que falta",
@@ -657,8 +657,9 @@ async function probarNegocio() {
   comprobar("resumen: quien debe sale con su plazo vencido y lo que se debe a proveedores", /Vencida hace \d+ días/.test(resumen) && resumen.includes("Debo a proveedores") && resumen.includes("A quién le debo"));
   comprobar("resumen: recuerda la entrega pendiente y dice que va atrasada", resumen.includes("Entregas pendientes (1)") && resumen.includes("1 atrasada") && resumen.includes("atrasada: era para el 02/09/2026") && resumen.includes("Hacer la ruta"));
   comprobar("la lista de ventas dice para cuándo era", legible((await pagina("/admin/ventas")).html).includes("Por entregar el 02/09/2026"));
-  const recordatorio = decodeURIComponent(ficha.match(/wa\.me\/584120000000\?text=([^"]*Tiene%20pendiente[^"]*)"/)?.[1] ?? "");
-  comprobar("el recordatorio por WhatsApp dice desde cuándo venció cada nota", /vencida hace \d+ días/.test(recordatorio), recordatorio);
+  // «Recordar» va por /admin/recordar/[id], que manda a wa.me con el mensaje armado (y deja anotado el día).
+  const recordatorio = (await pagina(`/admin/recordar/${clienteId}`)).destino;
+  comprobar("el recordatorio por WhatsApp dice desde cuándo venció cada nota", recordatorio.includes("wa.me/584120000000") && /vencida hace \d+ días/.test(recordatorio), recordatorio);
   const caja = legible((await pagina("/admin/caja?fecha=2026-09-20")).html);
   comprobar(
     "el cierre del día 20 de septiembre cuadra el abono en bolívares por método",
@@ -834,7 +835,7 @@ async function probarNegocio() {
   comprobar(
     "la ficha enseña el enlace, lo manda por WhatsApp y el recordatorio de deuda lo lleva",
     fichaEnlace.includes(`/cuenta/${enlace}`) && fichaEnlace.includes("Mandárselo por WhatsApp") &&
-      decodeURIComponent(fichaEnlace.match(/wa\.me\/584120000000\?text=([^"]*Tiene%20pendiente[^"]*)"/)?.[1] ?? "").includes(`/cuenta/${enlace}`),
+      (await pagina(`/admin/recordar/${clienteId}`)).destino.includes(`/cuenta/${enlace}`),
   );
   r = await enviar(`/admin/clientes/${clienteId}`, 'name="enlace_de_cuenta" value="renovar"', { id: String(clienteId), enlace_de_cuenta: "renovar" });
   const [{ enlace: enlaceNuevo }] = await consultar("select enlace from clientes where id = ?", [clienteId]);
@@ -852,7 +853,7 @@ async function probarNegocio() {
   );
 
   const cuentas = await pagina("/admin/cuentas");
-  comprobar(`cuentas por pagar (${cuentas.ms} ms)`, cuentas.html.includes(nombre) && cuentas.html.includes(">Recordar</a>"));
+  comprobar(`lo que te deben (${cuentas.ms} ms)`, cuentas.html.includes(nombre) && cuentas.html.includes(">Recordar</a>"));
   const informe = await pagina("/admin/estadisticas?periodo=todo");
   const textoInforme = legible(informe.html);
   comprobar(
@@ -1233,7 +1234,7 @@ async function probarProveedores() {
   comprobar(`alta de proveedor (${r.ms} ms)`, r.destino.includes("Proveedor guardado") && id > 0, r.destino);
   if (!id) throw new Error("Sin proveedor no se puede seguir");
 
-  r = await enviar(`/admin/proveedores/${id}`, 'name="total_usd"', { proveedor_id: String(id), fecha: "2026-09-01", total_usd: "100", descripcion: "20 kg de mozzarella", nota: "" });
+  r = await enviar(`/admin/proveedores/${id}`, 'name="otros_usd"', { proveedor_id: String(id), fecha: "2026-09-01", cantidad_2: "20", precio_2: "5", otros_usd: "", descripcion: "20 kg de mozzarella", nota: "" });
   comprobar("una compra de USD 100 el 1 de septiembre", r.destino.includes("Compra registrada"), r.destino);
   r = await enviar(`/admin/proveedores/${id}`, 'name="monto"', { proveedor_id: String(id), fecha: "2026-09-10", metodo: "efectivo_usd", monto: "40", tasa: "", volver_a: `/admin/proveedores/${id}` });
   comprobar("un pago de USD 40 al proveedor", r.destino.includes("Pago al proveedor registrado"), r.destino);
@@ -1269,6 +1270,128 @@ async function probarProveedores() {
  * números de nota, ni guarda copias en la nube. Todo lo que escribe se
  * prueba en local, con una base de usar y tirar.
  */
+const PROVEEDOR_DE_INVENTARIO = "Lácteos de prueba (borrar)";
+
+/**
+ * El inventario entra con las compras (sus líneas de producto) y sale con
+ * cada venta; el peso por pieza se aprende de las notas; recordar una
+ * deuda deja anotado el día; y los nombres nuevos: «Fecha de la nota»,
+ * «Lo que te deben», «Inventario».
+ */
+async function probarInventario() {
+  const hoyIso = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  const hoyCorta = `${hoyIso.slice(8, 10)}/${hoyIso.slice(5, 7)}/${hoyIso.slice(0, 4)}`;
+  const kg = (n) => new Intl.NumberFormat("es-VE", { maximumFractionDigits: 3 }).format(n);
+
+  // Un cliente propio con tres notas de mozzarella con piezas y kilos; la primera, del 1 de septiembre, ya venció.
+  let r = await enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "Charcutería Inventario", telefono: "0412-0000009", direccion: "Carrera 20 con calle 30", razon_social: "" });
+  const clienteId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
+  comprobar("alta del cliente del inventario", r.destino.includes("Cliente guardado") && clienteId > 0, r.destino);
+  if (!clienteId) throw new Error("Sin cliente no se puede seguir");
+  for (const [fecha, piezas, kilos] of [["2026-09-01", "2", "5"], [hoyIso, "2", "5.2"], [hoyIso, "4", "9.8"]]) {
+    r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha, piezas_2: piezas, cantidad_2: kilos, precio_2: "7.7", entrega: "local", foto: fotoFirmada() });
+    comprobar(`venta de ${piezas} piezas y ${kilos} kg de mozzarella`, r.destino.includes("Venta registrada"), r.destino);
+  }
+  const ventas = legible((await pagina("/admin/ventas")).html);
+  comprobar(
+    "la fecha se llama como en el papel, «Fecha de la nota», y el formulario ya sabe lo que pesa una pieza",
+    ventas.includes("Fecha de la nota") && !ventas.includes("Fecha de despacho") && ventas.includes("Suele pesar 2,5 kg por pieza"),
+  );
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: hoyIso, piezas_2: "2", cantidad_2: "8", precio_2: "7.7", entrega: "local", foto: fotoFirmada() });
+  comprobar(
+    "2 piezas y 8 kg no casan con 2,5 kg por pieza: avisa y pide confirmar",
+    r.destino.includes("cada pieza suele pesar 2,5 kg (en tus últimas 3 notas)") && r.destino.includes("4 kg por pieza") && r.destino.includes("confirmar=1"),
+    r.destino,
+  );
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: hoyIso, piezas_2: "2", cantidad_2: "5.3", precio_2: "7.7" });
+  comprobar("2 piezas y 5,3 kg sí casan: pasa sin aviso (y se para después, en la entrega)", r.destino.includes("Elige si ya la entregaste") && !r.destino.includes("suele pesar"), r.destino);
+
+  // El proveedor y la compra como la nota: una fila por producto con sus kilos y su costo.
+  r = await enviar("/admin/proveedores", 'name="dias_credito"', { nombre: PROVEEDOR_DE_INVENTARIO, telefono: "0414-0000002", dias_credito: "7", cedula_rif: "", direccion: "", nota: "" });
+  const proveedorId = Number(r.destino.match(/\/admin\/proveedores\/(\d+)/)?.[1]);
+  if (!proveedorId) throw new Error("Sin proveedor no se puede seguir");
+  const fichaProveedor = (await pagina(`/admin/proveedores/${proveedorId}`)).html;
+  comprobar(
+    "la compra se anota como la nota: una fila por producto con piezas, kilos y costo, y «otras cosas»",
+    fichaProveedor.includes('name="piezas_2"') && fichaProveedor.includes('name="cantidad_3"') && fichaProveedor.includes('name="precio_3"') && fichaProveedor.includes('name="otros_usd"'),
+  );
+  const compraBase = { proveedor_id: String(proveedorId), descripcion: "", nota: "", otros_usd: "" };
+  r = await enviar(`/admin/proveedores/${proveedorId}`, 'name="otros_usd"', { ...compraBase, fecha: "2026-09-20" });
+  comprobar("una compra sin productos ni otras cosas no se guarda", r.destino.includes("Escribe los kilos y el costo de al menos un producto"), r.destino);
+  r = await enviar(`/admin/proveedores/${proveedorId}`, 'name="otros_usd"', { ...compraBase, fecha: "2026-09-20", cantidad_2: "20" });
+  comprobar("kilos sin costo no se guardan, y el formulario vuelve con lo escrito", r.destino.includes("escribe el costo") && r.destino.includes("cantidad_2=20"), r.destino);
+  r = await enviar(`/admin/proveedores/${proveedorId}`, 'name="otros_usd"', { ...compraBase, fecha: "2026-09-20", cantidad_2: "1", precio_2: "50" });
+  comprobar("un costo por encima del precio de venta pide confirmar", r.destino.includes("lo vendes a") && r.destino.includes("confirmar=1"), r.destino);
+  r = await enviar(`/admin/proveedores/${proveedorId}`, 'name="otros_usd"', { ...compraBase, fecha: "2031-01-01", cantidad_2: "1", precio_2: "5" });
+  comprobar("una compra de mañana en adelante no vale", r.destino.includes("no puede ser de mañana"), r.destino);
+  r = await enviar(`/admin/proveedores/${proveedorId}`, 'name="otros_usd"', { ...compraBase, fecha: "2026-09-20", piezas_2: "8", cantidad_2: "20", precio_2: "5", cantidad_3: "10", precio_3: "2", otros_usd: "4" });
+  comprobar(`compra con líneas: 20 kg de mozzarella, 10 cartones de huevos y 4 dólares de flete (${r.ms} ms)`, r.destino.includes("Compra registrada") && r.destino.includes("inventario"), r.destino);
+  const [compra] = await consultar("select id, total_usd, descripcion from compras where proveedor_id = ? order by id desc limit 1", [proveedorId]);
+  comprobar(
+    "el total sale de las líneas más lo otro, y la descripción se escribe sola",
+    compra && cerca(compra.total_usd, 124) && compra.descripcion.includes("20 kg de Queso mozzarella") && compra.descripcion.includes("Huevos") && compra.descripcion.includes("otras cosas"),
+    JSON.stringify(compra),
+  );
+  const lineasDeCompra = await consultar("select * from compra_lineas where compra_id = ? order by id", [compra.id]);
+  comprobar(
+    "las líneas quedan guardadas con sus piezas y su subtotal",
+    lineasDeCompra.length === 2 && lineasDeCompra[0].piezas == 8 && cerca(lineasDeCompra[0].subtotal_usd, 100) && cerca(lineasDeCompra[1].subtotal_usd, 20),
+    JSON.stringify(lineasDeCompra),
+  );
+  comprobar("la ficha del proveedor enseña la compra con sus productos", legible((await pagina(`/admin/proveedores/${proveedorId}`)).html).includes("20 kg de Queso mozzarella"));
+
+  // El inventario: lo comprado menos todo lo vendido de mozzarella en estas pruebas.
+  const [{ vendido }] = await consultar("select coalesce(sum(cantidad), 0) as vendido from venta_lineas where producto_id = 2 and variante_id is null");
+  let existencia = Math.round((20 - vendido) * 1000) / 1000;
+  let inventario = legible((await pagina("/admin/inventario")).html);
+  comprobar(
+    `inventario: hay ${kg(existencia)} kg de mozzarella (20 comprados menos ${kg(vendido)} vendidos), con su peso por pieza, y los huevos comprados`,
+    inventario.includes(`${kg(existencia)} kg`) && inventario.includes("2,5 kg por pieza") && inventario.includes("Huevos") && inventario.includes("10 cart"),
+  );
+  r = await enviar("/admin/inventario", 'name="motivo"', { clave: "2", tipo: "recuento", cantidad: "15", motivo: "Recuento de prueba" });
+  comprobar("un recuento corrige la existencia a lo contado", r.destino.includes(`pasa de ${kg(existencia)} kg a 15 kg`), r.destino);
+  const [ajuste] = await consultar("select cantidad, motivo from inventario_ajustes order by id desc limit 1");
+  comprobar("el ajuste guardado es lo contado menos lo que había", ajuste && cerca(ajuste.cantidad, 15 - existencia) && ajuste.motivo === "Recuento de prueba", JSON.stringify(ajuste));
+  r = await enviar("/admin/inventario", 'name="motivo"', { clave: "2", tipo: "merma", cantidad: "1", motivo: "" });
+  comprobar("una merma resta", r.destino.includes("quedan 14 kg"), r.destino);
+  existencia = 14;
+  inventario = legible((await pagina("/admin/inventario")).html);
+  comprobar("la existencia y los últimos recuentos y mermas salen en Inventario", inventario.includes("14 kg") && inventario.includes("Recuento de prueba") && inventario.includes("Merma"));
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: hoyIso, cantidad_2: "30", precio_2: "7.7", entrega: "local", foto: fotoFirmada() });
+  comprobar("vender más de lo que hay en inventario avisa y pide confirmar", r.destino.includes("anotaste 30 kilos y en el inventario hay 14") && r.destino.includes("confirmar=1"), r.destino);
+  comprobar("el formulario de venta dice lo que hay", legible((await pagina("/admin/ventas")).html).includes("Hay 14 kg"));
+
+  // Recordatorios de cobro: la nota del 1 de septiembre ya pasó su semana.
+  let resumen = legible((await pagina("/admin")).html);
+  comprobar(
+    "el resumen pide recordar a quien pasó su plazo y aún no se le ha recordado",
+    resumen.includes("Cobros para recordar") && resumen.includes(`data-recordar="${clienteId}"`) && resumen.includes(`href="/admin/recordar/${clienteId}"`),
+  );
+  const sinSesion = await pagina(`/admin/recordar/${clienteId}`, "");
+  comprobar("recordar sin sesión no abre nada", sinSesion.status !== 200 && !sinSesion.destino.startsWith("https://wa.me/"), String(sinSesion.status));
+  const recordar = await pagina(`/admin/recordar/${clienteId}`);
+  comprobar(
+    "recordar abre WhatsApp con la deuda y deja anotado el día",
+    recordar.status === 302 && recordar.destino.includes("wa.me/584120000009") && recordar.destino.includes("Hola Charcutería Inventario"),
+    recordar.destino.slice(0, 160),
+  );
+  const [recordado] = await consultar("select fecha, saldo_usd from recordatorios where cliente_id = ?", [clienteId]);
+  comprobar("queda anotado hoy con el saldo", recordado && recordado.fecha === hoyIso && recordado.saldo_usd > 0, JSON.stringify(recordado));
+  resumen = legible((await pagina("/admin")).html);
+  comprobar(
+    "el resumen ya no lo pide, y la ficha dice cuándo se le recordó",
+    !resumen.includes(`data-recordar="${clienteId}"`) && legible((await pagina(`/admin/clientes/${clienteId}`)).html).includes(`Recordado el ${hoyCorta}`),
+  );
+
+  // Los nombres: «Lo que te deben» en vez de «Cuentas por pagar», también en el menú y en la cartera.
+  const cuentas = legible((await pagina("/admin/cuentas")).html);
+  comprobar(
+    "«Cuentas por pagar» ahora es «Lo que te deben», también en el menú y en la cartera",
+    cuentas.includes("Lo que te deben") && cuentas.includes("Notas que te deben") && !cuentas.includes("Cuentas por pagar") && cuentas.includes(">Te deben<") && cuentas.includes(">Inventario<") &&
+      legible((await pagina("/admin/clientes")).html).includes("<dt>Te deben</dt>"),
+  );
+}
+
 async function probarSinEscribir() {
   const pantallas = [
     ["/admin", "Resumen", "Hoy,"],
@@ -1276,7 +1399,8 @@ async function probarSinEscribir() {
     ["/admin/ventas", "Ventas", "Registrar venta"],
     ["/admin/pagos", "Abonos", "Registrar abono"],
     ["/admin/despacho", "Despacho", "Ruta de despacho"],
-    ["/admin/cuentas", "Cuentas", "Cuentas por pagar"],
+    ["/admin/cuentas", "Lo que te deben", "Notas que te deben"],
+    ["/admin/inventario", "Inventario", "Recuento o merma"],
     ["/admin/estadisticas", "Estadísticas", "Por mes"],
     ["/admin/productos", "Productos", "Tasa del día"],
     ["/admin/resenas", "Reseñas", "Reseña nueva"],
@@ -1373,6 +1497,7 @@ try {
     await probarResenas();
     await probarProveedores();
     await probarCartera();
+    await probarInventario();
     await probarTareaDiaria();
     await probarFreno();
   }

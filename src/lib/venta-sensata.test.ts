@@ -78,10 +78,22 @@ test("una nota entera: sin líneas es un error; una línea vacía se ignora; los
   assert.equal(revisarVenta([{ ...vacia, piezas: 2 }]).errores.length, 2);
 });
 
-test("la fecha de despacho puede ser de días atrás, nunca de mañana", () => {
+test("la fecha de la nota puede ser de días atrás, nunca de mañana", () => {
   assert.equal(revisarFecha("2026-09-25", "2026-09-30"), null);
   assert.equal(revisarFecha("2026-09-30", "2026-09-30"), null);
   assert.match(String(revisarFecha("2026-10-01", "2026-09-30")), /no puede ser de mañana/);
   assert.match(String(revisarFecha("", "2026-09-30")), /Falta la fecha/);
   assert.match(String(revisarFecha("30/09/2026", "2026-09-30")), /Falta la fecha/);
+});
+
+test("vender más de lo que hay en inventario, o unas piezas que no casan con su peso, avisa pero no frena", () => {
+  const tipico = { peso: 2.5, muestras: 6 };
+  const r = revisarLinea({ ...mozzarella, cantidad: 8, piezas: 2, existencia: 5, pesoTipico: tipico });
+  assert.equal(r.errores.length, 0);
+  assert.match(r.avisos[0], /anotaste 8 kilos y en el inventario hay 5/);
+  assert.match(r.avisos[1], /cada pieza suele pesar 2,5 kg \(en tus últimas 6 notas\)/);
+  assert.deepEqual(revisarLinea({ ...mozzarella, cantidad: 5, piezas: 2, existencia: 5, pesoTipico: tipico }).avisos, []);
+  assert.match(revisarLinea({ ...mozzarella, existencia: 0 }).avisos[0], /no queda nada/);
+  // Sin inventario que seguir ni peso aprendido, nada cambia.
+  assert.deepEqual(revisarLinea({ ...mozzarella, existencia: null, pesoTipico: null }).avisos, []);
 });

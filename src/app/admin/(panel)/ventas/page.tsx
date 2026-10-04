@@ -2,7 +2,7 @@ import Link from "next/link";
 import { listarClientes } from "@/lib/clientes";
 import { listarProductos } from "@/lib/productos";
 import { listarVariantes } from "@/lib/variantes";
-import { vendiblesDe, type Vendible } from "@/lib/catalogo";
+import { vendiblesDe } from "@/lib/catalogo";
 import { conLineas, listarVentas } from "@/lib/ventas";
 import { guardarVenta } from "@/lib/acciones";
 import { leerTasa } from "@/lib/ajustes";
@@ -11,6 +11,8 @@ import { ventaCoincide } from "@/lib/buscar";
 import { fechaCorta, hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { TotalDeVenta } from "@/components/total-de-venta";
+import { FilaDeProducto } from "@/components/fila-de-producto";
+import { existenciasPorClave } from "@/lib/inventario";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { lectorDisponible } from "@/lib/lector-de-notas";
 import estilos from "../panel.module.css";
@@ -28,66 +30,6 @@ function escrito(datos: Escrito, campo: string): string {
   return typeof valor === "string" ? valor : "";
 }
 
-/**
- * Una fila por producto (o por cada marca o presentación, si las tiene),
- * como la nota de papel: piezas (si se anotan), kilos o cartones, y el
- * precio en dólares que se escribe cada vez. El importe lo calcula el
- * servidor con los kilos.
- */
-function FilaDeVenta({ producto, datos }: { producto: Vendible; datos: Escrito }) {
-  const porKilo = producto.unidad === "kg";
-  const unidad = porKilo ? "Kilos" : producto.unidad === "carton" ? "Cartones" : "Unidades";
-  const porUna = porKilo ? "USD por kilo" : producto.unidad === "carton" ? "USD por cartón" : "USD por unidad";
-  const lista = producto.precio_usd !== null ? [usd(producto.precio_usd)] : [];
-  return (
-    <fieldset className={`${estilos.filaVenta} ${porKilo ? "" : estilos["filaVenta--dos"]}`}>
-      <legend>{producto.nombre}</legend>
-      {/* Las piezas son cosa del queso: un cartón de huevos no tiene piezas. */}
-      {porKilo && (
-        <div className="campo">
-          <label htmlFor={`piezas_${producto.clave}`}>Piezas</label>
-          <input
-            id={`piezas_${producto.clave}`}
-            name={`piezas_${producto.clave}`}
-            type="number"
-            inputMode="numeric"
-            step="1"
-            min="1"
-            placeholder="opcional"
-            defaultValue={escrito(datos, `piezas_${producto.clave}`)}
-          />
-        </div>
-      )}
-      <div className="campo">
-        <label htmlFor={`cantidad_${producto.clave}`}>{unidad}</label>
-        <input
-          id={`cantidad_${producto.clave}`}
-          name={`cantidad_${producto.clave}`}
-          type="number"
-          inputMode="decimal"
-          step={porKilo ? "0.001" : "1"}
-          min="0"
-          defaultValue={escrito(datos, `cantidad_${producto.clave}`)}
-        />
-      </div>
-      <div className="campo">
-        <label htmlFor={`precio_${producto.clave}`}>{porUna}</label>
-        <input
-          id={`precio_${producto.clave}`}
-          name={`precio_${producto.clave}`}
-          type="number"
-          inputMode="decimal"
-          step="0.01"
-          min="0"
-          placeholder={producto.precio_usd !== null ? String(producto.precio_usd) : ""}
-          defaultValue={escrito(datos, `precio_${producto.clave}`)}
-        />
-      </div>
-      {lista.length > 0 && <span className={estilos.filaVentaLista}>En la lista: {lista.join(" · ")}</span>}
-    </fieldset>
-  );
-}
-
 export default async function PaginaVentas({
   searchParams,
 }: {
@@ -103,11 +45,12 @@ export default async function PaginaVentas({
   // La foto que se puso en el intento anterior sigue guardada: no hay que repetirla.
   const fotoEnEspera = escrito(parametros, "foto_espera");
   const seLee = lectorDisponible();
-  const [clientes, productos, variantes, tasa, ventas] = await Promise.all([
+  const [clientes, productos, variantes, tasa, existencias, ventas] = await Promise.all([
     listarClientes(),
     listarProductos(true),
     listarVariantes(),
     leerTasa(),
+    existenciasPorClave(),
     (busqueda
       ? listarVentas(100000).then((todas) => todas.filter((v) => ventaCoincide(v, busqueda)).slice(0, MAXIMO_AL_BUSCAR))
       : listarVentas(50)
@@ -143,15 +86,25 @@ export default async function PaginaVentas({
                 </select>
               </div>
               <div className="campo">
-                <label htmlFor="venta-fecha">Fecha de despacho</label>
+                <label htmlFor="venta-fecha">Fecha de la nota</label>
                 <input id="venta-fecha" name="fecha" type="date" required max={hoy()} defaultValue={escrito(parametros, "fecha") || hoy()} />
-                <span className="ayuda">La de la nota de papel, aunque sea de días atrás: los días de crédito cuentan desde ahí.</span>
+                <span className="ayuda">La que lleva la nota de papel, aunque sea de días atrás: los días de crédito cuentan desde ahí. No es el día de entrega.</span>
               </div>
             </div>
 
-            {vendibles.map((v) => (
-              <FilaDeVenta key={v.clave} producto={v} datos={parametros} />
-            ))}
+            {vendibles.map((v) => {
+              const inventario = existencias.get(v.clave);
+              return (
+                <FilaDeProducto
+                  key={v.clave}
+                  producto={v}
+                  datos={parametros}
+                  modo="venta"
+                  existencia={inventario?.seguido ? inventario.existencia : null}
+                  pesoTipico={inventario?.pesoPorPieza ?? null}
+                />
+              );
+            })}
             <TotalDeVenta claves={vendibles.map((v) => v.clave)} tasa={tasa?.valor ?? null} />
 
             {pideConfirmar && (

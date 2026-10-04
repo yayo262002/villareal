@@ -48,7 +48,7 @@ export type LineaAnotada = {
   importe: number;
 };
 
-/** Con lo que se compara: la fecha de despacho, el total y, si se dan, las líneas de lo anotado. */
+/** Con lo que se compara: la fecha de la nota, el total y, si se dan, las líneas de lo anotado. */
 export type VentaAnotada = { fecha: string; total: number; lineas?: LineaAnotada[] };
 
 /** La diferencia que se pasa por alto: un centavo de redondeo. */
@@ -202,7 +202,7 @@ export function compararNota(nota: NotaLeida, venta: VentaAnotada): string[] {
 
   if (nota.fecha === null) avisos.push("En la foto no se lee la fecha de la nota.");
   else if (nota.fecha !== venta.fecha) {
-    avisos.push(`La nota dice ${fechaCorta(nota.fecha)} y la fecha de despacho anotada es ${fechaCorta(venta.fecha)}.`);
+    avisos.push(`La nota dice ${fechaCorta(nota.fecha)} y anotaste ${fechaCorta(venta.fecha)} como fecha de la nota.`);
   }
 
   // Línea a línea, cuando se sabe qué se anotó y la nota tiene líneas que leer.

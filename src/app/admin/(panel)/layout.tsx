@@ -19,9 +19,10 @@ const SECCIONES = [
   { ruta: "/admin/ventas", nombre: "Ventas" },
   { ruta: "/admin/pagos", nombre: "Abonos" },
   { ruta: "/admin/despacho", nombre: "Despacho" },
-  { ruta: "/admin/cuentas", nombre: "Cuentas" },
+  { ruta: "/admin/cuentas", nombre: "Te deben" },
   { ruta: "/admin/estadisticas", nombre: "Estadísticas" },
   { ruta: "/admin/productos", nombre: "Productos" },
+  { ruta: "/admin/inventario", nombre: "Inventario" },
   { ruta: "/admin/resenas", nombre: "Reseñas" },
   { ruta: "/admin/proveedores", nombre: "Proveedores" },
 ] as const;

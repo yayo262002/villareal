@@ -148,7 +148,7 @@ export default async function PaginaClientes({
           <dd>{todos.length}</dd>
         </div>
         <div className={`${estilos.cifra} ${porPagar > 0 ? estilos["cifra--alerta"] : ""}`}>
-          <dt>Por pagar</dt>
+          <dt>Te deben</dt>
           <dd>{usd(porPagar)}</dd>
         </div>
         {vencido > 0 && (

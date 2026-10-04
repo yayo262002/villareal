@@ -5,15 +5,27 @@ import { ultimaTasa } from "@/lib/pagos";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { conVencimiento, describirVencimiento } from "@/lib/credito";
 import { editarProveedor, guardarCompra, guardarPagoProveedor } from "@/lib/acciones";
+import { listarProductos } from "@/lib/productos";
+import { listarVariantes } from "@/lib/variantes";
+import { vendiblesDe } from "@/lib/catalogo";
+import { existenciasPorClave } from "@/lib/inventario";
 import { METODOS_PAGO, fechaCorta, formatearMonto, hoy, usd, tasaLegible } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
+import { FilaDeProducto } from "@/components/fila-de-producto";
+import { TotalDeVenta } from "@/components/total-de-venta";
 import estilos from "../../panel.module.css";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const proveedor = await buscarProveedor(Number(id));
   return { title: proveedor?.nombre ?? "Proveedor" };
+}
+
+/** Lo que el formulario de compra trae ya escrito: al volver con un aviso, nada se pierde. */
+function escrito(datos: ParametrosAviso, campo: string): string {
+  const valor = datos[campo];
+  return typeof valor === "string" ? valor : "";
 }
 
 /** La ficha de un proveedor: lo que le has comprado, lo que le has pagado y lo que le debes. */
@@ -29,11 +41,16 @@ export default async function PaginaProveedor({
   const proveedor = await buscarProveedor(Number(id));
   if (!proveedor) notFound();
 
-  const [compras, pagos, tasa] = await Promise.all([
+  const [compras, pagos, tasa, productos, variantes, existencias] = await Promise.all([
     listarComprasDeProveedor(proveedor.id),
     listarPagosDeProveedor(proveedor.id),
     ultimaTasa(),
+    listarProductos(true),
+    listarVariantes(),
+    existenciasPorClave(),
   ]);
+  const vendibles = vendiblesDe(productos, variantes);
+  const pideConfirmar = parametros.confirmar === "1";
   const cuentas = conVencimiento(aplicarPagos(compras, proveedor.total_pagado_usd), proveedor.dias_credito, hoy());
   const vencido = cuentas.filter((c) => c.vencida).reduce((s, c) => s + c.pendiente_usd, 0);
 
@@ -76,55 +93,97 @@ export default async function PaginaProveedor({
         </div>
       </dl>
 
-      <div className={estilos.dosColumnas}>
-        <section className="tarjeta" id="compra">
-          <h2 className={estilos.subtitulo}>Registrar compra</h2>
-          <form action={guardarCompra} className="formulario">
-            <input type="hidden" name="proveedor_id" value={proveedor.id} />
-            <div className="formulario__fila">
-              <div className="campo">
-                <label htmlFor="compra-fecha">Fecha</label>
-                <input id="compra-fecha" name="fecha" type="date" required defaultValue={hoy()} />
-              </div>
-              <div className="campo">
-                <label htmlFor="compra-total">Total en dólares</label>
-                <input id="compra-total" name="total_usd" type="number" inputMode="decimal" step="0.01" min="0.01" required />
-              </div>
+      <section className="tarjeta" id="compra">
+        <h2 className={estilos.subtitulo}>Registrar compra</h2>
+        <p className={estilos.ayuda}>
+          Como la nota del proveedor: una fila por producto con los kilos (o cartones) y lo que costó cada uno. Con eso entra el{" "}
+          <Link href="/admin/inventario">inventario</Link>.
+        </p>
+        <form action={guardarCompra} className="formulario">
+          <input type="hidden" name="proveedor_id" value={proveedor.id} />
+          <div className="campo">
+            <label htmlFor="compra-fecha">Fecha de la compra</label>
+            <input id="compra-fecha" name="fecha" type="date" required max={hoy()} defaultValue={escrito(parametros, "fecha") || hoy()} />
+          </div>
+
+          {vendibles.map((v) => {
+            const inventario = existencias.get(v.clave);
+            return (
+              <FilaDeProducto
+                key={v.clave}
+                producto={v}
+                datos={parametros}
+                modo="compra"
+                existencia={inventario?.seguido ? inventario.existencia : null}
+                ultimoCosto={inventario?.ultimoCosto ?? null}
+              />
+            );
+          })}
+
+          <div className="formulario__fila">
+            <div className="campo">
+              <label htmlFor="compra-otros">Otras cosas, en dólares</label>
+              <input
+                id="compra-otros"
+                name="otros_usd"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                placeholder="opcional"
+                defaultValue={escrito(parametros, "otros_usd")}
+              />
+              <span className="ayuda">Lo que no es un producto: flete, hielo, bolsas.</span>
             </div>
             <div className="campo">
               <label htmlFor="compra-descripcion">Qué compraste</label>
-              <input id="compra-descripcion" name="descripcion" type="text" placeholder="40 kg de mozzarella a 6,80" />
+              <input
+                id="compra-descripcion"
+                name="descripcion"
+                type="text"
+                placeholder="Si lo dejas vacío, se escribe solo"
+                defaultValue={escrito(parametros, "descripcion")}
+              />
             </div>
-            <div className="campo">
-              <label htmlFor="compra-nota">Nota</label>
-              <input id="compra-nota" name="nota" type="text" placeholder="Factura n.º 1234" />
-            </div>
-            <p className="ayuda">
-              Vence a los {proveedor.dias_credito} días de la fecha. Se cambia en Datos.
-            </p>
-            <div>
-              <button type="submit" className="boton">
-                Registrar compra
-              </button>
-            </div>
-          </form>
-        </section>
+          </div>
+          <TotalDeVenta claves={vendibles.map((v) => v.clave)} tasa={null} rotulo="Total de la compra" campoExtra="otros_usd" />
 
-        <section className="tarjeta" id="pago">
-          <h2 className={estilos.subtitulo}>Registrar pago al proveedor</h2>
-          <FormularioPago
-            conCaptura={false}
-            clientes={[{ id: proveedor.id, rotulo: proveedor.nombre, saldo_usd: proveedor.saldo_usd }]}
-            clienteFijo={proveedor.id}
-            ultimaTasa={tasa}
-            volverA={`/admin/proveedores/${proveedor.id}`}
-            accion={guardarPagoProveedor}
-            campoId="proveedor_id"
-            etiqueta="Proveedor"
-            textoDelBoton="Registrar pago"
-          />
-        </section>
-      </div>
+          {pideConfirmar && (
+            <label className={estilos.casilla}>
+              <input type="checkbox" name="confirmar" value="1" />
+              <span>Lo escrito es correcto: guardar igual</span>
+            </label>
+          )}
+
+          <div className="campo">
+            <label htmlFor="compra-nota">Nota</label>
+            <input id="compra-nota" name="nota" type="text" placeholder="Factura n.º 1234" defaultValue={escrito(parametros, "nota")} />
+          </div>
+          <p className="ayuda">
+            Vence a los {proveedor.dias_credito} días de la fecha. Se cambia en Datos.
+          </p>
+          <div>
+            <button type="submit" className="boton">
+              Registrar compra
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="tarjeta" id="pago">
+        <h2 className={estilos.subtitulo}>Registrar pago al proveedor</h2>
+        <FormularioPago
+          conCaptura={false}
+          clientes={[{ id: proveedor.id, rotulo: proveedor.nombre, saldo_usd: proveedor.saldo_usd }]}
+          clienteFijo={proveedor.id}
+          ultimaTasa={tasa}
+          volverA={`/admin/proveedores/${proveedor.id}`}
+          accion={guardarPagoProveedor}
+          campoId="proveedor_id"
+          etiqueta="Proveedor"
+          textoDelBoton="Registrar pago"
+        />
+      </section>
 
       <section className="tarjeta">
         <h2 className={estilos.subtitulo}>Compras</h2>

@@ -40,8 +40,9 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
-  -- Lo que se le compró a un proveedor. Sin líneas de producto: lo que se
-  -- compró se escribe en la descripción, y el total va en dólares.
+  -- Lo que se le compró a un proveedor: el total en dólares y, en
+  -- compra_lineas (más abajo), los kilos de cada producto, con los que entra
+  -- el inventario. Lo que no es un producto va en la descripción.
   create table if not exists compras (
     id integer primary key autoincrement,
     proveedor_id integer not null references proveedores(id),
@@ -253,6 +254,43 @@ export const ESQUEMA = `
     datos blob not null
   );
 
+  -- Las líneas de una compra: qué producto (y marca), cuántas piezas y
+  -- kilos o cartones, y a qué costo. Con ellas entra el inventario. Una
+  -- compra puede no tener líneas (solo «otras cosas», en la descripción).
+  create table if not exists compra_lineas (
+    id integer primary key autoincrement,
+    compra_id integer not null references compras(id),
+    producto_id integer not null references productos(id),
+    variante_id integer references variantes(id),
+    piezas integer,
+    cantidad real not null,
+    costo_unitario_usd real not null,
+    subtotal_usd real not null
+  );
+
+  -- Lo que corrige el inventario sin compra ni venta: un recuento (lo
+  -- contado menos lo que decía el sistema), una merma o una entrada suelta.
+  -- La cantidad suma, o resta si es negativa.
+  create table if not exists inventario_ajustes (
+    id integer primary key autoincrement,
+    fecha text not null,
+    producto_id integer not null references productos(id),
+    variante_id integer references variantes(id),
+    cantidad real not null,
+    motivo text not null default '',
+    creado_en text not null default (datetime('now'))
+  );
+
+  -- Cuándo se le recordó la deuda a cada cliente (al abrir el recordatorio
+  -- de WhatsApp desde el panel), con el saldo que tenía.
+  create table if not exists recordatorios (
+    id integer primary key autoincrement,
+    cliente_id integer not null references clientes(id),
+    fecha text not null,
+    saldo_usd real not null,
+    creado_en text not null default (datetime('now'))
+  );
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (
@@ -268,6 +306,8 @@ export const ESQUEMA = `
   create index if not exists resenas_producto on resenas(producto_id);
   create index if not exists compras_proveedor on compras(proveedor_id);
   create index if not exists pagos_proveedores_proveedor on pagos_proveedores(proveedor_id);
+  create index if not exists compra_lineas_compra on compra_lineas(compra_id);
+  create index if not exists recordatorios_cliente on recordatorios(cliente_id);
 `;
 
 /** Las tablas en orden de dependencias, para copiar o restaurar en orden. */
@@ -285,9 +325,12 @@ export const TABLAS = [
   "fotos_resenas",
   "proveedores",
   "compras",
+  "compra_lineas",
   "pagos_proveedores",
   "exportaciones",
   "tasas",
+  "inventario_ajustes",
+  "recordatorios",
 ] as const;
 
 /**

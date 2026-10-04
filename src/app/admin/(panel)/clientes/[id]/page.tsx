@@ -13,6 +13,7 @@ import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { leerTasa } from "@/lib/ajustes";
 import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, hoy, usd, tasaLegible } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
+import { ultimoRecordatorioDe } from "@/lib/recordatorios";
 import { FormularioPago } from "@/components/formulario-pago";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { negocio } from "@/config/negocio";
@@ -36,12 +37,13 @@ export default async function PaginaCliente({
   const cliente = await buscarCliente(Number(id));
   if (!cliente) notFound();
 
-  const [ventas, pagos, adjuntos, tasa, tasaDelDia] = await Promise.all([
+  const [ventas, pagos, adjuntos, tasa, tasaDelDia, recordadoEl] = await Promise.all([
     listarVentasDeCliente(cliente.id).then(conLineas),
     listarPagosDeCliente(cliente.id),
     listarAdjuntosDeCliente(cliente.id),
     ultimaTasa(),
     leerTasa(),
+    ultimoRecordatorioDe(cliente.id),
   ]);
   const cuentas = conVencimiento(aplicarPagos(ventas, cliente.total_pagado_usd), cliente.dias_credito, hoy());
   const vencido = cuentas.filter((c) => c.vencida).reduce((s, c) => s + c.pendiente_usd, 0);
@@ -153,10 +155,11 @@ export default async function PaginaCliente({
         </div>
         <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
           {recordatorio && (
-            <a href={recordatorio} target="_blank" rel="noopener" className="boton boton--acento">
+            <a href={`/admin/recordar/${cliente.id}`} target="_blank" rel="noopener" className="boton boton--acento">
               Recordar deuda por WhatsApp
             </a>
           )}
+          {recordatorio && recordadoEl && <span className="ayuda">Recordado el {fechaCorta(recordadoEl)}</span>}
           <Link href={`/admin/ventas?cliente=${cliente.id}`} className="boton boton--secundario">
             Nueva venta
           </Link>

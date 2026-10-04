@@ -74,7 +74,7 @@ export default async function PaginaEstadoDeCuenta({ params }: Parametros) {
         <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginTop: "var(--espacio-3)" }}>
           <BotonImprimir className="boton">Imprimir o guardar PDF</BotonImprimir>
           {recordar && (
-            <a href={recordar} target="_blank" rel="noopener" className="boton boton--acento">
+            <a href={`/admin/recordar/${cliente.id}`} target="_blank" rel="noopener" className="boton boton--acento">
               Recordar deuda por WhatsApp
             </a>
           )}

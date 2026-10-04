@@ -52,7 +52,7 @@ test("una foto que no es la nota se dice, y no se mira nada más", () => {
 
 test("la fecha: si no se lee se avisa; si es otra, se dicen las dos", () => {
   assert.deepEqual(compararNota({ ...panaderia, fecha: null }, pedido), ["En la foto no se lee la fecha de la nota."]);
-  assert.deepEqual(compararNota(panaderia, { ...pedido, fecha: "2026-09-30" }), ["La nota dice 29/09/2026 y la fecha de despacho anotada es 30/09/2026."]);
+  assert.deepEqual(compararNota(panaderia, { ...pedido, fecha: "2026-09-30" }), ["La nota dice 29/09/2026 y anotaste 30/09/2026 como fecha de la nota."]);
 });
 
 test("línea a línea: los kilos, el precio, el importe o las piezas que no coinciden se dicen con nombre", () => {

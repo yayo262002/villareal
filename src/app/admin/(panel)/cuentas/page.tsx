@@ -4,23 +4,21 @@ import { listarVentas, type Venta } from "@/lib/ventas";
 import { NOMBRE_ESTADO, aplicarPagos, type CuentaDeVenta } from "@/lib/cuentas";
 import { conVencimiento, describirVencimiento, type ConVencimiento } from "@/lib/credito";
 import { fechaCorta, hoy, redondear, usd } from "@/lib/dinero";
-import { negocio } from "@/config/negocio";
-import { enlaceWhatsappA, mensajeRecordatorio } from "@/lib/whatsapp";
-import { leerTasa } from "@/lib/ajustes";
+import { enlaceWhatsappA } from "@/lib/whatsapp";
 import estilos from "../panel.module.css";
 
-export const metadata = { title: "Cuentas" };
+export const metadata = { title: "Lo que te deben" };
 
 const PAGADAS_A_MOSTRAR = 50;
 
 /**
- * Cuentas por pagar y cuentas pagadas, venta a venta. Los pagos de cada
+ * Lo que te deben y lo ya pagado, nota a nota. Los pagos de cada
  * cliente se aplican a sus ventas de la más antigua a la más nueva (ver
  * `lib/cuentas.ts`), así que una venta figura como pagada cuando los pagos
  * del cliente ya la cubren.
  */
 export default async function PaginaCuentas() {
-  const [clientes, ventas, tasa] = await Promise.all([listarClientes(), listarVentas(5000), leerTasa()]);
+  const [clientes, ventas] = await Promise.all([listarClientes(), listarVentas(5000)]);
 
   const pagadoPorCliente = new Map(clientes.map((c) => [c.id, c.total_pagado_usd]));
   const ventasPorCliente = new Map<number, Venta[]>();
@@ -45,29 +43,16 @@ export default async function PaginaCuentas() {
   const totalPendiente = redondear(porPagar.reduce((s, c) => s + c.pendiente_usd, 0));
   const totalVencido = redondear(porPagar.filter((c) => c.vencida).reduce((s, c) => s + c.pendiente_usd, 0));
 
-  // Un recordatorio por cliente con todas sus notas pendientes.
-  const recordatorios = new Map<number, string | null>();
-  for (const cliente of clientes) {
-    if (cliente.saldo_usd <= 0) continue;
-    const pendientes = porPagar
-      .filter((c) => c.cliente_id === cliente.id)
-      .sort((a, b) => a.fecha.localeCompare(b.fecha));
-    recordatorios.set(
-      cliente.id,
-      enlaceWhatsappA(
-        cliente.telefono,
-        mensajeRecordatorio({ negocio: negocio.nombre, cliente: cliente.nombre, saldo_usd: cliente.saldo_usd, pendientes, tasa: tasa?.valor }),
-      ),
-    );
-  }
+  // «Recordar» va por /admin/recordar/[id], que arma el mensaje con las notas y deja anotado el día. Solo con teléfono.
+  const puedeRecordar = new Map(clientes.map((c) => [c.id, c.saldo_usd > 0 && enlaceWhatsappA(c.telefono, "") !== null]));
 
   return (
     <>
-      <h1 className={estilos.titulo}>Cuentas</h1>
+      <h1 className={estilos.titulo}>Lo que te deben</h1>
 
       <dl className={estilos.cifras}>
         <div className={`${estilos.cifra} ${totalPendiente > 0 ? estilos["cifra--alerta"] : ""}`}>
-          <dt>Por pagar</dt>
+          <dt>Te deben</dt>
           <dd>{usd(totalPendiente)}</dd>
         </div>
         <div className={`${estilos.cifra} ${totalVencido > 0 ? estilos["cifra--alerta"] : ""}`}>
@@ -89,7 +74,7 @@ export default async function PaginaCuentas() {
       </dl>
 
       <section className="tarjeta">
-        <h2 className={estilos.subtitulo}>Cuentas por pagar</h2>
+        <h2 className={estilos.subtitulo}>Notas que te deben</h2>
         {porPagar.length === 0 ? (
           <p className="vacio">Nadie debe nada.</p>
         ) : (
@@ -126,8 +111,8 @@ export default async function PaginaCuentas() {
                       <span className={c.vencida ? estilos.vencida : undefined}>{describirVencimiento(c.atraso)}</span>
                     </td>
                     <td>
-                      {recordatorios.get(c.cliente_id) ? (
-                        <a href={recordatorios.get(c.cliente_id)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                      {puedeRecordar.get(c.cliente_id) ? (
+                        <a href={`/admin/recordar/${c.cliente_id}`} target="_blank" rel="noopener" className={estilos.whatsapp}>
                           Recordar
                         </a>
                       ) : (
@@ -143,7 +128,7 @@ export default async function PaginaCuentas() {
       </section>
 
       <section className="tarjeta">
-        <h2 className={estilos.subtitulo}>Cuentas pagadas</h2>
+        <h2 className={estilos.subtitulo}>Notas ya pagadas</h2>
         {pagadas.length === 0 ? (
           <p className="vacio">Todavía no hay ninguna cuenta pagada.</p>
         ) : (

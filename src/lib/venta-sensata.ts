@@ -1,4 +1,5 @@
 import { redondear, usd } from "./dinero.ts";
+import { revisarPesoPorPieza, type PesoTipico } from "./piezas.ts";
 
 /**
  * Revisa una línea de venta antes de guardarla, como haría el dueño al
@@ -34,6 +35,10 @@ export type LineaEscrita = {
   precioDeLista: number | null;
   /** Lo que se le cobró la última vez a este cliente por este producto, si hay. */
   ultimoPrecio: number | null;
+  /** Lo que hay en inventario de este producto, si se sigue. */
+  existencia?: number | null;
+  /** Lo que suele pesar una pieza, si ya se aprendió de las notas. */
+  pesoTipico?: PesoTipico | null;
 };
 
 export type Revision = { errores: string[]; avisos: string[] };
@@ -79,6 +84,18 @@ export function revisarLinea(l: LineaEscrita): Revision {
   if (importe > IMPORTE_QUE_PIDE_CONFIRMAR) {
     avisos.push(`${nombre}: ${formatear(cantidad)} ${unidades} a ${usd(precio)} son ${usd(importe)}. ¿Es así?`);
   }
+  // El inventario puede ir atrasado (una compra sin anotar), así que vender más de lo que hay solo pide confirmar.
+  if (l.existencia !== undefined && l.existencia !== null && cantidad > l.existencia) {
+    avisos.push(
+      l.existencia > 0
+        ? `${nombre}: anotaste ${formatear(cantidad)} ${unidades} y en el inventario hay ${formatear(l.existencia)}. Si la venta es así, el inventario queda en negativo: anota la compra que falta o haz un recuento.`
+        : `${nombre}: en el inventario no queda nada. Si la venta es así, anota la compra que falta o haz un recuento.`,
+    );
+  }
+  if (l.piezas !== null && l.pesoTipico) {
+    const aviso = revisarPesoPorPieza(nombre, l.piezas, cantidad, l.pesoTipico);
+    if (aviso) avisos.push(aviso);
+  }
   return { errores, avisos };
 }
 
@@ -93,12 +110,12 @@ export function revisarVenta(lineas: LineaEscrita[]): Revision {
   };
 }
 
-/** La fecha de despacho: la de la nota. Puede ser de días atrás, nunca de mañana. */
+/** La fecha de la nota de papel. Puede ser de días atrás, nunca de mañana. No es el día de entrega. */
 export function revisarFecha(fecha: string, hoy: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || Number.isNaN(new Date(fecha + "T00:00:00Z").getTime())) {
-    return "Falta la fecha de despacho.";
+    return "Falta la fecha de la nota.";
   }
-  if (fecha > hoy) return "La fecha de despacho no puede ser de mañana en adelante.";
+  if (fecha > hoy) return "La fecha de la nota no puede ser de mañana en adelante.";
   return null;
 }
 

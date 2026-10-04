@@ -9,7 +9,18 @@ import { aBolivares, bs, usd } from "@/lib/dinero";
  * formulario. Necesita JavaScript; sin él no sale nada y el total lo
  * calcula el servidor al guardar, como siempre.
  */
-export function TotalDeVenta({ claves, tasa }: { claves: string[]; tasa: number | null }) {
+export function TotalDeVenta({
+  claves,
+  tasa,
+  rotulo = "Total de la nota",
+  campoExtra,
+}: {
+  claves: string[];
+  tasa: number | null;
+  rotulo?: string;
+  /** Un campo suelto en dólares que también suma (las «otras cosas» de una compra). */
+  campoExtra?: string;
+}) {
   const [total, setTotal] = useState<number | null>(null);
   const sitio = useRef<HTMLParagraphElement>(null);
 
@@ -22,20 +33,20 @@ export function TotalDeVenta({ claves, tasa }: { claves: string[]; tasa: number 
       return Number.isFinite(n) ? n : 0;
     };
     const calcular = () => {
-      const suma = claves.reduce((s, clave) => s + leer(`cantidad_${clave}`) * leer(`precio_${clave}`), 0);
+      const suma = claves.reduce((s, clave) => s + leer(`cantidad_${clave}`) * leer(`precio_${clave}`), 0) + (campoExtra ? leer(campoExtra) : 0);
       setTotal(suma > 0 ? Math.round(suma * 100) / 100 : null);
     };
     calcular();
     formulario.addEventListener("input", calcular);
     return () => formulario.removeEventListener("input", calcular);
-  }, [claves]);
+  }, [claves, campoExtra]);
 
   const enBs = total !== null ? aBolivares(total, tasa) : null;
   return (
     <p ref={sitio} aria-live="polite" style={{ minHeight: 24, fontWeight: 700, fontSize: 18 }}>
       {total !== null && (
         <>
-          Total de la nota: {usd(total)}
+          {rotulo}: {usd(total)}
           {enBs !== null && <span style={{ fontWeight: 400 }}> · {bs(enBs)}</span>}
         </>
       )}

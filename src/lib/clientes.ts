@@ -149,13 +149,13 @@ export async function loQueTieneElCliente(id: number): Promise<{ ventas: number;
 }
 
 /**
- * Borra un cliente con todo lo suyo: ventas con sus líneas, abonos y fotos.
+ * Borra un cliente con todo lo suyo: ventas con sus líneas, abonos, fotos y recordatorios.
  * Todo o nada. Devuelve false si no existía. Quien llama ya pidió la clave.
  */
 export async function eliminarCliente(id: number): Promise<boolean> {
   return transaccion(async (tx) => {
     await tx.execute({ sql: "delete from venta_lineas where venta_id in (select id from ventas where cliente_id = ?)", args: [id] });
-    for (const tabla of ["adjuntos", "ventas", "pagos"]) {
+    for (const tabla of ["adjuntos", "ventas", "pagos", "recordatorios"]) {
       await tx.execute({ sql: `delete from ${tabla} where cliente_id = ?`, args: [id] });
     }
     const r = await tx.execute({ sql: "delete from clientes where id = ?", args: [id] });

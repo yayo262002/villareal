@@ -27,6 +27,7 @@ import {
   eliminarPagoProveedor,
   eliminarProveedor,
   registrarPagoProveedor,
+  type LineaDeCompraNueva,
 } from "./proveedores";
 import { leerDiasDeCredito, sumarDias } from "./credito";
 import { explicarMotivo, leerDireccion } from "./direcciones";
@@ -39,7 +40,7 @@ import {
   type PreciosProducto,
   type Unidad,
 } from "./productos";
-import { describirFuenteDeTasa, guardarTasa, leerTasa, ponerAvisoTasa, ponerTasaAutomatica, quitarPreciosDeEjemplo, tasaEnFecha } from "./ajustes";
+import { describirFuenteDeTasa, guardarTasa, ponerAvisoTasa, ponerTasaAutomatica, quitarPreciosDeEjemplo, tasaEnFecha } from "./ajustes";
 import { actualizarTasaOficial } from "./tasa-oficial";
 import {
   VENTANA_MINUTOS,
@@ -49,7 +50,9 @@ import {
   olvidarEntradasFallidas,
 } from "./intentos";
 import { buscarVenta, crearVenta, eliminarVenta, marcarEntrega, ultimoPrecioAlCliente, type LineaVenta } from "./ventas";
-import { lineaRellena, revisarFecha, revisarVenta, type LineaEscrita } from "./venta-sensata";
+import { KILOS_MAXIMOS, PRECIO_MAXIMO, lineaRellena, revisarFecha, revisarVenta, type LineaEscrita } from "./venta-sensata";
+import { existenciasPorClave, registrarAjuste } from "./inventario";
+import { ajustePorRecuento } from "./stock";
 import { listarProductos } from "./productos";
 import {
   actualizarVariante,
@@ -84,7 +87,7 @@ import {
   quitarResenasDeEjemplo,
 } from "./resenas";
 import { leerResena } from "./resenas-texto";
-import { METODOS_PAGO, bs, esMetodoPago, esUnidad, fechaCorta, hoy, monedaDelMetodo, necesitaComprobante, redondear, usd } from "./dinero";
+import { METODOS_PAGO, bs, cantidad, esMetodoPago, esUnidad, fechaCorta, hoy, monedaDelMetodo, necesitaComprobante, redondear, usd } from "./dinero";
 
 /**
  * Todas las acciones del panel. Cada una comprueba la sesión primero: una
@@ -439,32 +442,114 @@ export async function borrarProveedor(datos: FormData): Promise<void> {
   volverConExito("/admin/proveedores", `Proveedor ${proveedor.nombre} eliminado con sus compras y sus pagos.`);
 }
 
+/**
+ * Una compra como la nota del proveedor: por cada producto (o marca) las
+ * piezas si se anotaron, los kilos o cartones y lo que costó cada uno, más
+ * lo que no es producto (flete, hielo). El total sale de ahí, y con las
+ * líneas entra el inventario. Lo raro (un costo por encima del precio de
+ * venta) pide confirmar; el formulario vuelve con lo escrito.
+ */
 export async function guardarCompra(datos: FormData): Promise<void> {
   await exigirSesion();
   const proveedorId = numero(datos, "proveedor_id");
   const proveedor = proveedorId ? await buscarProveedor(proveedorId) : null;
   if (!proveedorId || !proveedor) volverConError("/admin/proveedores", "No se encontró el proveedor.");
-  const volverA = `/admin/proveedores/${proveedorId}`;
+  const [productos, variantes] = await Promise.all([listarProductos(true), listarVariantes()]);
+  const vendibles = vendiblesDe(productos, variantes);
+
+  // Con lo escrito en la dirección, el formulario de la compra vuelve relleno.
+  const escrito = new URLSearchParams();
+  for (const campo of ["fecha", "otros_usd", "descripcion", "nota"]) if (texto(datos, campo)) escrito.set(campo, texto(datos, campo));
+  for (const v of vendibles) {
+    for (const campo of ["piezas", "cantidad", "precio"]) {
+      const valor = texto(datos, `${campo}_${v.clave}`);
+      if (valor) escrito.set(`${campo}_${v.clave}`, valor);
+    }
+  }
+  const volver: (mensaje: string, confirmar?: boolean) => never = (mensaje, confirmar) => {
+    if (confirmar) escrito.set("confirmar", "1");
+    volverConError(`/admin/proveedores/${proveedorId}?${escrito.toString()}`, mensaje);
+  };
 
   const fecha = texto(datos, "fecha");
-  const total = numero(datos, "total_usd");
-  if (!fecha) volverConError(volverA, "Falta la fecha de la compra.");
-  if (total === null || total <= 0) volverConError(volverA, "Escribe el total de la compra en dólares.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || Number.isNaN(new Date(fecha + "T00:00:00Z").getTime())) volver("Falta la fecha de la compra.");
+  if (fecha > hoy()) volver("La fecha de la compra no puede ser de mañana en adelante.");
+  const otros = numero(datos, "otros_usd") ?? 0;
+  if (otros < 0 || otros > 100000) volver("Revisa el monto de las otras cosas.");
+
+  const errores: string[] = [];
+  const avisos: string[] = [];
+  const lineas: LineaDeCompraNueva[] = [];
+  for (const v of vendibles) {
+    const piezas = numero(datos, `piezas_${v.clave}`);
+    const kilos = numero(datos, `cantidad_${v.clave}`);
+    const costo = numero(datos, `precio_${v.clave}`);
+    if (piezas === null && kilos === null && costo === null) continue;
+    const unidades = v.unidad === "kg" ? "kilos" : v.unidad === "carton" ? "cartones" : "unidades";
+    if (kilos === null || !(kilos > 0)) errores.push(`${v.nombre}: escribe los ${unidades}.`);
+    else if (kilos > KILOS_MAXIMOS * 10) errores.push(`${v.nombre}: ${kilos} ${unidades} no puede ser.`);
+    if (costo === null || !(costo > 0)) errores.push(`${v.nombre}: escribe el costo en dólares.`);
+    else if (costo > PRECIO_MAXIMO) errores.push(`${v.nombre}: ${usd(costo)} no puede ser.`);
+    if (piezas !== null && (!Number.isInteger(piezas) || piezas <= 0)) errores.push(`${v.nombre}: las piezas son un número entero, 1 o más.`);
+    if (kilos === null || costo === null || !(kilos > 0) || !(costo > 0)) continue;
+    if (v.precio_usd !== null && costo > v.precio_usd) avisos.push(`${v.nombre}: lo compras a ${usd(costo)} y lo vendes a ${usd(v.precio_usd)}.`);
+    lineas.push({ producto_id: v.producto_id, variante_id: v.variante_id, nombre: v.nombre, unidad: v.unidad, piezas, cantidad: kilos, costo_unitario_usd: costo });
+  }
+  if (errores.length > 0) volver(errores.join(" "));
+  if (lineas.length === 0 && !(otros > 0)) volver("Escribe los kilos y el costo de al menos un producto, o el monto de otras cosas.");
+  if (lineas.length === 0 && !texto(datos, "descripcion")) volver("Di qué compraste: sin productos, hace falta la descripción.");
+  if (avisos.length > 0 && texto(datos, "confirmar") !== "1") volver(`${avisos.join(" ")} Si es así, marca «Lo escrito es correcto» y guarda otra vez.`, true);
 
   try {
-    const tasa = await leerTasa();
+    // La compra va con la tasa del día de la compra, aunque se registre después.
+    const tasa = await tasaEnFecha(fecha);
     await crearCompra({
       proveedor_id: proveedorId,
       fecha,
       descripcion: texto(datos, "descripcion"),
-      total_usd: total,
+      otros_usd: otros,
       nota: texto(datos, "nota"),
       tasa: tasa?.valor ?? null,
+      lineas,
     });
   } catch (error) {
-    volverConError(volverA, mensajeDe(error));
+    volver(mensajeDe(error));
   }
-  volverConExito(volverA, "Compra registrada.");
+  volverConExito(`/admin/proveedores/${proveedorId}`, lineas.length > 0 ? "Compra registrada. El inventario ya la cuenta." : "Compra registrada.");
+}
+
+/**
+ * Un recuento (lo contado manda y el sistema anota la diferencia), una
+ * merma (resta) o una entrada sin compra (suma), desde Inventario.
+ */
+export async function guardarAjusteDeInventario(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const volverA = "/admin/inventario";
+  const existencias = await existenciasPorClave();
+  const e = existencias.get(texto(datos, "clave"));
+  if (!e) volverConError(volverA, "Elige un producto.");
+  const tipo = texto(datos, "tipo");
+  const escrita = numero(datos, "cantidad");
+  if (escrita === null || escrita < 0 || escrita > KILOS_MAXIMOS * 10) volverConError(volverA, `${e.nombre}: escribe la cantidad.`);
+  let cambio = 0;
+  let mensaje = "";
+  let motivo = texto(datos, "motivo");
+  if (tipo === "recuento") {
+    cambio = ajustePorRecuento(e.existencia, escrita);
+    if (cambio === 0) volverConExito(volverA, `${e.nombre}: el inventario ya decía ${cantidad(escrita, e.unidad)}. Nada que corregir.`);
+    motivo ||= "Recuento";
+    mensaje = `${e.nombre}: la existencia pasa de ${cantidad(e.existencia, e.unidad)} a ${cantidad(escrita, e.unidad)}.`;
+  } else if (tipo === "merma" || tipo === "entrada") {
+    if (!(escrita > 0)) volverConError(volverA, `${e.nombre}: la cantidad tiene que ser más de cero.`);
+    cambio = tipo === "merma" ? -escrita : escrita;
+    motivo ||= tipo === "merma" ? "Merma" : "Entrada sin compra";
+    const quedan = Math.round((e.existencia + cambio) * 1000) / 1000;
+    mensaje = `${e.nombre}: ${tipo === "merma" ? "merma" : "entrada"} anotada, quedan ${cantidad(quedan, e.unidad)}.`;
+  } else {
+    volverConError(volverA, "Elige qué pasó.");
+  }
+  await registrarAjuste({ fecha: hoy(), producto_id: e.producto_id, variante_id: e.variante_id, cantidad: cambio, motivo });
+  volverConExito(volverA, mensaje);
 }
 
 /** La confirmación está en `/admin/compras/[id]/eliminar`. */
@@ -752,7 +837,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   const clienteId = numero(datos, "cliente_id");
   const fecha = texto(datos, "fecha");
   // Una fila por producto; de los que tienen marcas o presentaciones, una por cada una.
-  const [productos, variantes] = await Promise.all([listarProductos(true), listarVariantes()]);
+  const [productos, variantes, existencias] = await Promise.all([listarProductos(true), listarVariantes(), existenciasPorClave()]);
   const vendibles = vendiblesDe(productos, variantes);
 
   // Con lo escrito en la dirección, el formulario vuelve relleno.
@@ -781,6 +866,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
 
   const escritas: (LineaEscrita & { producto_id: number; variante_id: number | null })[] = [];
   for (const v of vendibles) {
+    const inventario = existencias.get(v.clave);
     const linea = {
       producto_id: v.producto_id,
       variante_id: v.variante_id,
@@ -791,6 +877,9 @@ export async function guardarVenta(datos: FormData): Promise<void> {
       precio: numero(datos, `precio_${v.clave}`),
       precioDeLista: v.precio_usd,
       ultimoPrecio: null as number | null,
+      // Lo que hay (si el inventario sigue este producto) y lo que suele pesar una pieza: para avisar si no cuadra.
+      existencia: inventario?.seguido ? inventario.existencia : null,
+      pesoTipico: inventario?.pesoPorPieza ?? null,
     };
     if (!lineaRellena(linea)) continue;
     linea.ultimoPrecio = await ultimoPrecioAlCliente(clienteId, v.producto_id, v.variante_id);
@@ -846,7 +935,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   } else if (!/^\d{4}-\d{2}-\d{2}$/.test(entregaPrevista) || Number.isNaN(new Date(entregaPrevista + "T00:00:00Z").getTime())) {
     volver("Escribe el día previsto de entrega, para que el resumen te lo recuerde.");
   } else if (entregaPrevista < fecha) {
-    volver("El día previsto de entrega no puede ser antes de la fecha de despacho.");
+    volver("El día previsto de entrega no puede ser antes de la fecha de la nota.");
   } else if (entregaPrevista > sumarDias(hoy(), 30) && texto(datos, "confirmar") !== "1") {
     volver(`El día previsto de entrega (${fechaCorta(entregaPrevista)}) está a más de un mes. Si es así, marca «Lo escrito es correcto» y guarda otra vez.`, "confirmar");
   }

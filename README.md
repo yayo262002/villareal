@@ -13,8 +13,10 @@ Tiene dos partes:
 - **El panel** (`/admin`): la cartera de clientes, con alta rápida por
   teléfono y dirección; las ventas, cada una con su nota de entrega para
   imprimir o mandar; los abonos en dólares o en bolívares con la tasa del
-  día, con su recibo por WhatsApp; las cuentas por pagar y pagadas y el
-  estado de cuenta de cada cliente; los pedidos por entregar y la ruta de
+  día, con su recibo por WhatsApp; lo que le deben, nota a nota, los
+  recordatorios de cobro y el estado de cuenta de cada cliente; el
+  inventario, que entra con las compras y sale con las ventas; los pedidos
+  por entregar y la ruta de
   despacho, que los ordena desde la tienda y dice qué cargar; la foto de
   cada nota en papel, las reseñas de cada producto, los proveedores (a
   quién se le debe y los pagos que se les hacen), los días de crédito de
@@ -136,7 +138,12 @@ src/assets/fuentes/       Las fuentes de esas imágenes, con su licencia
 src/lib/cuentas.ts        Qué ventas están pagadas y cuáles por pagar
 src/lib/credito.ts        Los días de crédito: cuándo vence una nota y cuánto está vencido
 src/lib/vencimientos.ts   Cada cliente y cada proveedor con lo que tiene vencido
-src/lib/proveedores.ts    Proveedores, sus compras y los pagos que se les hacen
+src/lib/proveedores.ts    Proveedores, sus compras (con sus líneas de producto) y los pagos que se les hacen
+src/lib/stock.ts          El inventario: lo comprado menos lo vendido, más los ajustes; cuánto dura
+src/lib/piezas.ts         Lo que suele pesar una pieza, aprendido de las notas
+src/lib/inventario.ts     Las existencias desde la base, y los recuentos y mermas
+src/lib/recordatorios.ts  Cuándo se le recordó la deuda a cada cliente
+src/components/fila-de-producto.tsx  La fila de un producto en la venta y en la compra
 src/lib/caja.ts           El cierre del día: vendido, entrado por método y salido
 src/lib/movimientos.ts    Todo lo que se movió entre dos fechas (lo usan la web y el guion de copias)
 src/lib/estadisticas.ts   Lo que se saca de los movimientos: por producto, por cliente, por método, por día
@@ -280,6 +287,13 @@ datos/                    La base de datos (fuera de Git)
   («Vencida hace 3 días»), y quien tiene el plazo vencido va primero.
   Lo mismo vale para lo que el negocio le debe a cada proveedor, con los
   días que da el proveedor (`src/lib/credito.ts`).
+- **Recordatorios de cobro.** Quien pasó su plazo y no ha recibido un
+  recordatorio en la última semana sale arriba en el Resumen, en «Cobros
+  para recordar». «Recordar» (ahí, en «Quién debe», en la ficha y en el
+  estado de cuenta) abre WhatsApp con el mensaje escrito (saldo, notas
+  pendientes y su enlace de cuenta) y deja anotado el día
+  (`src/lib/recordatorios.ts`): el Resumen y la ficha dicen «Recordado el
+  2/10» y no se insiste a quien se le acaba de escribir.
 - Los mensajes de WhatsApp (recordatorio y nota) dicen el monto en dólares y,
   si hay tasa del día, también en bolívares. El recordatorio dice de cada
   nota si venció y desde cuándo, o cuándo vence; la nota va con su número
@@ -338,7 +352,7 @@ datos/                    La base de datos (fuera de Git)
 - Una venta o un pago mal anotado se **borra** desde la ficha del cliente
   (enlace «Eliminar», con pantalla de confirmación) y se registra de nuevo.
   No hay edición: es más fácil de entender y más difícil de equivocarse.
-- **Cuentas por pagar y pagadas.** Los pagos van contra el cliente, no
+- **Lo que te deben** (`/admin/cuentas`). Los pagos van contra el cliente, no
   contra una venta. Para decir qué notas están pagadas, los pagos se aplican
   a las ventas de la más antigua a la más nueva: una venta está «Pagada» si
   los pagos ya la cubren, «Abonada» si la cubren en parte y «Por pagar» si
@@ -427,7 +441,7 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     `ANTHROPIC_API_KEY` puesta, al guardar se le enseña la foto a Claude
     junto con la lista de productos y marcas (`src/lib/lector-de-notas.ts`)
     y se comprueba que sea una nota y no otra cosa, que su fecha sea la
-    fecha de despacho, y **línea a línea** que lo anotado sea lo que dice
+    fecha de la nota, y **línea a línea** que lo anotado sea lo que dice
     la nota: qué producto (y qué marca), los kilos, las piezas, el precio y
     el importe. Lo que falte en la nota, lo que sobre o lo que no coincida
     vuelve como aviso con nombre («En la nota Queso mozzarella son 5 kg y
@@ -444,7 +458,7 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     que repetirla. Al guardar la venta pasa a ser su adjunto; las que
     nadie reclama se limpian pasado un día.
   - **Por entregar** exige el **día previsto de entrega** (no anterior a
-    la fecha de despacho; a más de un mes, pide confirmar). Si se marca «ya
+    la fecha de la nota; a más de un mes, pide confirmar). Si se marca «ya
     la entregué» y a la vez se pone un día previsto, no se guarda: una de
     las dos cosas está mal. Esas ventas salen en Despacho con su ruta, con
     lo que lleva cada cliente, la suma de lo que hay que cargar
@@ -478,8 +492,14 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   nota. El importe sale de los kilos por el precio. El total se ve mientras
   se escribe (es el único cálculo con JavaScript del formulario; sin él, lo
   calcula el servidor al guardar).
-  - **Fecha de despacho.** Es la de la nota de papel, aunque sea de días
+  - **Fecha de la nota.** La que lleva la nota de papel, aunque sea de días
     atrás: los días de crédito cuentan desde ahí. No puede ser de mañana.
+    No es el día de entrega: ese se pone aparte, solo si queda por
+    entregar.
+  - **Lo que hay y lo que pesa.** Cada fila dice cuánto hay en inventario
+    (si se sigue) y lo que suele pesar una pieza; vender más de lo que hay,
+    o unas piezas que no casan con su peso, avisa y pide confirmar (ver
+    «Inventario»).
   - **Lo que no tiene sentido no se guarda** (`src/lib/venta-sensata.ts`):
     sin kilos, sin precio, más de 1000 kilos, más de 500 piezas, un precio
     de más de 1000 dólares. Lo que solo es raro pide confirmar: un precio a
@@ -523,17 +543,47 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 
 - En Proveedores se registra a quien le vende al negocio (el de los quesos,
   el de los huevos): nombre, teléfono y los **días de crédito que da**.
-- Desde su ficha se anota cada **compra** (fecha, qué se compró y el total
-  en dólares) y cada **pago** que se le hace, con los mismos métodos y la
-  misma tasa que los abonos de los clientes. Lo que se le debe es lo
+- Desde su ficha se anota cada **compra** como la nota del proveedor: una
+  fila por producto (y marca) con las piezas, los kilos o cartones y el
+  costo en dólares, más «otras cosas» que no son producto (flete, hielo).
+  El total sale de ahí y la descripción se escribe sola si se deja vacía;
+  un costo por encima del precio de venta pide confirmar, y la fecha no
+  puede ser de mañana. Con esas líneas entra el inventario (ver abajo). Y
+  cada **pago** que se le hace, con los mismos métodos y la misma tasa que
+  los abonos de los clientes. Lo que se le debe es lo
   comprado menos lo pagado; los pagos se aplican a las compras más
   antiguas primero, igual que con los clientes, y cada compra sale como
   pagada, abonada o por pagar, y vencida si pasó el plazo.
 - El Resumen enseña «Debo a proveedores» y «A quién le debo», con el plazo.
 - Una compra o un pago mal anotado se borra y se registra de nuevo. Borrar
   un proveedor pide la clave del panel.
-- Las compras no tocan los productos ni sus costos: eso se sigue poniendo
-  en Productos.
+- Las compras no cambian el costo que figura en Productos (del que sale el
+  precio de venta): ese se sigue poniendo a mano. El último costo pagado se
+  ve en Inventario.
+
+## Inventario
+
+- **Lo que hay de cada producto y marca** (`/admin/inventario`). Entra con
+  cada compra a un proveedor (sus líneas de producto), sale con cada venta
+  y se corrige con un recuento («conté y tengo tanto»: el sistema anota la
+  diferencia), una merma o una entrada sin compra. Un producto se empieza
+  a seguir con su primera compra o su primer recuento; hasta entonces
+  sale «sin seguir» y no avisa de nada (`src/lib/stock.ts`,
+  `src/lib/inventario.ts`).
+- De cada uno dice cuánto se compró, cuánto se vendió, cuánto queda (y
+  cuántas piezas serían), lo vendido en los últimos 30 días, para cuántos
+  días alcanza a ese ritmo y el último costo de compra. Con menos de una
+  semana, o sin existencia, lo avisa arriba y en el Resumen.
+- **Al anotar una venta** el formulario dice cuánto hay; si se anota más de
+  lo que hay, avisa y pide confirmar (el inventario puede ir atrasado: se
+  arregla anotando la compra que falta o con un recuento).
+- **El peso por pieza se aprende solo** (`src/lib/piezas.ts`): con las
+  últimas 20 notas que anotaron piezas y kilos de un producto se saca lo
+  que suele pesar una pieza (la mediana, con al menos tres notas). El
+  formulario lo dice («suele pesar 2,5 kg por pieza») y, si un día las
+  piezas y los kilos de una nota se alejan más de un 15 % de eso, avisa:
+  «cada pieza suele pesar 2,5 kg … y hoy anotaste 2 piezas y 8 kg». Nada
+  se corrige solo.
 
 ## La web hacia fuera
 

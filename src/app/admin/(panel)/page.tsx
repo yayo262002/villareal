@@ -7,11 +7,11 @@ import { listarPagos, totalCobradoUsd } from "@/lib/pagos";
 import { conLineas, contarVentasPorEntregar, listarVentas, listarVentasPorEntregar, totalVendidoUsd, vendidoDesde } from "@/lib/ventas";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { diasEntre } from "@/lib/credito";
-import { METODOS_PAGO, fechaCorta, formatearMonto, hoy, mesLegible, redondear, usd } from "@/lib/dinero";
+import { METODOS_PAGO, cantidad, fechaCorta, formatearMonto, hoy, mesLegible, redondear, usd } from "@/lib/dinero";
 import { listarCopiasNube } from "@/lib/copias-nube";
-import { leerTasa } from "@/lib/ajustes";
-import { negocio } from "@/config/negocio";
-import { enlaceWhatsappA, mensajeRecordatorio } from "@/lib/whatsapp";
+import { enlaceWhatsappA } from "@/lib/whatsapp";
+import { ultimosRecordatorios } from "@/lib/recordatorios";
+import { existencias } from "@/lib/inventario";
 import { copiarAhora } from "@/lib/acciones";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "./panel.module.css";
@@ -21,7 +21,7 @@ export const metadata = { title: "Resumen" };
 export default async function PaginaResumen({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
   const mes = hoy().slice(0, 7);
-  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, tasa, porEntregar, vendidoEsteMes, conVencimiento, proveedores] =
+  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, porEntregar, vendidoEsteMes, conVencimiento, proveedores, recordados, inventario] =
     await Promise.all([
       listarClientes(),
       resumenDeudas(),
@@ -30,11 +30,12 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
       totalVendidoUsd(),
       totalCobradoUsd(),
       listarCopiasNube(),
-      leerTasa(),
       contarVentasPorEntregar(),
       vendidoDesde(`${mes}-01`),
       clientesConVencimiento(),
       proveedoresConVencimiento(),
+      ultimosRecordatorios(),
+      existencias(),
     ]);
   const [hoyCierre, entregas] = await Promise.all([cierreDelDia(hoy()), listarVentasPorEntregar().then(conLineas)]);
   const fecha = hoy();
@@ -48,12 +49,13 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
   const vencido = redondear(deudores.reduce((s, c) => s + c.vencido_usd, 0));
   const acreedores = proveedores.filter((p) => p.saldo_usd > 0).sort((a, b) => b.vencido_usd - a.vencido_usd || b.saldo_usd - a.saldo_usd);
   const debo = redondear(acreedores.reduce((s, p) => s + p.saldo_usd, 0));
-  // Recordatorio corto (solo el saldo); el detalle de las notas está en la ficha.
-  const recordatorio = (c: (typeof deudores)[number]) =>
-    enlaceWhatsappA(
-      c.telefono,
-      mensajeRecordatorio({ negocio: negocio.nombre, cliente: c.nombre, saldo_usd: c.saldo_usd, pendientes: [], tasa: tasa?.valor }),
-    );
+  // «Recordar» va por /admin/recordar/[id], que arma el mensaje con las notas y deja anotado el día. Solo con teléfono.
+  const puedeRecordar = (c: (typeof deudores)[number]) => enlaceWhatsappA(c.telefono, "") !== null;
+  const recordadoEl = (id: number) => recordados.get(id) ?? null;
+  // Para recordar hoy: pasó su plazo y no se le ha escrito en la última semana.
+  const porRecordar = deudores.filter((c) => c.vencido_usd > 0 && puedeRecordar(c) && (!recordadoEl(c.id) || diasEntre(recordadoEl(c.id)!, fecha) >= 7));
+  // El inventario que anda bajo, para avisarlo arriba.
+  const inventarioBajo = inventario.filter((e) => e.seguido && (e.estado === "sin" || e.estado === "poco"));
 
   return (
     <>
@@ -139,6 +141,51 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
         </section>
       )}
 
+      {porRecordar.length > 0 && (
+        <section className={`tarjeta ${estilos.tarjetaAviso}`}>
+          <div className={estilos.encabezado} style={{ marginBottom: "var(--espacio-3)" }}>
+            <h2 className={estilos.subtitulo} style={{ marginBottom: 0 }}>
+              Cobros para recordar ({porRecordar.length})
+            </h2>
+            <Link href="/admin/cuentas">Lo que te deben</Link>
+          </div>
+          <ul className={estilos.pedidos}>
+            {porRecordar.slice(0, 8).map((c) => (
+              <li key={c.id} data-recordar={c.id}>
+                <p>
+                  <Link href={`/admin/clientes/${c.id}`}>
+                    <strong>{c.rotulo}</strong>
+                  </Link>
+                  {" · "}
+                  <span className={estilos.vencida}>
+                    debe {usd(c.saldo_usd)}, {describirVencimiento(c.mayor_atraso).toLowerCase()}
+                  </span>
+                  {" · "}
+                  <span className="ayuda">{recordadoEl(c.id) ? `recordado el ${fechaCorta(recordadoEl(c.id)!)}` : "sin recordar"}</span>
+                  {" · "}
+                  <a href={`/admin/recordar/${c.id}`} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                    Recordar
+                  </a>
+                </p>
+              </li>
+            ))}
+          </ul>
+          <p className={estilos.ayuda} style={{ marginTop: "var(--espacio-3)", marginBottom: 0 }}>
+            Pasaron su plazo y no se les ha escrito en la última semana. «Recordar» abre WhatsApp con el mensaje y deja anotado el día.
+          </p>
+        </section>
+      )}
+
+      {inventarioBajo.length > 0 && (
+        <p className="aviso aviso--aviso">
+          Inventario:{" "}
+          {inventarioBajo
+            .map((e) => (e.estado === "sin" ? `${e.nombre} sin existencia` : `${e.nombre} queda poco (${cantidad(e.existencia, e.unidad)}, para unos ${e.diasQueDura} días)`))
+            .join("; ")}
+          . <Link href="/admin/inventario">Ver inventario</Link>
+        </p>
+      )}
+
       <dl className={`${estilos.cifras} ${estilos["cifras--seis"]}`}>
         <div className={estilos.cifra}>
           <dt>Clientes</dt>
@@ -215,11 +262,12 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                         )}
                       </td>
                       <td>
-                        {recordatorio(c) && (
-                          <a href={recordatorio(c)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                        {puedeRecordar(c) && (
+                          <a href={`/admin/recordar/${c.id}`} target="_blank" rel="noopener" className={estilos.whatsapp}>
                             Recordar
                           </a>
                         )}
+                        {recordadoEl(c.id) && <span className="ayuda"> Recordado el {fechaCorta(recordadoEl(c.id)!)}</span>}
                       </td>
                     </tr>
                   ))}
@@ -227,7 +275,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
               </table>
               {deudores.length > 8 && (
                 <p className={estilos.ayuda}>
-                  <Link href="/admin/cuentas">Ver todas las cuentas por pagar</Link>
+                  <Link href="/admin/cuentas">Ver todo lo que te deben</Link>
                 </p>
               )}
             </div>
