@@ -1,4 +1,4 @@
-import { bs, fechaCorta, redondear, usd } from "./dinero.ts";
+import { METODOS_PAGO, bs, fechaCorta, redondear, usd } from "./dinero.ts";
 import { fechaLeida, numeroLeido, objetoLeido } from "./nota-leida.ts";
 
 /**
@@ -9,7 +9,7 @@ import { fechaLeida, numeroLeido, objetoLeido } from "./nota-leida.ts";
  * por el dueño: él revisa y guarda.
  */
 
-export type MetodoLeido = "pago_movil" | "transferencia" | "zelle" | "otro";
+export type MetodoLeido = "pago_movil" | "transferencia" | "zelle" | "binance" | "otro";
 
 export type CapturaLeida = {
   /** Si la imagen es el comprobante de un pago y no otra cosa. */
@@ -24,7 +24,7 @@ export type CapturaLeida = {
   banco: string | null;
 };
 
-const METODOS_LEIDOS: readonly MetodoLeido[] = ["pago_movil", "transferencia", "zelle", "otro"];
+const METODOS_LEIDOS: readonly MetodoLeido[] = ["pago_movil", "transferencia", "zelle", "binance", "otro"];
 
 function booleano(valor: unknown): boolean | null {
   return typeof valor === "boolean" ? valor : null;
@@ -72,9 +72,9 @@ export type PropuestaDeAbono = {
  */
 export function propuestaDesdeCaptura(captura: CapturaLeida, tasa: number | null, hoy: string): PropuestaDeAbono | null {
   if (!captura.esComprobante || captura.monto === null || !(captura.monto > 0)) return null;
-  const moneda = captura.moneda ?? (captura.metodo === "zelle" ? "USD" : "VES");
+  const moneda = captura.moneda ?? (captura.metodo === "zelle" || captura.metodo === "binance" ? "USD" : "VES");
   let metodo: MetodoLeido = captura.metodo ?? (moneda === "USD" ? "otro" : "pago_movil");
-  if (moneda === "VES" && (metodo === "zelle" || metodo === "otro")) metodo = "transferencia";
+  if (moneda === "VES" && (metodo === "zelle" || metodo === "binance" || metodo === "otro")) metodo = "transferencia";
   if (moneda === "USD" && (metodo === "pago_movil" || metodo === "transferencia")) metodo = "otro";
   const monto = redondear(captura.monto);
   const conTasa = tasa !== null && tasa > 0 ? tasa : null;
@@ -93,6 +93,7 @@ const NOMBRE_DEL_METODO: Record<MetodoLeido, string> = {
   pago_movil: "pago móvil",
   transferencia: "transferencia",
   zelle: "Zelle",
+  binance: "Binance",
   otro: "otro método",
 };
 
@@ -113,9 +114,16 @@ export function describirCaptura(captura: CapturaLeida, propuesta: PropuestaDeAb
 }
 
 /** En qué no cuadra la captura con lo que se escribió. Si no es un comprobante, solo eso. */
-export function compararCaptura(captura: CapturaLeida, abono: { monto: number; moneda: "VES" | "USD"; fecha: string }): string[] {
+export function compararCaptura(
+  captura: CapturaLeida,
+  abono: { monto: number; moneda: "VES" | "USD"; fecha: string; metodo?: keyof typeof METODOS_PAGO },
+): string[] {
   if (!captura.esComprobante) return ["Esa foto no parece el comprobante de un pago (la captura del pago móvil o de la transferencia)."];
   const avisos: string[] = [];
+  // El método: un pago móvil no es una transferencia, ni un Zelle un Binance. «Otro» no dice nada.
+  if (captura.metodo && captura.metodo !== "otro" && abono.metodo && abono.metodo !== "otro" && captura.metodo !== abono.metodo) {
+    avisos.push(`La captura parece un pago por ${NOMBRE_DEL_METODO[captura.metodo]} y elegiste ${METODOS_PAGO[abono.metodo]}.`);
+  }
   if (captura.moneda && captura.moneda !== abono.moneda) {
     avisos.push(
       captura.moneda === "VES"

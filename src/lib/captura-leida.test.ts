@@ -41,6 +41,8 @@ test("sin tasa no se inventa el equivalente; una fecha de mañana no vale; sin m
 test("el método y la moneda se cuadran: un Zelle es en dólares, un pago en bolívares sin método es transferencia", () => {
   const zelle = propuestaDesdeCaptura({ ...pagoMovil, metodo: "zelle", moneda: null, monto: 20 }, 36.5, "2026-09-23")!;
   assert.deepEqual([zelle.metodo, zelle.moneda, zelle.monto_usd, zelle.tasa], ["zelle", "USD", 20, null]);
+  const binance = propuestaDesdeCaptura({ ...pagoMovil, metodo: "binance", moneda: null, monto: 15 }, 36.5, "2026-09-23")!;
+  assert.deepEqual([binance.metodo, binance.moneda, binance.monto_usd], ["binance", "USD", 15]);
   const enBs = propuestaDesdeCaptura({ ...pagoMovil, metodo: "otro", moneda: "VES" }, 36.5, "2026-09-23")!;
   assert.deepEqual([enBs.metodo, enBs.moneda], ["transferencia", "VES"]);
   const enUsd = propuestaDesdeCaptura({ ...pagoMovil, metodo: "pago_movil", moneda: "USD", monto: 20 }, 36.5, "2026-09-23")!;
@@ -49,6 +51,13 @@ test("el método y la moneda se cuadran: un Zelle es en dólares, un pago en bol
 
 test("comparar: lo que cuadra no dice nada; el monto, la moneda y la fecha distintos se avisan", () => {
   assert.deepEqual(compararCaptura(pagoMovil, { monto: 3650, moneda: "VES", fecha: "2026-09-21" }), []);
+  assert.deepEqual(compararCaptura(pagoMovil, { monto: 3650, moneda: "VES", fecha: "2026-09-21", metodo: "pago_movil" }), []);
+  assert.deepEqual(compararCaptura(pagoMovil, { monto: 3650, moneda: "VES", fecha: "2026-09-21", metodo: "transferencia" }), [
+    "La captura parece un pago por pago móvil y elegiste Transferencia.",
+  ]);
+  assert.deepEqual(compararCaptura({ ...pagoMovil, metodo: "binance", moneda: "USD", monto: 10 }, { monto: 10, moneda: "USD", fecha: "2026-09-21", metodo: "zelle" }), [
+    "La captura parece un pago por Binance y elegiste Zelle.",
+  ]);
   assert.deepEqual(compararCaptura(pagoMovil, { monto: 3000, moneda: "VES", fecha: "2026-09-22" }), [
     `La captura dice ${bs(3650)} y escribiste ${bs(3000)}.`,
     "La captura es del 21/09/2026 y la fecha anotada es 22/09/2026.",

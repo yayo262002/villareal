@@ -62,13 +62,13 @@ import {
   quitarFotoDeVariante,
   type DatosVariante,
 } from "./variantes";
-import { vendiblesDe } from "./catalogo";
+import { claveDe, vendiblesDe } from "./catalogo";
 import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { TAMANO_MAXIMO_ADJUNTO, buscarAdjunto, eliminarAdjunto, esTipoAdjunto, guardarAdjunto } from "./adjuntos";
 import { anotarLecturaDeFoto, aparcarFoto, buscarFotoEnEspera, olvidarFotoEnEspera, pasarFotoAAdjuntos } from "./fotos-en-espera";
-import { lectorDisponible, leerCaptura, leerNota } from "./lector-de-notas";
+import { lectorDisponible, leerCaptura, leerNota, type ProductoDelCatalogo } from "./lector-de-notas";
 import { compararNota, interpretarLectura, type NotaLeida } from "./nota-leida";
 import { compararCaptura, describirCaptura, interpretarCaptura, propuestaDesdeCaptura, type CapturaLeida } from "./captura-leida";
 import { guardarCopiaNube } from "./copias-nube";
@@ -84,7 +84,7 @@ import {
   quitarResenasDeEjemplo,
 } from "./resenas";
 import { leerResena } from "./resenas-texto";
-import { esMetodoPago, esUnidad, fechaCorta, hoy, monedaDelMetodo, redondear } from "./dinero";
+import { METODOS_PAGO, esMetodoPago, esUnidad, fechaCorta, hoy, monedaDelMetodo, necesitaComprobante, redondear } from "./dinero";
 
 /**
  * Todas las acciones del panel. Cada una comprueba la sesión primero: una
@@ -197,10 +197,10 @@ type Lectura = { nota: NotaLeida | null; intentada: boolean };
  * Lee la nota con el lector, una sola vez por foto: lo leído se guarda con
  * ella. `intentada` dice si hay lector; `nota` es null si no se pudo leer.
  */
-async function leerLaNota(foto: FotoDeLaNota): Promise<Lectura> {
+async function leerLaNota(foto: FotoDeLaNota, catalogo: ProductoDelCatalogo[]): Promise<Lectura> {
   if (!lectorDisponible()) return { nota: null, intentada: false };
   if (foto.lectura !== null) return { nota: interpretarLectura(foto.lectura), intentada: true };
-  const nota = await leerNota(foto);
+  const nota = await leerNota(foto, catalogo);
   if (nota) await anotarLecturaDeFoto(foto.id, JSON.stringify(nota));
   return { nota, intentada: true };
 }
@@ -824,9 +824,18 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   if (!porEntregar) {
     if (fotoMala) volver(fotoMala);
     if (!foto) volver(SIN_FOTO);
-    // La foto se lee: si no es la nota, o su fecha o su suma no cuadran con lo anotado, se avisa antes de guardar.
-    lectura = await leerLaNota(foto);
-    reparos = lectura.nota ? compararNota(lectura.nota, { fecha, total }) : [];
+    // La foto se lee y se coteja con el pedido línea a línea: si no es la nota, o algo no cuadra, se avisa antes de guardar.
+    lectura = await leerLaNota(foto, vendibles);
+    const anotadas = escritas.map((l) => ({
+      clave: claveDe(l.producto_id, l.variante_id),
+      nombre: l.producto,
+      unidad: l.unidad,
+      piezas: l.piezas,
+      cantidad: l.cantidad!,
+      precio: l.precio!,
+      importe: redondear(l.cantidad! * l.precio!),
+    }));
+    reparos = lectura.nota ? compararNota(lectura.nota, { fecha, total, lineas: anotadas }) : [];
     if (reparos.length > 0 && texto(datos, "confirmar_nota") !== "1") volver(avisoDeLaNota(reparos, "guarda otra vez"), "confirmar_nota");
   } else if (!/^\d{4}-\d{2}-\d{2}$/.test(entregaPrevista) || Number.isNaN(new Date(entregaPrevista + "T00:00:00Z").getTime())) {
     volver("Escribe el día previsto de entrega, para que el resumen te lo recuerde.");
@@ -873,8 +882,18 @@ export async function cambiarEntrega(datos: FormData): Promise<void> {
   if (entregada) {
     if (mala) volverConError(destino, mala);
     if (!foto) volverConError(destino, SIN_FOTO);
-    lectura = await leerLaNota(foto);
-    reparos = lectura.nota ? compararNota(lectura.nota, { fecha: venta.fecha, total: venta.total_usd }) : [];
+    const [productos, variantes] = await Promise.all([listarProductos(true), listarVariantes()]);
+    lectura = await leerLaNota(foto, vendiblesDe(productos, variantes));
+    const anotadas = venta.lineas.map((l) => ({
+      clave: claveDe(l.producto_id, l.variante_id ?? null),
+      nombre: l.producto_nombre,
+      unidad: l.unidad,
+      piezas: l.piezas,
+      cantidad: Number(l.cantidad),
+      precio: Number(l.precio_unitario_usd),
+      importe: Number(l.subtotal_usd),
+    }));
+    reparos = lectura.nota ? compararNota(lectura.nota, { fecha: venta.fecha, total: venta.total_usd, lineas: anotadas }) : [];
     if (reparos.length > 0 && texto(datos, "confirmar_nota") !== "1") {
       // A la nota, que enseña la foto ya guardada y la casilla para confirmar, y sabe adónde volver después.
       volverConError(
@@ -962,7 +981,11 @@ export async function guardarPago(datos: FormData): Promise<void> {
   }
 
   if (!fecha) volver("Falta la fecha.");
-  if (!esMetodoPago(metodo)) volver("Elige el método de pago.");
+  if (!esMetodoPago(metodo)) volver("Elige cómo pagó el cliente.");
+  // Un pago móvil, una transferencia, un Zelle o un Binance dejan comprobante: sin su captura no se registra.
+  if (necesitaComprobante(metodo) && !foto) {
+    volver(`Falta adjuntar el comprobante de pago: la captura del ${METODOS_PAGO[metodo]}. Sin ella no se registra el abono.`);
+  }
   if (monto === null || monto <= 0) volver(foto ? "Escribe el monto, o déjalo vacío para que se lea de la captura." : "El monto tiene que ser mayor que cero.");
 
   const moneda = monedaDelMetodo(metodo);
@@ -971,7 +994,7 @@ export async function guardarPago(datos: FormData): Promise<void> {
   // Con el monto escrito, la captura se comprueba: lo que no cuadre se avisa antes de guardar.
   let reparos: string[] = [];
   if (lectura.captura) {
-    reparos = compararCaptura(lectura.captura, { monto, moneda, fecha });
+    reparos = compararCaptura(lectura.captura, { monto, moneda, fecha, metodo });
     if (reparos.length > 0 && texto(datos, "confirmar_captura") !== "1") {
       volver(`${reparos.join(" ")} Revisa la captura y lo escrito; si está bien así, marca «Ya revisé la captura» y guarda otra vez.`, "error", true);
     }

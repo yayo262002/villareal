@@ -337,9 +337,13 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   su ficha o desde Abonos y se aplican a sus notas más antiguas primero.
   En la ficha, cada abono tiene «Enviar recibo»: abre WhatsApp con lo que
   se recibió (en bolívares, con su tasa) y cómo queda la cuenta hoy.
-  - **La captura del pago.** Al registrar un abono se adjunta la captura
-    del pago móvil o de la transferencia: queda guardada con el abono
-    (enlace «Captura» en su fila; `adjuntos.pago_id`). Con la clave
+  - **El comprobante del pago.** Al registrar un abono se elige cómo pagó
+    el cliente (pago móvil, transferencia, efectivo en bolívares o en
+    dólares, Zelle, Binance, otro). Con **pago móvil, transferencia, Zelle
+    y Binance** la captura del comprobante es **obligatoria**: sin ella no
+    se registra el abono y el panel dice «Falta adjuntar el comprobante de
+    pago». En efectivo no hace falta. La captura queda guardada con el
+    abono (enlace «Captura» en su fila; `adjuntos.pago_id`). Con la clave
     `ANTHROPIC_API_KEY`, la captura se **lee sola**: si el monto se deja
     vacío, el formulario vuelve relleno con el monto en bolívares, el
     método, la fecha y la referencia leídos, y dice el equivalente en
@@ -374,16 +378,21 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   - **Entregada** exige la **foto de la nota firmada** por el cliente (la
     hoja de papel). Se guarda como foto del cliente unida a esa venta,
     «Nota N.º 000012 firmada». Sin foto no se guarda la venta.
-  - **La foto se lee.** Con la clave `ANTHROPIC_API_KEY` puesta, al
-    guardar se le enseña la foto a Claude (`src/lib/lector-de-notas.ts`)
+  - **La foto se lee y se coteja con el pedido.** Con la clave
+    `ANTHROPIC_API_KEY` puesta, al guardar se le enseña la foto a Claude
+    junto con la lista de productos y marcas (`src/lib/lector-de-notas.ts`)
     y se comprueba que sea una nota y no otra cosa, que su fecha sea la
-    fecha de despacho, que las líneas sumen lo que dice el total, que el
-    total sea el de lo anotado y que esté firmada. Lo que no cuadre vuelve
-    como aviso, con la casilla «Ya revisé la foto de la nota» para guardar
-    igual; nada se corrige solo (`src/lib/nota-leida.ts`). Lo mismo al
-    marcar entregado un pedido desde el despacho o desde la nota. Sin la
-    clave no se lee nada y todo sigue igual. Cada lectura cuesta una
-    fracción de centavo.
+    fecha de despacho, y **línea a línea** que lo anotado sea lo que dice
+    la nota: qué producto (y qué marca), los kilos, las piezas, el precio y
+    el importe. Lo que falte en la nota, lo que sobre o lo que no coincida
+    vuelve como aviso con nombre («En la nota Queso mozzarella son 5 kg y
+    anotaste 4 kg», «Anotaste 2 cartón de Huevos y en la nota no
+    aparece»); también si las líneas no suman el total o falta la firma.
+    Si todo cuadra, la venta se guarda sin preguntar nada. Con avisos, la
+    casilla «Ya revisé la foto de la nota» permite guardar igual; nada se
+    corrige solo (`src/lib/nota-leida.ts`). Lo mismo al marcar entregado
+    un pedido desde el despacho o desde la nota. Sin la clave no se lee
+    nada y todo sigue igual. Cada lectura cuesta una fracción de centavo.
   - **La foto no se pierde.** Al llegar se guarda en `fotos_en_espera`
     (`src/lib/fotos-en-espera.ts`); si el formulario vuelve con un aviso
     (un precio raro, la fecha de la nota), la trae por su número y no hay

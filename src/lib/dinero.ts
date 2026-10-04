@@ -22,6 +22,13 @@ export type MetodoPago = keyof typeof METODOS_PAGO;
 /** Métodos que se pagan en bolívares y por tanto necesitan tasa. */
 export const METODOS_EN_BOLIVARES: MetodoPago[] = ["pago_movil", "transferencia", "efectivo_bs"];
 
+/** Los pagos que dejan comprobante (la captura del banco o de la app): sin ella no se registra el abono. El efectivo no lo tiene. */
+export const METODOS_CON_COMPROBANTE: MetodoPago[] = ["pago_movil", "transferencia", "zelle", "binance"];
+
+export function necesitaComprobante(metodo: MetodoPago): boolean {
+  return METODOS_CON_COMPROBANTE.includes(metodo);
+}
+
 export function esMetodoPago(valor: string): valor is MetodoPago {
   return valor in METODOS_PAGO;
 }

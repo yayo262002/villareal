@@ -499,7 +499,7 @@ async function probarNegocio() {
   comprobar("borrada la venta, la cuenta vuelve a como estaba", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
 
   // La foto de la nota se lee: si no es una nota, o su fecha o su suma no cuadran, avisa y pide revisar.
-  const cuadra = { es_nota: true, fecha: "2026-09-16", lineas: [{ descripcion: "Mozzarella", precio: 7, importe: 3.5 }], total: 3.5, firmada: true };
+  const cuadra = { es_nota: true, fecha: "2026-09-16", lineas: [{ descripcion: "Mozzarella", clave: "2", cantidad: 0.5, precio: 7, importe: 3.5 }], total: 3.5, firmada: true };
   const mediaMozzarella = { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_2: "0.5", precio_2: "7", entrega: "local" };
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida(cuadra) });
   comprobar("la foto se lee y, si cuadra, se guarda diciéndolo", r.destino.includes("se leyó y cuadra con lo anotado"), r.destino);
@@ -531,6 +531,23 @@ async function probarNegocio() {
   comprobar("las ventas de la prueba de lectura se borran y la cuenta vuelve a como estaba", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
 
   // La captura del pago se lee sola: sin monto, rellena el abono; con monto, lo comprueba; y queda guardada con el abono.
+  // Línea a línea: otros kilos, un producto que no se anotó, uno anotado que la nota no trae.
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida({ ...cuadra, lineas: [{ descripcion: "Mozzarella", clave: "2", cantidad: 1, precio: 7, importe: 7 }], total: 7 }) });
+  comprobar(
+    "la nota dice otros kilos: lo dice con el nombre del producto, y no repite el total",
+    r.destino.includes("En la nota Queso mozzarella son 1 kg y anotaste 0,5 kg") && r.destino.includes(`importa ${usd("7,00")} y lo anotado da ${usd("3,50")}`) && !r.destino.includes("lo anotado suma"),
+    r.destino,
+  );
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', {
+    ...mediaMozzarella,
+    foto: fotoLeida({ ...cuadra, lineas: [...cuadra.lineas, { descripcion: "queso amarillo", clave: null, cantidad: 2, precio: 8.5, importe: 17 }], total: 20.5 }),
+  });
+  comprobar("la nota trae un producto que no se anotó", r.destino.includes(`En la nota hay «queso amarillo» por ${usd("17,00")} que no anotaste`), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, cantidad_3: "1", precio_3: "3.4", foto: fotoLeida(cuadra) });
+  comprobar("se anotó un producto que la nota no trae", r.destino.includes("Anotaste 1 cartón de Huevos y en la nota no aparece"), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida({ ...cuadra, lineas: [{ descripcion: "mozarela cuadrada", clave: null, cantidad: 0.5, precio: 7, importe: 3.5 }] }) });
+  comprobar("sin clave del lector, la línea se reconoce por el nombre y cuadra", r.destino.includes("se leyó y cuadra con lo anotado"), r.destino);
+  await enviar(`/admin/ventas/${Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1])}/eliminar`, 'name="id"', { id: String(Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1])) });
   const capturaBs = { es_comprobante: true, metodo: "pago_movil", moneda: "VES", monto: 3650, fecha: "2026-09-21", referencia: "004512", banco: "Banesco" };
   const fichaDetal = `/admin/clientes/${detalId}`;
   r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-16", metodo: "pago_movil", monto: "", tasa: "36.5", volver_a: fichaDetal, foto: fotoLeida(capturaBs) });
@@ -559,16 +576,28 @@ async function probarNegocio() {
   comprobar("con un monto que no es el de la captura, avisa y pide revisar", r.destino.includes("La captura dice Bs 3.650,00 y escribiste Bs 3.000,00") && r.destino.includes("confirmar_captura=1"), r.destino);
   r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "pago_movil", monto: "3000", tasa: "36.5", volver_a: fichaDetal, foto: fotoLeida({ ...capturaBs, es_comprobante: false }) });
   comprobar("una foto que no es un comprobante avisa", r.destino.includes("no parece el comprobante"), r.destino);
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "transferencia", monto: "3650", tasa: "36.5", volver_a: fichaDetal, foto: fotoLeida(capturaBs) });
+  comprobar("la captura es de un pago móvil y se eligió transferencia: avisa", r.destino.includes("La captura parece un pago por pago móvil y elegiste Transferencia"), r.destino);
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "pago_movil", monto: "100", tasa: "36.5", volver_a: fichaDetal });
+  comprobar("un pago móvil sin comprobante no se registra", r.destino.includes("Falta adjuntar el comprobante de pago") && r.destino.includes("Pago móvil"), r.destino);
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "zelle", monto: "10", tasa: "", volver_a: fichaDetal });
+  comprobar("un Zelle sin comprobante tampoco", r.destino.includes("Falta adjuntar el comprobante de pago"), r.destino);
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "efectivo_usd", monto: "1", tasa: "", volver_a: fichaDetal });
+  const [efectivo] = await consultar("select max(id) as id from pagos where cliente_id = ?", [detalId]);
+  comprobar("en efectivo no hace falta comprobante", r.destino.includes("Abono registrado") && Boolean(efectivo?.id), r.destino);
+  await enviar(`/admin/pagos/${efectivo.id}/eliminar`, 'name="id"', { id: String(efectivo.id) });
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "", monto: "1", tasa: "", volver_a: fichaDetal });
+  comprobar("sin decir cómo pagó, no se registra", r.destino.includes("Elige cómo pagó"), r.destino);
 
   r = await enviar(`/admin/clientes/${clienteId}`, 'name="monto"', {
     cliente_id: String(clienteId), fecha: "2026-09-20", metodo: "pago_movil", monto: "146", tasa: "36.5",
-    volver_a: `/admin/clientes/${clienteId}`,
+    volver_a: `/admin/clientes/${clienteId}`, foto: fotoFirmada(),
   });
   comprobar(`pago en bolívares con tasa: Bs 146 = USD 4 (${r.ms} ms)`, r.destino.includes("Abono registrado") && cerca((await cuentasDe(clienteId)).pagos, 4));
 
   r = await enviar(`/admin/clientes/${clienteId}`, 'name="monto"', {
     cliente_id: String(clienteId), fecha: "2026-09-20", metodo: "pago_movil", monto: "0.1", tasa: "36.5",
-    volver_a: `/admin/clientes/${clienteId}`,
+    volver_a: `/admin/clientes/${clienteId}`, foto: fotoFirmada(),
   });
   comprobar("un abono que no llega a un centavo de dólar se rechaza", r.destino.includes("no llega a un centavo") && cerca((await cuentasDe(clienteId)).pagos, 4), r.destino);
 
@@ -766,7 +795,7 @@ async function probarNegocio() {
   datos.set("archivo", new File([png], "nota.png", { type: "image/png" }));
   let respuesta = await fetch(base + `/admin/clientes/${clienteId}`, { method: "POST", headers: { cookie }, body: datos, redirect: "manual" });
   // Ya había tres: la de la venta entregada y las dos de marcar el pedido entregado.
-  comprobar("subir la foto de la nota", respuesta.status === 303 && (await cuentasDe(clienteId)).fotos === 4, `${respuesta.status} ${JSON.stringify(await cuentasDe(clienteId))}`);
+  comprobar("subir la foto de la nota", respuesta.status === 303 && (await cuentasDe(clienteId)).fotos === 5, `${respuesta.status} ${JSON.stringify(await cuentasDe(clienteId))}`);
   const conFoto = (await pagina(`/admin/clientes/${clienteId}`)).html;
   const adjuntoId = Number(conFoto.match(/\/admin\/adjuntos\/(\d+)"/)?.[1]);
   respuesta = await fetch(base + `/admin/adjuntos/${adjuntoId}`, { headers: { cookie } });

@@ -19,14 +19,19 @@ const ESPERA_MAXIMA_MS = 25_000;
 /** Con esta variable, en las pruebas, la «lectura» viene escrita dentro de la propia imagen. */
 const FALSO = "LECTOR_DE_NOTAS_FALSO";
 
-const INSTRUCCIONES_NOTA = `Eres el lector de notas de entrega de una quesería de Barquisimeto (Venezuela).
+/** Un producto del catálogo, para que el lector diga cuál es cada línea de la nota. */
+export type ProductoDelCatalogo = { clave: string; nombre: string };
+
+const instruccionesNota = (catalogo: ProductoDelCatalogo[]) => `Eres el lector de notas de entrega de una quesería de Barquisimeto (Venezuela).
 Te llega la foto de una hoja de talonario escrita a mano: arriba «Sello» y las casillas DIA / MES / AÑO y N.º; luego «Señor(es)», «Dirección» y «RIF»; una tabla con las columnas CANT., DESCRIPCIÓN, P.Unit. e IMPORTE; abajo SUB TOTAL, TOTAL y «FIRMA DEL CLIENTE».
+Los productos que vende el negocio, cada uno con su clave:
+${catalogo.map((p) => `- ${p.clave}: ${p.nombre}`).join("\n")}
 Contesta SOLO con un JSON con esta forma exacta, sin texto alrededor:
-{"es_nota": true, "fecha": "AAAA-MM-DD", "lineas": [{"descripcion": "...", "precio": 7.7, "importe": 38.5}], "total": 38.5, "firmada": true}
+{"es_nota": true, "fecha": "AAAA-MM-DD", "lineas": [{"descripcion": "mozzarella cuadrada", "clave": "2", "piezas": 2, "cantidad": 5, "precio": 7.7, "importe": 38.5}], "total": 38.5, "firmada": true}
 Reglas:
 - "es_nota" es true solo si la foto es una nota o factura de este tipo (una hoja con tabla de cantidades e importes). Otra cosa (una persona, un producto, una pantalla, un papel distinto) es false.
 - "fecha" sale de las casillas DIA / MES / AÑO. Un año de dos cifras es 20AA. Si no se lee, null.
-- "lineas": una por renglón escrito de la tabla, con el precio unitario y el importe como números (la coma es el decimal: «38,5» es 38.5). Lo que no se lea, null.
+- "lineas": una por renglón escrito de la tabla. "descripcion" es lo que dice el renglón, tal cual. "clave" es la clave del producto de la lista que corresponde a ese renglón, por el tipo de queso y por la marca si la nombra; si no corresponde a ninguno o no estás seguro de la marca, null. "piezas" son las piezas o bloques si se anotan («2 pza»). "cantidad" son los kilos (o cartones, o unidades) por los que se cobra; si el renglón solo dice piezas, null. "precio" es el precio unitario e "importe" el importe, como números (la coma es el decimal: «38,5» es 38.5). Lo que no se lea, null.
 - Ignora lo que se transparenta de otras hojas, los sellos y lo tachado.
 - "total" es el número de la casilla TOTAL (o SUB TOTAL si TOTAL está vacío). Si no se lee, null.
 - "firmada" es true si hay una firma sobre «FIRMA DEL CLIENTE», false si ese sitio está vacío, null si no se ve.
@@ -38,7 +43,7 @@ Contesta SOLO con un JSON con esta forma exacta, sin texto alrededor:
 {"es_comprobante": true, "metodo": "pago_movil", "moneda": "VES", "monto": 3650.00, "fecha": "AAAA-MM-DD", "referencia": "004512", "banco": "Banesco"}
 Reglas:
 - "es_comprobante" es true solo si la imagen es el comprobante de un pago o transferencia (un recibo o una pantalla con monto, fecha y referencia). Otra cosa es false.
-- "metodo": "pago_movil" si dice pago móvil o P2P; "transferencia" si es una transferencia bancaria; "zelle" si es Zelle; "otro" en cualquier otro caso.
+- "metodo": "pago_movil" si dice pago móvil o P2P; "transferencia" si es una transferencia bancaria; "zelle" si es Zelle; "binance" si es Binance (Binance Pay, USDT); "otro" en cualquier otro caso.
 - "moneda": "VES" si el monto está en bolívares (Bs, Bs.S, VES); "USD" si está en dólares ($, USD). Si no se sabe, null.
 - "monto": el monto pagado, como número. En Venezuela el punto separa los miles y la coma los decimales: «3.650,00» es 3650.00.
 - "fecha": la fecha del pago en AAAA-MM-DD. En Venezuela se escribe día/mes/año: «21/09/2026» es 2026-09-21. Si no se lee, null.
@@ -100,8 +105,8 @@ async function preguntar(instrucciones: string, foto: FotoParaLeer, que: string)
  * Lee la nota de papel. Devuelve null si no hay lector, si no contesta a
  * tiempo o si contesta algo que no se entiende: nunca frena una venta.
  */
-export async function leerNota(foto: FotoParaLeer): Promise<NotaLeida | null> {
-  const texto = process.env[FALSO] ? textoFalso(foto, '{"es_nota"') : await preguntar(INSTRUCCIONES_NOTA, foto, "esta nota");
+export async function leerNota(foto: FotoParaLeer, catalogo: ProductoDelCatalogo[]): Promise<NotaLeida | null> {
+  const texto = process.env[FALSO] ? textoFalso(foto, '{"es_nota"') : await preguntar(instruccionesNota(catalogo), foto, "esta nota");
   if (texto === null) return null;
   const nota = interpretarLectura(texto);
   if (!nota && !process.env[FALSO]) console.error(`El lector de notas contestó algo que no se entiende: ${texto.slice(0, 300)}`);

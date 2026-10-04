@@ -1,5 +1,5 @@
 import { guardarPago } from "@/lib/acciones";
-import { METODOS_PAGO, METODOS_EN_BOLIVARES, hoy } from "@/lib/dinero";
+import { METODOS_PAGO, METODOS_EN_BOLIVARES, METODOS_CON_COMPROBANTE, hoy } from "@/lib/dinero";
 import type { ClienteConSaldo } from "@/lib/clientes";
 import { lectorDisponible } from "@/lib/lector-de-notas";
 import { EntradaFoto } from "@/components/entrada-foto";
@@ -82,8 +82,11 @@ export function FormularioPago({
           <input id="pago-fecha" name="fecha" type="date" required defaultValue={escrito(parametros, "fecha") || hoy()} />
         </div>
         <div className="campo">
-          <label htmlFor="pago-metodo">Método</label>
-          <select id="pago-metodo" name="metodo" required defaultValue={escrito(parametros, "metodo") || "pago_movil"}>
+          <label htmlFor="pago-metodo">{conCaptura ? "Cómo pagó" : "Método"}</label>
+          <select id="pago-metodo" name="metodo" required defaultValue={escrito(parametros, "metodo")}>
+            <option value="" disabled>
+              {conCaptura ? "Elige cómo pagó" : "Elige el método"}
+            </option>
             {Object.entries(METODOS_PAGO).map(([valor, nombre]) => (
               <option key={valor} value={valor}>
                 {nombre}
@@ -141,13 +144,13 @@ export function FormularioPago({
 
       {conCaptura && (
         <div className="campo">
-          <label htmlFor="pago-captura">Captura del pago (opcional)</label>
+          <label htmlFor="pago-captura">Comprobante de pago</label>
           {fotoEnEspera && <input type="hidden" name="foto_espera" value={fotoEnEspera} />}
           <EntradaFoto nombre="foto" id="pago-captura" opcional soloFoto ladoMaximo={1400} />
           <span className="ayuda">
             {fotoEnEspera
               ? "La captura ya está guardada; solo pon otra si quieres cambiarla."
-              : "La captura del pago móvil o de la transferencia. Queda guardada con el abono."}
+              : `La captura del pago. Obligatoria con ${METODOS_CON_COMPROBANTE.map((m) => METODOS_PAGO[m]).join(", ").replace(/, ([^,]+)$/, " y $1").toLowerCase()}; en efectivo no hace falta. Queda guardada con el abono.`}
             {seLee && !fotoEnEspera ? " Se lee sola: monto, fecha y referencia, y se pasa a dólares con la tasa del día." : ""}
           </span>
           {pideConfirmar && (
