@@ -26,3 +26,8 @@ export function esEnlaceValido(texto: string): boolean {
 export function direccionDeCuenta(enlace: string): string {
   return `${negocio.web}/cuenta/${enlace}`;
 }
+
+/** La de un proveedor: lo que el negocio le debe, con sus compras y sus pagos. Mismo enlace, otra puerta. */
+export function direccionDeCuentaDeProveedor(enlace: string): string {
+  return `${negocio.web}/proveedor/${enlace}`;
+}

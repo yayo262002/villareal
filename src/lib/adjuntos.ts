@@ -4,7 +4,9 @@ import { ejecutar, fila, filas } from "./db";
 /**
  * Fotos de las notas de entrega. Por ahora el negocio no factura: la nota
  * en papel es el comprobante, y aquí queda la foto unida al cliente (y a
- * la venta, si se elige) para que no se pierda.
+ * la venta, si se elige) para que no se pierda. También las capturas de
+ * los pagos: la de un abono va en `adjuntos` con el cliente; la de un
+ * pago a un proveedor, en `adjuntos_proveedores` con el proveedor.
  */
 
 export type Adjunto = {
@@ -62,4 +64,30 @@ export async function guardarAdjunto(datos: {
 export async function eliminarAdjunto(id: number): Promise<boolean> {
   const r = await ejecutar("delete from adjuntos where id = ?", [id]);
   return r.cambios > 0;
+}
+
+// ---------- Capturas de los pagos a proveedores ----------
+
+/** La captura de un pago a un proveedor: como `Adjunto`, pero unida al proveedor y a su pago. */
+export type AdjuntoDeProveedor = {
+  id: number;
+  proveedor_id: number;
+  pago_proveedor_id: number | null;
+  descripcion: string;
+  tipo: string;
+  tamano: number;
+  creado_en: string;
+};
+
+export type AdjuntoDeProveedorConDatos = AdjuntoDeProveedor & { datos: ArrayBuffer };
+
+export async function listarAdjuntosDeProveedor(proveedorId: number): Promise<AdjuntoDeProveedor[]> {
+  return filas<AdjuntoDeProveedor>(
+    "select id, proveedor_id, pago_proveedor_id, descripcion, tipo, tamano, creado_en from adjuntos_proveedores where proveedor_id = ? order by id desc",
+    [proveedorId],
+  );
+}
+
+export async function buscarAdjuntoDeProveedor(id: number): Promise<AdjuntoDeProveedorConDatos | null> {
+  return fila<AdjuntoDeProveedorConDatos>("select * from adjuntos_proveedores where id = ?", [id]);
 }

@@ -150,6 +150,7 @@ src/lib/estadisticas.ts   Lo que se saca de los movimientos: por producto, por c
 src/lib/exportaciones.ts  El Excel de cada día, guardado solo por la tarea diaria
 src/lib/exportaciones-locales.ts  Los Excel que deja npm run copia en el ordenador
 src/lib/cuenta-cliente.ts Lo que un cliente ve de su cuenta con su enlace
+src/lib/cuenta-proveedor.ts  Lo que un proveedor ve de nuestra cuenta con él, con su enlace
 src/components/cuenta.tsx El marco, las pestañas y las tarjetas de la cuenta del cliente
 src/lib/exportar.ts       Lo que se descarga para Excel: movimientos y resumen por día
 src/lib/buscar.ts         Buscar sin tildes ni mayúsculas; una nota por su número
@@ -159,14 +160,15 @@ src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho; sitúa a 
 src/lib/plano.ts          La cuadrícula del centro puesta sobre el mapa de verdad
 src/lib/mapa.ts           Pregunta al mapa libre por una dirección sin calle y carrera
 src/lib/entregas.ts       Pedidos por entregar: qué lleva cada cliente y qué cargar
-src/lib/adjuntos.ts       Fotos de las notas de entrega
+src/lib/adjuntos.ts       Fotos de las notas de entrega y capturas de los pagos (de clientes y a proveedores)
 src/lib/fotos-en-espera.ts  La foto de la nota mientras el formulario va y vuelve
 src/lib/lector-de-notas.ts  Le enseña la foto de la nota a Claude: fecha, líneas, total, firma
 src/lib/nota-leida.ts     Interpreta lo leído y dice en qué no cuadra con lo anotado
 src/lib/captura-leida.ts  Lo leído en la captura de un pago: rellena el abono o avisa si no cuadra
 src/lib/whatsapp.ts       Mensajes para WhatsApp: cobro, nota, recibo, en camino, pedir reseña, el enlace de cuenta
-src/lib/enlace-cuenta.ts  El enlace personal de cada cliente: cómo se hace y adónde lleva
+src/lib/enlace-cuenta.ts  El enlace personal de cada cliente y cada proveedor: cómo se hace y adónde lleva
 src/app/cuenta/           La cuenta de un cliente, para él, con su enlace y sin clave
+src/app/proveedor/        La cuenta de un proveedor, para él, con su enlace y sin clave
 src/lib/copias-nube.ts    Copias automáticas guardadas en la base
 src/app/api/tarea-diaria/ Lo que Vercel hace solo cada mañana: tasa y copia
 src/app/api/copia-automatica/  Solo la copia, para lanzarla aparte
@@ -555,6 +557,19 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   antiguas primero, igual que con los clientes, y cada compra sale como
   pagada, abonada o por pagar, y vencida si pasó el plazo.
 - El Resumen enseña «Debo a proveedores» y «A quién le debo», con el plazo.
+- **La captura del pago** al proveedor se adjunta al registrarlo (no es
+  obligatoria: se guarda si la hay) y queda unida al pago, con su enlace
+  «Captura» en la ficha; se borra con él. Con `ANTHROPIC_API_KEY` se lee
+  igual que la de un abono: sin monto, el formulario vuelve relleno con lo
+  leído; con monto, se comprueba. **La tasa es la del día del pago**: con
+  una fecha de días atrás el formulario trae la tasa de ese día, y si se
+  deja vacía se usa esa (`tasaEnFecha`), como en los abonos.
+- **Su enlace de cuenta.** Como el del cliente: desde su ficha, «Crear su
+  enlace de cuenta» y «Mandárselo por WhatsApp». Con `/proveedor/<enlace>`
+  el proveedor ve, sin clave, lo que el negocio le debe (en dólares y en
+  bolívares a la tasa de hoy), cada compra con lo pagado y su plazo, y cada
+  pago con su comprobante (`src/lib/cuenta-proveedor.ts`). Solo lo suyo,
+  fuera de los buscadores, y se renueva si se compartió de más.
 - Una compra o un pago mal anotado se borra y se registra de nuevo. Borrar
   un proveedor pide la clave del panel.
 - Las compras no cambian el costo que figura en Productos (del que sale el

@@ -53,7 +53,7 @@ export default async function PaginaEliminarPagoProveedor({ params }: { params: 
         </dl>
 
         <p className={estilos.ayuda}>
-          Se quita del historial y vuelves a deber {usd(pago.monto_usd)} más. No se puede deshacer.
+          Se quita del historial y vuelves a deber {usd(pago.monto_usd)} más. Si tiene captura, se borra con él. No se puede deshacer.
         </p>
 
         <form action={borrarPagoProveedor} className={estilos.accionesFila}>

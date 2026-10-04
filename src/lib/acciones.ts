@@ -26,6 +26,7 @@ import {
   eliminarCompra,
   eliminarPagoProveedor,
   eliminarProveedor,
+  ponerEnlaceDeProveedor,
   registrarPagoProveedor,
   type LineaDeCompraNueva,
 } from "./proveedores";
@@ -70,7 +71,7 @@ import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
 import { TAMANO_MAXIMO_ADJUNTO, buscarAdjunto, eliminarAdjunto, esTipoAdjunto, guardarAdjunto } from "./adjuntos";
-import { anotarLecturaDeFoto, aparcarFoto, buscarFotoEnEspera, olvidarFotoEnEspera, pasarFotoAAdjuntos } from "./fotos-en-espera";
+import { anotarLecturaDeFoto, aparcarFoto, buscarFotoEnEspera, olvidarFotoEnEspera, pasarFotoAAdjuntos, pasarFotoAAdjuntosDeProveedor } from "./fotos-en-espera";
 import { lectorDisponible, leerCaptura, leerNota, type ProductoDelCatalogo } from "./lector-de-notas";
 import { compararNota, interpretarLectura, type NotaLeida } from "./nota-leida";
 import { compararCaptura, describirCaptura, interpretarCaptura, propuestaDesdeCaptura, type CapturaLeida } from "./captura-leida";
@@ -87,7 +88,21 @@ import {
   quitarResenasDeEjemplo,
 } from "./resenas";
 import { leerResena } from "./resenas-texto";
-import { METODOS_PAGO, bs, cantidad, esMetodoPago, esUnidad, fechaCorta, hoy, monedaDelMetodo, necesitaComprobante, redondear, usd } from "./dinero";
+import {
+  METODOS_PAGO,
+  bs,
+  cantidad,
+  esMetodoPago,
+  esUnidad,
+  fechaCorta,
+  hoy,
+  monedaDelMetodo,
+  necesitaComprobante,
+  redondear,
+  usd,
+  type MetodoPago,
+  type Moneda,
+} from "./dinero";
 
 /**
  * Todas las acciones del panel. Cada una comprueba la sesión primero: una
@@ -234,6 +249,135 @@ function avisoDeLaNota(reparos: string[], despues: string): string {
 /** La foto aparcada pasa a ser la de esa venta. */
 async function guardarFotoDeLaNota(foto: FotoDeLaNota, clienteId: number, ventaId: number): Promise<void> {
   await pasarFotoAAdjuntos(foto.id, clienteId, ventaId, `Nota N.º ${numeroDeNota(ventaId)} firmada`);
+}
+
+type Volver = (mensaje: string, como?: "error" | "ok", casilla?: "confirmar_captura" | "confirmar_monto") => never;
+
+type PagoRevisado = {
+  /** El cliente o el proveedor. */
+  id: number;
+  fecha: string;
+  metodo: MetodoPago;
+  moneda: Moneda;
+  monto: number;
+  /** La tasa que se guarda: solo en bolívares. */
+  tasa: number | null;
+  /** « Tasa del 21/09/2026: Bs 36,50 por dólar (…).» si se usó la de ese día; si no, vacío. */
+  notaDeTasa: string;
+  foto: FotoDeLaNota | null;
+  lectura: LecturaDeCaptura;
+  reparos: string[];
+  volver: Volver;
+};
+
+type QuienPaga = {
+  campoId: "cliente_id" | "proveedor_id";
+  sinId: string;
+  /** El abono de un cliente exige la captura con pago móvil, transferencia, Zelle y Binance; el pago a un proveedor, no. */
+  comprobanteObligatorio: boolean;
+  nombre: "abono" | "pago";
+  boton: string;
+};
+
+/**
+ * Lo común del abono de un cliente y del pago a un proveedor. La captura se
+ * aparca desde el principio (si el formulario vuelve, no hay que repetirla)
+ * y, si hay lector, se lee: sin monto, el formulario vuelve relleno con lo
+ * leído y el equivalente en dólares a la tasa de ese día; con monto, se
+ * comprueba contra la captura. Un pago en bolívares sin tasa escrita toma
+ * la que había el día del pago. Lo raro pide confirmar.
+ */
+async function revisarPago(datos: FormData, origen: string, quien: QuienPaga): Promise<PagoRevisado> {
+  const id = numero(datos, quien.campoId);
+  const fecha = texto(datos, "fecha");
+  const metodo = texto(datos, "metodo");
+  const monto = numero(datos, "monto");
+  const tasa = numero(datos, "tasa");
+
+  const { foto, mala: fotoMala } = await recogerFotoDeLaNota(datos);
+  if (fotoMala) volverConError(origen, fotoMala);
+  // Con lo escrito en la dirección, el formulario vuelve relleno.
+  const escrito = new URLSearchParams();
+  for (const campo of [quien.campoId, "fecha", "metodo", "monto", "tasa", "referencia", "nota"]) if (texto(datos, campo)) escrito.set(campo, texto(datos, campo));
+  if (foto) escrito.set("foto_espera", String(foto.id));
+  const volver: Volver = (mensaje, como = "error", casilla) => {
+    if (casilla) escrito.set(casilla, "1");
+    const destino = `${origen}${origen.includes("?") ? "&" : "?"}${escrito.toString()}`;
+    if (como === "ok") volverConExito(destino, mensaje);
+    volverConError(destino, mensaje);
+  };
+
+  if (!id) volver(quien.sinId);
+
+  // Con la captura y sin monto, se lee y el formulario vuelve relleno para revisar.
+  let lectura: LecturaDeCaptura = { captura: null, intentada: false };
+  if (foto) lectura = await leerLaCaptura(foto);
+  if (lectura.captura && (monto === null || monto <= 0)) {
+    // El equivalente en dólares va con la tasa del día del pago que dice la captura.
+    const diaDelPago = lectura.captura.fecha && lectura.captura.fecha <= hoy() ? lectura.captura.fecha : hoy();
+    const tasaDelDia = (await tasaEnFecha(diaDelPago))?.valor ?? tasa;
+    const propuesta = propuestaDesdeCaptura(lectura.captura, tasaDelDia, hoy());
+    if (propuesta) {
+      escrito.set("metodo", propuesta.metodo);
+      escrito.set("monto", String(propuesta.monto));
+      escrito.set("fecha", propuesta.fecha);
+      if (propuesta.referencia) escrito.set("referencia", propuesta.referencia);
+      if (propuesta.tasa) escrito.set("tasa", String(propuesta.tasa));
+      escrito.set("leida", "1");
+      volver(`${describirCaptura(lectura.captura, propuesta)} Revisa y pulsa «${quien.boton}».`, "ok");
+    }
+    volver(
+      lectura.captura.esComprobante
+        ? `No pude sacar el monto de la captura. Escríbelo tú y guarda: la captura queda con el ${quien.nombre}.`
+        : "Esa foto no parece el comprobante de un pago. Si lo es, escribe el monto y guarda.",
+    );
+  }
+
+  if (!fecha) volver("Falta la fecha.");
+  if (!esMetodoPago(metodo)) volver(quien.nombre === "abono" ? "Elige cómo pagó el cliente." : "Elige cómo pagaste.");
+  // Un pago móvil, una transferencia, un Zelle o un Binance dejan comprobante: el abono de un cliente no se registra sin su captura.
+  if (quien.comprobanteObligatorio && necesitaComprobante(metodo) && !foto) {
+    volver(`Falta adjuntar el comprobante de pago: la captura del ${METODOS_PAGO[metodo]}. Sin ella no se registra el abono.`);
+  }
+  if (monto === null || monto <= 0) volver(foto ? "Escribe el monto, o déjalo vacío para que se lea de la captura." : "El monto tiene que ser mayor que cero.");
+
+  const moneda = monedaDelMetodo(metodo);
+  // En bolívares hace falta la tasa: la escrita, o si no la que había el día del pago.
+  let tasaUsada = tasa;
+  let notaDeTasa = "";
+  if (moneda === "VES" && (tasaUsada === null || tasaUsada <= 0)) {
+    const deEseDia = await tasaEnFecha(fecha);
+    if (!deEseDia) volver("Un pago en bolívares necesita la tasa (Bs por dólar) y no hay ninguna guardada: escríbela.");
+    tasaUsada = deEseDia.valor;
+    notaDeTasa = ` Tasa del ${fechaCorta(fecha)}: ${bs(deEseDia.valor)} por dólar (${describirFuenteDeTasa(deEseDia)}).`;
+  }
+  // Un monto en bolívares que no llega a un dólar casi siempre es un monto en dólares con el método equivocado.
+  // (Lo que no llega ni a un centavo lo rechaza el registro sin preguntar.)
+  if (moneda === "VES" && tasaUsada && monto < tasaUsada && redondear(monto / tasaUsada) >= 0.01 && texto(datos, "confirmar_monto") !== "1") {
+    volver(
+      `${bs(monto)} son ${usd(redondear(monto / tasaUsada))} a ${bs(tasaUsada)} por dólar. ¿Seguro que el ${quien.nombre} fue en bolívares? Si ${quien.nombre === "abono" ? "el cliente pagó" : "pagaste"} en dólares, elige un método en dólares; si está bien así, marca «El monto es correcto» y guarda otra vez.`,
+      "error",
+      "confirmar_monto",
+    );
+  }
+
+  // Con el monto escrito, la captura se comprueba: lo que no cuadre se avisa antes de guardar.
+  let reparos: string[] = [];
+  if (lectura.captura) {
+    reparos = compararCaptura(lectura.captura, { monto, moneda, fecha, metodo });
+    if (reparos.length > 0 && texto(datos, "confirmar_captura") !== "1") {
+      volver(`${reparos.join(" ")} Revisa la captura y lo escrito; si está bien así, marca «Ya revisé la captura» y guarda otra vez.`, "error", "confirmar_captura");
+    }
+  }
+
+  return { id, fecha, metodo, moneda, monto, tasa: moneda === "VES" ? tasaUsada : null, notaDeTasa, foto, lectura, reparos, volver };
+}
+
+/** Lo que se le dice al dueño de la captura, después de guardar. */
+function comentarioDeLaCaptura(p: PagoRevisado): string {
+  if (!p.foto) return "";
+  if (p.lectura.intentada && !p.lectura.captura) return " (La captura no se pudo leer; queda guardada igual.)";
+  return p.reparos.length > 0 ? " Guardado con los avisos que revisaste." : "";
 }
 
 // ---------- Sesión ----------
@@ -562,40 +706,37 @@ export async function borrarCompra(datos: FormData): Promise<void> {
   volverConExito(`/admin/proveedores/${compra.proveedor_id}`, "Compra eliminada.");
 }
 
-/** Un pago al proveedor. Mismo formulario que el abono de un cliente. */
+/**
+ * Un pago al proveedor. Mismo formulario y misma captura que el abono de
+ * un cliente (aquí la captura no es obligatoria: se guarda si la hay) y
+ * la misma tasa: la del día del pago si no se escribe otra.
+ */
 export async function guardarPagoProveedor(datos: FormData): Promise<void> {
   await exigirSesion();
   const proveedorId = numero(datos, "proveedor_id");
   const origen = volverA(datos, proveedorId ? `/admin/proveedores/${proveedorId}` : "/admin/proveedores");
-  const fecha = texto(datos, "fecha");
-  const metodo = texto(datos, "metodo");
-  const monto = numero(datos, "monto");
-  const tasa = numero(datos, "tasa");
+  const p = await revisarPago(datos, origen, { campoId: "proveedor_id", sinId: "Elige un proveedor.", comprobanteObligatorio: false, nombre: "pago", boton: "Registrar pago" });
+  if (!(await buscarProveedor(p.id))) volverConError("/admin/proveedores", "No se encontró el proveedor.");
 
-  if (!proveedorId || !(await buscarProveedor(proveedorId))) volverConError(origen, "Elige un proveedor.");
-  if (!fecha) volverConError(origen, "Falta la fecha.");
-  if (!esMetodoPago(metodo)) volverConError(origen, "Elige el método de pago.");
-  if (monto === null || monto <= 0) volverConError(origen, "El monto tiene que ser mayor que cero.");
-  const moneda = monedaDelMetodo(metodo);
-  if (moneda === "VES" && (tasa === null || tasa <= 0)) {
-    volverConError(origen, "Un pago en bolívares necesita la tasa del día (Bs por dólar).");
-  }
-
+  let pagoId = 0;
   try {
-    await registrarPagoProveedor({
-      proveedor_id: proveedorId,
-      fecha,
-      metodo,
-      moneda,
-      monto,
-      tasa: moneda === "VES" ? tasa : null,
+    pagoId = await registrarPagoProveedor({
+      proveedor_id: p.id,
+      fecha: p.fecha,
+      metodo: p.metodo,
+      moneda: p.moneda,
+      monto: p.monto,
+      tasa: p.tasa,
       referencia: texto(datos, "referencia"),
       nota: texto(datos, "nota"),
     });
+    if (p.foto) await pasarFotoAAdjuntosDeProveedor(p.foto.id, p.id, pagoId, `Captura del pago del ${fechaCorta(p.fecha)}`);
   } catch (error) {
-    volverConError(origen, mensajeDe(error));
+    // Si el pago ya entró y solo falló la captura, no se vuelve al formulario: se anotaría dos veces.
+    if (pagoId) volverConExito(`/admin/proveedores/${p.id}`, `Pago registrado, pero la captura no se guardó: ${mensajeDe(error)}`);
+    p.volver(mensajeDe(error));
   }
-  volverConExito(`/admin/proveedores/${proveedorId}`, "Pago al proveedor registrado.");
+  volverConExito(`/admin/proveedores/${p.id}`, `Pago al proveedor registrado${p.foto ? " con su captura" : ""}.${p.notaDeTasa}${comentarioDeLaCaptura(p)}`);
 }
 
 /** La confirmación está en `/admin/pagos-proveedor/[id]/eliminar`. */
@@ -626,6 +767,21 @@ export async function cambiarEnlaceDeCuenta(datos: FormData): Promise<void> {
   volverConExito(
     `/admin/clientes/${id}#enlace`,
     renovar ? "Enlace renovado: el anterior ya no funciona. Mándale el nuevo." : "Enlace creado. Mándaselo por WhatsApp: con él ve su cuenta al día.",
+  );
+}
+
+/** El enlace personal con el que el proveedor ve nuestra cuenta con él. Igual que el del cliente. */
+export async function cambiarEnlaceDeProveedor(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const proveedor = id ? await buscarProveedor(id) : null;
+  if (!id || !proveedor) volverConError("/admin/proveedores", "No se encontró el proveedor.");
+  const renovar = texto(datos, "enlace_de_cuenta") === "renovar";
+  if (proveedor.enlace && !renovar) volverConExito(`/admin/proveedores/${id}#enlace`, "Este proveedor ya tiene su enlace.");
+  await ponerEnlaceDeProveedor(id, nuevoEnlace());
+  volverConExito(
+    `/admin/proveedores/${id}#enlace`,
+    renovar ? "Enlace renovado: el anterior ya no funciona. Mándale el nuevo." : "Enlace creado. Mándaselo por WhatsApp: con él ve nuestra cuenta con él, al día.",
   );
 }
 
@@ -1029,114 +1185,35 @@ export async function borrarVenta(datos: FormData): Promise<void> {
 // ---------- Pagos ----------
 
 /**
- * Registra un abono. Con la captura del pago (pago móvil, transferencia),
- * la captura se aparca al llegar y se guarda con el abono; si hay lector,
- * se lee: con el monto vacío, el formulario vuelve relleno con lo leído y
- * el equivalente en dólares a la tasa del día; con el monto escrito, se
- * comprueba contra la captura y lo que no cuadra se avisa.
+ * Registra un abono. La captura del pago (obligatoria con pago móvil,
+ * transferencia, Zelle y Binance) se guarda con el abono; lo que se lee de
+ * ella y lo que se comprueba está en `revisarPago`.
  */
 export async function guardarPago(datos: FormData): Promise<void> {
   await exigirSesion();
   const origen = volverA(datos, "/admin/pagos");
-  const clienteId = numero(datos, "cliente_id");
-  const fecha = texto(datos, "fecha");
-  const metodo = texto(datos, "metodo");
-  const monto = numero(datos, "monto");
-  const tasa = numero(datos, "tasa");
-
-  // La captura se aparca desde el principio: si el formulario vuelve, no hay que repetirla.
-  const { foto, mala: fotoMala } = await recogerFotoDeLaNota(datos);
-  if (fotoMala) volverConError(origen, fotoMala);
-  // Con lo escrito en la dirección, el formulario vuelve relleno.
-  const escrito = new URLSearchParams();
-  for (const campo of ["cliente_id", "fecha", "metodo", "monto", "tasa", "referencia", "nota"]) if (texto(datos, campo)) escrito.set(campo, texto(datos, campo));
-  if (foto) escrito.set("foto_espera", String(foto.id));
-  const volver: (mensaje: string, como?: "error" | "ok", casilla?: "confirmar_captura" | "confirmar_monto") => never = (mensaje, como = "error", casilla) => {
-    if (casilla) escrito.set(casilla, "1");
-    const destino = `${origen}${origen.includes("?") ? "&" : "?"}${escrito.toString()}`;
-    if (como === "ok") volverConExito(destino, mensaje);
-    volverConError(destino, mensaje);
-  };
-
-  if (!clienteId) volver("Elige un cliente.");
-
-  // Con la captura y sin monto, se lee y el formulario vuelve relleno para revisar.
-  let lectura: LecturaDeCaptura = { captura: null, intentada: false };
-  if (foto) lectura = await leerLaCaptura(foto);
-  if (lectura.captura && (monto === null || monto <= 0)) {
-    // El equivalente en dólares va con la tasa del día del pago que dice la captura.
-    const diaDelPago = lectura.captura.fecha && lectura.captura.fecha <= hoy() ? lectura.captura.fecha : hoy();
-    const tasaDelDia = (await tasaEnFecha(diaDelPago))?.valor ?? tasa;
-    const propuesta = propuestaDesdeCaptura(lectura.captura, tasaDelDia, hoy());
-    if (propuesta) {
-      escrito.set("metodo", propuesta.metodo);
-      escrito.set("monto", String(propuesta.monto));
-      escrito.set("fecha", propuesta.fecha);
-      if (propuesta.referencia) escrito.set("referencia", propuesta.referencia);
-      if (propuesta.tasa) escrito.set("tasa", String(propuesta.tasa));
-      escrito.set("leida", "1");
-      volver(`${describirCaptura(lectura.captura, propuesta)} Revisa y pulsa «Registrar abono».`, "ok");
-    }
-    volver(lectura.captura.esComprobante ? "No pude sacar el monto de la captura. Escríbelo tú y guarda: la captura queda con el abono." : "Esa foto no parece el comprobante de un pago. Si lo es, escribe el monto y guarda.");
-  }
-
-  if (!fecha) volver("Falta la fecha.");
-  if (!esMetodoPago(metodo)) volver("Elige cómo pagó el cliente.");
-  // Un pago móvil, una transferencia, un Zelle o un Binance dejan comprobante: sin su captura no se registra.
-  if (necesitaComprobante(metodo) && !foto) {
-    volver(`Falta adjuntar el comprobante de pago: la captura del ${METODOS_PAGO[metodo]}. Sin ella no se registra el abono.`);
-  }
-  if (monto === null || monto <= 0) volver(foto ? "Escribe el monto, o déjalo vacío para que se lea de la captura." : "El monto tiene que ser mayor que cero.");
-
-  const moneda = monedaDelMetodo(metodo);
-  // En bolívares hace falta la tasa: la escrita, o si no la que había el día del pago.
-  let tasaUsada = tasa;
-  let notaDeTasa = "";
-  if (moneda === "VES" && (tasaUsada === null || tasaUsada <= 0)) {
-    const deEseDia = await tasaEnFecha(fecha);
-    if (!deEseDia) volver("Un pago en bolívares necesita la tasa (Bs por dólar) y no hay ninguna guardada: escríbela.");
-    tasaUsada = deEseDia.valor;
-    notaDeTasa = ` Tasa del ${fechaCorta(fecha)}: ${bs(deEseDia.valor)} por dólar (${describirFuenteDeTasa(deEseDia)}).`;
-  }
-  // Un monto en bolívares que no llega a un dólar casi siempre es un monto en dólares con el método equivocado.
-  // (Lo que no llega ni a un centavo lo rechaza `registrarPago` sin preguntar.)
-  if (moneda === "VES" && tasaUsada && monto < tasaUsada && redondear(monto / tasaUsada) >= 0.01 && texto(datos, "confirmar_monto") !== "1") {
-    volver(
-      `${bs(monto)} son ${usd(redondear(monto / tasaUsada))} a ${bs(tasaUsada)} por dólar. ¿Seguro que el abono fue en bolívares? Si el cliente pagó en dólares, elige un método en dólares; si está bien así, marca «El monto es correcto» y guarda otra vez.`,
-      "error",
-      "confirmar_monto",
-    );
-  }
-
-  // Con el monto escrito, la captura se comprueba: lo que no cuadre se avisa antes de guardar.
-  let reparos: string[] = [];
-  if (lectura.captura) {
-    reparos = compararCaptura(lectura.captura, { monto, moneda, fecha, metodo });
-    if (reparos.length > 0 && texto(datos, "confirmar_captura") !== "1") {
-      volver(`${reparos.join(" ")} Revisa la captura y lo escrito; si está bien así, marca «Ya revisé la captura» y guarda otra vez.`, "error", "confirmar_captura");
-    }
-  }
+  const p = await revisarPago(datos, origen, { campoId: "cliente_id", sinId: "Elige un cliente.", comprobanteObligatorio: true, nombre: "abono", boton: "Registrar abono" });
+  const clienteId = p.id;
 
   let pagoId = 0;
   try {
     pagoId = await registrarPago({
       cliente_id: clienteId,
-      fecha,
-      metodo,
-      moneda,
-      monto,
-      tasa: moneda === "VES" ? tasaUsada : null,
+      fecha: p.fecha,
+      metodo: p.metodo,
+      moneda: p.moneda,
+      monto: p.monto,
+      tasa: p.tasa,
       referencia: texto(datos, "referencia"),
       nota: texto(datos, "nota"),
     });
-    if (foto) await pasarFotoAAdjuntos(foto.id, clienteId, null, `Captura del abono del ${fechaCorta(fecha)}`, pagoId);
+    if (p.foto) await pasarFotoAAdjuntos(p.foto.id, clienteId, null, `Captura del abono del ${fechaCorta(p.fecha)}`, pagoId);
   } catch (error) {
     // Si el abono ya entró y solo falló la captura, no se vuelve al formulario: se anotaría dos veces.
     if (pagoId) volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado, pero la captura no se guardó: ${mensajeDe(error)}`);
-    volver(mensajeDe(error));
+    p.volver(mensajeDe(error));
   }
-  const comentario = !foto ? "" : lectura.intentada && !lectura.captura ? " (La captura no se pudo leer; queda guardada igual.)" : reparos.length > 0 ? " Guardado con los avisos que revisaste." : "";
-  volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado${foto ? " con su captura" : ""}.${notaDeTasa}${comentario} Abajo, en Abonos, puedes mandarle el recibo.`);
+  volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado${p.foto ? " con su captura" : ""}.${p.notaDeTasa}${comentarioDeLaCaptura(p)} Abajo, en Abonos, puedes mandarle el recibo.`);
 }
 
 /** Igual que `borrarVenta`: la confirmación está en `/admin/pagos/[id]/eliminar`. */

@@ -1251,17 +1251,81 @@ async function probarProveedores() {
   const resumen = legible((await pagina("/admin")).html);
   comprobar("el resumen lo enseña en «A quién le debo»", resumen.indexOf(PROVEEDOR_DE_PRUEBA) > resumen.indexOf("A quién le debo"));
 
+  // La captura del pago al proveedor: se lee sola, el pago va con la tasa de ese día y la captura queda unida a él.
+  const fichaRuta = `/admin/proveedores/${id}`;
+  const capturaProv = { es_comprobante: true, metodo: "pago_movil", moneda: "VES", monto: 3650, fecha: "2026-09-21", referencia: "778899", banco: "Banesco" };
+  r = await enviar(fichaRuta, 'name="monto"', { proveedor_id: String(id), fecha: "2026-09-16", metodo: "pago_movil", monto: "", tasa: "36.5", volver_a: fichaRuta, foto: fotoLeida(capturaProv) });
+  comprobar(
+    "sin monto, la captura del pago al proveedor se lee y el formulario vuelve relleno",
+    r.destino.includes("Leí la captura") && r.destino.includes("monto=3650") && r.destino.includes("fecha=2026-09-21") && r.destino.includes("foto_espera="),
+    r.destino,
+  );
+  const capturaEsperaProv = Number(r.destino.match(/foto_espera=(\d+)/)?.[1]);
+  r = await enviar(fichaRuta, 'name="monto"', {
+    proveedor_id: String(id), fecha: "2026-09-21", metodo: "pago_movil", monto: "3650", tasa: "", referencia: "778899", volver_a: fichaRuta, foto_espera: String(capturaEsperaProv),
+  });
+  const [capturaProveedor] = await consultar(
+    "select a.id, a.pago_proveedor_id, p.monto_usd, p.tasa from adjuntos_proveedores a join pagos_proveedores p on p.id = a.pago_proveedor_id where a.proveedor_id = ?",
+    [id],
+  );
+  comprobar(
+    "el pago entra con la tasa de ese día (sin escribirla) y la captura queda unida a él",
+    r.destino.includes("Pago al proveedor registrado con su captura") && r.destino.includes("Tasa del 21/09/2026") && Boolean(capturaProveedor) &&
+      capturaProveedor.tasa > 0 && cerca(Number(capturaProveedor.monto_usd), 3650 / Number(capturaProveedor.tasa)),
+    `${r.destino} ${JSON.stringify(capturaProveedor)}`,
+  );
+  const fichaConCaptura = (await pagina(fichaRuta)).html;
+  comprobar("la ficha enlaza la captura del pago y el formulario pide cómo pagaste", fichaConCaptura.includes(`/admin/adjuntos-proveedor/${capturaProveedor.id}`) && fichaConCaptura.includes("Cómo pagaste"));
+  const archivo = await pagina(`/admin/adjuntos-proveedor/${capturaProveedor.id}`, cookie, true);
+  comprobar(
+    "la captura se abre con sesión y no sin ella",
+    archivo.status === 200 && archivo.cabeceras.get("content-type") === "image/png" && (await pagina(`/admin/adjuntos-proveedor/${capturaProveedor.id}`, "")).status !== 200,
+    String(archivo.status),
+  );
+
+  // El enlace del proveedor: con él ve nuestra cuenta con él, sin clave.
+  r = await enviar(fichaRuta, 'name="enlace_de_cuenta" value="crear"', { id: String(id), enlace_de_cuenta: "crear" });
+  const [{ enlace: enlaceProv }] = await consultar("select enlace from proveedores where id = ?", [id]);
+  comprobar("crear el enlace del proveedor", r.destino.includes("Enlace creado") && typeof enlaceProv === "string" && enlaceProv.length === 14, r.destino);
+  const cuentaProv = await pagina(`/proveedor/${enlaceProv}`, "");
+  const textoProv = legible(cuentaProv.html);
+  comprobar(
+    "el proveedor ve, sin clave, lo que le debemos, la compra y los pagos con su comprobante",
+    cuentaProv.status === 200 && textoProv.includes(PROVEEDOR_DE_PRUEBA) && textoProv.includes("20 kg de mozzarella") && textoProv.includes("Pago móvil") &&
+      textoProv.includes(`/proveedor/${enlaceProv}/comprobante/${capturaProveedor.id}`) && cuentaProv.html.includes("noindex"),
+    String(cuentaProv.status),
+  );
+  comprobar(
+    "su comprobante se abre con su enlace; otro, o un enlace inventado, dan 404",
+    (await pagina(`/proveedor/${enlaceProv}/comprobante/${capturaProveedor.id}`, "", true)).status === 200 &&
+      (await pagina(`/proveedor/${enlaceProv}/comprobante/999999`, "")).status === 404 && (await pagina("/proveedor/abcdefghjkmnpq", "")).status === 404,
+  );
+  const fichaConEnlace = (await pagina(fichaRuta)).html;
+  comprobar(
+    "la ficha del proveedor enseña el enlace, lo manda por WhatsApp y los buscadores no entran",
+    fichaConEnlace.includes(`/proveedor/${enlaceProv}`) && fichaConEnlace.includes("Mandárselo por WhatsApp") && (await (await fetch(base + "/robots.txt")).text()).includes("/proveedor"),
+  );
+  r = await enviar(fichaRuta, 'name="enlace_de_cuenta" value="renovar"', { id: String(id), enlace_de_cuenta: "renovar" });
+  comprobar("renovar el enlace: el viejo deja de funcionar", r.destino.includes("Enlace renovado") && (await pagina(`/proveedor/${enlaceProv}`, "")).status === 404, r.destino);
+
+
   const [compra] = await consultar("select id from compras where proveedor_id = ?", [id]);
-  const [pago] = await consultar("select id from pagos_proveedores where proveedor_id = ?", [id]);
+  // El último pago es el de la captura: al borrarlo, la captura se va con él.
+  const [pago] = await consultar("select id from pagos_proveedores where proveedor_id = ? order by id desc limit 1", [id]);
   r = await enviar(`/admin/compras/${compra.id}/eliminar`, 'name="id"', { id: String(compra.id) });
   comprobar("borrar una compra", r.destino.includes("Compra eliminada"), r.destino);
   r = await enviar(`/admin/pagos-proveedor/${pago.id}/eliminar`, 'name="id"', { id: String(pago.id) });
-  comprobar("borrar un pago al proveedor", r.destino.includes("Pago eliminado"), r.destino);
+  comprobar("borrar un pago al proveedor se lleva su captura", r.destino.includes("Pago eliminado") && (await consultar("select count(*) as n from adjuntos_proveedores where pago_proveedor_id = ?", [pago.id]))[0].n == 0, r.destino);
 
   r = await enviar(`/admin/proveedores/${id}/eliminar`, 'name="clave"', { id: String(id), clave: "no-es-la-clave" });
   comprobar("borrar un proveedor con una clave mala no borra", r.destino.includes("La clave no es correcta"), r.destino);
   r = await enviar(`/admin/proveedores/${id}/eliminar`, 'name="clave"', { id: String(id), clave: env.ADMIN_CLAVE });
-  comprobar("con la clave buena se borra el proveedor", r.destino.includes("eliminado con sus compras") && (await consultar("select count(*) as n from proveedores where id = ?", [id]))[0].n == 0, r.destino);
+  comprobar(
+    "con la clave buena se borra el proveedor, con sus capturas",
+    r.destino.includes("eliminado con sus compras") && (await consultar("select count(*) as n from proveedores where id = ?", [id]))[0].n == 0 &&
+      (await consultar("select count(*) as n from adjuntos_proveedores where proveedor_id = ?", [id]))[0].n == 0,
+    r.destino,
+  );
 }
 
 /**

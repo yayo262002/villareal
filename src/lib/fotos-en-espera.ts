@@ -46,6 +46,19 @@ export async function pasarFotoAAdjuntos(id: number, clienteId: number, ventaId:
   });
 }
 
+/** La captura aparcada pasa a ser la de ese pago a un proveedor. */
+export async function pasarFotoAAdjuntosDeProveedor(id: number, proveedorId: number, pagoId: number, descripcion: string): Promise<void> {
+  await transaccion(async (tx) => {
+    const r = await tx.execute({
+      sql: `insert into adjuntos_proveedores (proveedor_id, pago_proveedor_id, descripcion, tipo, tamano, datos)
+            select ?, ?, ?, tipo, tamano, datos from fotos_en_espera where id = ?`,
+      args: [proveedorId, pagoId, descripcion, id],
+    });
+    if (r.rowsAffected === 0) throw new Error("La captura ya no está: vuelve a ponerla.");
+    await tx.execute({ sql: "delete from fotos_en_espera where id = ?", args: [id] });
+  });
+}
+
 export async function olvidarFotoEnEspera(id: number): Promise<void> {
   await ejecutar("delete from fotos_en_espera where id = ?", [id]);
 }

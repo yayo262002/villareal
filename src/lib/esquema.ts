@@ -37,6 +37,8 @@ export const ESQUEMA = `
     direccion text not null default '',
     nota text not null default '',
     dias_credito integer not null default 7,
+    -- El enlace personal con el que el proveedor ve nuestra cuenta con él. Null hasta que se crea.
+    enlace text,
     creado_en text not null default (datetime('now'))
   );
 
@@ -291,6 +293,19 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- La captura del pago a un proveedor, unida a ese pago. Es el espejo de
+  -- adjuntos, que va unida al cliente.
+  create table if not exists adjuntos_proveedores (
+    id integer primary key autoincrement,
+    proveedor_id integer not null references proveedores(id),
+    pago_proveedor_id integer references pagos_proveedores(id) on delete set null,
+    descripcion text not null default '',
+    tipo text not null,
+    tamano integer not null,
+    datos blob not null,
+    creado_en text not null default (datetime('now'))
+  );
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (
@@ -308,6 +323,7 @@ export const ESQUEMA = `
   create index if not exists pagos_proveedores_proveedor on pagos_proveedores(proveedor_id);
   create index if not exists compra_lineas_compra on compra_lineas(compra_id);
   create index if not exists recordatorios_cliente on recordatorios(cliente_id);
+  create index if not exists adjuntos_proveedores_proveedor on adjuntos_proveedores(proveedor_id);
 `;
 
 /** Las tablas en orden de dependencias, para copiar o restaurar en orden. */
@@ -327,6 +343,7 @@ export const TABLAS = [
   "compras",
   "compra_lineas",
   "pagos_proveedores",
+  "adjuntos_proveedores",
   "exportaciones",
   "tasas",
   "inventario_ajustes",

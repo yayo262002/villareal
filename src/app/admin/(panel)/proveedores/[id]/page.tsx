@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { negocio } from "@/config/negocio";
 import { buscarProveedor, listarComprasDeProveedor, listarPagosDeProveedor } from "@/lib/proveedores";
 import { ultimaTasa } from "@/lib/pagos";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { conVencimiento, describirVencimiento } from "@/lib/credito";
-import { editarProveedor, guardarCompra, guardarPagoProveedor } from "@/lib/acciones";
+import { cambiarEnlaceDeProveedor, editarProveedor, guardarCompra, guardarPagoProveedor } from "@/lib/acciones";
 import { listarProductos } from "@/lib/productos";
 import { listarVariantes } from "@/lib/variantes";
 import { vendiblesDe } from "@/lib/catalogo";
 import { existenciasPorClave } from "@/lib/inventario";
+import { listarAdjuntosDeProveedor } from "@/lib/adjuntos";
+import { enlaceWhatsappA, mensajeEnlaceDeProveedor } from "@/lib/whatsapp";
+import { direccionDeCuentaDeProveedor } from "@/lib/enlace-cuenta";
 import { METODOS_PAGO, fechaCorta, formatearMonto, hoy, usd, tasaLegible } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
@@ -41,9 +45,10 @@ export default async function PaginaProveedor({
   const proveedor = await buscarProveedor(Number(id));
   if (!proveedor) notFound();
 
-  const [compras, pagos, tasa, productos, variantes, existencias] = await Promise.all([
+  const [compras, pagos, adjuntos, tasa, productos, variantes, existencias] = await Promise.all([
     listarComprasDeProveedor(proveedor.id),
     listarPagosDeProveedor(proveedor.id),
+    listarAdjuntosDeProveedor(proveedor.id),
     ultimaTasa(),
     listarProductos(true),
     listarVariantes(),
@@ -53,6 +58,15 @@ export default async function PaginaProveedor({
   const pideConfirmar = parametros.confirmar === "1";
   const cuentas = conVencimiento(aplicarPagos(compras, proveedor.total_pagado_usd), proveedor.dias_credito, hoy());
   const vencido = cuentas.filter((c) => c.vencida).reduce((s, c) => s + c.pendiente_usd, 0);
+  // La captura de cada pago, para enlazarla desde su fila.
+  const capturaDe = new Map(adjuntos.filter((a) => a.pago_proveedor_id).map((a) => [a.pago_proveedor_id, a.id]));
+  // Para mandarle su enlace personal, con el que ve nuestra cuenta con él sin clave.
+  const mandarEnlace = proveedor.enlace
+    ? enlaceWhatsappA(
+        proveedor.telefono,
+        mensajeEnlaceDeProveedor({ negocio: negocio.nombre, proveedor: proveedor.nombre, enlace: direccionDeCuentaDeProveedor(proveedor.enlace) }),
+      )
+    : null;
 
   const claseSaldo = proveedor.saldo_usd > 0 ? estilos.deuda : proveedor.saldo_usd < 0 ? estilos.favor : estilos.saldado;
   const textoSaldo =
@@ -173,11 +187,12 @@ export default async function PaginaProveedor({
       <section className="tarjeta" id="pago">
         <h2 className={estilos.subtitulo}>Registrar pago al proveedor</h2>
         <FormularioPago
-          conCaptura={false}
+          quien="proveedor"
           clientes={[{ id: proveedor.id, rotulo: proveedor.nombre, saldo_usd: proveedor.saldo_usd }]}
           clienteFijo={proveedor.id}
           ultimaTasa={tasa}
           volverA={`/admin/proveedores/${proveedor.id}`}
+          parametros={parametros}
           accion={guardarPagoProveedor}
           campoId="proveedor_id"
           etiqueta="Proveedor"
@@ -264,7 +279,12 @@ export default async function PaginaProveedor({
                     <td data-label="Tasa" className="numero" data-vacio={p.tasa ? undefined : ""}>{p.tasa ? tasaLegible(p.tasa) : "—"}</td>
                     <td data-label="En USD" className="numero">{usd(p.monto_usd)}</td>
                     <td data-label="Referencia" data-vacio={p.referencia ? undefined : ""}>{p.referencia || "—"}</td>
-                    <td>
+                    <td className={estilos.accionesFila}>
+                      {capturaDe.has(p.id) && (
+                        <a href={`/admin/adjuntos-proveedor/${capturaDe.get(p.id)}`} target="_blank" rel="noopener" className="enlace-fila">
+                          Captura
+                        </a>
+                      )}
                       <Link href={`/admin/pagos-proveedor/${p.id}/eliminar`} className="enlace-fila">
                         Eliminar
                       </Link>
@@ -274,6 +294,50 @@ export default async function PaginaProveedor({
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      {/* El enlace personal con el que el proveedor ve nuestra cuenta con él, sin clave. */}
+      <section className="tarjeta" id="enlace">
+        <h2 className={estilos.subtitulo}>Su enlace de cuenta</h2>
+        {proveedor.enlace ? (
+          <>
+            <p className={estilos.ayuda}>
+              Con este enlace ve en su teléfono lo que le debemos, cada compra con lo pagado y cada pago con su comprobante, siempre al día y sin
+              clave. Es solo suyo: si se compartió de más, renuévalo y el anterior deja de funcionar.
+            </p>
+            <p className={estilos.enlaceDeCuenta}>
+              <a href={direccionDeCuentaDeProveedor(proveedor.enlace)} target="_blank" rel="noopener">
+                {direccionDeCuentaDeProveedor(proveedor.enlace)}
+              </a>
+            </p>
+            <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
+              {mandarEnlace && (
+                <a href={mandarEnlace} target="_blank" rel="noopener" className="boton boton--acento">
+                  Mandárselo por WhatsApp
+                </a>
+              )}
+              <form action={cambiarEnlaceDeProveedor}>
+                <input type="hidden" name="id" value={proveedor.id} />
+                <input type="hidden" name="enlace_de_cuenta" value="renovar" />
+                <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                  Renovar el enlace
+                </button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <form action={cambiarEnlaceDeProveedor}>
+            <p className={estilos.ayuda}>
+              Crea su enlace personal y mándaselo por WhatsApp: con él ve lo que le debemos, cada compra y cada pago con su comprobante, siempre
+              al día y sin clave.
+            </p>
+            <input type="hidden" name="id" value={proveedor.id} />
+            <input type="hidden" name="enlace_de_cuenta" value="crear" />
+            <button type="submit" className="boton">
+              Crear su enlace de cuenta
+            </button>
+          </form>
         )}
       </section>
 

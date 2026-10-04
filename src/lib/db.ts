@@ -111,7 +111,9 @@ async function migrar(cliente: Client): Promise<void> {
        select fecha, tasa, 'nota' from ventas where tasa is not null and id in (select max(id) from ventas where tasa is not null group by fecha)`,
     );
   }
+  if (!(await definicionDe(cliente, "proveedores")).includes("enlace")) await añadirColumna(cliente, "proveedores", "enlace text");
   await cliente.execute("create unique index if not exists clientes_enlace on clientes(enlace)");
+  await cliente.execute("create unique index if not exists proveedores_enlace on proveedores(enlace)");
   const lineas = await definicionDe(cliente, "venta_lineas");
   if (!lineas.includes("piezas")) await añadirColumna(cliente, "venta_lineas", "piezas integer");
   if (!lineas.includes("variante_id")) await añadirColumna(cliente, "venta_lineas", "variante_id integer references variantes(id)");

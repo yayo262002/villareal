@@ -22,8 +22,10 @@ type Props = {
   volverA: string;
   /** Lo que venía en la dirección: el formulario vuelve relleno. */
   parametros?: Escrito;
-  /** Con la captura del pago, que se guarda con el abono y, si hay lector, se lee. No para proveedores. */
+  /** Con la captura del pago, que se guarda con el abono (o el pago) y, si hay lector, se lee. */
   conCaptura?: boolean;
+  /** Quién paga: el cliente (un abono) o el negocio a un proveedor (un pago). Cambia los textos y si la captura es obligatoria. */
+  quien?: "cliente" | "proveedor";
   /** Para los pagos a proveedores: otra acción y otro nombre del campo. */
   accion?: (datos: FormData) => Promise<void>;
   campoId?: string;
@@ -46,6 +48,7 @@ export function FormularioPago({
   volverA,
   parametros,
   conCaptura = true,
+  quien = "cliente",
   accion = guardarPago,
   campoId = "cliente_id",
   etiqueta = "Cliente",
@@ -88,10 +91,10 @@ export function FormularioPago({
           <span className="ayuda">Si fue días atrás, ponla: la tasa será la de ese día.</span>
         </div>
         <div className="campo">
-          <label htmlFor="pago-metodo">{conCaptura ? "Cómo pagó" : "Método"}</label>
+          <label htmlFor="pago-metodo">{quien === "proveedor" ? "Cómo pagaste" : conCaptura ? "Cómo pagó" : "Método"}</label>
           <select id="pago-metodo" name="metodo" required defaultValue={escrito(parametros, "metodo")}>
             <option value="" disabled>
-              {conCaptura ? "Elige cómo pagó" : "Elige el método"}
+              {quien === "proveedor" ? "Elige cómo pagaste" : conCaptura ? "Elige cómo pagó" : "Elige el método"}
             </option>
             {Object.entries(METODOS_PAGO).map(([valor, nombre]) => (
               <option key={valor} value={valor}>
@@ -110,7 +113,7 @@ export function FormularioPago({
           <span className="ayuda">
             {leida
               ? "Monto, método, fecha y referencia leídos de la captura: revísalos y guarda."
-              : `Lo que pagó, sea todo o una parte: en bolívares con pago móvil, transferencia o efectivo en Bs; en dólares con los demás.${seLee ? " Con la captura puesta, déjalo vacío y se lee de ella." : ""}`}
+              : `${quien === "proveedor" ? "Lo que le pagaste" : "Lo que pagó"}, sea todo o una parte: en bolívares con pago móvil, transferencia o efectivo en Bs; en dólares con los demás.${seLee ? " Con la captura puesta, déjalo vacío y se lee de ella." : ""}`}
           </span>
         </div>
         <div className="campo">
@@ -128,7 +131,7 @@ export function FormularioPago({
         idMonto="pago-monto"
         idTasa="pago-tasa"
         idCliente="pago-cliente"
-        idAyudaComprobante={conCaptura ? "pago-captura-ayuda" : undefined}
+        idAyudaComprobante={conCaptura && quien === "cliente" ? "pago-captura-ayuda" : undefined}
       />
       {pideConfirmarMonto && (
         <label className={estilos.casilla}>
@@ -156,7 +159,9 @@ export function FormularioPago({
           <span className="ayuda" id="pago-captura-ayuda">
             {fotoEnEspera
               ? "La captura ya está guardada; solo pon otra si quieres cambiarla."
-              : "La captura del pago. Obligatoria con pago móvil, transferencia, Zelle y Binance; en efectivo no hace falta. Queda guardada con el abono."}
+              : quien === "proveedor"
+                ? "La captura del pago, si la tienes (pago móvil, transferencia, Zelle, Binance). Queda guardada con el pago y el proveedor la ve en su enlace."
+                : "La captura del pago. Obligatoria con pago móvil, transferencia, Zelle y Binance; en efectivo no hace falta. Queda guardada con el abono."}
             {seLee && !fotoEnEspera ? " Se lee sola: monto, fecha y referencia, y se pasa a dólares con la tasa de ese día." : ""}
           </span>
           {pideConfirmarCaptura && (

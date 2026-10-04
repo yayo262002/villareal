@@ -117,6 +117,16 @@ export function mensajeEnlaceDeCuenta(datos: { negocio: string; cliente: string;
   ].join("\n");
 }
 
+/** Para mandarle al proveedor su enlace: con él ve nuestra cuenta con él (lo que le debemos, cada compra y cada pago con su comprobante). */
+export function mensajeEnlaceDeProveedor(datos: { negocio: string; proveedor: string; enlace: string }): string {
+  return [
+    `${saludo(datos.proveedor)}, le saluda ${datos.negocio}.`,
+    "Aquí puede ver nuestra cuenta con usted, siempre al día: lo que le debemos, cada compra y cada pago con su comprobante.",
+    datos.enlace,
+    "Es un enlace personal y no hace falta clave. Guárdelo y no lo comparta.",
+  ].join("\n");
+}
+
 type Linea = {
   cantidad: number;
   unidad: string;

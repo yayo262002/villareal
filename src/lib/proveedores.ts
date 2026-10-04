@@ -18,6 +18,8 @@ export type Proveedor = {
   nota: string;
   /** Los días que da el proveedor para pagarle cada compra. */
   dias_credito: number;
+  /** El enlace personal con el que ve nuestra cuenta con él. Null hasta que se crea. */
+  enlace: string | null;
   creado_en: string;
 };
 
@@ -29,7 +31,7 @@ export type ProveedorConSaldo = Proveedor & {
   ultima_compra: string | null;
 };
 
-export type DatosProveedor = Omit<Proveedor, "id" | "creado_en">;
+export type DatosProveedor = Omit<Proveedor, "id" | "creado_en" | "enlace">;
 
 export type Compra = {
   id: number;
@@ -83,6 +85,16 @@ export async function buscarProveedor(id: number): Promise<ProveedorConSaldo | n
   return f ? conSaldo(f) : null;
 }
 
+export async function buscarProveedorPorEnlace(enlace: string): Promise<ProveedorConSaldo | null> {
+  const f = await fila<ProveedorConSaldo>(`${CONSULTA_CON_SALDO} where p.enlace = ?`, [enlace]);
+  return f ? conSaldo(f) : null;
+}
+
+/** Pone (o cambia) el enlace personal de un proveedor. */
+export async function ponerEnlaceDeProveedor(id: number, enlace: string): Promise<void> {
+  await ejecutar("update proveedores set enlace = ? where id = ?", [enlace, id]);
+}
+
 export async function crearProveedor(datos: DatosProveedor): Promise<number> {
   const r = await ejecutar(
     `insert into proveedores (nombre, telefono, cedula_rif, direccion, nota, dias_credito)
@@ -112,9 +124,10 @@ export async function loQueTieneElProveedor(id: number): Promise<{ compras: numb
   return { compras: Number(f?.compras ?? 0), pagos: Number(f?.pagos ?? 0) };
 }
 
-/** Borra un proveedor con sus compras (y sus líneas) y sus pagos. Todo o nada. Quien llama ya pidió la clave. */
+/** Borra un proveedor con sus compras (y sus líneas), sus pagos y sus capturas. Todo o nada. Quien llama ya pidió la clave. */
 export async function eliminarProveedor(id: number): Promise<boolean> {
   return transaccion(async (tx) => {
+    await tx.execute({ sql: "delete from adjuntos_proveedores where proveedor_id = ?", args: [id] });
     await tx.execute({ sql: "delete from compra_lineas where compra_id in (select id from compras where proveedor_id = ?)", args: [id] });
     await tx.execute({ sql: "delete from compras where proveedor_id = ?", args: [id] });
     await tx.execute({ sql: "delete from pagos_proveedores where proveedor_id = ?", args: [id] });
@@ -277,7 +290,11 @@ export async function registrarPagoProveedor(datos: {
   return r.ultimoId;
 }
 
+/** Borra un pago con su captura, si la tenía: sin el pago, la captura no dice nada. */
 export async function eliminarPagoProveedor(id: number): Promise<boolean> {
-  const r = await ejecutar("delete from pagos_proveedores where id = ?", [id]);
-  return r.cambios > 0;
+  return transaccion(async (tx) => {
+    await tx.execute({ sql: "delete from adjuntos_proveedores where pago_proveedor_id = ?", args: [id] });
+    const r = await tx.execute({ sql: "delete from pagos_proveedores where id = ?", args: [id] });
+    return r.rowsAffected > 0;
+  });
 }
