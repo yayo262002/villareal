@@ -28,7 +28,7 @@ import {
   eliminarProveedor,
   registrarPagoProveedor,
 } from "./proveedores";
-import { leerDiasDeCredito } from "./credito";
+import { leerDiasDeCredito, sumarDias } from "./credito";
 import { explicarMotivo, leerDireccion } from "./direcciones";
 import { esSoloUnTelefono, telefonoLegible } from "./whatsapp";
 import {
@@ -39,7 +39,7 @@ import {
   type PreciosProducto,
   type Unidad,
 } from "./productos";
-import { guardarTasa, leerTasa, ponerAvisoTasa, ponerTasaAutomatica, quitarPreciosDeEjemplo } from "./ajustes";
+import { describirFuenteDeTasa, guardarTasa, leerTasa, ponerAvisoTasa, ponerTasaAutomatica, quitarPreciosDeEjemplo, tasaEnFecha } from "./ajustes";
 import { actualizarTasaOficial } from "./tasa-oficial";
 import {
   VENTANA_MINUTOS,
@@ -84,7 +84,7 @@ import {
   quitarResenasDeEjemplo,
 } from "./resenas";
 import { leerResena } from "./resenas-texto";
-import { METODOS_PAGO, esMetodoPago, esUnidad, fechaCorta, hoy, monedaDelMetodo, necesitaComprobante, redondear } from "./dinero";
+import { METODOS_PAGO, bs, esMetodoPago, esUnidad, fechaCorta, hoy, monedaDelMetodo, necesitaComprobante, redondear, usd } from "./dinero";
 
 /**
  * Todas las acciones del panel. Cada una comprueba la sesión primero: una
@@ -800,7 +800,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   const revision = revisarVenta(escritas);
   if (revision.errores.length > 0) volver(revision.errores.join(" "));
   if (revision.avisos.length > 0 && texto(datos, "confirmar") !== "1") {
-    volver(`${revision.avisos.join(" ")} Si es así, marca «Los precios y las cantidades son correctos» y guarda otra vez.`, "confirmar");
+    volver(`${revision.avisos.join(" ")} Si es así, marca «Lo escrito es correcto» y guarda otra vez.`, "confirmar");
   }
 
   const lineas: LineaVenta[] = escritas.map((l) => ({
@@ -821,6 +821,12 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   const entregaPrevista = texto(datos, "entrega_prevista");
   let lectura: Lectura = { nota: null, intentada: false };
   let reparos: string[] = [];
+  // «Ya la entregué» con un día previsto de entrega no puede ser: una de las dos cosas está mal.
+  if (!porEntregar && entregaPrevista) {
+    volver(
+      `Marcaste «Sí, ya la entregué» y a la vez pusiste un día previsto de entrega (${fechaCorta(entregaPrevista)}). Si ya la entregaste, borra ese día; si queda por entregar, elige «No, queda por entregar».`,
+    );
+  }
   if (!porEntregar) {
     if (fotoMala) volver(fotoMala);
     if (!foto) volver(SIN_FOTO);
@@ -841,11 +847,14 @@ export async function guardarVenta(datos: FormData): Promise<void> {
     volver("Escribe el día previsto de entrega, para que el resumen te lo recuerde.");
   } else if (entregaPrevista < fecha) {
     volver("El día previsto de entrega no puede ser antes de la fecha de despacho.");
+  } else if (entregaPrevista > sumarDias(hoy(), 30) && texto(datos, "confirmar") !== "1") {
+    volver(`El día previsto de entrega (${fechaCorta(entregaPrevista)}) está a más de un mes. Si es así, marca «Lo escrito es correcto» y guarda otra vez.`, "confirmar");
   }
 
   let ventaId = 0;
   try {
-    const tasa = await leerTasa();
+    // La nota va con la tasa del día de la nota, aunque se registre días después.
+    const tasa = await tasaEnFecha(fecha);
     ventaId = await crearVenta(clienteId, fecha, lineas, texto(datos, "nota"), tasa?.valor ?? null, porEntregar, porEntregar ? entregaPrevista : null);
     if (!porEntregar && foto) await guardarFotoDeLaNota(foto, clienteId, ventaId);
     else if (foto) await olvidarFotoEnEspera(foto.id);
@@ -953,8 +962,8 @@ export async function guardarPago(datos: FormData): Promise<void> {
   const escrito = new URLSearchParams();
   for (const campo of ["cliente_id", "fecha", "metodo", "monto", "tasa", "referencia", "nota"]) if (texto(datos, campo)) escrito.set(campo, texto(datos, campo));
   if (foto) escrito.set("foto_espera", String(foto.id));
-  const volver: (mensaje: string, como?: "error" | "ok", casilla?: boolean) => never = (mensaje, como = "error", casilla = false) => {
-    if (casilla) escrito.set("confirmar_captura", "1");
+  const volver: (mensaje: string, como?: "error" | "ok", casilla?: "confirmar_captura" | "confirmar_monto") => never = (mensaje, como = "error", casilla) => {
+    if (casilla) escrito.set(casilla, "1");
     const destino = `${origen}${origen.includes("?") ? "&" : "?"}${escrito.toString()}`;
     if (como === "ok") volverConExito(destino, mensaje);
     volverConError(destino, mensaje);
@@ -966,7 +975,9 @@ export async function guardarPago(datos: FormData): Promise<void> {
   let lectura: LecturaDeCaptura = { captura: null, intentada: false };
   if (foto) lectura = await leerLaCaptura(foto);
   if (lectura.captura && (monto === null || monto <= 0)) {
-    const tasaDelDia = (await leerTasa())?.valor ?? tasa;
+    // El equivalente en dólares va con la tasa del día del pago que dice la captura.
+    const diaDelPago = lectura.captura.fecha && lectura.captura.fecha <= hoy() ? lectura.captura.fecha : hoy();
+    const tasaDelDia = (await tasaEnFecha(diaDelPago))?.valor ?? tasa;
     const propuesta = propuestaDesdeCaptura(lectura.captura, tasaDelDia, hoy());
     if (propuesta) {
       escrito.set("metodo", propuesta.metodo);
@@ -989,14 +1000,31 @@ export async function guardarPago(datos: FormData): Promise<void> {
   if (monto === null || monto <= 0) volver(foto ? "Escribe el monto, o déjalo vacío para que se lea de la captura." : "El monto tiene que ser mayor que cero.");
 
   const moneda = monedaDelMetodo(metodo);
-  if (moneda === "VES" && (tasa === null || tasa <= 0)) volver("Un pago en bolívares necesita la tasa del día (Bs por dólar).");
+  // En bolívares hace falta la tasa: la escrita, o si no la que había el día del pago.
+  let tasaUsada = tasa;
+  let notaDeTasa = "";
+  if (moneda === "VES" && (tasaUsada === null || tasaUsada <= 0)) {
+    const deEseDia = await tasaEnFecha(fecha);
+    if (!deEseDia) volver("Un pago en bolívares necesita la tasa (Bs por dólar) y no hay ninguna guardada: escríbela.");
+    tasaUsada = deEseDia.valor;
+    notaDeTasa = ` Tasa del ${fechaCorta(fecha)}: ${bs(deEseDia.valor)} por dólar (${describirFuenteDeTasa(deEseDia)}).`;
+  }
+  // Un monto en bolívares que no llega a un dólar casi siempre es un monto en dólares con el método equivocado.
+  // (Lo que no llega ni a un centavo lo rechaza `registrarPago` sin preguntar.)
+  if (moneda === "VES" && tasaUsada && monto < tasaUsada && redondear(monto / tasaUsada) >= 0.01 && texto(datos, "confirmar_monto") !== "1") {
+    volver(
+      `${bs(monto)} son ${usd(redondear(monto / tasaUsada))} a ${bs(tasaUsada)} por dólar. ¿Seguro que el abono fue en bolívares? Si el cliente pagó en dólares, elige un método en dólares; si está bien así, marca «El monto es correcto» y guarda otra vez.`,
+      "error",
+      "confirmar_monto",
+    );
+  }
 
   // Con el monto escrito, la captura se comprueba: lo que no cuadre se avisa antes de guardar.
   let reparos: string[] = [];
   if (lectura.captura) {
     reparos = compararCaptura(lectura.captura, { monto, moneda, fecha, metodo });
     if (reparos.length > 0 && texto(datos, "confirmar_captura") !== "1") {
-      volver(`${reparos.join(" ")} Revisa la captura y lo escrito; si está bien así, marca «Ya revisé la captura» y guarda otra vez.`, "error", true);
+      volver(`${reparos.join(" ")} Revisa la captura y lo escrito; si está bien así, marca «Ya revisé la captura» y guarda otra vez.`, "error", "confirmar_captura");
     }
   }
 
@@ -1008,7 +1036,7 @@ export async function guardarPago(datos: FormData): Promise<void> {
       metodo,
       moneda,
       monto,
-      tasa: moneda === "VES" ? tasa : null,
+      tasa: moneda === "VES" ? tasaUsada : null,
       referencia: texto(datos, "referencia"),
       nota: texto(datos, "nota"),
     });
@@ -1019,7 +1047,7 @@ export async function guardarPago(datos: FormData): Promise<void> {
     volver(mensajeDe(error));
   }
   const comentario = !foto ? "" : lectura.intentada && !lectura.captura ? " (La captura no se pudo leer; queda guardada igual.)" : reparos.length > 0 ? " Guardado con los avisos que revisaste." : "";
-  volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado${foto ? " con su captura" : ""}.${comentario} Abajo, en Abonos, puedes mandarle el recibo.`);
+  volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado${foto ? " con su captura" : ""}.${notaDeTasa}${comentario} Abajo, en Abonos, puedes mandarle el recibo.`);
 }
 
 /** Igual que `borrarVenta`: la confirmación está en `/admin/pagos/[id]/eliminar`. */

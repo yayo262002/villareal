@@ -1,5 +1,6 @@
 import "server-only";
-import { ejecutar, filas } from "./db";
+import { ejecutar, fila, filas } from "./db";
+import { fechaCorta, hoy } from "./dinero";
 
 /**
  * Ajustes sueltos del negocio, guardados como clave y valor. La tasa del
@@ -49,6 +50,64 @@ export async function guardarTasa(valor: number, origen: OrigenTasa = "manual"):
   if (!(valor > 0)) throw new Error("La tasa tiene que ser mayor que cero.");
   await guardar("tasa_bs", String(valor));
   await guardar("tasa_origen", origen);
+  // Queda en el historial: así un abono o una nota de días atrás se registran con la tasa que había ese día.
+  await ejecutar(
+    `insert into tasas (fecha, valor, origen, actualizada_en) values (?, ?, ?, datetime('now'))
+     on conflict(fecha) do update set valor = excluded.valor, origen = excluded.origen, actualizada_en = excluded.actualizada_en`,
+    [hoy(), valor, origen],
+  );
+}
+
+/** De dónde sale la tasa de un día: guardada ese día (del BCV o a mano), de un abono o una nota de ese día, la última anterior, o la vigente. */
+export type FuenteDeTasa = "bcv" | "manual" | "abono" | "nota" | "anterior" | "actual";
+
+export type TasaDeUnDia = {
+  fecha: string;
+  valor: number;
+  fuente: FuenteDeTasa;
+  /** El día del que viene de verdad, cuando es la última anterior. */
+  desde: string;
+};
+
+/**
+ * La tasa que había un día: la guardada ese día, si no la de un abono o
+ * una nota de ese día, si no la última guardada antes, y si no la
+ * vigente. Para proponerla al registrar algo con fecha atrasada; el dueño
+ * la puede cambiar.
+ */
+export async function tasaEnFecha(fecha: string): Promise<TasaDeUnDia | null> {
+  const guardada = await fila<{ valor: number; origen: string }>("select valor, origen from tasas where fecha = ?", [fecha]);
+  if (guardada) return { fecha, valor: Number(guardada.valor), fuente: fuenteDe(guardada.origen), desde: fecha };
+  const deAbono = await fila<{ tasa: number }>("select tasa from pagos where fecha = ? and tasa is not null order by id desc limit 1", [fecha]);
+  if (deAbono) return { fecha, valor: Number(deAbono.tasa), fuente: "abono", desde: fecha };
+  const deNota = await fila<{ tasa: number }>("select tasa from ventas where fecha = ? and tasa is not null order by id desc limit 1", [fecha]);
+  if (deNota) return { fecha, valor: Number(deNota.tasa), fuente: "nota", desde: fecha };
+  const anterior = await fila<{ fecha: string; valor: number }>("select fecha, valor from tasas where fecha < ? order by fecha desc limit 1", [fecha]);
+  if (anterior) return { fecha, valor: Number(anterior.valor), fuente: "anterior", desde: anterior.fecha };
+  const actual = await leerTasa();
+  return actual ? { fecha, valor: actual.valor, fuente: "actual", desde: fecha } : null;
+}
+
+function fuenteDe(origen: string): FuenteDeTasa {
+  return origen === "bcv" || origen === "abono" || origen === "nota" ? origen : "manual";
+}
+
+/** «del BCV ese día», «la de un abono de ese día», «la última guardada, del 30/09/2026», «la vigente». */
+export function describirFuenteDeTasa(t: TasaDeUnDia): string {
+  switch (t.fuente) {
+    case "bcv":
+      return "del BCV ese día";
+    case "manual":
+      return "escrita a mano ese día";
+    case "abono":
+      return "la de un abono de ese día";
+    case "nota":
+      return "la de una nota de ese día";
+    case "anterior":
+      return `la última guardada, del ${fechaCorta(t.desde)}`;
+    case "actual":
+      return "la vigente";
+  }
 }
 
 /**

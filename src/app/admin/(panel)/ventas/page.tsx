@@ -157,7 +157,7 @@ export default async function PaginaVentas({
             {pideConfirmar && (
               <label className={estilos.casilla}>
                 <input type="checkbox" name="confirmar" value="1" />
-                <span>Los precios y las cantidades son correctos: guardar igual</span>
+                <span>Lo escrito es correcto: guardar igual</span>
               </label>
             )}
 
@@ -194,7 +194,7 @@ export default async function PaginaVentas({
                 <div className="campo">
                   <label htmlFor="venta-entrega-prevista">Si queda por entregar: día previsto</label>
                   <input id="venta-entrega-prevista" name="entrega_prevista" type="date" defaultValue={escrito(parametros, "entrega_prevista")} />
-                  <span className="ayuda">Sale en el despacho y el resumen te lo recuerda.</span>
+                  <span className="ayuda">Solo si queda por entregar. Sale en el despacho y el resumen te lo recuerda.</span>
                 </div>
               </div>
             </fieldset>

@@ -99,6 +99,18 @@ async function migrar(cliente: Client): Promise<void> {
   }
   if (!clientes.includes("enlace")) await añadirColumna(cliente, "clientes", "enlace text");
   if (!(await definicionDe(cliente, "adjuntos")).includes("pago_id")) await añadirColumna(cliente, "adjuntos", "pago_id integer references pagos(id)");
+  // El historial de tasas empieza con las que ya quedaron guardadas en los abonos y las notas de antes.
+  const tasas = await cliente.execute("select count(*) as n from tasas");
+  if (Number(tasas.rows[0]?.n ?? 0) === 0) {
+    await cliente.execute(
+      `insert or ignore into tasas (fecha, valor, origen)
+       select fecha, tasa, 'abono' from pagos where tasa is not null and id in (select max(id) from pagos where tasa is not null group by fecha)`,
+    );
+    await cliente.execute(
+      `insert or ignore into tasas (fecha, valor, origen)
+       select fecha, tasa, 'nota' from ventas where tasa is not null and id in (select max(id) from ventas where tasa is not null group by fecha)`,
+    );
+  }
   await cliente.execute("create unique index if not exists clientes_enlace on clientes(enlace)");
   const lineas = await definicionDe(cliente, "venta_lineas");
   if (!lineas.includes("piezas")) await añadirColumna(cliente, "venta_lineas", "piezas integer");

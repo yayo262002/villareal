@@ -429,6 +429,11 @@ async function probarNegocio() {
   comprobar("por entregar sin el día previsto, no se guarda", r.destino.includes("día previsto de entrega"), r.destino);
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "despacho", entrega_prevista: "2026-09-10" });
   comprobar("el día previsto no puede ser antes del despacho", r.destino.includes("no puede ser antes de la fecha de despacho"), r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "local", entrega_prevista: "2026-10-27", foto: fotoFirmada() });
+  comprobar("«ya la entregué» con un día previsto de entrega no se guarda", r.destino.includes("Marcaste «Sí, ya la entregué» y a la vez pusiste un día previsto de entrega (27/10/2026)"), r.destino);
+  const dentroDeDosMeses = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "despacho", entrega_prevista: dentroDeDosMeses });
+  comprobar("un día previsto a más de un mes pide confirmar", r.destino.includes("está a más de un mes") && r.destino.includes("confirmar=1"), r.destino);
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { cliente_id: String(clienteId), fecha: "2026-09-15", cantidad_1: "2", precio_1: "7.48", entrega: "local", foto: fotoFirmada() });
   comprobar("entregada con la foto: se guarda y la foto queda con la venta", r.destino.includes("con la foto de la nota firmada") && (await cuentasDe(clienteId)).fotos === 1, `${r.destino} ${JSON.stringify(await cuentasDe(clienteId))}`);
   let esperado = 10 + 14.96;
@@ -589,6 +594,32 @@ async function probarNegocio() {
   await enviar(`/admin/pagos/${efectivo.id}/eliminar`, 'name="id"', { id: String(efectivo.id) });
   r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "", monto: "1", tasa: "", volver_a: fichaDetal });
   comprobar("sin decir cómo pagó, no se registra", r.destino.includes("Elige cómo pagó"), r.destino);
+
+  // La tasa de cada día: la de un abono de ese día, o la vigente si no hay nada de ese día.
+  const tasaDel21 = await (await fetch(base + "/admin/tasas/2026-09-21", { headers: { cookie } })).json();
+  const tasaDel10 = await (await fetch(base + "/admin/tasas/2026-09-10", { headers: { cookie } })).json();
+  comprobar(
+    "la tasa de un día: la del abono de ese día, y si no la vigente, diciendo de dónde sale",
+    tasaDel21?.valor === 36.5 && tasaDel21.fuente === "abono" && tasaDel10?.valor === 36.5 && tasaDel10.fuente === "actual" && typeof tasaDel10.descripcion === "string",
+    JSON.stringify([tasaDel21, tasaDel10]),
+  );
+  comprobar("la tasa de un día no se consulta sin sesión", (await fetch(base + "/admin/tasas/2026-09-21", { redirect: "manual" })).status !== 200);
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "pago_movil", monto: "365", tasa: "", volver_a: fichaDetal, foto: fotoFirmada() });
+  const [sinTasa] = await consultar("select id, tasa, monto_usd from pagos where cliente_id = ? order by id desc limit 1", [detalId]);
+  comprobar(
+    "un abono en bolívares sin tasa escrita toma la que había ese día (365 / 36,5 = 10) y lo dice",
+    r.destino.includes("Abono registrado") && r.destino.includes("Tasa del 21/09/2026") && cerca(Number(sinTasa.tasa), 36.5) && cerca(Number(sinTasa.monto_usd), 10),
+    `${r.destino} ${JSON.stringify(sinTasa)}`,
+  );
+  await enviar(`/admin/pagos/${sinTasa.id}/eliminar`, 'name="id"', { id: String(sinTasa.id) });
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "pago_movil", monto: "20", tasa: "36.5", volver_a: fichaDetal, foto: fotoFirmada() });
+  comprobar("Bs 20 a 36,50 no llegan a un dólar: pregunta si de verdad fue en bolívares", r.destino.includes("¿Seguro que el abono fue en bolívares?") && r.destino.includes("confirmar_monto=1"), r.destino);
+  r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "pago_movil", monto: "20", tasa: "36.5", confirmar_monto: "1", volver_a: fichaDetal, foto: fotoFirmada() });
+  const [confirmado] = await consultar("select id, monto_usd from pagos where cliente_id = ? order by id desc limit 1", [detalId]);
+  comprobar("confirmado, se guarda igual (USD 0,55)", r.destino.includes("Abono registrado") && cerca(Number(confirmado.monto_usd), 0.55), r.destino);
+  await enviar(`/admin/pagos/${confirmado.id}/eliminar`, 'name="id"', { id: String(confirmado.id) });
+  const abonoConFecha = (await pagina(`/admin/clientes/${detalId}`)).html;
+  comprobar("el formulario del abono pide la fecha del pago, cómo pagó, y el monto con la tasa de ese día", abonoConFecha.includes("Fecha del pago") && abonoConFecha.includes("Elige cómo pagó") && abonoConFecha.includes("Tasa de ese día") && abonoConFecha.includes('id="pago-captura-ayuda"'));
 
   r = await enviar(`/admin/clientes/${clienteId}`, 'name="monto"', {
     cliente_id: String(clienteId), fecha: "2026-09-20", metodo: "pago_movil", monto: "146", tasa: "36.5",

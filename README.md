@@ -316,7 +316,22 @@ datos/                    La base de datos (fuera de Git)
   OneDrive, así que quedan también en la nube.
 - Un pago en bolívares se guarda con la **tasa del día** que se escribió al
   registrarlo, y se convierte a dólares en ese momento. Si la tasa cambia
-  mañana, el pago de hoy no se mueve. Un monto que no llega a un centavo
+  mañana, el pago de hoy no se mueve.
+- **La tasa de cada día queda guardada** (tabla `tasas`: la del BCV de cada
+  mañana, la escrita a mano, y la de los abonos y notas de antes). Al
+  registrar un abono o una nota **de días atrás**, la tasa que se propone y
+  se usa es **la que había ese día** (`tasaEnFecha` en `src/lib/ajustes.ts`:
+  la guardada ese día; si no, la de un abono o nota de ese día; si no, la
+  última anterior; si no, la vigente), y se puede cambiar. Con la tasa
+  vacía en un abono en bolívares, se usa esa y el aviso lo dice.
+- **El abono se pide en la moneda que toca.** Al elegir cómo pagó, el monto
+  se pide en bolívares (pago móvil, transferencia, efectivo en Bs) o en
+  dólares (los demás), la tasa solo aparece con bolívares, y debajo se ve
+  el equivalente en la otra moneda y lo que debe el cliente
+  (`src/components/abono-vivo.tsx`, el otro trozo de JavaScript del panel;
+  sin él, el formulario funciona igual). Un monto en bolívares que no llega
+  a un dólar (casi siempre un monto en dólares con el método equivocado)
+  pide confirmar con «El monto es correcto». Un monto que no llega a un centavo
   de dólar (Bs 1, por ejemplo) se rechaza: casi siempre es un error al
   teclear.
 - El saldo del cliente es lo comprado menos lo pagado, en dólares.
@@ -429,7 +444,9 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     que repetirla. Al guardar la venta pasa a ser su adjunto; las que
     nadie reclama se limpian pasado un día.
   - **Por entregar** exige el **día previsto de entrega** (no anterior a
-    la fecha de despacho). Esas ventas salen en Despacho con su ruta, con
+    la fecha de despacho; a más de un mes, pide confirmar). Si se marca «ya
+    la entregué» y a la vez se pone un día previsto, no se guarda: una de
+    las dos cosas está mal. Esas ventas salen en Despacho con su ruta, con
     lo que lleva cada cliente, la suma de lo que hay que cargar
     (`src/lib/entregas.ts`) y para cuándo es cada una; y el Resumen las
     recuerda arriba: «Entregas pendientes», con las de hoy y las

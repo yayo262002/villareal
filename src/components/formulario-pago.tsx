@@ -3,6 +3,7 @@ import { METODOS_PAGO, METODOS_EN_BOLIVARES, METODOS_CON_COMPROBANTE, hoy } from
 import type { ClienteConSaldo } from "@/lib/clientes";
 import { lectorDisponible } from "@/lib/lector-de-notas";
 import { EntradaFoto } from "@/components/entrada-foto";
+import { AbonoVivo } from "@/components/abono-vivo";
 import estilos from "@/app/admin/(panel)/panel.module.css";
 
 /** Lo que el formulario trae ya escrito (al volver con un aviso, o leído de la captura). */
@@ -32,9 +33,11 @@ type Props = {
 
 /**
  * Se usa en la página de pagos, en la ficha de cada cliente y, con otra
- * acción, en la de cada proveedor. Los métodos en bolívares llevan la tasa
- * como campo obligatorio; los demás la ignoran. Con la captura del pago,
- * el monto se puede dejar vacío: se lee de ella.
+ * acción, en la de cada proveedor. Al elegir cómo pagó, el monto se pide en
+ * bolívares o en dólares y la tasa solo aparece en bolívares; con una
+ * fecha de días atrás, la tasa pasa a ser la de ese día (y se puede
+ * cambiar); debajo del monto se ve el equivalente y lo que debe. Con la
+ * captura del pago, el monto se puede dejar vacío: se lee de ella.
  */
 export function FormularioPago({
   clientes,
@@ -50,15 +53,17 @@ export function FormularioPago({
 }: Props) {
   const fotoEnEspera = conCaptura ? escrito(parametros, "foto_espera") : "";
   const leida = escrito(parametros, "leida") === "1";
-  const pideConfirmar = escrito(parametros, "confirmar_captura") === "1";
+  const pideConfirmarCaptura = escrito(parametros, "confirmar_captura") === "1";
+  const pideConfirmarMonto = escrito(parametros, "confirmar_monto") === "1";
   const seLee = conCaptura && lectorDisponible();
+  const fijo = clienteFijo ? clientes.find((c) => c.id === clienteFijo) : undefined;
 
   return (
     <form action={accion} className="formulario" encType={conCaptura ? "multipart/form-data" : undefined}>
       <input type="hidden" name="volver_a" value={volverA} />
 
       {clienteFijo ? (
-        <input type="hidden" name={campoId} value={clienteFijo} />
+        <input type="hidden" id="pago-cliente" name={campoId} value={clienteFijo} data-saldo={fijo?.saldo_usd ?? ""} />
       ) : (
         <div className="campo">
           <label htmlFor="pago-cliente">{etiqueta}</label>
@@ -67,7 +72,7 @@ export function FormularioPago({
               Elige un cliente
             </option>
             {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
+              <option key={c.id} value={c.id} data-saldo={c.saldo_usd}>
                 {c.rotulo}
                 {c.saldo_usd > 0 ? ` (debe $${c.saldo_usd.toFixed(2)})` : ""}
               </option>
@@ -78,8 +83,9 @@ export function FormularioPago({
 
       <div className="formulario__fila">
         <div className="campo">
-          <label htmlFor="pago-fecha">Fecha</label>
-          <input id="pago-fecha" name="fecha" type="date" required defaultValue={escrito(parametros, "fecha") || hoy()} />
+          <label htmlFor="pago-fecha">Fecha del pago</label>
+          <input id="pago-fecha" name="fecha" type="date" required max={hoy()} defaultValue={escrito(parametros, "fecha") || hoy()} />
+          <span className="ayuda">Si fue días atrás, ponla: la tasa será la de ese día.</span>
         </div>
         <div className="campo">
           <label htmlFor="pago-metodo">{conCaptura ? "Cómo pagó" : "Método"}</label>
@@ -100,36 +106,36 @@ export function FormularioPago({
       <div className="formulario__fila">
         <div className="campo">
           <label htmlFor="pago-monto">Monto</label>
-          <input
-            id="pago-monto"
-            name="monto"
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0.01"
-            required={!conCaptura}
-            defaultValue={escrito(parametros, "monto")}
-          />
+          <input id="pago-monto" name="monto" type="number" inputMode="decimal" step="0.01" min="0.01" required={!conCaptura} defaultValue={escrito(parametros, "monto")} />
           <span className="ayuda">
             {leida
               ? "Monto, método, fecha y referencia leídos de la captura: revísalos y guarda."
-              : `Lo que paga ahora, sea todo o una parte. En la moneda del método.${seLee ? " Con la captura puesta, déjalo vacío y se lee de ella." : ""}`}
+              : `Lo que pagó, sea todo o una parte: en bolívares con pago móvil, transferencia o efectivo en Bs; en dólares con los demás.${seLee ? " Con la captura puesta, déjalo vacío y se lee de ella." : ""}`}
           </span>
         </div>
         <div className="campo">
-          <label htmlFor="pago-tasa">Tasa del día (Bs por dólar)</label>
-          <input
-            id="pago-tasa"
-            name="tasa"
-            type="number"
-            inputMode="decimal"
-            step="any"
-            min="0.01"
-            defaultValue={escrito(parametros, "tasa") || ultimaTasa || undefined}
-          />
-          <span className="ayuda">Solo para pagos en bolívares. Se guarda con el pago.</span>
+          <label htmlFor="pago-tasa">Tasa de ese día (Bs por dólar)</label>
+          <input id="pago-tasa" name="tasa" type="number" inputMode="decimal" step="any" min="0.01" defaultValue={escrito(parametros, "tasa") || ultimaTasa || undefined} />
+          <span className="ayuda">Solo para pagos en bolívares. Se guarda con el pago; si la dejas vacía, se usa la que había ese día.</span>
         </div>
       </div>
+      <AbonoVivo
+        hoy={hoy()}
+        metodosEnBs={METODOS_EN_BOLIVARES}
+        metodosConComprobante={METODOS_CON_COMPROBANTE}
+        idFecha="pago-fecha"
+        idMetodo="pago-metodo"
+        idMonto="pago-monto"
+        idTasa="pago-tasa"
+        idCliente="pago-cliente"
+        idAyudaComprobante={conCaptura ? "pago-captura-ayuda" : undefined}
+      />
+      {pideConfirmarMonto && (
+        <label className={estilos.casilla}>
+          <input type="checkbox" name="confirmar_monto" value="1" />
+          <span>El monto es correcto: guardar igual</span>
+        </label>
+      )}
 
       <div className="formulario__fila">
         <div className="campo">
@@ -147,13 +153,13 @@ export function FormularioPago({
           <label htmlFor="pago-captura">Comprobante de pago</label>
           {fotoEnEspera && <input type="hidden" name="foto_espera" value={fotoEnEspera} />}
           <EntradaFoto nombre="foto" id="pago-captura" opcional soloFoto ladoMaximo={1400} />
-          <span className="ayuda">
+          <span className="ayuda" id="pago-captura-ayuda">
             {fotoEnEspera
               ? "La captura ya está guardada; solo pon otra si quieres cambiarla."
-              : `La captura del pago. Obligatoria con ${METODOS_CON_COMPROBANTE.map((m) => METODOS_PAGO[m]).join(", ").replace(/, ([^,]+)$/, " y $1").toLowerCase()}; en efectivo no hace falta. Queda guardada con el abono.`}
-            {seLee && !fotoEnEspera ? " Se lee sola: monto, fecha y referencia, y se pasa a dólares con la tasa del día." : ""}
+              : "La captura del pago. Obligatoria con pago móvil, transferencia, Zelle y Binance; en efectivo no hace falta. Queda guardada con el abono."}
+            {seLee && !fotoEnEspera ? " Se lee sola: monto, fecha y referencia, y se pasa a dólares con la tasa de ese día." : ""}
           </span>
-          {pideConfirmar && (
+          {pideConfirmarCaptura && (
             <label className={estilos.casilla}>
               <input type="checkbox" name="confirmar_captura" value="1" />
               <span>Ya revisé la captura: guardar igual</span>

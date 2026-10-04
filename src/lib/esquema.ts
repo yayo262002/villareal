@@ -227,6 +227,16 @@ export const ESQUEMA = `
   -- Copias automáticas: cada noche se guarda aquí una copia completa de las
   -- tablas de arriba (un archivo SQLite en un blob). No entra en TABLAS,
   -- así una copia nunca contiene a las anteriores.
+  -- La tasa que hubo cada día (bolívares por dólar): del BCV, escrita a mano,
+  -- o la de un abono o una nota de ese día. Para registrar cosas atrasadas
+  -- con la tasa que había.
+  create table if not exists tasas (
+    fecha text primary key,
+    valor real not null,
+    origen text not null default 'manual',
+    actualizada_en text not null default (datetime('now'))
+  );
+
   -- El Excel de cada día, que la tarea diaria guarda sola cada mañana.
   create table if not exists exportaciones (
     fecha text primary key,
@@ -277,6 +287,7 @@ export const TABLAS = [
   "compras",
   "pagos_proveedores",
   "exportaciones",
+  "tasas",
 ] as const;
 
 /**
