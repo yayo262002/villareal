@@ -4,11 +4,10 @@ import type { Metadata } from "next";
 import { direccionCompleta, enlaceCompartir, enlaceWhatsapp, negocio } from "@/config/negocio";
 import { buscarProducto, type Producto } from "@/lib/productos";
 import { buscarVariante, direccionDeFotoDeVariante, variantesDeProducto, type Variante } from "@/lib/variantes";
-import { nombreDeVenta } from "@/lib/catalogo";
+import { claveDe, nombreDeVenta, porQueSeCobra } from "@/lib/catalogo";
 import { leerTasa } from "@/lib/ajustes";
 import { resenasDeVariante } from "@/lib/resenas";
 import { haySesion } from "@/lib/sesion";
-import { unidadEnPalabras } from "@/lib/dinero";
 import { idDeRuta, rutaProducto, rutaVariante } from "@/lib/enlaces";
 import {
   CabeceraPublica,
@@ -22,6 +21,8 @@ import {
 import { IlustracionProducto } from "@/components/ilustracion-producto";
 import { AvisoDeEjemplos, ListaDeResenas } from "@/components/resenas";
 import { ComoComprar } from "@/components/como-comprar";
+import { BotonAgregar } from "@/components/carrito/boton-agregar";
+import { IconoWhatsapp } from "@/components/icono-whatsapp";
 import estilos from "../../../page.module.css";
 
 type Parametros = { params: Promise<{ producto: string; marca: string }> };
@@ -40,7 +41,7 @@ async function marcaDe(segmentoProducto: string, segmentoMarca: string): Promise
 function resumenDe(producto: Producto, variante: Variante): string {
   const ventajas = ventajasDe(variante.descripcion);
   const detalle = ventajas.length > 0 ? `${ventajas.join(". ")}. ` : "";
-  return `${nombreDeVenta(producto.nombre, variante.nombre)} en ${negocio.localidad}. ${detalle}Solo al mayor, a tasa BCV.`;
+  return `${nombreDeVenta(producto.nombre, variante.nombre)} en ${negocio.localidad}. ${detalle}Al mayor, a tasa BCV.`;
 }
 
 export async function generateMetadata({ params }: Parametros): Promise<Metadata> {
@@ -94,9 +95,10 @@ function datosDeLaMarca(producto: Producto, variante: Variante): Record<string, 
 /**
  * La página de una marca o presentación (queso amarillo Kemmental, suero
  * de leche Guaralact): a ella se llega pinchando la marca en la página de
- * su producto. Su foto, su precio, su propia descripción y las reseñas de
- * los negocios que la compran, que son de esa marca y no de las otras.
- * Las de ejemplo solo las ve el dueño, con la sesión del panel abierta.
+ * su producto. Su foto, su precio con «Agregar al carrito», su propia
+ * descripción y las reseñas de los negocios que la compran, que son de esa
+ * marca y no de las otras. Las de ejemplo solo las ve el dueño, con la
+ * sesión del panel abierta.
  */
 export default async function PaginaMarca({ params }: Parametros) {
   const { producto: segmentoProducto, marca: segmentoMarca } = await params;
@@ -117,32 +119,38 @@ export default async function PaginaMarca({ params }: Parametros) {
   return (
     <>
       <DatosEstructurados datos={datosDeLaMarca(producto, variante)} />
-      <CabeceraPublica />
+      <CabeceraPublica actual="productos" />
 
       <main id="contenido" className={estilos.contenido}>
-        <section className={estilos.seccion}>
-          <Link href={rutaProducto(producto)} className={estilos.volver}>
-            ← {producto.nombre}
-          </Link>
+        <nav className={estilos.migas} aria-label="Estás en">
+          <Link href="/">Inicio</Link>
+          <Link href="/productos">Productos</Link>
+          <Link href={rutaProducto(producto)}>{producto.nombre}</Link>
+          <span aria-current="page">{variante.nombre}</span>
+        </nav>
 
-          <article className={estilos.ficha}>
-            <header className={estilos.fichaCabecera}>
-              {foto ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={foto} alt={nombre} width={800} height={800} className={estilos.fotoGrande} />
-              ) : (
-                <IlustracionProducto nombre={producto.nombre} className={estilos.dibujoGrande} />
-              )}
-              <h1 className={estilos.fichaNombre}>{nombre}</h1>
-              <p className={estilos.fichaUnidad}>Solo al mayor, por {unidadEnPalabras(producto.unidad)}</p>
-            </header>
+        <article className={estilos.ficha}>
+          <header className={estilos.fichaCabecera}>
+            {foto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={foto} alt={nombre} width={800} height={800} className={estilos.fotoGrande} />
+            ) : (
+              <IlustracionProducto nombre={producto.nombre} className={estilos.dibujoGrande} />
+            )}
+          </header>
+
+          <div className={estilos.fichaPrincipal}>
+            <h1 className={estilos.fichaNombre}>{nombre}</h1>
+            <p className={estilos.fichaUnidad}>Al mayor, por {porQueSeCobra({ ...producto, presentacion: "", contenido: "" })}</p>
 
             <div className={estilos.bloque}>
               <h2 className={estilos.bloqueTitulo}>Precio de hoy</h2>
               <PreciosProducto producto={{ precio_usd: variante.precio_usd, unidad: producto.unidad }} tasa={tasa?.valor ?? null} />
               <LineaTasa tasa={tasa} className={estilos.tasa} />
+              <BotonAgregar clave={claveDe(producto.id, variante.id)} nombre={nombre} unidad={producto.unidad} conCantidad />
               {pedir && (
-                <a className={`boton boton--acento ${estilos.botonPedir}`} href={pedir} target="_blank" rel="noopener">
+                <a className={`boton ${estilos.botonWhatsapp} ${estilos.botonPedir}`} href={pedir} target="_blank" rel="noopener">
+                  <IconoWhatsapp />
                   Pedir por WhatsApp
                 </a>
               )}
@@ -150,49 +158,55 @@ export default async function PaginaMarca({ params }: Parametros) {
                 Compartir este producto por WhatsApp
               </a>
             </div>
+          </div>
 
-            {(resenas.length > 0 || ventajas.length > 0) && (
-              <div className={estilos.bloque}>
-                <h2 className={estilos.bloqueTitulo}>Por qué elegirlo</h2>
-                {resenas.some((r) => r.de_ejemplo) && <AvisoDeEjemplos />}
-                <ListaDeResenas resenas={resenas} />
-                {ventajas.length > 0 && (
-                  <ul className={estilos.ventajas}>
-                    {ventajas.map((v) => (
-                      <li key={v}>{v}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            <ComoComprar mayor={mayor} />
-
-            {otras.length > 0 && (
-              <div>
-                <h2 className={estilos.subtitulo}>Otras marcas de {producto.nombre.toLowerCase()}</h2>
-                <ul className={estilos.otros}>
-                  {otras.map((v) => {
-                    const suFoto = direccionDeFotoDeVariante(v);
-                    return (
-                      <li key={v.id}>
-                        <Link href={rutaVariante(producto, v)} className={estilos.otro}>
-                          {suFoto ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={suFoto} alt="" width={64} height={64} className={estilos.otroFoto} loading="lazy" />
-                          ) : (
-                            <IlustracionProducto nombre={producto.nombre} />
-                          )}
-                          {v.nombre}
-                        </Link>
-                      </li>
-                    );
-                  })}
+          {(resenas.length > 0 || ventajas.length > 0) && (
+            <section className={`${estilos.bloque} ${estilos.fichaAncha}`} aria-labelledby="titulo-por-que">
+              <h2 id="titulo-por-que" className={estilos.bloqueTitulo}>
+                Por qué elegirlo
+              </h2>
+              {resenas.some((r) => r.de_ejemplo) && <AvisoDeEjemplos />}
+              <ListaDeResenas resenas={resenas} />
+              {ventajas.length > 0 && (
+                <ul className={estilos.ventajas}>
+                  {ventajas.map((v) => (
+                    <li key={v}>{v}</li>
+                  ))}
                 </ul>
-              </div>
-            )}
-          </article>
-        </section>
+              )}
+            </section>
+          )}
+
+          <div className={estilos.fichaAncha}>
+            <ComoComprar mayor={mayor} />
+          </div>
+
+          {otras.length > 0 && (
+            <section className={estilos.fichaAncha} aria-labelledby="titulo-otras">
+              <h2 id="titulo-otras" className={estilos.subtitulo}>
+                Otras marcas de {producto.nombre.toLowerCase()}
+              </h2>
+              <ul className={estilos.otros}>
+                {otras.map((v) => {
+                  const suFoto = direccionDeFotoDeVariante(v);
+                  return (
+                    <li key={v.id}>
+                      <Link href={rutaVariante(producto, v)} className={estilos.otro}>
+                        {suFoto ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={suFoto} alt="" width={64} height={64} className={estilos.otroFoto} loading="lazy" />
+                        ) : (
+                          <IlustracionProducto nombre={producto.nombre} />
+                        )}
+                        {v.nombre}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+        </article>
       </main>
 
       <PiePublico />

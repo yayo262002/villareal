@@ -1,94 +1,142 @@
 /*
- * La portada y la página de cada producto. La cabecera, el pie y las cajas
- * de precio están en `components/publico.module.css`.
+ * La página de cada producto y de cada marca, «Cómo comprar» y la página
+ * no encontrada. La portada está en `inicio.module.css`; la cabecera, el
+ * pie y las cajas de precio, en `components/publico.module.css`; las
+ * tarjetas, en `components/vitrina.module.css`.
  */
 .contenido {
   width: 100%;
-  max-width: 640px;
+  max-width: var(--ancho-web);
   margin: 0 auto;
-  padding: 0 var(--espacio-4);
+  padding: var(--espacio-4) var(--espacio-4) 0;
 }
 
-.seccion {
-  padding: var(--espacio-5) 0;
-}
-.seccion + .seccion {
-  border-top: 1px solid var(--color-borde);
-}
-.titulo {
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--color-marca-oscuro);
-}
-.subtitulo {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--color-marca-oscuro);
-  margin-bottom: var(--espacio-4);
-}
-
-.encabezadoPrecios {
+/* «Inicio › Productos › Quesos › Queso mozzarella» */
+.migas {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--espacio-2) var(--espacio-4);
+  align-items: center;
+  gap: var(--espacio-1) var(--espacio-2);
   margin-bottom: var(--espacio-4);
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+.migas a {
+  color: var(--color-verde-profundo);
+  font-weight: 600;
+}
+/* El separador va en un bloque propio para que no se subraye con el enlace. */
+.migas > * + *::before {
+  content: "›";
+  display: inline-block;
+  margin-right: var(--espacio-2);
+  color: var(--color-texto-suave);
+}
+.migas [aria-current] {
+  overflow-wrap: anywhere;
+}
+
+/* La ficha: en el teléfono, todo en una columna; en pantalla ancha, la foto a la izquierda y el precio a la derecha. */
+.ficha {
+  display: grid;
+  gap: var(--espacio-5);
+}
+.ficha > * {
+  min-width: 0;
+}
+@media (min-width: 900px) {
+  .ficha {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: var(--espacio-6);
+  }
+  .fichaAncha {
+    grid-column: 1 / -1;
+  }
+  .fichaCabecera {
+    padding: var(--espacio-6);
+  }
+  .fotoGrande {
+    width: min(420px, 100%);
+  }
+}
+.fichaCabecera {
+  display: grid;
+  place-items: center;
+  padding: var(--espacio-4);
+  border-radius: var(--radio-grande);
+  background: var(--color-crema);
+}
+.fotoGrande {
+  width: min(300px, 78%);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+.dibujoGrande {
+  width: min(260px, 60vw);
+  height: auto;
+  aspect-ratio: 1;
+}
+.fichaPrincipal {
+  display: grid;
+  gap: var(--espacio-3);
+}
+.fichaNombre {
+  font-family: var(--fuente-titulos);
+  font-weight: 400;
+  font-size: clamp(34px, 9vw, 54px);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--color-verde-profundo);
+  overflow-wrap: anywhere;
+}
+.fichaUnidad {
+  font-size: 16px;
+  color: var(--color-texto-suave);
+}
+.bloque {
+  display: grid;
+  gap: var(--espacio-3);
+  padding: var(--espacio-5);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-tarjeta);
+}
+.bloqueTitulo {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-texto-suave);
 }
 .tasa {
   font-size: 14px;
   color: var(--color-texto-suave);
 }
-
-/* Cada producto es una tarjeta: dibujo y nombre, precios, y dos botones. */
-.productos {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: var(--espacio-4);
-}
-.producto {
-  background: var(--color-superficie);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-grande);
-  box-shadow: var(--sombra);
-  padding: var(--espacio-4);
-  display: grid;
-  gap: var(--espacio-3);
-}
-.productoCabecera {
-  display: flex;
-  align-items: center;
-  gap: var(--espacio-3);
-  color: inherit;
-  text-decoration: none;
-  border-radius: var(--radio);
-}
-.productoCabecera:focus-visible {
-  outline: 3px solid var(--color-acento);
-  outline-offset: 4px;
-}
-.dibujo {
-  width: 76px;
-  height: 76px;
-  flex: none;
-}
-.nombre {
-  font-size: 22px;
+.botonPedir {
+  width: 100%;
+  min-height: 52px;
+  font-size: 17px;
   font-weight: 800;
-  line-height: 1.15;
-  color: var(--color-marca-oscuro);
 }
-/* «2 marcas o presentaciones», bajo el nombre, en la tarjeta de la portada. */
-.marcas {
-  display: block;
-  margin-top: 2px;
-  font-size: 14px;
-  color: var(--color-texto-suave);
+.botonWhatsapp {
+  background: var(--color-whatsapp);
+  color: var(--color-verde-profundo);
+}
+.botonWhatsapp:hover {
+  background: var(--color-whatsapp-oscuro);
+}
+.compartir {
+  justify-self: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-verde-profundo);
 }
 
-/* Las marcas o presentaciones en la página del producto: tarjetas iguales, con la foto grande arriba. */
+/* Las marcas o presentaciones: tarjetas iguales, con la foto grande arriba. */
 .variantes {
   list-style: none;
   padding: 0;
@@ -100,17 +148,18 @@
 }
 @media (min-width: 640px) {
   .variantes {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 }
 .variante {
   display: flex;
   flex-direction: column;
   gap: var(--espacio-2);
+  min-width: 0;
   padding: var(--espacio-3);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
-  background: var(--color-superficie-suave);
+  background: var(--color-crema);
 }
 /* La foto, cuadrada y a todo el ancho de la tarjeta; el fondo blanco del paquete se funde con el de la tarjeta. */
 .varianteFoto {
@@ -127,17 +176,31 @@
   box-sizing: border-box;
   padding: 14%;
 }
+.varianteEnlace {
+  display: block;
+  border-radius: var(--radio);
+}
+.varianteEnlace:focus-visible {
+  outline: 3px solid var(--color-dorado);
+  outline-offset: 2px;
+}
 .varianteTexto {
-  min-width: 0;
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: var(--espacio-2);
+  min-width: 0;
 }
 .varianteNombre {
   text-wrap: balance;
   font-size: 17px;
   font-weight: 800;
   line-height: 1.15;
-  color: var(--color-marca-oscuro);
+  color: var(--color-verde-profundo);
+}
+.varianteNombre a {
+  color: inherit;
+  text-decoration: none;
 }
 .varianteDetalle {
   margin: 0;
@@ -145,118 +208,24 @@
   line-height: 1.4;
   color: var(--color-texto-suave);
 }
-.varianteBoton {
-  justify-self: stretch;
-  text-align: center;
-}
-/* Lo que dijo un cliente, en una línea, con la raya dorada de las reseñas. */
-.cita {
-  padding: var(--espacio-2) var(--espacio-3);
-  border-left: 3px solid var(--color-acento);
-  background: var(--color-superficie-suave);
-  border-radius: 0 var(--radio) var(--radio) 0;
-  font-size: 15px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-.cita span {
-  color: var(--color-texto-suave);
-  white-space: nowrap;
-}
-.acciones {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--espacio-3);
-}
-/* Un solo botón, a todo el ancho: «Ver las 2 opciones y pedir». */
-.accionesUna {
-  grid-template-columns: 1fr;
-}
-/* Dos botones que en el teléfono van uno debajo del otro. */
-.accionesApiladas {
-  grid-template-columns: 1fr;
-}
-@media (min-width: 480px) {
-  .accionesApiladas {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.notaPrecios {
-  margin-top: var(--espacio-4);
-  color: var(--color-texto-suave);
-  font-size: 15px;
-}
-.botonGrande {
-  width: 100%;
-  min-height: 52px;
-  font-size: 18px;
-  margin-top: var(--espacio-5);
-}
-
-.contacto {
-  display: grid;
-  gap: var(--espacio-4);
-  margin: 0;
-}
-.contacto dt {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-texto-suave);
-}
-.contacto dd {
-  margin: 0;
-  font-size: 18px;
-}
-
-/* ---------- Página de un producto ---------- */
-
-.volver {
-  display: inline-block;
-  margin-bottom: var(--espacio-4);
-  font-weight: 600;
-  font-size: 15px;
-}
-.ficha {
-  display: grid;
-  gap: var(--espacio-5);
-}
-.fichaCabecera {
+/* «Agregar», «Pedir por WhatsApp» y «Ver detalles», abajo del todo, alineados entre tarjetas. */
+.varianteAcciones {
   display: grid;
   justify-items: center;
-  gap: var(--espacio-3);
+  gap: var(--espacio-2);
+  margin-top: auto;
+  padding-top: var(--espacio-2);
+}
+.varianteAcciones > :first-child {
+  justify-self: stretch;
+}
+.varianteEnlaceTexto {
   text-align: center;
-}
-.dibujoGrande {
-  width: 172px;
-  height: 172px;
-}
-.fichaNombre {
-  font-size: 32px;
-  font-weight: 800;
-  line-height: 1.1;
-  color: var(--color-marca-oscuro);
-}
-.fichaUnidad {
-  font-size: 15px;
-  color: var(--color-texto-suave);
-}
-.bloque {
-  background: var(--color-superficie);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-grande);
-  padding: var(--espacio-4);
-  display: grid;
-  gap: var(--espacio-3);
-}
-.bloqueTitulo {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-texto-suave);
+  color: var(--color-verde-profundo);
 }
+
 .ventajas {
   margin: 0;
   padding: 0;
@@ -265,10 +234,10 @@
   gap: var(--espacio-2);
 }
 .ventajas li {
-  padding-left: var(--espacio-6);
   position: relative;
-  font-size: 18px;
-  line-height: 1.35;
+  padding-left: var(--espacio-6);
+  font-size: 17px;
+  line-height: 1.4;
 }
 .ventajas li::before {
   content: "✓";
@@ -277,10 +246,17 @@
   color: var(--color-exito);
   font-weight: 800;
 }
+
+/* «Cómo comprar» */
 .datos {
   margin: 0;
   display: grid;
   gap: var(--espacio-3);
+}
+@media (min-width: 720px) {
+  .datos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .datos dt {
   font-size: 13px;
@@ -289,6 +265,20 @@
 .datos dd {
   margin: 0;
   font-size: 17px;
+}
+.datos a {
+  color: var(--color-verde-profundo);
+}
+
+/* Otras marcas del mismo producto. */
+.subtitulo {
+  margin-bottom: var(--espacio-4);
+  font-family: var(--fuente-titulos);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--color-verde-profundo);
 }
 .otros {
   list-style: none;
@@ -316,84 +306,51 @@
   width: 64px;
   height: 64px;
 }
-
-/* ---------- Añadidos de la portada ---------- */
-
-.entradilla {
-  margin-bottom: var(--espacio-4);
-  font-size: 17px;
-  color: var(--color-texto-suave);
-}
-
-/* La llamada a los negocios: pizzerías, panaderías, restaurantes. */
-.mayor {
-  display: grid;
-  gap: var(--espacio-3);
-  justify-items: start;
-  padding: var(--espacio-5);
-  border-radius: var(--radio-grande);
-  background: var(--color-marca-oscuro);
-  color: var(--color-marca-texto);
-}
-.mayorTitulo {
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.2;
-  text-wrap: balance;
-}
-.botonMapa {
-  margin-top: var(--espacio-4);
-}
-
-/* ---------- Añadidos de la página de producto ---------- */
-
-.botonPedir {
-  width: 100%;
-  min-height: 52px;
-  font-size: 18px;
-}
-.compartir {
-  justify-self: center;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-/* ---------- Página no encontrada ---------- */
-
-.mensaje {
-  display: grid;
-  gap: var(--espacio-4);
-  padding-top: var(--espacio-7);
-  padding-bottom: var(--espacio-7);
-}
-
-/* ---------- La página de cada marca ---------- */
-
-/* La foto grande de la marca: el fondo blanco del paquete se funde con el de la página. */
-.fotoGrande {
-  width: min(260px, 70vw);
-  height: auto;
-  aspect-ratio: 1;
-  object-fit: contain;
-  mix-blend-mode: multiply;
-}
-/* En la página del producto, la foto de cada marca lleva a su página. */
-.varianteEnlace {
-  display: block;
-  border-radius: var(--radio);
-}
-.varianteEnlace:focus-visible {
-  outline: 3px solid var(--color-acento);
-  outline-offset: 2px;
-}
-.varianteNombre a {
-  color: inherit;
-  text-decoration: none;
-}
-/* La foto de otra marca, en la lista de abajo. */
 .otroFoto {
   width: 64px;
   height: 64px;
   object-fit: contain;
   mix-blend-mode: multiply;
+}
+
+/* Debajo de la ficha, otros de la misma familia. */
+.relacionados {
+  display: grid;
+  gap: var(--espacio-4);
+  margin-top: var(--espacio-7);
+}
+
+/* ---------- Página no encontrada ---------- */
+
+.seccion {
+  padding: var(--espacio-5) 0;
+}
+.mensaje {
+  display: grid;
+  gap: var(--espacio-4);
+  max-width: 640px;
+  padding-top: var(--espacio-7);
+  padding-bottom: var(--espacio-7);
+}
+.titulo {
+  font-family: var(--fuente-titulos);
+  font-weight: 400;
+  font-size: clamp(34px, 9vw, 52px);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--color-verde-profundo);
+}
+.acciones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--espacio-3);
+}
+/* Dos botones que en el teléfono van uno debajo del otro. */
+.accionesApiladas {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px) {
+  .accionesApiladas {
+    grid-template-columns: 1fr 1fr;
+  }
 }

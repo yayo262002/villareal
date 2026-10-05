@@ -15,6 +15,20 @@ export function normalizar(texto: string): string {
     .trim();
 }
 
+/**
+ * Si un producto de la web responde a lo que se busca: cada palabra tiene
+ * que estar en alguno de sus textos (nombre, marcas, presentación,
+ * descripción, familias), sin tildes ni mayúsculas, y una palabra en plural
+ * vale también en singular («quesos» encuentra «queso»). Con la búsqueda
+ * vacía, todos.
+ */
+export function textoCoincide(textos: (string | null | undefined)[], busqueda: string): boolean {
+  const palabras = normalizar(busqueda).split(/\s+/).filter(Boolean);
+  if (palabras.length === 0) return true;
+  const donde = normalizar(textos.filter(Boolean).join(" "));
+  return palabras.every((p) => donde.includes(p) || (p.length > 3 && p.endsWith("s") && donde.includes(p.slice(0, -1))));
+}
+
 type VentaBuscable = { id: number; fecha: string; cliente_nombre: string; nota: string };
 
 /**

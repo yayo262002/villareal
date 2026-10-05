@@ -1,0 +1,695 @@
+/*
+ * La vitrina pública: secciones, tarjetas de productos y de familias, la
+ * franja de confianza y la llamada a los negocios. Verde profundo, dorado
+ * y crema; primero el teléfono. Las animaciones son cortas y se apagan si
+ * el teléfono pide menos movimiento.
+ */
+
+/* «CATEGORÍAS PRINCIPALES», con una raya dorada a cada lado. */
+.tituloSeccion {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-4);
+  margin: 0 0 var(--espacio-5);
+  font-family: var(--fuente-titulos);
+  font-weight: 400;
+  font-size: clamp(26px, 6vw, 40px);
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--color-verde-profundo);
+}
+.tituloSeccion::before,
+.tituloSeccion::after {
+  content: "";
+  flex: 1;
+  height: 3px;
+  min-width: 24px;
+  border-radius: 2px;
+  background: var(--color-dorado);
+}
+.tituloSeccion span {
+  flex: 0 1 auto;
+  text-wrap: balance;
+}
+.tituloClaro {
+  color: var(--color-crema);
+}
+
+/* ---------- Tarjetas de productos ---------- */
+
+.rejillaProductos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--espacio-3);
+}
+@media (min-width: 720px) {
+  .rejillaProductos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--espacio-4);
+  }
+}
+@media (min-width: 1080px) {
+  .rejillaProductos {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-tarjeta);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.tarjeta:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sombra-tarjeta-alta);
+}
+.tarjetaImagen {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: var(--espacio-3);
+  background: var(--color-superficie);
+}
+.tarjetaFoto {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+.tarjetaDibujo {
+  width: 78%;
+  height: 78%;
+}
+.etiqueta {
+  position: absolute;
+  top: var(--espacio-2);
+  left: var(--espacio-2);
+  padding: 2px var(--espacio-2);
+  border-radius: 999px;
+  background: var(--color-dorado);
+  color: var(--color-verde-profundo);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tarjetaCuerpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  padding: var(--espacio-3);
+  border-top: 1px solid var(--color-borde);
+}
+.tarjetaNombre {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.tarjetaNombre a {
+  color: var(--color-texto);
+  text-decoration: none;
+}
+.tarjetaDetalle {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+.precio {
+  display: grid;
+  gap: 2px;
+}
+.precioPrincipal {
+  font-size: clamp(18px, 4.8vw, 22px);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--color-marca);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.precioSecundario {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+.precioPendiente {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-texto-suave);
+}
+.desde {
+  font-size: 0.62em;
+  font-weight: 600;
+  color: var(--color-texto-suave);
+}
+.tarjetaAcciones {
+  display: grid;
+  gap: var(--espacio-2);
+  margin-top: auto;
+  padding-top: var(--espacio-2);
+}
+.botonOpciones {
+  width: 100%;
+  padding: 0 var(--espacio-3);
+  background: var(--color-verde-profundo);
+}
+.botonOpciones:hover {
+  background: var(--color-marca);
+}
+.verDetalles {
+  justify-self: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-marca);
+}
+
+/* ---------- Tarjetas de familias ---------- */
+
+.rejillaFamilias {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--espacio-3);
+}
+@media (min-width: 720px) {
+  .rejillaFamilias {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1080px) {
+  .rejillaFamilias {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+.familia {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radio-grande);
+  background: var(--color-verde-profundo);
+  color: var(--color-crema);
+  text-decoration: none;
+  box-shadow: var(--sombra-tarjeta);
+  transition: transform 0.18s ease;
+}
+.familia:hover {
+  transform: translateY(-3px);
+}
+.familia:focus-visible {
+  outline: 3px solid var(--color-dorado);
+  outline-offset: 3px;
+}
+.familiaImagen {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--color-crema-oscuro);
+}
+.familiaImagen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.familia:hover .familiaImagen img {
+  transform: scale(1.05);
+}
+.familiaIcono {
+  width: 46%;
+  height: 46%;
+  color: var(--color-marca);
+}
+.familiaNombre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-2);
+  padding: var(--espacio-3);
+  font-family: var(--fuente-titulos);
+  font-size: 18px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.familiaNombre svg {
+  flex: none;
+  color: var(--color-dorado);
+}
+
+/* Las familias, para ir de una a otra: se deslizan de lado en el teléfono. */
+.chips {
+  display: flex;
+  gap: var(--espacio-2);
+  margin: 0 calc(-1 * var(--espacio-4)) var(--espacio-5);
+  padding: 0 var(--espacio-4) var(--espacio-1);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.chips a {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--espacio-2);
+  min-height: 40px;
+  padding: 0 var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+  background: var(--color-superficie);
+  color: var(--color-verde-profundo);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.chips a[aria-current="page"] {
+  border-color: var(--color-verde-profundo);
+  background: var(--color-verde-profundo);
+  color: var(--color-dorado);
+}
+.chipIcono {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---------- La franja de confianza ---------- */
+
+.confianza {
+  list-style: none;
+  margin: 0;
+  padding: var(--espacio-5);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--espacio-4);
+  border-radius: var(--radio-grande);
+  background: var(--color-verde-profundo);
+  color: var(--color-crema);
+}
+@media (min-width: 900px) {
+  .confianza {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .confianza li + li {
+    border-left: 1px solid var(--color-dorado-tenue);
+    padding-left: var(--espacio-4);
+  }
+}
+.confianza li {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.25;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.confianza svg {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  color: var(--color-dorado);
+}
+@media (min-width: 900px) {
+  .confianza svg {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* ---------- ¿Estás montando tu negocio? ---------- */
+
+.montando {
+  position: relative;
+  display: grid;
+  gap: var(--espacio-4);
+  overflow: hidden;
+  padding: var(--espacio-6) var(--espacio-5);
+  border-radius: var(--radio-grande);
+  background: var(--color-verde-profundo);
+  color: var(--color-crema);
+}
+@media (min-width: 900px) {
+  .montando {
+    grid-template-columns: 1fr minmax(0, 1.3fr) minmax(0, 0.9fr) 1fr;
+    align-items: center;
+    padding: var(--espacio-5) 0;
+  }
+}
+.montandoFotoIzquierda,
+.montandoFotoDerecha {
+  display: none;
+}
+@media (min-width: 900px) {
+  .montandoFotoIzquierda,
+  .montandoFotoDerecha {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-height: 220px;
+    object-fit: cover;
+  }
+  .montandoFotoIzquierda {
+    mask-image: linear-gradient(to right, var(--color-verde-noche) 55%, transparent);
+  }
+  .montandoFotoDerecha {
+    mask-image: linear-gradient(to left, var(--color-verde-noche) 55%, transparent);
+  }
+}
+.montandoTexto {
+  display: grid;
+  gap: var(--espacio-3);
+  justify-items: start;
+}
+.montandoTitulo {
+  font-family: var(--fuente-titulos);
+  font-weight: 400;
+  font-size: clamp(28px, 7vw, 40px);
+  line-height: 1.05;
+  color: var(--color-dorado);
+  text-wrap: balance;
+}
+.montandoLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2) var(--espacio-4);
+  font-weight: 700;
+}
+.montandoLista li {
+  display: inline-flex;
+  align-items: center;
+}
+.montandoLista li::before {
+  content: "✓";
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-right: var(--espacio-2);
+  border: 2px solid var(--color-dorado);
+  border-radius: 50%;
+  color: var(--color-dorado);
+  font-size: 12px;
+}
+@media (min-width: 900px) {
+  .montandoLista {
+    flex-direction: column;
+  }
+}
+/* «Contactar por WhatsApp»: en una sola línea también en un teléfono estrecho. */
+.botonWhatsapp {
+  padding: 0 var(--espacio-4);
+  font-size: clamp(14px, 3.8vw, 16px);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ---------- Sin productos ---------- */
+
+.sinProductos {
+  display: grid;
+  justify-items: start;
+  gap: var(--espacio-4);
+  padding: var(--espacio-6) var(--espacio-5);
+  border: 2px dashed var(--color-borde);
+  border-radius: var(--radio-grande);
+  font-size: 17px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tarjeta,
+  .familia,
+  .familiaImagen img {
+    transition: none;
+  }
+  .tarjeta:hover,
+  .familia:hover {
+    transform: none;
+  }
+  .familia:hover .familiaImagen img {
+    transform: none;
+  }
+}
+
+/* ---------- Páginas de la vitrina ---------- */
+
+.pagina {
+  display: grid;
+  gap: var(--espacio-7);
+  max-width: var(--ancho-web);
+  margin: 0 auto;
+  padding: var(--espacio-5) var(--espacio-4) 0;
+}
+.pagina > * {
+  min-width: 0;
+}
+.encabezado {
+  display: grid;
+  gap: var(--espacio-3);
+}
+.tituloPagina {
+  font-family: var(--fuente-titulos);
+  font-weight: 400;
+  font-size: clamp(34px, 9vw, 56px);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--color-verde-profundo);
+}
+.entradilla {
+  max-width: 62ch;
+  font-size: 17px;
+  color: var(--color-texto-suave);
+}
+.antetitulo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-dorado);
+}
+.tasa {
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+/* La tasa sobre la foto de una familia. */
+.tasaClara {
+  font-size: 14px;
+  color: var(--color-crema);
+}
+.notaPrecios {
+  margin-top: var(--espacio-4);
+  font-size: 15px;
+  color: var(--color-texto-suave);
+}
+.seccion {
+  display: grid;
+  gap: var(--espacio-4);
+}
+.seccion > .tituloSeccion {
+  margin-bottom: var(--espacio-1);
+}
+.verTodos {
+  justify-self: center;
+  min-width: min(100%, 320px);
+}
+
+/* El buscador grande de la página de productos. */
+.buscador {
+  display: flex;
+  gap: var(--espacio-2);
+  max-width: 560px;
+}
+.buscador input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 var(--espacio-4);
+  border: 2px solid var(--color-borde);
+  border-radius: 999px;
+  background: var(--color-superficie);
+}
+.buscador input:focus-visible {
+  outline: 3px solid var(--color-dorado);
+  outline-offset: 1px;
+  border-color: var(--color-verde-profundo);
+}
+.buscador button {
+  min-height: 48px;
+  border-radius: 999px;
+  background: var(--color-verde-profundo);
+}
+
+/* La cabecera de una familia: su foto de fondo con un velo verde, y el nombre encima. */
+.cabeceraFamilia {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  align-items: end;
+  min-height: 240px;
+  border-radius: var(--radio-grande);
+  background: var(--color-verde-profundo);
+  color: var(--color-crema);
+}
+.cabeceraFamilia::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--velo-foto-movil);
+}
+@media (min-width: 760px) {
+  .cabeceraFamilia {
+    min-height: 300px;
+  }
+  .cabeceraFamilia::after {
+    background: var(--velo-foto);
+  }
+}
+.cabeceraFamiliaFoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cabeceraFamiliaTexto {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--espacio-2);
+  justify-items: start;
+  padding: var(--espacio-6) var(--espacio-5) var(--espacio-5);
+  max-width: 640px;
+}
+.cabeceraFamiliaNombre {
+  font-family: var(--fuente-titulos);
+  font-weight: 400;
+  font-size: clamp(40px, 11vw, 72px);
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: var(--color-crema);
+  overflow-wrap: anywhere;
+}
+.cabeceraFamiliaDescripcion {
+  font-size: 17px;
+}
+.cabeceraFamiliaCuenta {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-dorado);
+}
+
+/* ---------- Combos y ofertas ---------- */
+
+.rejillaOfertas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--espacio-4);
+}
+@media (min-width: 720px) {
+  .rejillaOfertas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1080px) {
+  .rejillaOfertas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.oferta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  min-width: 0;
+  padding: var(--espacio-5);
+  border: 2px solid var(--color-dorado);
+  border-radius: var(--radio-grande);
+  background: var(--color-crema);
+  box-shadow: var(--sombra-tarjeta);
+  scroll-margin-top: 96px;
+}
+.oferta:target {
+  outline: 4px solid var(--color-dorado-tenue);
+}
+.ofertaCabecera {
+  display: grid;
+  gap: var(--espacio-2);
+  justify-items: start;
+}
+.etiquetaCombo {
+  padding: 2px var(--espacio-3);
+  border-radius: 999px;
+  background: var(--color-verde-profundo);
+  color: var(--color-dorado);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ofertaNombre {
+  font-family: var(--fuente-titulos);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--color-verde-profundo);
+}
+.ofertaDescripcion {
+  font-size: 15px;
+  color: var(--color-texto-suave);
+}
+.ofertaLleva {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--espacio-1);
+  font-size: 15px;
+}
+.ofertaLleva li {
+  position: relative;
+  padding-left: var(--espacio-5);
+  overflow-wrap: anywhere;
+}
+.ofertaLleva li::before {
+  content: "✓";
+  position: absolute;
+  left: 2px;
+  color: var(--color-exito);
+  font-weight: 800;
+}
+.ofertaLleva a {
+  color: var(--color-verde-profundo);
+  font-weight: 700;
+}
+.ofertaPie {
+  display: grid;
+  gap: var(--espacio-2);
+  margin-top: auto;
+  padding-top: var(--espacio-3);
+  border-top: 1px dashed var(--color-borde);
+}

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Anton } from "next/font/google";
 import { negocio } from "@/config/negocio";
 import "./globals.css";
 
@@ -32,16 +33,20 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
 };
 
+// La letra de los títulos de la web. Next la descarga al compilar y la sirve
+// desde la propia web: el teléfono del cliente no le pide nada a Google.
+const anton = Anton({ weight: "400", subsets: ["latin"], display: "swap", variable: "--fuente-anton" });
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   // El color de la cabecera: en el teléfono la barra del navegador se funde con ella.
-  themeColor: "#163f28",
+  themeColor: "#0e2c1b",
 };
 
 export default function LayoutRaiz({ children }: { children: ReactNode }) {
   return (
-    <html lang="es-VE">
+    <html lang="es-VE" className={anton.variable}>
       <body>{children}</body>
     </html>
   );

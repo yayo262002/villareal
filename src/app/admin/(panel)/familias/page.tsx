@@ -102,6 +102,11 @@ export default async function PaginaFamilias({ searchParams }: { searchParams: P
                 </p>
                 <div className={estilos.carteraAcciones}>
                   <Link href={`/admin/productos?familia=${f.id}#lista`}>Sus productos</Link>
+                  {f.activa ? (
+                    <a href={`/categoria/${f.slug}`} target="_blank" rel="noopener">
+                      Ver en la web
+                    </a>
+                  ) : null}
                   <form action={alternarFamilia}>
                     <input type="hidden" name="id" value={f.id} />
                     <input type="hidden" name="activa" value={f.activa ? "0" : "1"} />

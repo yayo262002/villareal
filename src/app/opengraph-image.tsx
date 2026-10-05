@@ -9,7 +9,7 @@ export const contentType = "image/png";
 export default function Imagen() {
   return imagenSocial({
     antetitulo: negocio.localidad,
-    titulo: "Insumos al mayor para tu negocio",
-    detalle: "Precios del día, a tasa BCV",
+    titulo: "Todo para tu burger & pizzería",
+    detalle: "Precios del día al mayor, a tasa BCV",
   });
 }

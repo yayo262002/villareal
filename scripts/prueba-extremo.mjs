@@ -134,6 +134,16 @@ async function portadaCon(texto) {
   return ultima;
 }
 
+/** Como `portadaCon`, para cualquier página que se guarda hecha (Ofertas). */
+async function paginaCon(ruta, texto) {
+  let ultima = await pagina(ruta, "");
+  for (let i = 0; i < 20 && !ultima.html.includes(texto); i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    ultima = await pagina(ruta, "");
+  }
+  return ultima;
+}
+
 /** El identificador de la acción del formulario que contiene `marca`. */
 function accionDe(html, marca, segundaMarca = "") {
   const formulario = (html.match(/<form[\s\S]*?<\/form>/g) ?? []).find((f) => f.includes(marca) && f.includes(segundaMarca));
@@ -213,7 +223,10 @@ async function probarPresentacion(portada) {
   comprobar("la portada dice qué se vende y dónde", html.includes('lang="es-VE"') && /<meta name="description" content="[^"]*Barquisimeto/.test(html));
   comprobar("vista previa para WhatsApp: título, descripción e imagen", /property="og:title"/.test(html) && /property="og:description"/.test(html) && /property="og:image" content="[^"]*opengraph-image/.test(html));
   comprobar("datos de la tienda para los buscadores", /"@type":"Store"/.test(html) && html.includes('"addressLocality":"Barquisimeto"') && html.includes('"telephone":"+584246343236"'));
-  comprobar("llamada a los negocios y cómo llegar", html.includes("Pedir precio al mayor") && html.includes("google.com/maps/search") && html.includes("Saltar al contenido"));
+  comprobar(
+    "llamada a quien monta su negocio y cómo llegar",
+    legible(html).includes("¿Estás montando tu negocio?") && html.includes("Contactar por WhatsApp") && html.includes("google.com/maps/search") && html.includes("Saltar al contenido") && html.includes('id="contacto"'),
+  );
 
   let r = await fetch(base + "/opengraph-image");
   comprobar("imagen de vista previa de la portada", r.status === 200 && r.headers.get("content-type") === "image/png" && (await r.arrayBuffer()).byteLength > 20000);
@@ -228,7 +241,8 @@ async function probarPresentacion(portada) {
   const robots = await r.text();
   comprobar("los buscadores no entran al panel", robots.includes("Disallow: /admin") && robots.includes("sitemap.xml"));
   r = await fetch(base + "/sitemap.xml");
-  comprobar("mapa del sitio con los productos", r.status === 200 && (await r.text()).includes("/producto/"));
+  const mapa = await r.text();
+  comprobar("mapa del sitio con los productos, Productos, Ofertas y cada categoría", r.status === 200 && mapa.includes("/producto/") && mapa.includes("/productos<") && mapa.includes("/ofertas<") && mapa.includes("/categoria/"));
   r = await fetch(base + "/manifest.webmanifest");
   const manifiesto = await r.json().catch(() => ({}));
   comprobar("se puede poner en la pantalla de inicio del teléfono", manifiesto.short_name === "Villa Real" && manifiesto.icons?.length >= 2);
@@ -326,7 +340,7 @@ async function probarPrecios() {
 
   // Bs 255,50 es el último cambio: la mozzarella a USD 7 con la tasa a 36,50.
   const web = (await portadaCon("Bs 255,50")).html;
-  comprobar("web: el precio al mayor del queso amarillo en bolívares, y nada de detal", web.includes(">Precio al mayor<") && web.includes("Bs 310,25") && !web.includes("al detal") && !web.includes("Al detal"));
+  comprobar("web: el precio al mayor del queso amarillo en bolívares, y nada de detal", web.includes("· al mayor") && web.includes("Bs 310,25") && !web.includes("al detal") && !web.includes("Al detal"));
   comprobar("web: dólares y tasa", web.includes(usd("8,50")) && web.includes("36,50"));
   comprobar("web: la mozzarella a 7 (Bs 255,50)", web.includes("Bs 255,50"));
   comprobar("portada: sin reseñas; van dentro de cada producto", !web.includes("«"));
@@ -335,11 +349,15 @@ async function probarPrecios() {
   const ficha = await pagina("/producto/2-queso-mozzarella", "");
   comprobar("página de la mozzarella: ventajas, precio y pedir", ficha.status === 200 && ficha.html.includes("Perfecta para rallar") && ficha.html.includes("no se desborona") && ficha.html.includes("Bs 255,50") && ficha.html.includes("quiero%20pedir%20queso%20mozzarella"));
   const fichaAmarillo = await pagina("/producto/1-cualquier-nombre", "");
-  comprobar("página del queso amarillo: el precio al mayor y sus detalles", fichaAmarillo.html.includes("Bs 310,25") && fichaAmarillo.html.includes("Solo al mayor") && fichaAmarillo.html.includes("Por qué elegirlo") && fichaAmarillo.html.includes("Otros productos"));
+  comprobar(
+    "página del queso amarillo: el precio al mayor, sus detalles, «Agregar al carrito» y otros de su familia",
+    fichaAmarillo.html.includes("Bs 310,25") && legible(fichaAmarillo.html).includes("Al mayor, por kilo") && fichaAmarillo.html.includes("Por qué elegirlo") &&
+      fichaAmarillo.html.includes(">Agregar al carrito<") && fichaAmarillo.html.includes("De la misma familia") && fichaAmarillo.html.includes('href="/categoria/quesos"'),
+  );
   comprobar("todos los productos tienen detalles", (await Promise.all([3, 4].map((id) => pagina(`/producto/${id}`, "")))).every((p) => p.status === 200 && p.html.includes("Por qué elegirlo")));
   comprobar("un producto que no existe da 404", (await pagina("/producto/999-nada", "")).status === 404 && (await pagina("/producto/queso", "")).status === 404);
   comprobar("web: huevos y pecorino rallado, sin precio inventado", web.includes("Huevos") && web.includes("Queso pecorino rallado") && web.includes("Consulta el precio del día"));
-  comprobar("web: pedir cada producto por WhatsApp", web.includes("quiero%20pedir%20queso%20amarillo"));
+  comprobar("web: cada tarjeta con su «Agregar» y sus detalles; en la página, el pedido directo por WhatsApp", web.includes(">Agregar<") && web.includes(">Ver detalles<") && fichaAmarillo.html.includes("quiero%20pedir%20queso%20amarillo"));
 
   // Marcas y presentaciones: dos bolsas de pecorino. La portada dice «desde» con la más barata; la página las enseña con su foto.
   r = await enviar("/admin/productos/4", 'id="variante-nueva-4-nombre"', {
@@ -354,8 +372,8 @@ async function probarPrecios() {
   comprobar(
     "portada: el pecorino dice «desde» con la más barata (3,50) y cuántas marcas hay",
     portadaMarcas.includes("desde </span>Bs 127,75") && portadaMarcas.includes("2 marcas o presentaciones") &&
-      portadaMarcas.includes('href="/producto/4-queso-pecorino-rallado#marcas"') && portadaMarcas.includes("Ver las 2 opciones y pedir"),
-    portadaMarcas.slice(Math.max(0, portadaMarcas.indexOf("pecorino rallado</h2>") - 100), portadaMarcas.indexOf("pecorino rallado</h2>") + 900).replace(/\s+/g, " "),
+      portadaMarcas.includes('href="/producto/4-queso-pecorino-rallado#marcas"') && portadaMarcas.includes(">Ver opciones<") && portadaMarcas.includes("Ver las 2 opciones de Queso pecorino rallado"),
+    portadaMarcas.slice(Math.max(0, portadaMarcas.indexOf("pecorino rallado</a>") - 100), portadaMarcas.indexOf("pecorino rallado</a>") + 900).replace(/\s+/g, " "),
   );
   const fichaPecorino = await pagina("/producto/4-queso-pecorino-rallado", "");
   comprobar(
@@ -364,10 +382,13 @@ async function probarPrecios() {
       fichaPecorino.html.includes(`/foto-variante/${varianteSortilegio}?v=`) && fichaPecorino.html.includes("Rallado, semigraso, madurado") &&
       fichaPecorino.html.includes("Bs 146,00") && fichaPecorino.html.includes("quiero%20pedir%20queso%20pecorino%20rallado%20sortilegio%20500%20g"),
   );
+  // Las marcas van en su sección; debajo, otros productos de la familia con su propio «Agregar».
+  const inicioMarcas = fichaPecorino.html.indexOf('id="marcas"');
+  const seccionDeMarcas = fichaPecorino.html.slice(inicioMarcas, fichaPecorino.html.indexOf("</section>", inicioMarcas));
   comprobar(
     "con marcas, se pide desde la marca elegida: el botón de arriba lleva a las marcas y cada una tiene el suyo",
-    fichaPecorino.html.includes('href="#marcas"') && fichaPecorino.html.includes('id="marcas"') && fichaPecorino.html.includes('aria-label="Pedir Sortilegio 500 g"') &&
-      !fichaPecorino.html.includes(">Pedir por WhatsApp<"),
+    fichaPecorino.html.includes('href="#marcas"') && fichaPecorino.html.includes('id="marcas"') && fichaPecorino.html.includes('aria-label="Pedir Sortilegio 500 g por WhatsApp"') &&
+      !fichaPecorino.html.includes('quiero%20pedir%20queso%20pecorino%20rallado."') && (seccionDeMarcas.match(/>Agregar</g) ?? []).length === 2,
   );
   const fotoVariante = await fetch(base + `/foto-variante/${varianteSortilegio}`);
   comprobar("la foto de la marca se sirve a la web", fotoVariante.status === 200 && fotoVariante.headers.get("content-type") === "image/png");
@@ -1704,6 +1725,71 @@ async function probarCatalogo() {
   comprobar("el panel de ofertas la enseña en la web, con su precio", legible((await pagina("/admin/ofertas")).html).includes("Pack Burger") && legible((await pagina("/admin/ofertas")).html).includes(usd("45,00")));
 }
 
+/**
+ * La vitrina con el catálogo ya preparado: buscar, cada familia (también
+ * una vacía y una escondida), la oferta activa, y el carrito con un
+ * producto, una marca y un combo, sin lo que no se puede pedir.
+ */
+async function probarVitrina() {
+  const [tocineta] = await consultar("select id from productos where nombre = 'Tocineta ahumada (prueba)'");
+  const [ketchup] = await consultar("select id from productos where nombre = 'Ketchup'");
+  const [sortilegio] = await consultar("select id from variantes where nombre = 'Sortilegio 500 g'");
+  const [packBurger] = await consultar("select id from ofertas where nombre = 'Pack Burger'");
+  const [packPizzeria] = await consultar("select id from ofertas where nombre = 'Pack Pizzería'");
+
+  const todos = legible((await pagina("/productos", "")).html);
+  comprobar("todos los productos: los publicados sí, los borradores no", todos.includes("Tocineta ahumada (prueba)") && todos.includes("Queso mozzarella") && !todos.includes("Ketchup"));
+  const buscada = legible((await pagina("/productos?q=TOCINETA", "")).html);
+  comprobar(
+    "buscar sin mirar mayúsculas encuentra la tocineta, y solo lo que coincide",
+    buscada.includes("Tocineta ahumada (prueba)") && !buscada.includes("Queso mozzarella") && buscada.includes("1 producto encontrado"),
+  );
+  comprobar("buscar por una familia encuentra lo que sale en ella", legible((await pagina("/productos?q=pizzeria", "")).html).includes("Queso mozzarella"));
+  const nada = legible((await pagina("/productos?q=ketchup", "")).html);
+  comprobar(
+    "un borrador no se encuentra, y se ofrece preguntarlo por WhatsApp",
+    nada.includes("Ningún producto encontrado") && nada.includes("No encontramos «ketchup»") && nada.includes("wa.me/584246343236?text=Hola%2C%20%C2%BFtienen%20ketchup%3F"),
+  );
+
+  const embutidos = await pagina("/categoria/embutidos", "");
+  comprobar(
+    "la categoría Embutidos enseña la tocineta, con su foto y su «Agregar»",
+    embutidos.status === 200 && legible(embutidos.html).includes("Tocineta ahumada (prueba)") && embutidos.html.includes(`/foto-producto/${tocineta.id}?v=`) && embutidos.html.includes(">Agregar<"),
+  );
+  const burger = legible((await pagina("/categoria/burger", "")).html);
+  comprobar(
+    "Burger enseña lo suyo y lo que también sale en ella, sin repetir",
+    burger.includes("Queso amarillo") && (burger.match(/>Tocineta ahumada \(prueba\)</g) ?? []).length === 1 && burger.includes('aria-current="page"'),
+  );
+  const vacia = await pagina("/categoria/congelados-de-prueba", "");
+  comprobar("una familia sin nada publicado lo dice y ofrece preguntar", vacia.status === 200 && legible(vacia.html).includes("Todavía no hay productos de congelados de prueba publicados"));
+  const [congelados] = await consultar("select id from familias where slug = 'congelados-de-prueba'");
+  let r = await enviar("/admin/familias", `name="id" value="${congelados.id}"`, { id: String(congelados.id), activa: "0" }, cookie, {}, 'name="activa"');
+  comprobar("una familia escondida no tiene página", r.destino.includes("escondida") && (await pagina("/categoria/congelados-de-prueba", "")).status === 404, r.destino);
+  await enviar("/admin/familias", `name="id" value="${congelados.id}"`, { id: String(congelados.id), activa: "1" }, cookie, {}, 'name="activa"');
+  comprobar("el panel enlaza la página de cada familia en la web", (await pagina("/admin/familias")).html.includes('href="/categoria/burger"'));
+
+  const ofertas = await paginaCon("/ofertas", "Pack Burger");
+  const textoOfertas = legible(ofertas.html);
+  comprobar(
+    "la oferta activa sale en Ofertas con su precio, lo que lleva, su «Agregar» y su pedido por WhatsApp; la de borrador, no",
+    ofertas.status === 200 && textoOfertas.includes(usd("45,00")) && textoOfertas.includes("Ketchup") && ofertas.html.includes(`id="oferta-${packBurger.id}"`) &&
+      ofertas.html.includes(">Agregar<") && ofertas.html.includes("quiero%20el%20combo%20Pack%20Burger") && !textoOfertas.includes("Pack Pizzería"),
+  );
+  comprobar("la portada enseña la oferta activa", legible((await portadaCon("Pack Burger")).html).includes("Ofertas y combos"));
+
+  const claves = [String(tocineta.id), `4-${sortilegio.id}`, "4", String(ketchup.id), `o${packBurger.id}`, `o${packPizzeria.id}`];
+  const api = await (await fetch(base + `/api/carrito?claves=${encodeURIComponent(claves.join(","))}`)).json();
+  const de = Object.fromEntries(api.productos.map((p) => [p.clave, p]));
+  comprobar(
+    "el carrito: el producto y la marca con su precio de hoy, el combo activo como combo; lo que tiene marcas suelto, un borrador y un combo sin publicar, no",
+    cerca(de[String(tocineta.id)]?.precio_usd, 13) && de[String(tocineta.id)]?.porQue === "kilo" && de[`4-${sortilegio.id}`]?.nombre === "Queso pecorino rallado Sortilegio 500 g" &&
+      cerca(de[`4-${sortilegio.id}`]?.precio_usd, 4.2) && de[`o${packBurger.id}`]?.porQue === "combo" && cerca(de[`o${packBurger.id}`]?.precio_usd, 45) &&
+      !de["4"] && !de[String(ketchup.id)] && !de[`o${packPizzeria.id}`] && api.productos.length === 3,
+    JSON.stringify(api).slice(0, 700),
+  );
+}
+
 async function probarSinEscribir() {
   const pantallas = [
     ["/admin", "Resumen", "Hoy,"],
@@ -1797,12 +1883,38 @@ try {
   if (!enProduccion) await arrancarServidor();
 
   const web = await pagina("/", "");
-  comprobar(`web pública (${web.ms} ms)`, web.status === 200 && web.html.includes("Precios de hoy") && web.html.includes("wa.me/584246343236"));
+  comprobar(
+    `web pública (${web.ms} ms): «Todo para tu burger & pizzería», con sus categorías y sus productos`,
+    web.status === 200 && /Todo para tu\s*<span>burger &amp; pizzer[ií]a<\/span>/.test(legible(web.html)) && web.html.includes("wa.me/584246343236") &&
+      web.html.includes("Productos destacados") && web.html.includes('href="/productos"'),
+  );
 
   const primera = web.html.match(/href="(\/producto\/\d+[a-z0-9-]*)"/)?.[1];
   const detalle = primera ? await pagina(primera, "") : null;
-  comprobar("la página de un producto abre desde la portada", Boolean(detalle) && detalle.status === 200 && detalle.html.includes("Cómo comprar") && detalle.html.includes("Todos los productos"), String(primera));
-  comprobar("la portada ya no dice «quesos y huevos»: habla de insumos al mayor", !web.html.includes("Quesos y huevos") && legible(web.html).includes("Insumos al mayor"));
+  comprobar("la página de un producto abre desde la portada", Boolean(detalle) && detalle.status === 200 && detalle.html.includes("Cómo comprar") && detalle.html.includes('aria-label="Estás en"'), String(primera));
+  comprobar("la portada se presenta como proveedor para burger y pizza", !web.html.includes("Quesos y huevos") && legible(web.html).includes("Tu proveedor para burger &amp; pizza"));
+  // Las páginas de la vitrina: todos los productos, cada familia, las ofertas y el carrito. Solo leer.
+  const todos = await pagina("/productos", "");
+  comprobar(
+    "la página de todos los productos, con el buscador y las familias",
+    todos.status === 200 && todos.html.includes('name="q"') && todos.html.includes('href="/categoria/') && (todos.html.match(/href="\/producto\/\d+-[a-z0-9-]+"/g) ?? []).length > 0,
+  );
+  const primeraFamilia = web.html.match(/href="(\/categoria\/[a-z0-9-]+)"/)?.[1];
+  const deLaFamilia = primeraFamilia ? await pagina(primeraFamilia, "") : null;
+  comprobar("una categoría abre desde la portada, con sus productos", Boolean(deLaFamilia) && deLaFamilia.status === 200 && deLaFamilia.html.includes('href="/producto/'), String(primeraFamilia));
+  comprobar("una categoría que no existe da 404", (await pagina("/categoria/no-existe-esta", "")).status === 404);
+  const ofertasWeb = await pagina("/ofertas", "");
+  comprobar("la página de ofertas abre, con combos o diciendo que no hay", ofertasWeb.status === 200 && legible(ofertasWeb.html).includes("Ofertas y combos"));
+  const carritoWeb = await pagina("/carrito", "");
+  comprobar("la página del carrito abre y los buscadores no la guardan", carritoWeb.status === 200 && carritoWeb.html.includes("Tu pedido") && /<meta name="robots" content="noindex/.test(carritoWeb.html));
+  const unaClave = todos.html.match(/href="\/producto\/(\d+)-/)?.[1] ?? "1";
+  const respuestaCarrito = await fetch(base + `/api/carrito?claves=${unaClave},${encodeURIComponent("<script>")},99999999`);
+  const datosCarrito = await respuestaCarrito.json().catch(() => ({}));
+  comprobar(
+    "el carrito pide los precios de hoy a la web, y lo raro lo descarta",
+    respuestaCarrito.status === 200 && Array.isArray(datosCarrito.productos) && datosCarrito.productos.every((p) => p.clave === unaClave) && "tasa" in datosCarrito,
+    JSON.stringify(datosCarrito).slice(0, 300),
+  );
   // La página de una marca, si hay alguna publicada: se llega desde la de su producto.
   let rutaDeMarca = null;
   for (const ruta of [...new Set(web.html.match(/\/producto\/\d+[a-z0-9-]*/g) ?? [])]) {
@@ -1831,6 +1943,7 @@ try {
     await probarCartera();
     await probarInventario();
     await probarCatalogo();
+    await probarVitrina();
     await probarTareaDiaria();
     await probarFreno();
   }

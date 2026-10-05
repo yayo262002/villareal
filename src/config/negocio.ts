@@ -9,10 +9,10 @@ export const negocio = {
   // Como en el logo bordado: «Villa Real», en dos palabras.
   nombre: "Comercializadora Villa Real",
   nombreCorto: "Villa Real",
-  // Sin decir qué productos: el catálogo crece (embutidos, cosas para hamburguesas).
-  lema: "Insumos al mayor",
+  // «Villa Real — Tu proveedor para burger & pizza»: así se presenta desde octubre de 2026.
+  lema: "Tu proveedor para burger & pizza",
   descripcion:
-    "Insumos al mayor para pizzerías, panaderías, hamburgueserías, restaurantes y bodegas. Tienda física en el centro de Barquisimeto.",
+    "Todo para tu hamburguesería, pizzería o restaurante, al mayor y a precios especiales por volumen: quesos, huevos y más. Tienda física en el centro de Barquisimeto.",
 
   // La dirección de la web. Si se compra un dominio propio, se cambia aquí y
   // con ella cambian los enlaces que se comparten, el mapa del sitio y las

@@ -1,55 +1,312 @@
 /*
- * Lo que comparten las páginas públicas. Una sola columna, pensada para el
- * teléfono: lo primero que se ve son los productos con su precio.
+ * Lo que comparten las páginas públicas: la cabecera, el pie y las cajas de
+ * precio. Primero el teléfono: el león, el carrito, WhatsApp y el menú; en
+ * una tableta aparece el buscador y en una pantalla ancha, todo el menú.
  */
-.contenido {
-  width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 0 var(--espacio-4);
-}
+
+/* ---------- La cabecera ---------- */
 
 .cabecera {
   position: sticky;
   top: 0;
-  z-index: 10;
-  background: var(--color-marca-oscuro);
-  color: var(--color-marca-texto);
+  z-index: 30;
+  background: var(--color-verde-profundo);
+  color: var(--color-crema);
+  border-bottom: 1px solid var(--color-dorado-tenue);
 }
-.cabecera .contenido {
+.barra {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--espacio-3);
-  padding-top: var(--espacio-3);
-  padding-bottom: var(--espacio-3);
+  gap: var(--espacio-2);
+  max-width: var(--ancho-web);
+  min-height: 64px;
+  margin: 0 auto;
+  padding: var(--espacio-2) var(--espacio-3) var(--espacio-2) var(--espacio-4);
 }
 .marca {
   display: flex;
   align-items: center;
-  gap: var(--espacio-3);
+  gap: var(--espacio-2);
   min-width: 0;
+  margin-right: auto;
   color: inherit;
   text-decoration: none;
 }
+.marca:focus-visible {
+  outline: 3px solid var(--color-dorado);
+  outline-offset: 4px;
+  border-radius: var(--radio);
+}
 .leon {
-  height: 52px;
-  width: auto;
   flex: none;
+  width: auto;
+  height: 46px;
 }
-.logo {
-  display: block;
-  font-weight: 800;
-  font-size: 18px;
-  line-height: 1.2;
+.marcaTexto {
+  display: grid;
+  min-width: 0;
+  line-height: 1;
 }
-.lema {
-  display: block;
-  font-size: 13px;
-  opacity: 0.85;
+.marcaArriba {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.marcaNombre {
+  font-family: var(--fuente-titulos);
+  font-size: 25px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-dorado);
 }
 
-/* Dos cajas, una por precio: al detal y al mayor. Con un solo precio, una caja. */
+/* El menú de la pantalla ancha: escondido en el teléfono, que lleva el desplegable. */
+.menu {
+  display: none;
+}
+.menuIcono {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--color-dorado);
+}
+
+/* El buscador: una píldora crema con la lupa. */
+.buscar,
+.buscarMovil {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-crema);
+  color: var(--color-verde-profundo);
+}
+.buscar {
+  display: none;
+}
+.buscar:focus-within,
+.buscarMovil:focus-within {
+  outline: 3px solid var(--color-dorado);
+  outline-offset: 2px;
+}
+.buscar input,
+.buscarMovil input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 var(--espacio-2) 0 var(--espacio-4);
+  border: 0;
+  background: transparent;
+  color: var(--color-texto);
+}
+.buscar input:focus,
+.buscarMovil input:focus {
+  outline: none;
+}
+.buscar button,
+.buscarMovil button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 42px;
+  border: 0;
+  background: transparent;
+  color: var(--color-verde-profundo);
+  cursor: pointer;
+}
+
+.carrito {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--color-crema);
+}
+.carrito:hover {
+  color: var(--color-dorado);
+}
+.carrito:focus-visible {
+  outline: 3px solid var(--color-dorado);
+}
+
+.whatsapp {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espacio-2);
+  min-width: 44px;
+  min-height: 42px;
+  padding: 0 var(--espacio-3);
+  border-radius: 999px;
+  background: var(--color-whatsapp);
+  color: var(--color-verde-profundo);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.whatsapp:hover {
+  background: var(--color-whatsapp-oscuro);
+}
+.whatsapp:focus-visible {
+  outline: 3px solid var(--color-dorado);
+  outline-offset: 2px;
+}
+/* En un teléfono estrecho, solo el globo: el nombre del negocio necesita el sitio. */
+.whatsapp span {
+  display: none;
+}
+
+/* El desplegable del teléfono. */
+.menuMovil summary {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radio);
+  color: var(--color-crema);
+  list-style: none;
+  cursor: pointer;
+}
+.menuMovil summary::-webkit-details-marker {
+  display: none;
+}
+.menuMovil summary:focus-visible {
+  outline: 3px solid var(--color-dorado);
+}
+.menuMovil[open] summary {
+  background: var(--color-verde-noche);
+  color: var(--color-dorado);
+}
+.menuMovilPanel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  max-height: calc(100dvh - 64px);
+  overflow-y: auto;
+  padding: var(--espacio-4);
+  border-bottom: 3px solid var(--color-dorado);
+  background: var(--color-verde-profundo);
+  box-shadow: var(--sombra-tarjeta-alta);
+}
+.menuMovilPanel nav {
+  display: grid;
+  gap: 2px;
+  margin-top: var(--espacio-3);
+}
+.menuMovilPanel nav a {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  min-height: 50px;
+  padding: 0 var(--espacio-3);
+  border-radius: var(--radio);
+  color: var(--color-crema);
+  font-family: var(--fuente-titulos);
+  font-size: 21px;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.menuMovilPanel nav a[aria-current="page"] {
+  background: var(--color-verde-noche);
+  color: var(--color-dorado);
+}
+.menuMovilPanel .menuIcono {
+  width: 22px;
+  height: 22px;
+}
+
+@media (min-width: 400px) {
+  .whatsapp span {
+    display: inline;
+  }
+}
+
+/* Tableta: el buscador sale a la barra. */
+@media (min-width: 760px) {
+  .barra {
+    gap: var(--espacio-3);
+    min-height: 72px;
+  }
+  .leon {
+    height: 52px;
+  }
+  .marcaArriba {
+    font-size: 10px;
+  }
+  .marcaNombre {
+    font-size: 28px;
+  }
+  .buscar {
+    display: flex;
+    width: min(320px, 34vw);
+  }
+  .buscarMovil {
+    display: none;
+  }
+  .menuMovilPanel nav {
+    margin-top: 0;
+  }
+}
+
+/* Pantalla ancha: todo el menú en una fila y sin desplegable. */
+@media (min-width: 1200px) {
+  .marca {
+    margin-right: 0;
+  }
+  .menu {
+    display: flex;
+    align-items: center;
+    margin: 0 auto;
+  }
+  .menu a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 10px;
+    border-bottom: 3px solid transparent;
+    color: var(--color-crema);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .menu a:hover {
+    color: var(--color-dorado);
+  }
+  .menu a[aria-current="page"] {
+    border-bottom-color: var(--color-dorado);
+    color: var(--color-dorado);
+  }
+  .menu a:focus-visible {
+    outline: 3px solid var(--color-dorado);
+  }
+  .buscar {
+    width: 190px;
+  }
+  .menuMovil {
+    display: none;
+  }
+}
+
+/* ---------- Las cajas de precio ---------- */
+
+/* Una caja por precio: al mayor y, si el dueño lo puso, al detal. */
 .precios {
   margin: 0;
   display: grid;
@@ -63,16 +320,17 @@
   min-width: 0;
   display: grid;
   gap: 2px;
-  padding: var(--espacio-3);
+  padding: var(--espacio-3) var(--espacio-4);
+  border-left: 4px solid var(--color-dorado);
   border-radius: var(--radio);
-  background: var(--color-superficie-suave);
+  background: var(--color-crema);
 }
 .precioCajaMayor {
   background: var(--color-exito-fondo);
 }
 .precioCaja dt {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--color-texto-suave);
@@ -82,9 +340,9 @@
 }
 /* El tamaño baja en pantallas estrechas para que «Bs 12.310,25» quepa en media tarjeta. */
 .precio {
-  font-size: clamp(18px, 5.4vw, 26px);
+  font-size: clamp(20px, 5.6vw, 30px);
   font-weight: 800;
-  color: var(--color-marca);
+  color: var(--color-verde-profundo);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
@@ -96,6 +354,7 @@
 }
 .precioPendiente {
   font-size: 16px;
+  font-weight: 600;
   color: var(--color-texto-suave);
 }
 /* «desde Bs 127,75»: el más barato de varias marcas. */
@@ -111,20 +370,77 @@
   font-variant-numeric: tabular-nums;
 }
 .preciosLinea strong {
-  color: var(--color-marca);
+  color: var(--color-verde-profundo);
 }
 
+/* ---------- El pie ---------- */
+
 .pie {
-  border-top: 1px solid var(--color-borde);
-  padding: var(--espacio-5) 0;
+  margin-top: var(--espacio-7);
+  background: var(--color-verde-profundo);
+  color: var(--color-crema);
   font-size: 14px;
-  color: var(--color-texto-suave);
 }
-.pie .contenido {
+.pieVentajas {
+  list-style: none;
+  max-width: var(--ancho-web);
+  margin: 0 auto;
+  padding: var(--espacio-5) var(--espacio-4);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--espacio-4);
+  border-bottom: 1px solid var(--color-dorado-tenue);
+}
+@media (min-width: 760px) {
+  .pieVentajas {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.pieVentajas li {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.pieVentajas svg {
+  flex: none;
+  color: var(--color-dorado);
+}
+.pieDatos {
+  max-width: var(--ancho-web);
+  margin: 0 auto;
+  padding: var(--espacio-5) var(--espacio-4) var(--espacio-6);
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--espacio-3);
+  gap: var(--espacio-5);
+}
+.pieDatos p + p {
+  margin-top: var(--espacio-1);
+}
+.pieNombre {
+  font-family: var(--fuente-titulos);
+  font-size: 22px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-dorado);
+}
+.pieEnlaces {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: var(--espacio-2) var(--espacio-5);
+}
+.pieEnlaces a {
+  color: var(--color-crema);
+  font-weight: 700;
+}
+.pieEnlaces a:hover {
+  color: var(--color-dorado);
 }
 
 /* Enlace para saltar la cabecera. Solo aparece al llegar a él con el teclado. */
@@ -132,11 +448,11 @@
   position: absolute;
   left: var(--espacio-3);
   top: -100px;
-  z-index: 20;
+  z-index: 40;
   padding: var(--espacio-2) var(--espacio-4);
   border-radius: var(--radio);
-  background: var(--color-acento);
-  color: var(--color-acento-texto);
+  background: var(--color-dorado);
+  color: var(--color-verde-profundo);
   font-weight: 700;
 }
 .saltar:focus {

@@ -1,17 +1,20 @@
 # Comercializadora Villareal
 
-Web y sistema de gestión para un local de insumos al mayor en Barquisimeto,
-Venezuela: queso amarillo, mozzarella, pecorino rallado, huevos, suero de
-leche y lo que se vaya añadiendo (embutidos, cosas para hamburguesas). Vende
-solo al mayor: a pizzerías, panaderías, hamburgueserías, restaurantes y
-bodegas. Por eso la web no dice «quesos y huevos» sino «insumos al mayor»
-(`lema` en `src/config/negocio.ts`).
+Web y sistema de gestión para un proveedor de insumos al mayor en
+Barquisimeto, Venezuela: queso amarillo, mozzarella, pecorino rallado,
+huevos, suero de leche y lo que se vaya añadiendo (embutidos, tocineta,
+papas, salsas, bebidas). Le vende a hamburgueserías, pizzerías,
+restaurantes, panaderías y bodegas. Se presenta como **«Villa Real — Tu
+proveedor para burger & pizza»** (`lema` en `src/config/negocio.ts`).
 
 Tiene dos partes:
 
-- **La web pública** (`/`): qué se vende, precios si están puestos, lo que
-  dicen del producto los negocios que lo compran, y cómo contactar. Pensada
-  para el teléfono.
+- **La web pública** (`/`): la portada «Todo para tu burger & pizzería»,
+  todos los productos con buscador, cada categoría, las ofertas y combos,
+  la página de cada producto y de cada marca con lo que dicen los negocios
+  que lo compran, y un carrito que manda el pedido por WhatsApp. Precios
+  del día en bolívares y en dólares si están puestos. Pensada para el
+  teléfono.
 - **El panel** (`/admin`): la cartera de clientes, con alta rápida por
   teléfono y dirección; las ventas, cada una con su nota de entrega para
   imprimir o mandar; los abonos en dólares o en bolívares con la tasa del
@@ -140,6 +143,15 @@ src/lib/catalogo-inicial.ts  Las familias iniciales, los borradores y los combos
 src/lib/preparar-catalogo.ts Crea en borrador lo que falte del catálogo inicial
 src/lib/ofertas.ts        Ofertas y combos: precio, fechas, estado y lo que llevan
 src/lib/iconos.ts         Los iconos de las familias, a trazo
+src/lib/portadas.ts       Qué familias traen su foto en public/familias/
+src/lib/vitrina.ts        Lo que enseña la web: productos publicados con su precio, sus marcas, su foto y sus familias; buscar
+src/components/vitrina.tsx  Las piezas de la web: tarjetas de producto, de familia y de combo, la franja de confianza…
+src/lib/carrito.ts        El carrito: cantidades, totales y el mensaje del pedido para WhatsApp
+src/components/carrito/   «Agregar», el contador de la cabecera y la página del carrito (lo guarda el teléfono)
+src/app/api/carrito/      Dice al carrito los nombres y los precios de hoy de lo que lleva
+src/app/productos/, categoria/, ofertas/, carrito/  Las páginas de la vitrina
+src/components/menu-movil.tsx  El menú del teléfono, que se cierra solo al cambiar de página
+public/portada/, public/familias/  Las fotos de comida de la portada y de las familias (CREDITOS.md)
 src/components/formulario-producto.tsx  El formulario completo de un producto, con «Crear nueva familia»
 src/components/marcas-producto.tsx  Las marcas de un producto, en su ficha del panel
 src/app/foto-producto/, foto-familia/  Sirven la foto de un producto y la portada de una familia
@@ -191,10 +203,10 @@ scripts/copia.ts          npm run copia
 scripts/prueba-extremo.mjs  La prueba de extremo a extremo, en local o contra la web
 src/lib/sesion.ts         La clave del panel y la cookie
 src/proxy.ts              Corta el paso a /admin sin sesión
-src/app/page.tsx          La portada de la web pública
+src/app/page.tsx          La portada de la web pública (sus estilos, en inicio.module.css)
 src/app/producto/         La página de cada producto, y dentro la de cada una de sus marcas
 src/components/como-comprar.tsx  «Cómo comprar», en la página del producto y en la de la marca
-src/components/publico.tsx  Cabecera, pie y cajas de precio de la web pública
+src/components/publico.tsx  Cabecera (menú, buscador, carrito y WhatsApp), pie y cajas de precio de la web pública
 src/components/ilustracion-producto.tsx  El dibujo de un producto dentro de la página
 src/app/opengraph-image.tsx  La vista previa de la portada al compartirla
 src/app/robots.ts, sitemap.ts, manifest.ts  Lo que leen los buscadores y el teléfono
@@ -244,9 +256,11 @@ datos/                    La base de datos (fuera de Git)
   viernes, y el lunes temprano tampoco.
 - Cada producto lleva sus **ventajas** (una por línea) y tiene su **propia
   página** en la web, `/producto/2-queso-mozzarella`: dibujo grande,
-  precios, ventajas, cómo se paga y dónde está la tienda. En la portada
-  cada tarjeta enseña el dibujo, el nombre y los precios, con dos botones:
-  «Ver detalles», que lleva a esa página, y «Pedir», que abre WhatsApp.
+  precios, «Agregar al carrito», el pedido directo por WhatsApp, ventajas,
+  cómo se paga y dónde está la tienda. En las listas cada tarjeta enseña la
+  foto (o el dibujo), el nombre, el precio en bolívares con su equivalente
+  en dólares y «por kilo» o por su presentación, «Agregar» y «Ver
+  detalles».
 - **Marcas y presentaciones.** Un producto puede venderse de varias marcas
   o en varios tamaños (queso amarillo Kemmental y El Legado; pecorino
   Sortilegio y Guaralac en bolsa de 500 g). En Productos, cada producto
@@ -255,10 +269,10 @@ datos/                    La base de datos (fuera de Git)
   que el teléfono reduce antes de subir. La portada dice «desde» con el
   precio más barato de las publicadas y cuántas hay; la página del
   producto las enseña todas con su foto, su precio y su botón de pedir
-  (`src/lib/catalogo.ts`). Con dos o más marcas, la tarjeta de la portada
-  no lleva «Pedir» (sería pedir a ciegas): lleva «Ver las 2 opciones y
-  pedir», que abre la lista de marcas, y el botón de pedir está en cada
-  marca, con su precio, para que el mensaje de WhatsApp diga cuál es. Mientras haya alguna publicada, los precios del
+  (`src/lib/catalogo.ts`). Con dos o más marcas, la tarjeta no lleva
+  «Agregar» (sería pedir a ciegas): lleva «Ver opciones», que abre la lista
+  de marcas, y cada marca tiene su «Agregar» y su «Pedir por WhatsApp», con
+  su precio, para que el pedido diga cuál es. Mientras haya alguna publicada, los precios del
   producto no se usan. En la venta sale una fila por cada marca, la nota la
   nombra («Queso pecorino rallado Sortilegio 500 g») y el despacho carga
   cada marca aparte. Una marca ya vendida no se borra, se esconde. La foto
@@ -703,14 +717,73 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   web solo activa y dentro de sus fechas (`estaVigente` en
   `src/lib/catalogo.ts`). Borrarla pide confirmar y no toca los productos.
 
+## La vitrina y el carrito
+
+- **La cabecera**, en todas las páginas públicas: el león y «Villa Real»,
+  Inicio, Productos, Burger, Pizzería, Ofertas, Contacto, el buscador, el
+  carrito con cuántos productos lleva y el botón de WhatsApp. En el
+  teléfono, el león, el carrito, WhatsApp y un menú que se despliega con
+  el buscador y las secciones (funciona sin JavaScript; con él, se cierra
+  solo al ir a otra página).
+- **La portada**: «Todo para tu burger & pizzería» sobre fotos de comida,
+  con los dos botones (ver los productos y pedir por WhatsApp) y la tasa
+  del día; las **categorías principales** (las familias activas que tienen
+  algo publicado: una familia sin productos no sale, para no llevar a una
+  página vacía); los **productos destacados** (los marcados «Destacarlo en
+  la portada»; si no hay ninguno, todos); los combos vigentes; la franja de
+  confianza; «¿Estás montando tu negocio?» y dónde está la tienda. Se
+  guarda hecha y se rehace con cada cambio del panel y cada mañana con la
+  tarea diaria (así un combo que vence deja de salir).
+- **Productos** (`/productos`): todos los publicados, las familias para
+  saltar y el **buscador** (`?q=`): cada palabra tiene que estar en el
+  nombre, la marca, la presentación, la descripción, las marcas o las
+  familias del producto, sin tildes ni mayúsculas y en singular o plural
+  (`textoCoincide` en `src/lib/buscar.ts`). Lo que no se encuentra se
+  dice, con un botón para preguntarlo por WhatsApp.
+- **Cada categoría** (`/categoria/burger`): su portada, sus productos (los
+  suyos y los que también salen en ella, sin repetirse; los destacados
+  primero) y las demás familias. Una familia escondida da 404; una sin nada
+  publicado lo dice y ofrece preguntar.
+- **Ofertas** (`/ofertas`): los combos activos y en fecha, con lo que
+  llevan (cada producto publicado con su enlace), su precio o «Consulta el
+  precio del combo», hasta cuándo valen, «Agregar» y «Pedir este combo por
+  WhatsApp»; y los productos marcados «Mostrarlo en Ofertas». Sin ninguno,
+  lo dice.
+- **El carrito** (`/carrito`): «Agregar» suma un kilo, un cartón, una
+  unidad o un combo (en la página del producto se elige cuánto; lo que va
+  por kilo, de medio en medio). Lo elegido se guarda **en el teléfono del
+  cliente** (`localStorage`), no en la base: solo qué y cuánto. Los
+  nombres y los precios se piden a la web cada vez (`/api/carrito`), así
+  nunca sale un precio viejo; un producto escondido, un borrador, una marca
+  escondida o un combo vencido salen como «ya no está en la web» y no
+  entran en el pedido. Se cambian cantidades, se quita, se ve el total
+  estimado en bolívares a la tasa BCV de hoy y en dólares, y con nombre,
+  negocio y nota (opcionales) **«Enviar pedido por WhatsApp»** abre
+  WhatsApp con el pedido escrito: cada producto con cuánto y su precio, el
+  total estimado, la tasa y a nombre de quién. Lo que no tiene precio va
+  «por confirmar» y no suma. La página dice que **el pedido no queda hecho
+  hasta que el negocio responda**: abrir WhatsApp no registra nada, y el
+  dueño anota la venta en el panel como siempre. Los buscadores no
+  guardan esta página.
+- **Las fotos** de la portada y de las familias son fotos de comida con
+  licencia libre (CC0), guardadas en `public/` con sus créditos en
+  `public/familias/CREDITOS.md`; no son de los productos del negocio. Una
+  portada subida en el panel sustituye a la incluida.
+- **Diseño**: verde profundo, dorado y crema (`src/styles/tokens.css`), los
+  títulos en Anton (Next la descarga al compilar y la sirve la propia web;
+  el teléfono no le pide nada a Google). Primero el teléfono; en una
+  pantalla ancha, el menú entero en la cabecera y la ficha del producto en
+  dos columnas.
+
 ## La web hacia fuera
 
 - **Al compartir un enlace** por WhatsApp sale una vista previa con imagen:
   la de la portada, o la del producto con su dibujo y su precio en dólares.
   El precio en bolívares no va en la imagen porque cambia cada día.
 - **Para los buscadores**: descripción con la ciudad, datos de la tienda y
-  de cada producto (JSON-LD), mapa del sitio y `robots.txt`. El panel y
-  las tareas quedan fuera de los buscadores.
+  de cada producto (JSON-LD), mapa del sitio (portada, Productos, Ofertas,
+  cada categoría, cada producto y cada marca) y `robots.txt`. El panel,
+  las tareas y el carrito quedan fuera de los buscadores.
 - **En el teléfono** la web se puede poner en la pantalla de inicio, con el
   león de icono. Manteniendo pulsado el icono sale el acceso al panel.
 - **El panel como app.** El panel tiene su propio manifiesto
@@ -763,6 +836,12 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - Registrar a los proveedores y lo que se les debe.
 - Completar los productos del catálogo que vende (precio, presentación,
   foto) y activarlos; borrar los que no vende. Lo mismo con los combos.
+  Las categorías de la portada (Embutidos, Papas, Bebidas…) aparecen solas
+  en cuanto tengan algún producto activo.
+- Marcar los productos destacados: mientras no haya ninguno, la portada
+  enseña todos.
+- Si quiere, subir en Familias fotos propias para cada categoría: las que
+  trae la web son fotos de comida de licencia libre, no de su mercancía.
 - Poner `ANTHROPIC_API_KEY` en Vercel y en `.env.local` para que las
   fotos de las notas se lean solas. Sin ella, la foto se guarda sin más.
 - Un dominio propio.

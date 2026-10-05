@@ -31,6 +31,23 @@
   --color-error-oscuro: #7f1f1f;
   --color-error-fondo: #fbe9e9;
 
+  /* La web pública: verde profundo, dorado y crema, como la fachada. */
+  --color-verde-profundo: #0e2c1b;
+  --color-verde-noche: #081a10;
+  --color-dorado: #f2bd2c;
+  --color-dorado-oscuro: #d9a514;
+  --color-dorado-tenue: rgba(242, 189, 44, 0.35);
+  --color-crema: #fbf6ea;
+  --color-crema-oscuro: #f3ead4;
+  /* El verde de WhatsApp, con texto oscuro para que se lea bien. */
+  --color-whatsapp: #25d366;
+  --color-whatsapp-oscuro: #1ebe5a;
+  /* Lo que va encima de una foto, para que el texto se lea. */
+  --velo-foto: linear-gradient(90deg, rgba(8, 26, 16, 0.94) 0%, rgba(8, 26, 16, 0.8) 45%, rgba(8, 26, 16, 0.25) 100%);
+  --velo-foto-movil: linear-gradient(180deg, rgba(8, 26, 16, 0.45) 0%, rgba(8, 26, 16, 0.78) 38%, rgba(8, 26, 16, 0.94) 75%);
+  --sombra-tarjeta: 0 1px 2px rgba(14, 44, 27, 0.06), 0 6px 18px rgba(14, 44, 27, 0.08);
+  --sombra-tarjeta-alta: 0 2px 4px rgba(14, 44, 27, 0.08), 0 14px 32px rgba(14, 44, 27, 0.14);
+
   --radio: 10px;
   --radio-grande: 16px;
   --sombra: 0 1px 3px rgba(31, 42, 31, 0.08), 0 4px 16px rgba(31, 42, 31, 0.06);
@@ -44,6 +61,10 @@
   --espacio-7: 48px;
 
   --ancho-contenido: 1040px;
+  /* La web pública, más ancha que el panel. */
+  --ancho-web: 1200px;
 
   --fuente: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Los títulos de la web: letra alta y estrecha (Anton, servida por la propia web). */
+  --fuente-titulos: var(--fuente-anton), Impact, "Arial Narrow Bold", sans-serif;
 }

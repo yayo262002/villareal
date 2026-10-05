@@ -1,0 +1,241 @@
+/* El carrito: el botón de agregar, el contador de la cabecera y la página del carrito. */
+
+.agregar {
+  display: grid;
+  gap: var(--espacio-2);
+  min-width: 0;
+}
+.botonAgregar {
+  width: 100%;
+  background: var(--color-verde-profundo);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.botonAgregar:hover {
+  background: var(--color-marca);
+}
+.botonAgregar:active {
+  transform: scale(0.98);
+}
+.enCarrito {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-marca);
+  text-align: center;
+}
+
+/* − cantidad + : botones grandes para el dedo. */
+.cantidad {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-1);
+  min-width: 0;
+}
+.cantidad button {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-marca-oscuro);
+  cursor: pointer;
+}
+.cantidad input {
+  width: 4.5rem;
+  min-width: 0;
+  height: 40px;
+  padding: 0 var(--espacio-2);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.unidad {
+  font-size: 14px;
+  color: var(--color-texto-suave);
+  overflow-wrap: anywhere;
+}
+
+.contador {
+  position: absolute;
+  top: 2px;
+  right: -2px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-dorado);
+  color: var(--color-verde-profundo);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* ---------- La página del carrito ---------- */
+
+.pagina {
+  display: grid;
+  gap: var(--espacio-5);
+}
+@media (min-width: 900px) {
+  .pagina {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+.lineas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--espacio-3);
+}
+.linea {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-tarjeta);
+}
+.lineaApagada {
+  opacity: 0.7;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.lineaFoto {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  border-radius: var(--radio);
+}
+.lineaTexto {
+  display: grid;
+  gap: var(--espacio-2);
+  min-width: 0;
+}
+.lineaTexto a {
+  color: var(--color-marca-oscuro);
+  text-decoration: none;
+}
+.lineaPrecio {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--espacio-2) var(--espacio-3);
+  padding-top: var(--espacio-2);
+  border-top: 1px dashed var(--color-borde);
+}
+.lineaPrecio strong {
+  font-size: 18px;
+  color: var(--color-marca);
+  font-variant-numeric: tabular-nums;
+}
+.ayuda {
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+.quitar {
+  border: 0;
+  background: none;
+  padding: var(--espacio-2) 0;
+  color: var(--color-error);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.botonTexto {
+  border: 0;
+  background: none;
+  padding: var(--espacio-2) 0;
+  color: var(--color-texto-suave);
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.resumen {
+  display: grid;
+  gap: var(--espacio-3);
+  padding: var(--espacio-5);
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  box-shadow: var(--sombra-tarjeta);
+}
+@media (min-width: 900px) {
+  .resumen {
+    position: sticky;
+    top: 96px;
+  }
+}
+.total {
+  font-size: 18px;
+}
+.total strong {
+  font-size: 26px;
+  color: var(--color-marca);
+  font-variant-numeric: tabular-nums;
+}
+.quien {
+  display: grid;
+  gap: var(--espacio-3);
+}
+.quien label {
+  display: grid;
+  gap: var(--espacio-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+.quien input {
+  min-height: 44px;
+  padding: 0 var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  font-weight: 400;
+}
+.enviar {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 var(--espacio-3);
+  background: var(--color-whatsapp);
+  color: var(--color-verde-profundo);
+  font-size: 16px;
+  font-weight: 800;
+}
+.enviar:hover {
+  background: var(--color-whatsapp-oscuro);
+}
+/* Lo que cuesta la línea: en bolívares y, al lado, en dólares. */
+.subtotal {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--espacio-2);
+}
+.vaciar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-3);
+  font-size: 14px;
+}
+.vacio,
+.cargando {
+  display: grid;
+  justify-items: start;
+  gap: var(--espacio-4);
+  padding: var(--espacio-6) 0;
+  font-size: 18px;
+  color: var(--color-texto-suave);
+}

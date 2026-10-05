@@ -1,3 +1,4 @@
+import type { Viewport } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -12,6 +13,9 @@ export const metadata = {
   manifest: "/admin/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Panel", statusBarStyle: "default" as const },
 };
+
+// La barra del navegador, del verde de la cabecera del panel (la web pública va más oscura).
+export const viewport: Viewport = { themeColor: "#163f28" };
 
 const SECCIONES = [
   { ruta: "/admin", nombre: "Resumen" },

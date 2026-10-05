@@ -1,8 +1,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizar, ventaCoincide } from "./buscar.ts";
+import { normalizar, textoCoincide, ventaCoincide } from "./buscar.ts";
 
 const venta = { id: 26, fecha: "2026-09-30", cliente_nombre: "Pizzería José", nota: "Entregar antes de las 11" };
+
+test("en la web, cada palabra buscada tiene que estar en algún texto del producto, sin tildes y en singular o plural", () => {
+  const mozzarella = ["Queso mozzarella", "Bloque de 2,5 kg", "Quesos", "Pizzería"];
+  assert.equal(textoCoincide(mozzarella, ""), true);
+  assert.equal(textoCoincide(mozzarella, "mozarella"), false);
+  assert.equal(textoCoincide(mozzarella, "MOZZARELLA"), true);
+  assert.equal(textoCoincide(mozzarella, "queso pizzeria"), true);
+  assert.equal(textoCoincide(mozzarella, "quesos"), true);
+  assert.equal(textoCoincide(mozzarella, "queso amarillo"), false);
+  assert.equal(textoCoincide(["Huevos", null, undefined], "huevo"), true);
+  // «gas» no es el plural de «ga»: las palabras cortas no se recortan.
+  assert.equal(textoCoincide(["Agua"], "gas"), false);
+});
 
 test("sin tildes ni mayúsculas ni espacios de más", () => {
   assert.equal(normalizar("  Pizzería JOSÉ "), "pizzeria jose");

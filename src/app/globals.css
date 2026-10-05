@@ -54,6 +54,8 @@ textarea {
   background: var(--color-marca);
   color: var(--color-marca-texto);
   font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
   text-decoration: none;
   cursor: pointer;
 }
