@@ -156,7 +156,9 @@ src/components/formulario-producto.tsx  El formulario completo de un producto, c
 src/components/marcas-producto.tsx  Las marcas de un producto, en su ficha del panel
 src/app/foto-producto/, foto-familia/  Sirven la foto de un producto y la portada de una familia
 src/app/foto-variante/    Sirve la foto de una marca a la web
-src/lib/dibujos.ts        El dibujo de cada producto, en SVG
+src/lib/fotos-referenciales.ts  La foto de referencia de cada producto por su nombre, mientras no tenga la suya
+src/components/foto-de-producto.tsx  La foto de un producto: la suya, la de referencia (dicho) o el león
+public/productos/         Las fotos de referencia (CREDITOS.md)
 src/lib/imagen-social.tsx La imagen que sale al compartir un enlace
 src/assets/fuentes/       Las fuentes de esas imágenes, con su licencia
 src/lib/cuentas.ts        Qué ventas están pagadas y cuáles por pagar
@@ -207,7 +209,6 @@ src/app/page.tsx          La portada de la web pública (sus estilos, en inicio.
 src/app/producto/         La página de cada producto, y dentro la de cada una de sus marcas
 src/components/como-comprar.tsx  «Cómo comprar», en la página del producto y en la de la marca
 src/components/publico.tsx  Cabecera (menú, buscador, carrito y WhatsApp), pie y cajas de precio de la web pública
-src/components/ilustracion-producto.tsx  El dibujo de un producto dentro de la página
 src/app/opengraph-image.tsx  La vista previa de la portada al compartirla
 src/app/robots.ts, sitemap.ts, manifest.ts  Lo que leen los buscadores y el teléfono
 src/app/not-found.tsx, error.tsx  Página no encontrada y página de fallo
@@ -255,12 +256,12 @@ datos/                    La base de datos (fuera de Git)
   semana (la del lunes, o una escrita a mano) no se pisa con la del
   viernes, y el lunes temprano tampoco.
 - Cada producto lleva sus **ventajas** (una por línea) y tiene su **propia
-  página** en la web, `/producto/2-queso-mozzarella`: dibujo grande,
+  página** en la web, `/producto/2-queso-mozzarella`: su foto grande,
   precios, «Agregar al carrito», el pedido directo por WhatsApp, ventajas,
   cómo se paga y dónde está la tienda. En las listas cada tarjeta enseña la
-  foto (o el dibujo), el nombre, el precio en bolívares con su equivalente
-  en dólares y «por kilo» o por su presentación, «Agregar» y «Ver
-  detalles».
+  foto arriba (la mitad de la tarjeta), el nombre, la presentación, el
+  precio al mayor en bolívares bien grande con los dólares debajo («USD
+  7,70 / kg»), «Agregar» y «Ver detalles».
 - **Marcas y presentaciones.** Un producto puede venderse de varias marcas
   o en varios tamaños (queso amarillo Kemmental y El Legado; pecorino
   Sortilegio y Guaralac en bolsa de 500 g). En Productos, cada producto
@@ -324,10 +325,16 @@ datos/                    La base de datos (fuera de Git)
     se publica como si fuera de un cliente. Es la regla de «no inventar».
   - Las reseñas no van en los datos para buscadores: Google no acepta las
     que un negocio recoge sobre sí mismo.
-- El **dibujo** de cada producto se elige por su nombre (queso, mozzarella,
-  rallado, curado, huevos, suero: una bolsa de suero atada) en
-  `src/lib/dibujos.ts`. Un producto que no
-  encaje lleva un dibujo genérico.
+- **Fotos reales, nunca dibujos.** Cada producto se enseña con una foto:
+  la que el dueño sube en su ficha del panel; si no la hay y se vende de
+  una sola marca con foto (el suero Guaralact), la de esa marca; si no,
+  una **foto de referencia** de lo que es, elegida por su nombre, de lo más
+  concreto a lo más general (la salsa cheddar no es un queso, lo rallado
+  lleva la del queso rallado; `src/lib/fotos-referenciales.ts`), que la
+  ficha marca «Foto referencial»; y si ninguna le va, un fondo crema con
+  el león. Las de referencia son fotos de comida CC0 o de dominio público
+  (`public/productos/`, con sus créditos); en cuanto el dueño sube la suya,
+  la sustituye sola. Los 44 productos del catálogo inicial tienen la suya.
 - **Precios de ejemplo.** Si en `ajustes` está la clave
   `precios_de_ejemplo`, el panel avisa en rojo arriba de Productos de que
   los precios publicados no son los del dueño. Se quita con el botón «Ya
@@ -684,7 +691,7 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   producto, si se había puesto, hay que volver a ponerla). Lo que no es por
   kilo se cobra por su presentación: «por bolsa de 2,5 kg».
 - **La ficha de cada producto** (`/admin/productos/7`): el mismo
-  formulario, su foto (que la web enseña en lugar del dibujo), publicarlo u
+  formulario, su foto (que la web enseña en lugar de la de referencia), publicarlo u
   ocultarlo, sus marcas y presentaciones, y borrarlo.
 - **Estados.** *Borrador* (sin terminar: no sale en la web ni en las
   ventas), *activo* (en la web) e *inactivo* (oculto). Son las columnas
@@ -719,17 +726,22 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 
 ## La vitrina y el carrito
 
-- **La cabecera**, en todas las páginas públicas: el león y «Villa Real»,
-  Inicio, Productos, Burger, Pizzería, Ofertas, Contacto, el buscador, el
-  carrito con cuántos productos lleva y el botón de WhatsApp. En el
+- **La cabecera**, en todas las páginas públicas: arriba el león y «Villa
+  Real», el buscador, el carrito con cuántos productos lleva y el botón de
+  WhatsApp; en la pantalla ancha, debajo, el menú (Inicio, Productos,
+  Burger, Pizzería, Ofertas, Contacto) en su propia fila y con aire. En el
   teléfono, el león, el carrito, WhatsApp y un menú que se despliega con
   el buscador y las secciones (funciona sin JavaScript; con él, se cierra
   solo al ir a otra página).
-- **La portada**: «Todo para tu burger & pizzería» sobre fotos de comida,
-  con los dos botones (ver los productos y pedir por WhatsApp) y la tasa
-  del día; las **categorías principales** (las familias activas que tienen
-  algo publicado: una familia sin productos no sale, para no llevar a una
-  página vacía); los **productos destacados** (los marcados «Destacarlo en
+- **La portada**: «Todo para tu burger & pizzería» sobre una foto oscura
+  de hamburguesa con papas y pizza saliendo del horno (en el teléfono, la
+  foto arriba y el título debajo), con los atajos a Quesos, Huevos,
+  Embutidos, Salsas, Papas, Tocineta y Refrescos (cada uno con su foto
+  pequeña), los dos botones y la tasa del día; la franja dorada «Precios al
+  mayor · Compra más · Paga menos · Tu proveedor para burger & pizza»; las
+  **ocho categorías principales** con su foto y el mismo velo verde (una
+  sin productos publicados lo dice en su página y ofrece preguntar); los
+  **productos destacados** (los marcados «Destacarlo en
   la portada»; si no hay ninguno, todos); los combos vigentes; la franja de
   confianza; «¿Estás montando tu negocio?» y dónde está la tienda. Se
   guarda hecha y se rehace con cada cambio del panel y cada mañana con la
@@ -765,20 +777,24 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   hasta que el negocio responda**: abrir WhatsApp no registra nada, y el
   dueño anota la venta en el panel como siempre. Los buscadores no
   guardan esta página.
-- **Las fotos** de la portada y de las familias son fotos de comida con
-  licencia libre (CC0), guardadas en `public/` con sus créditos en
-  `public/familias/CREDITOS.md`; no son de los productos del negocio. Una
-  portada subida en el panel sustituye a la incluida.
+- **Las fotos** de la portada, de las familias y de referencia de cada
+  producto son fotos de comida con licencia libre (CC0 o dominio público),
+  guardadas en `public/` con sus créditos (`public/familias/CREDITOS.md` y
+  `public/productos/CREDITOS.md`); no son de la mercancía del negocio. Una
+  portada de familia o una foto de producto subidas en el panel sustituyen
+  a las incluidas.
 - **Diseño**: verde profundo, dorado y crema (`src/styles/tokens.css`), los
   títulos en Anton (Next la descarga al compilar y la sirve la propia web;
-  el teléfono no le pide nada a Google). Primero el teléfono; en una
-  pantalla ancha, el menú entero en la cabecera y la ficha del producto en
-  dos columnas.
+  el teléfono no le pide nada a Google). Fondo crema en las secciones,
+  verde oscuro en la cabecera y la portada, botones verdes (los
+  principales) y dorados. Primero el teléfono; en una pantalla ancha, el
+  menú en su fila y la ficha del producto en dos columnas.
 
 ## La web hacia fuera
 
 - **Al compartir un enlace** por WhatsApp sale una vista previa con imagen:
-  la de la portada, o la del producto con su dibujo y su precio en dólares.
+  la de la portada, o la del producto con su foto (la suya, la de su marca
+  o la de referencia) y su precio en dólares.
   El precio en bolívares no va en la imagen porque cambia cada día.
 - **Para los buscadores**: descripción con la ciudad, datos de la tienda y
   de cada producto (JSON-LD), mapa del sitio (portada, Productos, Ofertas,
@@ -830,7 +846,8 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - Los precios de cada marca (Kemmental, El Legado, Sortilegio, Guaralac):
   están creadas con su foto y sin precio. El pecorino se vende en bolsa de
   500 g, por unidad.
-- Fotos reales de los productos: hoy llevan un dibujo.
+- Fotos propias de los productos: hoy llevan una foto de referencia, marcada
+  como tal. Se suben en la ficha de cada producto del panel.
 - Las reseñas de verdad de cada producto: las que hay son de ejemplo y solo
   las ve el dueño.
 - Registrar a los proveedores y lo que se les debe.

@@ -10,9 +10,10 @@ import { ContadorCarrito } from "@/components/carrito/contador";
 import estilos from "./publico.module.css";
 
 /**
- * Lo que comparten las páginas públicas: la cabecera (el león, el menú, el
- * buscador, el carrito y WhatsApp; en el teléfono, un menú compacto), el
- * pie, las cajas de precio y los datos para los buscadores.
+ * Lo que comparten las páginas públicas: la cabecera (arriba el león, el
+ * buscador, el carrito y WhatsApp; en la pantalla ancha, debajo, el menú
+ * con aire entre las secciones; en el teléfono, un menú que se despliega),
+ * el pie, las cajas de precio y los datos para los buscadores.
  */
 
 export type SeccionPublica = "inicio" | "productos" | "burger" | "pizzeria" | "ofertas" | "contacto";
@@ -74,32 +75,39 @@ export function CabeceraPublica({ actual = null }: { actual?: SeccionPublica | n
               <span className={estilos.marcaNombre}>Villa Real</span>
             </span>
           </Link>
-          <nav className={estilos.menu} aria-label="Secciones">
-            {enlaces}
-          </nav>
-          <Buscador id="buscar-cabecera" className={estilos.buscar} ayuda="Buscar…" />
-          <Link href="/carrito" className={estilos.carrito} aria-label="Carrito de pedido">
-            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6.2" />
-              <circle cx="9" cy="19" r="1.4" />
-              <circle cx="17" cy="19" r="1.4" />
-            </svg>
-            <ContadorCarrito />
-          </Link>
-          {whatsapp && (
-            <a className={estilos.whatsapp} href={whatsapp} target="_blank" rel="noopener" aria-label="Escribir por WhatsApp">
-              <IconoWhatsapp tamano={22} />
-              <span>WhatsApp</span>
-            </a>
-          )}
-          <MenuMovil className={estilos.menuMovil}>
-            <div className={estilos.menuMovilPanel}>
-              <Buscador id="buscar-menu" className={estilos.buscarMovil} />
-              <nav aria-label="Secciones">{enlaces}</nav>
-            </div>
-          </MenuMovil>
+          <Buscador id="buscar-cabecera" className={estilos.buscar} ayuda="Buscar queso, tocineta, salsas…" />
+          <div className={estilos.acciones}>
+            <Link href="/carrito" className={estilos.carrito} aria-label="Carrito de pedido">
+              {/* El número va sobre el icono, no sobre la palabra. */}
+              <span className={estilos.carritoIcono}>
+                <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6.2" />
+                  <circle cx="9" cy="19" r="1.4" />
+                  <circle cx="17" cy="19" r="1.4" />
+                </svg>
+                <ContadorCarrito />
+              </span>
+              <span className={estilos.accionTexto}>Carrito</span>
+            </Link>
+            {whatsapp && (
+              <a className={estilos.whatsapp} href={whatsapp} target="_blank" rel="noopener" aria-label="Escribir por WhatsApp">
+                <IconoWhatsapp tamano={22} />
+                <span className={estilos.accionTexto}>WhatsApp</span>
+              </a>
+            )}
+            <MenuMovil className={estilos.menuMovil}>
+              <div className={estilos.menuMovilPanel}>
+                <Buscador id="buscar-menu" className={estilos.buscarMovil} />
+                <nav aria-label="Secciones">{enlaces}</nav>
+              </div>
+            </MenuMovil>
+          </div>
         </div>
       </header>
+      {/* El menú de la pantalla ancha, debajo de la barra y con aire entre secciones; en el teléfono va en el desplegable. */}
+      <nav className={estilos.menu} aria-label="Secciones">
+        <div className={estilos.menuDentro}>{enlaces}</div>
+      </nav>
     </>
   );
 }

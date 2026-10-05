@@ -1,7 +1,9 @@
 /*
  * Lo que comparten las páginas públicas: la cabecera, el pie y las cajas de
- * precio. Primero el teléfono: el león, el carrito, WhatsApp y el menú; en
- * una tableta aparece el buscador y en una pantalla ancha, todo el menú.
+ * precio. En el teléfono, la barra lleva el león, el carrito, WhatsApp y el
+ * menú que se despliega; en una tableta aparece el buscador; en una
+ * pantalla ancha, el carrito y WhatsApp dicen su nombre y el menú va en su
+ * propia fila, debajo, con aire entre las secciones.
  */
 
 /* ---------- La cabecera ---------- */
@@ -17,14 +19,15 @@
 .barra {
   display: flex;
   align-items: center;
-  gap: var(--espacio-2);
+  gap: var(--espacio-3);
   max-width: var(--ancho-web);
-  min-height: 64px;
+  min-height: 68px;
   margin: 0 auto;
   padding: var(--espacio-2) var(--espacio-3) var(--espacio-2) var(--espacio-4);
 }
 .marca {
   display: flex;
+  flex: none;
   align-items: center;
   gap: var(--espacio-2);
   min-width: 0;
@@ -40,7 +43,7 @@
 .leon {
   flex: none;
   width: auto;
-  height: 46px;
+  height: 48px;
 }
 .marcaTexto {
   display: grid;
@@ -50,28 +53,27 @@
 .marcaArriba {
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .marcaNombre {
   font-family: var(--fuente-titulos);
-  font-size: 25px;
+  font-size: 26px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--color-dorado);
 }
 
-/* El menú de la pantalla ancha: escondido en el teléfono, que lleva el desplegable. */
-.menu {
-  display: none;
-}
-.menuIcono {
+.acciones {
+  display: flex;
   flex: none;
-  width: 18px;
-  height: 18px;
-  color: var(--color-dorado);
+  align-items: center;
+  gap: var(--espacio-2);
+}
+.accionTexto {
+  display: none;
 }
 
 /* El buscador: una píldora crema con la lupa. */
@@ -97,11 +99,12 @@
 .buscarMovil input {
   flex: 1;
   min-width: 0;
-  height: 42px;
-  padding: 0 var(--espacio-2) 0 var(--espacio-4);
+  height: 46px;
+  padding: 0 var(--espacio-2) 0 var(--espacio-5);
   border: 0;
   background: transparent;
   color: var(--color-texto);
+  font-size: 15px;
 }
 .buscar input:focus,
 .buscarMovil input:focus {
@@ -112,8 +115,8 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 44px;
-  height: 42px;
+  width: 48px;
+  height: 46px;
   border: 0;
   background: transparent;
   color: var(--color-verde-profundo);
@@ -122,16 +125,30 @@
 
 .carrito {
   position: relative;
-  display: grid;
+  display: inline-flex;
   flex: none;
-  place-items: center;
-  width: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espacio-2);
+  min-width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 999px;
   color: var(--color-crema);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: uppercase;
 }
 .carrito:hover {
   color: var(--color-dorado);
+}
+.carritoIcono {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
 }
 .carrito:focus-visible {
   outline: 3px solid var(--color-dorado);
@@ -143,15 +160,14 @@
   align-items: center;
   justify-content: center;
   gap: var(--espacio-2);
-  min-width: 44px;
-  min-height: 42px;
-  padding: 0 var(--espacio-3);
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
   background: var(--color-whatsapp);
   color: var(--color-verde-profundo);
   font-size: 14px;
   font-weight: 800;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-decoration: none;
   text-transform: uppercase;
 }
@@ -162,9 +178,16 @@
   outline: 3px solid var(--color-dorado);
   outline-offset: 2px;
 }
-/* En un teléfono estrecho, solo el globo: el nombre del negocio necesita el sitio. */
-.whatsapp span {
+
+/* El menú de la pantalla ancha: en el teléfono va en el desplegable. */
+.menu {
   display: none;
+}
+.menuIcono {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--color-dorado);
 }
 
 /* El desplegable del teléfono. */
@@ -193,9 +216,9 @@
   top: 100%;
   right: 0;
   left: 0;
-  max-height: calc(100dvh - 64px);
+  max-height: calc(100dvh - 68px);
   overflow-y: auto;
-  padding: var(--espacio-4);
+  padding: var(--espacio-4) var(--espacio-4) var(--espacio-5);
   border-bottom: 3px solid var(--color-dorado);
   background: var(--color-verde-profundo);
   box-shadow: var(--sombra-tarjeta-alta);
@@ -209,18 +232,20 @@
   display: flex;
   align-items: center;
   gap: var(--espacio-3);
-  min-height: 50px;
+  min-height: 52px;
   padding: 0 var(--espacio-3);
-  border-radius: var(--radio);
+  border-bottom: 1px solid var(--color-vidrio);
   color: var(--color-crema);
   font-family: var(--fuente-titulos);
-  font-size: 21px;
-  letter-spacing: 0.03em;
+  font-size: 22px;
+  letter-spacing: 0.04em;
   text-decoration: none;
   text-transform: uppercase;
 }
+.menuMovilPanel nav a:last-child {
+  border-bottom: 0;
+}
 .menuMovilPanel nav a[aria-current="page"] {
-  background: var(--color-verde-noche);
   color: var(--color-dorado);
 }
 .menuMovilPanel .menuIcono {
@@ -228,30 +253,29 @@
   height: 22px;
 }
 
-@media (min-width: 400px) {
-  .whatsapp span {
-    display: inline;
-  }
-}
-
 /* Tableta: el buscador sale a la barra. */
 @media (min-width: 760px) {
   .barra {
-    gap: var(--espacio-3);
-    min-height: 72px;
+    gap: var(--espacio-4);
+    min-height: 76px;
   }
   .leon {
-    height: 52px;
+    height: 54px;
   }
   .marcaArriba {
     font-size: 10px;
   }
   .marcaNombre {
-    font-size: 28px;
+    font-size: 30px;
+  }
+  .marca {
+    margin-right: 0;
   }
   .buscar {
     display: flex;
-    width: min(320px, 34vw);
+    flex: 1;
+    max-width: 520px;
+    margin: 0 auto;
   }
   .buscarMovil {
     display: none;
@@ -261,27 +285,57 @@
   }
 }
 
-/* Pantalla ancha: todo el menú en una fila y sin desplegable. */
-@media (min-width: 1200px) {
-  .marca {
-    margin-right: 0;
+/* Pantalla ancha: el carrito y WhatsApp con su nombre, y el menú en su fila, sin desplegable. */
+@media (min-width: 1024px) {
+  .barra {
+    min-height: 84px;
+    padding-right: var(--espacio-4);
+  }
+  .leon {
+    height: 60px;
+  }
+  .marcaNombre {
+    font-size: 34px;
+  }
+  .acciones {
+    gap: var(--espacio-3);
+  }
+  .accionTexto {
+    display: inline;
+  }
+  .carrito {
+    padding: 0 var(--espacio-3);
+  }
+  .whatsapp {
+    width: auto;
+    padding: 0 var(--espacio-5);
+  }
+  .menuMovil {
+    display: none;
   }
   .menu {
+    display: block;
+    background: var(--color-verde-noche);
+    border-bottom: 1px solid var(--color-dorado-tenue);
+  }
+  .menuDentro {
     display: flex;
-    align-items: center;
+    justify-content: center;
+    gap: var(--espacio-7);
+    max-width: var(--ancho-web);
     margin: 0 auto;
+    padding: 0 var(--espacio-4);
   }
   .menu a {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    min-height: 44px;
-    padding: 0 10px;
+    gap: var(--espacio-2);
+    min-height: 52px;
     border-bottom: 3px solid transparent;
     color: var(--color-crema);
     font-size: 14px;
     font-weight: 800;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.1em;
     text-decoration: none;
     text-transform: uppercase;
     white-space: nowrap;
@@ -295,12 +349,6 @@
   }
   .menu a:focus-visible {
     outline: 3px solid var(--color-dorado);
-  }
-  .buscar {
-    width: 190px;
-  }
-  .menuMovil {
-    display: none;
   }
 }
 
@@ -340,8 +388,9 @@
 }
 /* El tamaño baja en pantallas estrechas para que «Bs 12.310,25» quepa en media tarjeta. */
 .precio {
-  font-size: clamp(20px, 5.6vw, 30px);
-  font-weight: 800;
+  font-size: clamp(26px, 7.2vw, 38px);
+  font-weight: 900;
+  letter-spacing: -0.01em;
   color: var(--color-verde-profundo);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;

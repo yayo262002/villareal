@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { ReactElement } from "react";
 import { ImageResponse } from "next/og";
+import sharp from "sharp";
 import { negocio, whatsappLegible } from "@/config/negocio";
 
 /**
@@ -45,14 +46,35 @@ async function leon(): Promise<string> {
   return `data:image/svg+xml;base64,${svg.toString("base64")}`;
 }
 
+/**
+ * La foto de un producto para la vista previa, recortada en un cuadrado:
+ * la que subió el dueño (los bytes de la base) o la de referencia (de
+ * `public/productos/`). Va en JPEG, que es lo que entiende `next/og`. Si
+ * no hay ninguna o no se puede leer, null: entonces sale el león.
+ */
+export async function fotoParaCompartir(origen: { datos?: ArrayBuffer | null; ruta?: string | null }): Promise<string | null> {
+  try {
+    const entrada = origen.datos
+      ? Buffer.from(origen.datos)
+      : origen.ruta
+        ? await readFile(path.join(process.cwd(), "public", ...origen.ruta.split("?")[0].split("/").filter(Boolean)))
+        : null;
+    if (!entrada) return null;
+    const jpeg = await sharp(entrada).resize(680, 680, { fit: "cover" }).flatten({ background: "#ffffff" }).jpeg({ quality: 82 }).toBuffer();
+    return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function imagenSocial(datos: {
   /** La etiqueta pequeña de arriba: «El queso del pizzero». */
   antetitulo?: string;
   titulo: string;
   /** Una línea bajo el título: el precio o el lema. */
   detalle?: string;
-  /** El dibujo de la derecha. Sin él va el león en grande. */
-  dibujo?: ReactElement;
+  /** La foto de la derecha. Sin ella va el león en grande. */
+  foto?: ReactElement;
 }): Promise<ImageResponse> {
   const [tipos, logo] = await Promise.all([fuentes(), leon()]);
   const largo = datos.titulo.length;
@@ -84,7 +106,7 @@ export async function imagenSocial(datos: {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", flexDirection: "column", width: datos.dibujo ? 700 : 760 }}>
+          <div style={{ display: "flex", flexDirection: "column", width: datos.foto ? 700 : 760 }}>
             {datos.antetitulo && (
               <div style={{ display: "flex" }}>
                 <div
@@ -109,7 +131,7 @@ export async function imagenSocial(datos: {
             )}
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 340, height: 340 }}>
-            {datos.dibujo ?? (
+            {datos.foto ?? (
               // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
               <img src={logo} width={208} height={330} />
             )}

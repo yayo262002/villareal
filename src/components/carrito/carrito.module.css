@@ -7,11 +7,16 @@
 }
 .botonAgregar {
   width: 100%;
-  background: var(--color-verde-profundo);
+  padding: 0 var(--espacio-2);
+  white-space: nowrap;
+  background: var(--color-verde-boton);
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   transition: background-color 0.15s ease, transform 0.15s ease;
 }
 .botonAgregar:hover {
-  background: var(--color-marca);
+  background: var(--color-verde-boton-oscuro);
 }
 .botonAgregar:active {
   transform: scale(0.98);
@@ -62,8 +67,8 @@
 
 .contador {
   position: absolute;
-  top: 2px;
-  right: -2px;
+  top: -7px;
+  right: -10px;
   min-width: 20px;
   height: 20px;
   padding: 0 5px;

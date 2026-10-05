@@ -340,11 +340,15 @@ async function probarPrecios() {
 
   // Bs 255,50 es el último cambio: la mozzarella a USD 7 con la tasa a 36,50.
   const web = (await portadaCon("Bs 255,50")).html;
-  comprobar("web: el precio al mayor del queso amarillo en bolívares, y nada de detal", web.includes("· al mayor") && web.includes("Bs 310,25") && !web.includes("al detal") && !web.includes("Al detal"));
+  comprobar("web: el precio al mayor del queso amarillo en bolívares, y nada de detal", web.includes("Precio al mayor") && web.includes("Bs 310,25") && !web.includes("al detal") && !web.includes("Al detal"));
   comprobar("web: dólares y tasa", web.includes(usd("8,50")) && web.includes("36,50"));
   comprobar("web: la mozzarella a 7 (Bs 255,50)", web.includes("Bs 255,50"));
   comprobar("portada: sin reseñas; van dentro de cada producto", !web.includes("«"));
-  comprobar("portada: cada producto con su dibujo y su enlace a los detalles", (web.match(/href="\/producto\/\d+-[a-z-]+"/g) ?? []).length >= 8 && (web.match(/aria-label="Dibujo de /g) ?? []).length === 4);
+  comprobar(
+    "portada: cada producto con su foto (de referencia mientras no tenga la suya) y su enlace a los detalles, sin ningún dibujo",
+    (web.match(/href="\/producto\/\d+-[a-z-]+"/g) ?? []).length >= 8 && web.includes('src="/productos/huevos.webp"') && web.includes('src="/productos/queso-amarillo.webp"') &&
+      !web.includes("Dibujo de") && !web.includes("<svg viewBox=\"0 0 120 120\""),
+  );
   comprobar("portada: los detalles ya no están en la portada", !web.includes("no se desborona"));
   const ficha = await pagina("/producto/2-queso-mozzarella", "");
   comprobar("página de la mozzarella: ventajas, precio y pedir", ficha.status === 200 && ficha.html.includes("Perfecta para rallar") && ficha.html.includes("no se desborona") && ficha.html.includes("Bs 255,50") && ficha.html.includes("quiero%20pedir%20queso%20mozzarella"));
@@ -371,7 +375,7 @@ async function probarPrecios() {
   const portadaMarcas = (await portadaCon("Bs 127,75")).html;
   comprobar(
     "portada: el pecorino dice «desde» con la más barata (3,50) y cuántas marcas hay",
-    portadaMarcas.includes("desde </span>Bs 127,75") && portadaMarcas.includes("2 marcas o presentaciones") &&
+    /Al mayor, desde<\/p><p[^>]*>Bs 127,75/.test(portadaMarcas) && portadaMarcas.includes("2 marcas o presentaciones") &&
       portadaMarcas.includes('href="/producto/4-queso-pecorino-rallado#marcas"') && portadaMarcas.includes(">Ver opciones<") && portadaMarcas.includes("Ver las 2 opciones de Queso pecorino rallado"),
     portadaMarcas.slice(Math.max(0, portadaMarcas.indexOf("pecorino rallado</a>") - 100), portadaMarcas.indexOf("pecorino rallado</a>") + 900).replace(/\s+/g, " "),
   );
@@ -414,7 +418,7 @@ async function probarPrecios() {
   const portadaUna = (await portadaCon("Bs 153,30")).html;
   comprobar(
     "escondida una, queda el precio de la otra sin «desde» (4,20 = Bs 153,30) y la página ya no la enseña",
-    r.destino.includes("escondida") && !portadaUna.includes("desde </span>Bs 153,30") && !(await pagina("/producto/4", "")).html.includes("Guaralac"),
+    r.destino.includes("escondida") && !/Al mayor, desde<\/p><p[^>]*>Bs 153,30/.test(portadaUna) && portadaUna.includes("Bs 153,30") && !(await pagina("/producto/4", "")).html.includes("Guaralac"),
     r.destino,
   );
   await enviar("/admin/productos/4", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "1" }, cookie, {}, 'name="activo"');
@@ -424,7 +428,7 @@ async function probarPrecios() {
     (await fetch(base + `/foto-variante/${varianteSortilegio}`)).status === 404 && (await fetch(base + `/foto-variante/${varianteSortilegio}`, { headers: { cookie } })).status === 200,
   );
   await enviar("/admin/productos/4", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio), activo: "1" }, cookie, {}, 'name="activo"');
-  await portadaCon("desde </span>Bs 127,75");
+  await portadaCon("Bs 127,75");
 
   // Cada marca tiene su página: se llega pinchándola, con su foto, su precio, su descripción entera y su botón de pedir.
   const rutaSortilegio = `/producto/4-queso-pecorino-rallado/${varianteSortilegio}-sortilegio-500-g`;
@@ -1655,6 +1659,11 @@ async function probarCatalogo() {
   r = await enviar(`/admin/productos/${idTocineta}`, `id="precio-${idTocineta}"`, { id: String(idTocineta), foto: await fotoDeProducto() });
   const fotoTocineta = await fetch(base + `/foto-producto/${idTocineta}`);
   comprobar("la foto del producto se guarda y se sirve", r.destino.includes("Con su foto") && fotoTocineta.status === 200 && fotoTocineta.headers.get("content-type") === "image/jpeg", r.destino);
+  const fichaTocineta = (await pagina(`/producto/${idTocineta}`, "")).html;
+  comprobar(
+    "la foto subida sustituye a la de referencia: la página enseña la suya y ya no dice «Foto referencial»",
+    fichaTocineta.includes(`/foto-producto/${idTocineta}?v=`) && !fichaTocineta.includes("/productos/tocineta.webp") && !legible(fichaTocineta).includes("Foto referencial"),
+  );
 
   // Borrar: uno sin ventas se borra con lo suyo; uno vendido, no.
   const confirmar = legible((await pagina(`/admin/productos/${idBorrador}/eliminar`)).html);
@@ -1739,6 +1748,18 @@ async function probarVitrina() {
 
   const todos = legible((await pagina("/productos", "")).html);
   comprobar("todos los productos: los publicados sí, los borradores no", todos.includes("Tocineta ahumada (prueba)") && todos.includes("Queso mozzarella") && !todos.includes("Ketchup"));
+  const fichaHuevos = legible((await pagina("/producto/3", "")).html);
+  comprobar(
+    "un producto sin foto propia enseña la de referencia y lo dice; su vista previa sale con foto",
+    fichaHuevos.includes("/productos/huevos.webp") && fichaHuevos.includes("Foto referencial") && (await fetch(base + "/productos/huevos.webp")).status === 200 &&
+      (await fetch(base + "/producto/3/opengraph-image")).status === 200,
+  );
+  const carritoFotos = await (await fetch(base + `/api/carrito?claves=3,o${packBurger.id}`)).json();
+  comprobar(
+    "el carrito enseña fotos, no dibujos: la de referencia del producto y la del combo",
+    carritoFotos.productos.find((p) => p.clave === "3")?.foto === "/productos/huevos.webp" && carritoFotos.productos.find((p) => p.clave === `o${packBurger.id}`)?.foto === "/familias/burger.webp",
+    JSON.stringify(carritoFotos).slice(0, 300),
+  );
   const buscada = legible((await pagina("/productos?q=TOCINETA", "")).html);
   comprobar(
     "buscar sin mirar mayúsculas encuentra la tocineta, y solo lo que coincide",

@@ -1,4 +1,4 @@
-import { tipoDeDibujo, type TipoDeDibujo } from "./dibujos.ts";
+import { aSlug } from "./enlaces.ts";
 
 /**
  * Las reseñas: lo que dicen del producto los negocios que lo compran. Las
@@ -72,7 +72,21 @@ export function iniciales(autor: string): string {
 // web solo las enseña al dueño con la sesión del panel abierta, nunca al
 // público. Una opinión inventada no se publica como si fuera de un cliente.
 
-const EJEMPLOS: Record<TipoDeDibujo, DatosResena[]> = {
+/** Qué clase de producto es, por su nombre: decide qué reseñas de ejemplo le tocan. */
+export type TipoDeProducto = "mozzarella" | "curado" | "rallado" | "huevos" | "suero" | "queso" | "generico";
+
+export function tipoDeProducto(nombre: string): TipoDeProducto {
+  const n = aSlug(nombre);
+  if (n.includes("huevo")) return "huevos";
+  if (n.includes("suero")) return "suero";
+  if (n.includes("rallado")) return "rallado";
+  if (n.includes("mozzarella") || n.includes("mozarela") || n.includes("mozarella")) return "mozzarella";
+  if (n.includes("pecorino") || n.includes("parmesano") || n.includes("anejo")) return "curado";
+  if (n.includes("queso")) return "queso";
+  return "generico";
+}
+
+const EJEMPLOS: Record<TipoDeProducto, DatosResena[]> = {
   mozzarella: [
     {
       autor: "Pizzería de ejemplo",
@@ -156,5 +170,5 @@ const EJEMPLOS: Record<TipoDeDibujo, DatosResena[]> = {
 
 /** Las reseñas de ejemplo que le tocan a un producto, según lo que es. */
 export function ejemplosPara(nombreDelProducto: string): DatosResena[] {
-  return EJEMPLOS[tipoDeDibujo(nombreDelProducto)].map((e) => ({ ...e }));
+  return EJEMPLOS[tipoDeProducto(nombreDelProducto)].map((e) => ({ ...e }));
 }

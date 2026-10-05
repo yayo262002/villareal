@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listarProductos, categoriasDeTodos, direccionDeFotoDeProducto } from "@/lib/productos";
-import { agruparPorProducto, listarVariantes } from "@/lib/variantes";
+import { agruparPorProducto, direccionDeFotoDeVariante, listarVariantes } from "@/lib/variantes";
 import { listarFamilias } from "@/lib/familias";
 import { NOMBRE_ESTADO_PRODUCTO, estadoDeProducto, precioPublicado, presentacionDe, type EstadoProducto } from "@/lib/catalogo";
 import { hayPreciosDeEjemplo, leerAvisoTasa, leerTasa, tasaAutomatica } from "@/lib/ajustes";
@@ -9,7 +9,8 @@ import { normalizar } from "@/lib/buscar";
 import { alternarTasaAutomatica, cambiarTasa, confirmarPrecios, prepararCatalogo, traerTasaOficial } from "@/lib/acciones";
 import { aBolivares, bs, diaDeLaSemana, fechaCorta, fechaDeLaBase, hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
-import { IlustracionProducto } from "@/components/ilustracion-producto";
+import { FotoDeProducto } from "@/components/foto-de-producto";
+import { imagenDeProducto } from "@/lib/fotos-referenciales";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Productos" };
@@ -224,18 +225,16 @@ export default async function PaginaProductos({ searchParams }: { searchParams: 
                   const publicado = publicadoDe(p);
                   const precioBs = publicado.precio_usd !== null ? aBolivares(publicado.precio_usd, tasaValor) : null;
                   const foto = direccionDeFotoDeProducto(p);
+                  // Como en la web: sin foto propia, la de su única marca publicada, o la de referencia.
+                  const suyas = (variantesDe.get(p.id) ?? []).filter((v) => v.activo);
+                  const fotoDeSuMarca = suyas.length === 1 ? direccionDeFotoDeVariante(suyas[0]) : null;
                   const otras = (categorias.get(p.id) ?? []).map((id) => familiaDe.get(id)?.nombre).filter(Boolean);
                   const presentacion = presentacionDe(p);
                   return (
                     <tr key={p.id} className={estado === "activo" ? undefined : estilos.filaApagada}>
                       <td data-label="Producto">
                         <span className={estilos.varianteTitulo}>
-                          {foto ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={foto} alt="" width={40} height={40} className={estilos.fotoVariante} style={{ width: 40, height: 40 }} />
-                          ) : (
-                            <IlustracionProducto nombre={p.nombre} className={estilos.dibujoPequeno} />
-                          )}
+                          <FotoDeProducto imagen={imagenDeProducto(foto, p.nombre, fotoDeSuMarca)} nombre={p.nombre} className={estilos.fotoPequena} tamano={80} />
                           <span>
                             <Link href={`/admin/productos/${p.id}`}>
                               <strong>{p.nombre}</strong>

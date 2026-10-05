@@ -1,11 +1,12 @@
 import "server-only";
 import { categoriasDeTodos, direccionDeFotoDeProducto, listarProductos, type Producto } from "./productos";
-import { agruparPorProducto, listarVariantes, type Variante } from "./variantes";
+import { agruparPorProducto, direccionDeFotoDeVariante, listarVariantes, type Variante } from "./variantes";
 import { listarFamilias, type Familia } from "./familias";
 import { claveDe, precioPublicado, type PrecioPublicado } from "./catalogo";
 import { leerTasa, type Tasa } from "./ajustes";
 import { textoCoincide } from "./buscar";
 import { rutaProducto } from "./enlaces";
+import { imagenDeProducto, type ImagenDeProducto } from "./fotos-referenciales";
 
 /**
  * Lo que enseña la web pública: los productos publicados con su precio,
@@ -19,8 +20,8 @@ export type ProductoDeVitrina = {
   publicado: PrecioPublicado;
   /** Sus marcas publicadas. */
   variantes: Variante[];
-  /** La foto principal, o null: entonces va su dibujo. */
-  foto: string | null;
+  /** Su foto: la que subió el dueño o, mientras no la haya, una de referencia; null: fondo neutro. */
+  imagen: ImagenDeProducto;
   /** Su familia y las otras en que sale. */
   familias: number[];
   /** Lo que añade «Agregar»: el producto, o su única marca. Con dos o más marcas, null: se elige en su página. */
@@ -51,7 +52,7 @@ export async function vitrina(): Promise<Vitrina> {
       producto: p,
       publicado: precioPublicado(p, suyas),
       variantes: suyas,
-      foto: direccionDeFotoDeProducto(p),
+      imagen: imagenDeProducto(direccionDeFotoDeProducto(p), p.nombre, suyas.length === 1 ? direccionDeFotoDeVariante(suyas[0]) : null),
       familias: [...(p.familia_id ? [p.familia_id] : []), ...(categorias.get(p.id) ?? [])],
       clave: suyas.length === 0 ? claveDe(p.id, null) : suyas.length === 1 ? claveDe(p.id, suyas[0].id) : null,
     };

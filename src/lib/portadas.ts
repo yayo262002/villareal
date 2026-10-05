@@ -13,4 +13,5 @@ export const PORTADAS_INCLUIDAS: ReadonlySet<string> = new Set<string>([
   "papas-y-congelados",
   "bebidas",
   "complementos-gastronomicos",
+  "otros-productos",
 ]);

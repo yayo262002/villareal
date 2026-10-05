@@ -53,30 +53,17 @@
   .fichaAncha {
     grid-column: 1 / -1;
   }
-  .fichaCabecera {
-    padding: var(--espacio-6);
-  }
-  .fotoGrande {
-    width: min(420px, 100%);
-  }
 }
+/* La foto del producto, grande y cuadrada: la suya o la de referencia. */
 .fichaCabecera {
-  display: grid;
-  place-items: center;
-  padding: var(--espacio-4);
+  overflow: hidden;
+  border: 1px solid var(--color-borde);
   border-radius: var(--radio-grande);
   background: var(--color-crema);
+  box-shadow: var(--sombra-tarjeta);
 }
 .fotoGrande {
-  width: min(300px, 78%);
-  height: auto;
-  aspect-ratio: 1;
-  object-fit: contain;
-  mix-blend-mode: multiply;
-}
-.dibujoGrande {
-  width: min(260px, 60vw);
-  height: auto;
+  width: 100%;
   aspect-ratio: 1;
 }
 .fichaPrincipal {
@@ -86,7 +73,7 @@
 .fichaNombre {
   font-family: var(--fuente-titulos);
   font-weight: 400;
-  font-size: clamp(34px, 9vw, 54px);
+  font-size: clamp(36px, 9.5vw, 58px);
   line-height: 1;
   text-transform: uppercase;
   color: var(--color-verde-profundo);
@@ -164,17 +151,8 @@
 /* La foto, cuadrada y a todo el ancho de la tarjeta; el fondo blanco del paquete se funde con el de la tarjeta. */
 .varianteFoto {
   width: 100%;
-  height: auto;
   aspect-ratio: 1;
-  object-fit: contain;
-  mix-blend-mode: multiply;
-}
-.varianteDibujo {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1;
-  box-sizing: border-box;
-  padding: 14%;
+  border-radius: var(--radio);
 }
 .varianteEnlace {
   display: block;
@@ -302,15 +280,10 @@
   font-weight: 700;
   line-height: 1.2;
 }
-.otro svg {
-  width: 64px;
-  height: 64px;
-}
 .otroFoto {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  mix-blend-mode: multiply;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radio);
 }
 
 /* Debajo de la ficha, otros de la misma familia. */

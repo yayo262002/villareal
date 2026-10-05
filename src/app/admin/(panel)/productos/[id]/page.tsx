@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buscarProducto, categoriasDeProducto, direccionDeFotoDeProducto } from "@/lib/productos";
-import { variantesDeProducto } from "@/lib/variantes";
+import { direccionDeFotoDeVariante, variantesDeProducto } from "@/lib/variantes";
 import { listarFamilias } from "@/lib/familias";
 import { existenciaSinMarca } from "@/lib/inventario";
 import { NOMBRE_ESTADO_PRODUCTO, estadoDeProducto, type EstadoProducto } from "@/lib/catalogo";
@@ -11,7 +11,8 @@ import { alternarProducto, retirarFotoDeProducto } from "@/lib/acciones";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioProducto } from "@/components/formulario-producto";
 import { LineaPrecio, MarcasDelProducto } from "@/components/marcas-producto";
-import { IlustracionProducto } from "@/components/ilustracion-producto";
+import { FotoDeProducto } from "@/components/foto-de-producto";
+import { imagenDeProducto } from "@/lib/fotos-referenciales";
 import estilos from "../../panel.module.css";
 
 const CLASE_DE_ESTADO: Record<EstadoProducto, string> = { activo: "estado--pagada", borrador: "estado--parcial", inactivo: "estado--por_pagar" };
@@ -40,6 +41,8 @@ export default async function PaginaProducto({ params, searchParams }: { params:
   const estado = estadoDeProducto(producto);
   const conMarcas = variantes.some((v) => v.activo);
   const foto = direccionDeFotoDeProducto(producto);
+  const publicadas = variantes.filter((v) => v.activo);
+  const fotoDeSuMarca = publicadas.length === 1 ? direccionDeFotoDeVariante(publicadas[0]) : null;
 
   return (
     <>
@@ -56,12 +59,7 @@ export default async function PaginaProducto({ params, searchParams }: { params:
 
       <section className="tarjeta">
         <div className={estilos.varianteTitulo} style={{ marginBottom: "var(--espacio-3)" }}>
-          {foto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={foto} alt="" width={72} height={72} className={estilos.fotoVariante} style={{ width: 72, height: 72 }} />
-          ) : (
-            <IlustracionProducto nombre={producto.nombre} className={estilos.dibujoMediano} />
-          )}
+          <FotoDeProducto imagen={imagenDeProducto(foto, producto.nombre, fotoDeSuMarca)} nombre={producto.nombre} className={estilos.fotoMediana} tamano={144} />
           <ul className={estilos.precioResumen} style={{ margin: 0 }}>
             <LineaPrecio nombre="Precio al mayor" precio={producto.precio_usd} margen={producto.margen_pct} costo={producto.costo_usd} tasa={tasa?.valor ?? null} unidad={producto.unidad} />
           </ul>

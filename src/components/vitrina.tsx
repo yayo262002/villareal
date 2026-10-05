@@ -4,11 +4,12 @@ import { enlaceWhatsapp } from "@/config/negocio";
 import { nombreDeVenta, porQueSeCobra, presentacionDe } from "@/lib/catalogo";
 import { direccionDePortada, type Familia } from "@/lib/familias";
 import { rutaProducto } from "@/lib/enlaces";
-import { aBolivares, bs, fechaCorta, usd } from "@/lib/dinero";
+import { aBolivares, bs, fechaCorta, unidadEnPalabras, usd } from "@/lib/dinero";
 import { claveDeOferta } from "@/lib/carrito";
+import { fotoDeCombo } from "@/lib/fotos-referenciales";
 import type { Oferta } from "@/lib/ofertas";
 import type { ProductoDeVitrina } from "@/lib/vitrina";
-import { IlustracionProducto } from "@/components/ilustracion-producto";
+import { FotoDeProducto } from "@/components/foto-de-producto";
 import { Icono } from "@/components/icono";
 import { BotonAgregar } from "@/components/carrito/boton-agregar";
 import { IconoWhatsapp } from "@/components/icono-whatsapp";
@@ -16,21 +17,32 @@ import estilos from "./vitrina.module.css";
 
 /**
  * Las piezas de la vitrina pública: el título de cada sección con sus dos
- * rayas doradas, la tarjeta de un producto (foto, nombre, precio en
- * bolívares con su equivalente en dólares, «Agregar» y «Ver detalles»),
- * la tarjeta de una familia, la franja de confianza y la llamada a quien
- * está montando su negocio. Pensadas para el teléfono primero.
+ * rayas doradas, la tarjeta de un producto (su foto grande, el nombre, la
+ * presentación, el precio al mayor en bolívares bien visible con los
+ * dólares debajo, «Agregar» y «Ver detalles»), la tarjeta de una familia
+ * con su foto, los atajos de la portada, la franja mayorista, la de
+ * confianza y la llamada a quien monta su negocio. Primero el teléfono.
+ * Ningún producto se enseña con un dibujo: con su foto, con una de
+ * referencia o con el fondo del león.
  */
 
-export function TituloDeSeccion({ children, id, claro = false }: { children: ReactNode; id?: string; claro?: boolean }) {
+export function TituloDeSeccion({ children, id, antetitulo }: { children: ReactNode; id?: string; antetitulo?: string }) {
   return (
-    <h2 id={id} className={`${estilos.tituloSeccion} ${claro ? estilos.tituloClaro : ""}`}>
-      <span>{children}</span>
-    </h2>
+    <div className={estilos.cabezaSeccion}>
+      {antetitulo && <p className={estilos.antetituloSeccion}>{antetitulo}</p>}
+      <h2 id={id} className={estilos.tituloSeccion}>
+        <span>{children}</span>
+      </h2>
+    </div>
   );
 }
 
-/** El precio de una tarjeta: en bolívares grande y en dólares debajo, «por kilo» o por su presentación. Sin precio no se inventa. */
+/** «kg», «cartón», «bolsa de 2,5 kg»: por qué se cobra, corto, para ir tras la barra del precio. */
+function porCada(producto: ProductoDeVitrina["producto"]): string {
+  return producto.unidad === "kg" ? "kg" : porQueSeCobra(producto);
+}
+
+/** El precio de una tarjeta: al mayor, en bolívares y grande; en dólares, debajo y pequeño. Sin precio no se inventa. */
 function PrecioDeTarjeta({ item, tasa }: { item: ProductoDeVitrina; tasa: number | null }) {
   const { publicado, producto } = item;
   if (publicado.precio_usd === null) return <p className={estilos.precioPendiente}>Consulta el precio del día</p>;
@@ -39,43 +51,43 @@ function PrecioDeTarjeta({ item, tasa }: { item: ProductoDeVitrina; tasa: number
   const detalBs = detal !== null ? aBolivares(detal, tasa) : null;
   return (
     <div className={estilos.precio}>
-      <p className={estilos.precioPrincipal}>
-        {publicado.desde && <span className={estilos.desde}>desde </span>}
-        {enBs !== null ? bs(enBs) : usd(publicado.precio_usd)}
-      </p>
+      <p className={estilos.precioEtiqueta}>{publicado.desde ? "Al mayor, desde" : "Precio al mayor"}</p>
+      <p className={estilos.precioPrincipal}>{enBs !== null ? bs(enBs) : usd(publicado.precio_usd)}</p>
       <p className={estilos.precioSecundario}>
-        {enBs !== null ? `${usd(publicado.precio_usd)} ` : ""}por {porQueSeCobra(producto)} · al mayor
+        {enBs !== null ? `${usd(publicado.precio_usd)} / ${porCada(producto)}` : `por ${porQueSeCobra(producto)}`}
       </p>
       {detal !== null && <p className={estilos.precioSecundario}>Al detal: {detalBs !== null ? bs(detalBs) : usd(detal)}</p>}
     </div>
   );
 }
 
-export function TarjetaDeProducto({ item, tasa }: { item: ProductoDeVitrina; tasa: number | null }) {
+/** Bajo el nombre: la presentación, cómo se vende, o cuántas marcas hay para elegir. */
+function detalleDe(item: ProductoDeVitrina): string {
+  const { producto, variantes } = item;
+  if (variantes.length >= 2) return `${variantes.length} marcas o presentaciones`;
+  const presentacion = presentacionDe(producto);
+  return presentacion ? `Presentación: ${presentacion}` : `Venta por ${unidadEnPalabras(producto.unidad)}`;
+}
+
+export function TarjetaDeProducto({ item, tasa, prioridad = false }: { item: ProductoDeVitrina; tasa: number | null; prioridad?: boolean }) {
   const { producto, variantes } = item;
   const ruta = rutaProducto(producto);
-  const detalle = variantes.length >= 2 ? `${variantes.length} marcas o presentaciones` : presentacionDe(producto);
   const nombreParaElCarrito = variantes.length === 1 ? nombreDeVenta(producto.nombre, variantes[0].nombre) : producto.nombre;
   return (
     <li className={estilos.tarjeta}>
       <Link href={ruta} className={estilos.tarjetaImagen} tabIndex={-1} aria-hidden="true">
-        {item.foto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.foto} alt="" width={400} height={400} loading="lazy" className={estilos.tarjetaFoto} />
-        ) : (
-          <IlustracionProducto nombre={producto.nombre} className={estilos.tarjetaDibujo} />
-        )}
+        <FotoDeProducto imagen={item.imagen} nombre={producto.nombre} className={estilos.tarjetaFoto} tamano={720} prioridad={prioridad} />
         {producto.en_oferta ? <span className={estilos.etiqueta}>Oferta</span> : null}
       </Link>
       <div className={estilos.tarjetaCuerpo}>
         <h3 className={estilos.tarjetaNombre}>
           <Link href={ruta}>{producto.nombre}</Link>
         </h3>
-        {detalle && <p className={estilos.tarjetaDetalle}>{detalle}</p>}
+        <p className={estilos.tarjetaDetalle}>{detalleDe(item)}</p>
         <PrecioDeTarjeta item={item} tasa={tasa} />
         <div className={estilos.tarjetaAcciones}>
           {item.clave ? (
-            <BotonAgregar clave={item.clave} nombre={nombreParaElCarrito} unidad={producto.unidad} />
+            <BotonAgregar clave={item.clave} nombre={nombreParaElCarrito} unidad={producto.unidad} className={estilos.agregar} />
           ) : (
             <Link href={`${ruta}#marcas`} className={`boton ${estilos.botonOpciones}`} aria-label={`Ver las ${variantes.length} opciones de ${producto.nombre}`}>
               Ver opciones
@@ -93,32 +105,36 @@ export function TarjetaDeProducto({ item, tasa }: { item: ProductoDeVitrina; tas
 export function RejillaDeProductos({ items, tasa }: { items: ProductoDeVitrina[]; tasa: number | null }) {
   return (
     <ul className={estilos.rejillaProductos}>
-      {items.map((item) => (
-        <TarjetaDeProducto key={item.producto.id} item={item} tasa={tasa} />
+      {items.map((item, i) => (
+        <TarjetaDeProducto key={item.producto.id} item={item} tasa={tasa} prioridad={i < 2} />
       ))}
     </ul>
   );
 }
 
+/** La tarjeta de una familia: su foto a todo el ancho, con el nombre encima, todas con el mismo velo. */
 export function TarjetaDeFamilia({ familia }: { familia: Familia }) {
   const portada = direccionDePortada(familia);
   return (
     <li>
       <Link href={`/categoria/${familia.slug}`} className={estilos.familia}>
-        <span className={estilos.familiaImagen}>
-          {portada ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={portada} alt="" width={320} height={240} loading="lazy" />
-          ) : (
-            <Icono nombre={familia.icono} className={estilos.familiaIcono} />
-          )}
-        </span>
-        <span className={estilos.familiaNombre}>
-          {familia.nombre}
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="9.5" />
-            <path d="M10.5 8.5 14 12l-3.5 3.5" />
-          </svg>
+        {portada ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={portada} alt="" width={640} height={480} loading="lazy" decoding="async" className={estilos.familiaFoto} />
+        ) : (
+          <span className={estilos.familiaSinFoto} aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/marca/leon.svg" alt="" width={33} height={52} />
+          </span>
+        )}
+        <span className={estilos.familiaTexto}>
+          <span className={estilos.familiaNombre}>{familia.nombre}</span>
+          <span className={estilos.familiaVer}>
+            Ver productos
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </span>
         </span>
       </Link>
     </li>
@@ -152,6 +168,39 @@ export function ChipsDeFamilias({ familias, actual }: { familias: Familia[]; act
   );
 }
 
+export type Atajo = { texto: string; ruta: string; foto: string | null };
+
+/** Los atajos de la portada: cada uno con una foto pequeña y redonda de lo suyo, y su enlace. */
+export function AtajosDeCategorias({ atajos, className }: { atajos: Atajo[]; className?: string }) {
+  return (
+    <nav className={`${estilos.atajos} ${className ?? ""}`} aria-label="Categorías">
+      {atajos.map((a) => (
+        <Link key={a.ruta} href={a.ruta}>
+          {a.foto && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={a.foto} alt="" width={64} height={64} loading="lazy" decoding="async" />
+          )}
+          {a.texto}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+/** La franja dorada que dice a quién le vende Villa Real: al mayor, a negocios de burger y pizza. */
+export function FranjaMayorista() {
+  return (
+    <section className={estilos.mayorista} aria-label="Precios al mayor">
+      <ul className={estilos.mayoristaLemas}>
+        <li>Precios al mayor</li>
+        <li>Compra más · Paga menos</li>
+        <li>Tu proveedor para burger &amp; pizza</li>
+      </ul>
+      <p className={estilos.mayoristaProductos}>Quesos · Huevos · Embutidos · Papas · Salsas · Tocineta · Bebidas</p>
+    </section>
+  );
+}
+
 const CONFIANZA = [
   { icono: "etiqueta", texto: "Precios especiales por volumen" },
   { icono: "camion", texto: "Entregas y distribución en Barquisimeto" },
@@ -166,24 +215,26 @@ const DIBUJOS_DE_CONFIANZA: Record<(typeof CONFIANZA)[number]["icono"], string> 
   manos: '<path d="m11 17 2 2a1.4 1.4 0 0 0 2-2"/><path d="m14 14 2.5 2.5a1.4 1.4 0 0 0 2-2l-3-3"/><path d="M8 13 3 8l4-4 4 4h3l3-3 4 4-4 4"/><path d="m11 12-2 2"/>',
 };
 
-/** La franja verde con las cuatro cosas que el negocio quiere que se sepan. */
+/** Las cuatro cosas que el negocio quiere que se sepan, en tarjetas claras con su icono dorado. */
 export function FranjaDeConfianza() {
   return (
     <ul className={estilos.confianza}>
       {CONFIANZA.map((c) => (
         <li key={c.texto}>
-          <svg
-            viewBox="0 0 24 24"
-            width="40"
-            height="40"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            dangerouslySetInnerHTML={{ __html: DIBUJOS_DE_CONFIANZA[c.icono] }}
-          />
+          <span className={estilos.confianzaIcono}>
+            <svg
+              viewBox="0 0 24 24"
+              width="28"
+              height="28"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              dangerouslySetInnerHTML={{ __html: DIBUJOS_DE_CONFIANZA[c.icono] }}
+            />
+          </span>
           <span>{c.texto}</span>
         </li>
       ))}
@@ -191,31 +242,33 @@ export function FranjaDeConfianza() {
   );
 }
 
-/** «¿Estás montando tu negocio?»: la llamada a quien abre una hamburguesería, una pizzería o un restaurante. */
+/** «¿Estás montando tu negocio?»: la llamada a quien abre una hamburguesería, una pizzería o un restaurante, con sus fotos. */
 export function MontandoTuNegocio() {
   const whatsapp = enlaceWhatsapp("Hola, estoy montando mi negocio y quiero saber qué productos tienen.");
   if (!whatsapp) return null;
   return (
     <section className={estilos.montando} aria-labelledby="titulo-montando">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/familias/pizzeria.webp" alt="" width={640} height={480} className={estilos.montandoFotoIzquierda} loading="lazy" />
+      <div className={estilos.montandoFotos} aria-hidden="true">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/familias/burger.webp" alt="" width={640} height={480} loading="lazy" decoding="async" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/familias/pizzeria.webp" alt="" width={640} height={480} loading="lazy" decoding="async" />
+      </div>
       <div className={estilos.montandoTexto}>
         <h2 id="titulo-montando" className={estilos.montandoTitulo}>
           ¿Estás montando tu negocio?
         </h2>
-        <p>Te ayudamos a conseguir los productos que necesitas para tu hamburguesería, pizzería o restaurante.</p>
-        <a className={`boton boton--acento ${estilos.botonWhatsapp}`} href={whatsapp} target="_blank" rel="noopener">
-          <IconoWhatsapp />
+        <p>Te ayudamos a conseguir los productos que necesitas para:</p>
+        <ul className={estilos.montandoLista}>
+          {["Hamburgueserías", "Pizzerías", "Restaurantes", "Emprendedores"].map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+        <a className={`boton ${estilos.botonWhatsapp}`} href={whatsapp} target="_blank" rel="noopener">
+          <IconoWhatsapp tamano={22} />
           Contactar por WhatsApp
         </a>
       </div>
-      <ul className={estilos.montandoLista}>
-        {["Restaurantes", "Pizzerías", "Hamburgueserías", "Emprendedores"].map((t) => (
-          <li key={t}>{t}</li>
-        ))}
-      </ul>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/familias/burger.webp" alt="" width={640} height={480} className={estilos.montandoFotoDerecha} loading="lazy" />
     </section>
   );
 }
@@ -256,7 +309,9 @@ export function CabeceraDeFamilia({ familia, cuantos, children }: { familia: Fam
           <Icono nombre={familia.icono} className={estilos.chipIcono} />
           Categoría
         </p>
-        <h1 id="titulo-familia" className={estilos.cabeceraFamiliaNombre}>{familia.nombre}</h1>
+        <h1 id="titulo-familia" className={estilos.cabeceraFamiliaNombre}>
+          {familia.nombre}
+        </h1>
         {familia.descripcion && <p className={estilos.cabeceraFamiliaDescripcion}>{familia.descripcion}</p>}
         {cuantos > 0 && <p className={estilos.cabeceraFamiliaCuenta}>{cuantos === 1 ? "1 producto" : `${cuantos} productos`}</p>}
         {children}
@@ -265,62 +320,71 @@ export function CabeceraDeFamilia({ familia, cuantos, children }: { familia: Fam
   );
 }
 
-/** Lo que se dice bajo los precios: en qué moneda están y cómo se puede pagar. */
-export function NotaDePrecios({ hayTasa }: { hayTasa: boolean }) {
+/** Lo que se dice bajo los precios: en qué moneda están, cómo se puede pagar y, si hace falta, que las fotos son de referencia. */
+export function NotaDePrecios({ hayTasa, items = [] }: { hayTasa: boolean; items?: ProductoDeVitrina[] }) {
+  const conReferencia = items.some((i) => i.imagen?.referencial);
   return (
     <p className={estilos.notaPrecios}>
       {hayTasa
         ? "Precios al mayor en bolívares a la tasa BCV del día, con su equivalente en dólares. También puedes pagar en dólares, Zelle o Binance."
         : "Precios al mayor en dólares. Puedes pagar en bolívares a la tasa del día por pago móvil, transferencia o efectivo."}
+      {conReferencia && " Las fotos de algunos productos son referenciales."}
     </p>
   );
 }
 
 /**
- * Un combo u oferta: qué lleva (cada producto publicado con su enlace), su
- * precio si lo tiene, hasta cuándo vale, «Agregar» al carrito y pedirlo
- * solo por WhatsApp. Sin precio, «Consulta el precio del combo».
+ * Un combo u oferta: su foto, qué lleva (cada producto publicado con su
+ * enlace), su precio si lo tiene, hasta cuándo vale, «Agregar» al carrito y
+ * pedirlo solo por WhatsApp. Sin precio, «Consulta el precio del combo».
  */
 export function TarjetaDeOferta({ oferta, tasa, rutas }: { oferta: Oferta; tasa: number | null; rutas: Map<number, string> }) {
   const enBs = oferta.precio_usd !== null ? aBolivares(oferta.precio_usd, tasa) : null;
   const pedir = enlaceWhatsapp(`Hola, quiero el combo ${oferta.nombre}${oferta.precio_usd !== null ? ` (${usd(oferta.precio_usd)})` : ""}. ¿Me confirman disponibilidad?`);
   return (
     <li id={`oferta-${oferta.id}`} className={estilos.oferta}>
-      <div className={estilos.ofertaCabecera}>
+      <div className={estilos.ofertaFoto}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={fotoDeCombo(oferta.nombre)} alt="" width={640} height={480} loading="lazy" decoding="async" />
         <span className={estilos.etiquetaCombo}>Combo</span>
-        <h3 className={estilos.ofertaNombre}>{oferta.nombre}</h3>
-        {oferta.descripcion && <p className={estilos.ofertaDescripcion}>{oferta.descripcion}</p>}
       </div>
-      {oferta.productos.length > 0 && (
-        <ul className={estilos.ofertaLleva} aria-label="Lo que lleva">
-          {oferta.productos.map((p) => {
-            const ruta = rutas.get(p.producto_id);
-            return (
-              <li key={p.producto_id}>
-                {p.cantidad && <strong>{p.cantidad} </strong>}
-                {ruta ? <Link href={ruta}>{p.nombre}</Link> : p.nombre}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      <div className={estilos.ofertaPie}>
-        {oferta.precio_usd === null ? (
-          <p className={estilos.precioPendiente}>Consulta el precio del combo</p>
-        ) : (
-          <div className={estilos.precio}>
-            <p className={estilos.precioPrincipal}>{enBs !== null ? bs(enBs) : usd(oferta.precio_usd)}</p>
-            <p className={estilos.precioSecundario}>{enBs !== null ? `${usd(oferta.precio_usd)} el combo` : "el combo"}</p>
-          </div>
+      <div className={estilos.ofertaCuerpo}>
+        <div className={estilos.ofertaCabecera}>
+          <h3 className={estilos.ofertaNombre}>{oferta.nombre}</h3>
+          {oferta.descripcion && <p className={estilos.ofertaDescripcion}>{oferta.descripcion}</p>}
+        </div>
+        {oferta.productos.length > 0 && (
+          <ul className={estilos.ofertaLleva} aria-label="Lo que lleva">
+            {oferta.productos.map((p) => {
+              const ruta = rutas.get(p.producto_id);
+              return (
+                <li key={p.producto_id}>
+                  {p.cantidad && <strong>{p.cantidad} </strong>}
+                  {ruta ? <Link href={ruta}>{p.nombre}</Link> : p.nombre}
+                </li>
+              );
+            })}
+          </ul>
         )}
-        {oferta.hasta && <p className={estilos.precioSecundario}>Hasta el {fechaCorta(oferta.hasta)}</p>}
-        <div className={estilos.tarjetaAcciones}>
-          <BotonAgregar clave={claveDeOferta(oferta.id)} nombre={oferta.nombre} unidad="combo" />
-          {pedir && (
-            <a href={pedir} target="_blank" rel="noopener" className={estilos.verDetalles}>
-              Pedir este combo por WhatsApp
-            </a>
+        <div className={estilos.ofertaPie}>
+          {oferta.precio_usd === null ? (
+            <p className={estilos.precioPendiente}>Consulta el precio del combo</p>
+          ) : (
+            <div className={estilos.precio}>
+              <p className={estilos.precioEtiqueta}>Precio del combo</p>
+              <p className={estilos.precioPrincipal}>{enBs !== null ? bs(enBs) : usd(oferta.precio_usd)}</p>
+              <p className={estilos.precioSecundario}>{enBs !== null ? `${usd(oferta.precio_usd)} el combo` : "el combo"}</p>
+            </div>
           )}
+          {oferta.hasta && <p className={estilos.precioSecundario}>Hasta el {fechaCorta(oferta.hasta)}</p>}
+          <div className={estilos.tarjetaAcciones}>
+            <BotonAgregar clave={claveDeOferta(oferta.id)} nombre={oferta.nombre} unidad="combo" className={estilos.agregar} />
+            {pedir && (
+              <a href={pedir} target="_blank" rel="noopener" className={estilos.verDetalles}>
+                Pedir este combo por WhatsApp
+              </a>
+            )}
+          </div>
         </div>
       </div>
     </li>
@@ -344,7 +408,7 @@ export function SinProductos({ texto, pregunta }: { texto: string; pregunta: str
     <div className={estilos.sinProductos}>
       <p>{texto}</p>
       {whatsapp && (
-        <a className={`boton boton--acento ${estilos.botonWhatsapp}`} href={whatsapp} target="_blank" rel="noopener">
+        <a className={`boton ${estilos.botonWhatsapp}`} href={whatsapp} target="_blank" rel="noopener">
           <IconoWhatsapp />
           Preguntar por WhatsApp
         </a>

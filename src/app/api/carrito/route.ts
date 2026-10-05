@@ -4,7 +4,7 @@ import { ofertasVigentes } from "@/lib/ofertas";
 import { nombreDeVenta, porQueSeCobra } from "@/lib/catalogo";
 import { leerTasa } from "@/lib/ajustes";
 import { rutaProducto, rutaVariante } from "@/lib/enlaces";
-import { dibujoComoDato } from "@/lib/dibujos";
+import { fotoDeCombo, fotoReferencialDe } from "@/lib/fotos-referenciales";
 import { hoy } from "@/lib/dinero";
 import { CLAVE_VALIDA, type ProductoDelCarrito } from "@/lib/carrito";
 
@@ -31,7 +31,7 @@ export async function GET(request: Request): Promise<Response> {
         unidad: "combo",
         precio_usd: oferta.precio_usd,
         ruta: `/ofertas#oferta-${oferta.id}`,
-        foto: dibujoComoDato(oferta.nombre),
+        foto: fotoDeCombo(oferta.nombre),
       });
       continue;
     }
@@ -48,7 +48,7 @@ export async function GET(request: Request): Promise<Response> {
       unidad: producto.unidad,
       precio_usd: variante ? variante.precio_usd : producto.precio_usd,
       ruta: variante ? rutaVariante(producto, variante) : rutaProducto(producto),
-      foto: (variante ? direccionDeFotoDeVariante(variante) : null) ?? direccionDeFotoDeProducto(producto) ?? dibujoComoDato(producto.nombre),
+      foto: (variante ? direccionDeFotoDeVariante(variante) : null) ?? direccionDeFotoDeProducto(producto) ?? fotoReferencialDe(producto.nombre),
     });
   }
   return Response.json({ productos: respuesta, tasa: tasa?.valor ?? null }, { headers: { "cache-control": "no-store" } });

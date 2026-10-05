@@ -229,7 +229,7 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
       <div className="campo">
         <label htmlFor={`${id}-foto`}>{producto?.foto_version ? "Cambiar la foto" : "Foto del producto (opcional)"}</label>
         <EntradaFoto nombre="foto" id={`${id}-foto`} opcional soloFoto ladoMaximo={1200} />
-        <span className="ayuda">Mejor sobre fondo blanco o claro: el fondo se funde con la página. Sin foto, la web enseña su dibujo.</span>
+        <span className="ayuda">Mejor sobre fondo blanco o claro: el fondo se funde con la página. Sin foto, la web enseña una foto de referencia, que dice «Foto referencial».</span>
       </div>
 
       <label className={estilos.casilla}>

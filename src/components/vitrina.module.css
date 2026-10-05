@@ -1,19 +1,35 @@
 /*
- * La vitrina pública: secciones, tarjetas de productos y de familias, la
- * franja de confianza y la llamada a los negocios. Verde profundo, dorado
- * y crema; primero el teléfono. Las animaciones son cortas y se apagan si
- * el teléfono pide menos movimiento.
+ * La vitrina pública: secciones, tarjetas de productos y de familias, los
+ * atajos de la portada, la franja mayorista, la de confianza y la llamada
+ * a los negocios. Fondo crema, títulos en verde profundo, detalles en
+ * dorado, fotos reales. Primero el teléfono. Las animaciones son cortas y
+ * se apagan si el teléfono pide menos movimiento.
  */
 
+/* ---------- Títulos de sección ---------- */
+
+.cabezaSeccion {
+  display: grid;
+  gap: var(--espacio-2);
+  margin-bottom: var(--espacio-5);
+}
+.antetituloSeccion {
+  justify-self: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-dorado-texto);
+}
 /* «CATEGORÍAS PRINCIPALES», con una raya dorada a cada lado. */
 .tituloSeccion {
   display: flex;
   align-items: center;
   gap: var(--espacio-4);
-  margin: 0 0 var(--espacio-5);
+  margin: 0;
   font-family: var(--fuente-titulos);
   font-weight: 400;
-  font-size: clamp(26px, 6vw, 40px);
+  font-size: clamp(28px, 7vw, 44px);
   line-height: 1.05;
   letter-spacing: 0.01em;
   text-transform: uppercase;
@@ -33,9 +49,6 @@
   flex: 0 1 auto;
   text-wrap: balance;
 }
-.tituloClaro {
-  color: var(--color-crema);
-}
 
 /* ---------- Tarjetas de productos ---------- */
 
@@ -50,7 +63,7 @@
 @media (min-width: 720px) {
   .rejillaProductos {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--espacio-4);
+    gap: var(--espacio-5);
   }
 }
 @media (min-width: 1080px) {
@@ -73,105 +86,132 @@
   transform: translateY(-3px);
   box-shadow: var(--sombra-tarjeta-alta);
 }
+/* La foto, cuadrada y a todo el ancho: la mitad de arriba de la tarjeta. */
 .tarjetaImagen {
   position: relative;
-  display: grid;
-  place-items: center;
+  display: block;
   aspect-ratio: 1;
-  padding: var(--espacio-3);
-  background: var(--color-superficie);
+  background: var(--color-crema);
 }
 .tarjetaFoto {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  mix-blend-mode: multiply;
 }
-.tarjetaDibujo {
-  width: 78%;
-  height: 78%;
+.tarjeta:hover .tarjetaFoto img {
+  transform: scale(1.04);
+}
+.tarjetaFoto img {
+  transition: transform 0.35s ease;
 }
 .etiqueta {
   position: absolute;
   top: var(--espacio-2);
   left: var(--espacio-2);
-  padding: 2px var(--espacio-2);
+  padding: 3px var(--espacio-3);
   border-radius: 999px;
   background: var(--color-dorado);
   color: var(--color-verde-profundo);
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  box-shadow: var(--sombra-tarjeta);
 }
 .tarjetaCuerpo {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--espacio-2);
-  padding: var(--espacio-3);
-  border-top: 1px solid var(--color-borde);
+  gap: var(--espacio-1);
+  padding: var(--espacio-3) var(--espacio-3) var(--espacio-4);
+}
+@media (min-width: 720px) {
+  .tarjetaCuerpo {
+    padding: var(--espacio-4);
+  }
 }
 .tarjetaNombre {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
 }
+@media (min-width: 720px) {
+  .tarjetaNombre {
+    font-size: 17px;
+  }
+}
 .tarjetaNombre a {
-  color: var(--color-texto);
+  color: var(--color-verde-profundo);
   text-decoration: none;
 }
 .tarjetaDetalle {
   font-size: 13px;
+  line-height: 1.35;
   color: var(--color-texto-suave);
 }
 .precio {
   display: grid;
-  gap: 2px;
+  gap: 1px;
+  margin-top: var(--espacio-2);
 }
-.precioPrincipal {
-  font-size: clamp(18px, 4.8vw, 22px);
+.precioEtiqueta {
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-dorado-texto);
+}
+/* El precio en bolívares: lo más visible de la tarjeta después de la foto. */
+.precioPrincipal {
+  font-size: clamp(21px, 5.8vw, 28px);
+  font-weight: 900;
   line-height: 1.1;
-  color: var(--color-marca);
+  letter-spacing: -0.01em;
+  color: var(--color-verde-profundo);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 .precioSecundario {
   font-size: 13px;
+  font-weight: 600;
   color: var(--color-texto-suave);
   font-variant-numeric: tabular-nums;
 }
 .precioPendiente {
+  margin-top: var(--espacio-2);
   font-size: 14px;
-  font-weight: 600;
-  color: var(--color-texto-suave);
-}
-.desde {
-  font-size: 0.62em;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-texto-suave);
 }
 .tarjetaAcciones {
   display: grid;
   gap: var(--espacio-2);
   margin-top: auto;
-  padding-top: var(--espacio-2);
+  padding-top: var(--espacio-3);
+}
+.agregar {
+  width: 100%;
 }
 .botonOpciones {
   width: 100%;
-  padding: 0 var(--espacio-3);
-  background: var(--color-verde-profundo);
+  padding: 0 var(--espacio-2);
+  background: var(--color-verde-boton);
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 .botonOpciones:hover {
-  background: var(--color-marca);
+  background: var(--color-verde-boton-oscuro);
 }
 .verDetalles {
   justify-self: center;
   font-size: 14px;
   font-weight: 700;
-  color: var(--color-marca);
+  color: var(--color-verde-profundo);
 }
 
 /* ---------- Tarjetas de familias ---------- */
@@ -187,66 +227,91 @@
 @media (min-width: 720px) {
   .rejillaFamilias {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--espacio-4);
   }
 }
-@media (min-width: 1080px) {
-  .rejillaFamilias {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
-}
+/* La foto llena la tarjeta; el mismo velo verde abajo en todas, con el nombre encima. */
 .familia {
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
   overflow: hidden;
   border-radius: var(--radio-grande);
   background: var(--color-verde-profundo);
   color: var(--color-crema);
   text-decoration: none;
   box-shadow: var(--sombra-tarjeta);
-  transition: transform 0.18s ease;
 }
-.familia:hover {
-  transform: translateY(-3px);
+@media (min-width: 720px) {
+  .familia {
+    aspect-ratio: 4 / 3;
+  }
+}
+.familia::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--velo-familia);
 }
 .familia:focus-visible {
   outline: 3px solid var(--color-dorado);
   outline-offset: 3px;
 }
-.familiaImagen {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  background: var(--color-crema-oscuro);
-}
-.familiaImagen img {
+.familiaFoto {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  filter: saturate(1.06) contrast(1.04);
+  transition: transform 0.4s ease;
 }
-.familia:hover .familiaImagen img {
-  transform: scale(1.05);
+.familia:hover .familiaFoto {
+  transform: scale(1.06);
 }
-.familiaIcono {
-  width: 46%;
-  height: 46%;
-  color: var(--color-marca);
+.familiaSinFoto {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 40%, var(--color-crema) 0%, var(--color-crema-oscuro) 100%);
+}
+.familiaSinFoto img {
+  width: 24%;
+  height: auto;
+  opacity: 0.35;
+}
+.familiaTexto {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  display: grid;
+  gap: var(--espacio-1);
+  padding: var(--espacio-3) var(--espacio-3) var(--espacio-4);
+}
+@media (min-width: 720px) {
+  .familiaTexto {
+    padding: var(--espacio-4);
+  }
 }
 .familiaNombre {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--espacio-2);
-  padding: var(--espacio-3);
   font-family: var(--fuente-titulos);
-  font-size: 18px;
-  line-height: 1.1;
+  font-size: clamp(21px, 5.6vw, 30px);
+  line-height: 1;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
-.familiaNombre svg {
-  flex: none;
+.familiaVer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-1);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--color-dorado);
 }
 
@@ -254,7 +319,7 @@
 .chips {
   display: flex;
   gap: var(--espacio-2);
-  margin: 0 calc(-1 * var(--espacio-4)) var(--espacio-5);
+  margin: 0 calc(-1 * var(--espacio-4)) var(--espacio-2);
   padding: 0 var(--espacio-4) var(--espacio-1);
   overflow-x: auto;
   scrollbar-width: thin;
@@ -264,7 +329,7 @@
   flex: none;
   align-items: center;
   gap: var(--espacio-2);
-  min-height: 40px;
+  min-height: 42px;
   padding: 0 var(--espacio-4);
   border: 1px solid var(--color-borde);
   border-radius: 999px;
@@ -285,141 +350,234 @@
   height: 18px;
 }
 
-/* ---------- La franja de confianza ---------- */
+/* ---------- Los atajos de la portada: una foto pequeña y redonda, y el nombre ---------- */
+
+.atajos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+}
+.atajos a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  min-height: 42px;
+  padding: 4px var(--espacio-4) 4px 4px;
+  border: 1px solid var(--color-dorado-tenue);
+  border-radius: 999px;
+  background: var(--color-vidrio);
+  color: var(--color-crema);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.atajos a:hover {
+  border-color: var(--color-dorado);
+  background: var(--color-vidrio-fuerte);
+}
+.atajos a:focus-visible {
+  outline: 3px solid var(--color-dorado);
+  outline-offset: 2px;
+}
+.atajos img {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* ---------- La franja mayorista ---------- */
+
+.mayorista {
+  display: grid;
+  gap: var(--espacio-2);
+  padding: var(--espacio-5) var(--espacio-4);
+  background: var(--color-dorado);
+  color: var(--color-verde-profundo);
+  text-align: center;
+}
+.mayoristaLemas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  font-family: var(--fuente-titulos);
+  font-size: clamp(22px, 6vw, 32px);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+@media (min-width: 900px) {
+  .mayoristaLemas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .mayoristaLemas li + li::before {
+    content: "·";
+    margin: 0 var(--espacio-4);
+  }
+}
+.mayoristaProductos {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ---------- La franja de confianza: tarjetas claras con su icono ---------- */
 
 .confianza {
   list-style: none;
   margin: 0;
-  padding: var(--espacio-5);
+  padding: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--espacio-4);
-  border-radius: var(--radio-grande);
-  background: var(--color-verde-profundo);
-  color: var(--color-crema);
+  gap: var(--espacio-3);
 }
 @media (min-width: 900px) {
   .confianza {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--espacio-4);
   }
-  .confianza li + li {
-    border-left: 1px solid var(--color-dorado-tenue);
-    padding-left: var(--espacio-4);
+  .confianza li {
+    flex-direction: row;
+    align-items: center;
   }
 }
+/* En el teléfono, el icono encima del texto: así «Barquisimeto» cabe en media tarjeta. */
 .confianza li {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--espacio-3);
+  min-width: 0;
+  padding: var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-tarjeta);
+  color: var(--color-verde-profundo);
+  font-size: 13px;
   font-weight: 800;
-  font-size: 14px;
   line-height: 1.25;
-  text-transform: uppercase;
   letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
-.confianza svg {
+.confianzaIcono {
+  display: grid;
   flex: none;
-  width: 32px;
-  height: 32px;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--color-verde-profundo);
   color: var(--color-dorado);
-}
-@media (min-width: 900px) {
-  .confianza svg {
-    width: 40px;
-    height: 40px;
-  }
 }
 
 /* ---------- ¿Estás montando tu negocio? ---------- */
 
 .montando {
-  position: relative;
   display: grid;
-  gap: var(--espacio-4);
   overflow: hidden;
-  padding: var(--espacio-6) var(--espacio-5);
-  border-radius: var(--radio-grande);
+  border-radius: 20px;
   background: var(--color-verde-profundo);
   color: var(--color-crema);
+  box-shadow: var(--sombra-tarjeta-alta);
 }
-@media (min-width: 900px) {
-  .montando {
-    grid-template-columns: 1fr minmax(0, 1.3fr) minmax(0, 0.9fr) 1fr;
-    align-items: center;
-    padding: var(--espacio-5) 0;
-  }
+.montandoFotos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 190px;
 }
-.montandoFotoIzquierda,
-.montandoFotoDerecha {
-  display: none;
-}
-@media (min-width: 900px) {
-  .montandoFotoIzquierda,
-  .montandoFotoDerecha {
-    display: block;
-    width: 100%;
-    height: 100%;
-    max-height: 220px;
-    object-fit: cover;
-  }
-  .montandoFotoIzquierda {
-    mask-image: linear-gradient(to right, var(--color-verde-noche) 55%, transparent);
-  }
-  .montandoFotoDerecha {
-    mask-image: linear-gradient(to left, var(--color-verde-noche) 55%, transparent);
-  }
+.montandoFotos img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .montandoTexto {
   display: grid;
-  gap: var(--espacio-3);
+  gap: var(--espacio-4);
   justify-items: start;
+  padding: var(--espacio-6) var(--espacio-5);
+  font-size: 17px;
 }
 .montandoTitulo {
   font-family: var(--fuente-titulos);
   font-weight: 400;
-  font-size: clamp(28px, 7vw, 40px);
-  line-height: 1.05;
+  font-size: clamp(32px, 8.5vw, 52px);
+  line-height: 1;
+  text-transform: uppercase;
   color: var(--color-dorado);
   text-wrap: balance;
 }
+/* Una por línea en el teléfono: «Hamburgueserías» no se parte. */
 .montandoLista {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--espacio-2) var(--espacio-4);
-  font-weight: 700;
+  width: 100%;
+  font-weight: 800;
+}
+@media (min-width: 520px) {
+  .montandoLista {
+    grid-template-columns: repeat(2, max-content);
+  }
 }
 .montandoLista li {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  gap: var(--espacio-2);
+  min-width: 0;
 }
 .montandoLista li::before {
   content: "✓";
   display: inline-grid;
+  flex: none;
   place-items: center;
-  width: 20px;
-  height: 20px;
-  margin-right: var(--espacio-2);
-  border: 2px solid var(--color-dorado);
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  color: var(--color-dorado);
-  font-size: 12px;
+  background: var(--color-dorado);
+  color: var(--color-verde-profundo);
+  font-size: 13px;
 }
 @media (min-width: 900px) {
-  .montandoLista {
-    flex-direction: column;
+  .montando {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .montandoFotos {
+    height: auto;
+    min-height: 360px;
+  }
+  .montandoTexto {
+    align-content: center;
+    padding: var(--espacio-7) var(--espacio-6);
   }
 }
-/* «Contactar por WhatsApp»: en una sola línea también en un teléfono estrecho. */
+/* «Contactar por WhatsApp»: el verde de WhatsApp, en una sola línea también en un teléfono estrecho. */
 .botonWhatsapp {
-  padding: 0 var(--espacio-4);
+  min-height: 52px;
+  padding: 0 var(--espacio-5);
+  background: var(--color-whatsapp);
+  color: var(--color-verde-profundo);
   font-size: clamp(14px, 3.8vw, 16px);
   font-weight: 800;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+.botonWhatsapp:hover {
+  background: var(--color-whatsapp-oscuro);
 }
 
 /* ---------- Sin productos ---------- */
@@ -436,15 +594,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tarjeta,
-  .familia,
-  .familiaImagen img {
+  .tarjetaFoto img,
+  .familiaFoto,
+  .atajos a {
     transition: none;
   }
   .tarjeta:hover,
-  .familia:hover {
-    transform: none;
-  }
-  .familia:hover .familiaImagen img {
+  .tarjeta:hover .tarjetaFoto img,
+  .familia:hover .familiaFoto {
     transform: none;
   }
 }
@@ -468,7 +625,7 @@
 .tituloPagina {
   font-family: var(--fuente-titulos);
   font-weight: 400;
-  font-size: clamp(34px, 9vw, 56px);
+  font-size: clamp(36px, 9.5vw, 60px);
   line-height: 1;
   letter-spacing: 0.01em;
   text-transform: uppercase;
@@ -477,6 +634,7 @@
 .entradilla {
   max-width: 62ch;
   font-size: 17px;
+  line-height: 1.5;
   color: var(--color-texto-suave);
 }
 .antetitulo {
@@ -501,14 +659,12 @@
 .notaPrecios {
   margin-top: var(--espacio-4);
   font-size: 15px;
+  line-height: 1.5;
   color: var(--color-texto-suave);
 }
 .seccion {
   display: grid;
   gap: var(--espacio-4);
-}
-.seccion > .tituloSeccion {
-  margin-bottom: var(--espacio-1);
 }
 .verTodos {
   justify-self: center;
@@ -524,7 +680,7 @@
 .buscador input {
   flex: 1;
   min-width: 0;
-  min-height: 48px;
+  min-height: 50px;
   padding: 0 var(--espacio-4);
   border: 2px solid var(--color-borde);
   border-radius: 999px;
@@ -536,9 +692,13 @@
   border-color: var(--color-verde-profundo);
 }
 .buscador button {
-  min-height: 48px;
+  min-height: 50px;
   border-radius: 999px;
-  background: var(--color-verde-profundo);
+  background: var(--color-verde-boton);
+  font-weight: 800;
+}
+.buscador button:hover {
+  background: var(--color-verde-boton-oscuro);
 }
 
 /* La cabecera de una familia: su foto de fondo con un velo verde, y el nombre encima. */
@@ -547,7 +707,7 @@
   overflow: hidden;
   display: grid;
   align-items: end;
-  min-height: 240px;
+  min-height: 250px;
   border-radius: var(--radio-grande);
   background: var(--color-verde-profundo);
   color: var(--color-crema);
@@ -560,7 +720,7 @@
 }
 @media (min-width: 760px) {
   .cabeceraFamilia {
-    min-height: 300px;
+    min-height: 320px;
   }
   .cabeceraFamilia::after {
     background: var(--velo-foto);
@@ -579,13 +739,13 @@
   display: grid;
   gap: var(--espacio-2);
   justify-items: start;
-  padding: var(--espacio-6) var(--espacio-5) var(--espacio-5);
   max-width: 640px;
+  padding: var(--espacio-6) var(--espacio-5) var(--espacio-5);
 }
 .cabeceraFamiliaNombre {
   font-family: var(--fuente-titulos);
   font-weight: 400;
-  font-size: clamp(40px, 11vw, 72px);
+  font-size: clamp(42px, 11vw, 76px);
   line-height: 0.95;
   text-transform: uppercase;
   color: var(--color-crema);
@@ -623,25 +783,32 @@
 .oferta {
   display: flex;
   flex-direction: column;
-  gap: var(--espacio-3);
   min-width: 0;
-  padding: var(--espacio-5);
+  overflow: hidden;
   border: 2px solid var(--color-dorado);
   border-radius: var(--radio-grande);
-  background: var(--color-crema);
+  background: var(--color-superficie);
   box-shadow: var(--sombra-tarjeta);
-  scroll-margin-top: 96px;
+  scroll-margin-top: 110px;
 }
 .oferta:target {
   outline: 4px solid var(--color-dorado-tenue);
 }
-.ofertaCabecera {
-  display: grid;
-  gap: var(--espacio-2);
-  justify-items: start;
+.ofertaFoto {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--color-crema);
+}
+.ofertaFoto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .etiquetaCombo {
-  padding: 2px var(--espacio-3);
+  position: absolute;
+  top: var(--espacio-3);
+  left: var(--espacio-3);
+  padding: 3px var(--espacio-3);
   border-radius: 999px;
   background: var(--color-verde-profundo);
   color: var(--color-dorado);
@@ -649,6 +816,17 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+.ofertaCuerpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  padding: var(--espacio-4) var(--espacio-5) var(--espacio-5);
+}
+.ofertaCabecera {
+  display: grid;
+  gap: var(--espacio-2);
 }
 .ofertaNombre {
   font-family: var(--fuente-titulos);

@@ -37,14 +37,28 @@
   --color-dorado: #f2bd2c;
   --color-dorado-oscuro: #d9a514;
   --color-dorado-tenue: rgba(242, 189, 44, 0.35);
+  /* El dorado para letra pequeña sobre blanco: el claro no se lee. */
+  --color-dorado-texto: #8a6100;
+  /* El verde de los botones principales, algo más luminoso que el de la cabecera. */
+  --color-verde-boton: #1d6b3c;
+  --color-verde-boton-oscuro: #165530;
+  /* Crema transparente para lo que va sobre una foto oscura. */
+  --color-vidrio: rgba(251, 246, 234, 0.1);
+  --color-vidrio-fuerte: rgba(251, 246, 234, 0.2);
   --color-crema: #fbf6ea;
   --color-crema-oscuro: #f3ead4;
   /* El verde de WhatsApp, con texto oscuro para que se lea bien. */
   --color-whatsapp: #25d366;
   --color-whatsapp-oscuro: #1ebe5a;
   /* Lo que va encima de una foto, para que el texto se lea. */
-  --velo-foto: linear-gradient(90deg, rgba(8, 26, 16, 0.94) 0%, rgba(8, 26, 16, 0.8) 45%, rgba(8, 26, 16, 0.25) 100%);
+  --velo-foto: linear-gradient(90deg, rgba(8, 26, 16, 0.92) 0%, rgba(8, 26, 16, 0.7) 38%, rgba(8, 26, 16, 0.1) 62%, rgba(8, 26, 16, 0) 100%);
   --velo-foto-movil: linear-gradient(180deg, rgba(8, 26, 16, 0.45) 0%, rgba(8, 26, 16, 0.78) 38%, rgba(8, 26, 16, 0.94) 75%);
+  /* La foto de arriba de la portada en el teléfono: se funde en el verde por abajo, donde entra el título. */
+  --velo-foto-arriba: linear-gradient(180deg, rgba(8, 26, 16, 0) 40%, rgba(8, 26, 16, 0.7) 75%, rgb(8, 26, 16) 100%);
+  /* El mismo velo abajo en todas las fotos de familia, para que el nombre se lea y todas parezcan de la misma marca. */
+  --velo-familia: linear-gradient(180deg, rgba(8, 26, 16, 0) 38%, rgba(8, 26, 16, 0.55) 62%, rgba(8, 26, 16, 0.92) 100%);
+  /* Detrás de «Foto referencial». */
+  --velo-aviso: rgba(8, 26, 16, 0.62);
   --sombra-tarjeta: 0 1px 2px rgba(14, 44, 27, 0.06), 0 6px 18px rgba(14, 44, 27, 0.08);
   --sombra-tarjeta-alta: 0 2px 4px rgba(14, 44, 27, 0.08), 0 14px 32px rgba(14, 44, 27, 0.14);
 

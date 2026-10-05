@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { direccionCompleta, enlaceCompartir, enlaceWhatsapp, negocio } from "@/config/negocio";
 import { buscarProducto, direccionDeFotoDeProducto, type Producto } from "@/lib/productos";
+import { imagenDeProducto } from "@/lib/fotos-referenciales";
 import { direccionDeFotoDeVariante, variantesDeProducto, type Variante } from "@/lib/variantes";
 import { claveDe, nombreDeVenta, porQueSeCobra, precioPublicado, type PrecioPublicado } from "@/lib/catalogo";
 import { contarResenasPorVariante, resenasDeProducto } from "@/lib/resenas";
@@ -19,7 +20,7 @@ import {
   datosDeLaTienda,
   ventajasDe,
 } from "@/components/publico";
-import { IlustracionProducto } from "@/components/ilustracion-producto";
+import { FotoDeProducto } from "@/components/foto-de-producto";
 import { AvisoDeEjemplos, ListaDeResenas } from "@/components/resenas";
 import { ComoComprar } from "@/components/como-comprar";
 import { BotonAgregar } from "@/components/carrito/boton-agregar";
@@ -103,7 +104,7 @@ function datosDelProducto(producto: Producto, publicado: PrecioPublicado, varian
 
 /**
  * La página de un producto: a ella llevan «Ver detalles» y el nombre de
- * cada tarjeta. Su foto (o su dibujo), el precio de hoy con «Agregar al
+ * cada tarjeta. Su foto (la suya o una de referencia), el precio de hoy con «Agregar al
  * carrito» y el pedido directo por WhatsApp, por qué elegirlo (lo que dicen
  * los negocios que lo compran y sus ventajas), cómo se paga y dónde se
  * recoge, y otros de su familia. Si tiene marcas, cada una con su foto, su
@@ -128,7 +129,7 @@ export default async function PaginaProducto({ params }: Parametros) {
   const tasa = v.tasa;
   const publicado = precioPublicado(producto, variantes);
   const ventajas = ventajasDe(producto.descripcion);
-  const foto = direccionDeFotoDeProducto(producto);
+  const imagen = imagenDeProducto(direccionDeFotoDeProducto(producto), producto.nombre, variantes.length === 1 ? direccionDeFotoDeVariante(variantes[0]) : null);
   const familia = v.todasLasFamilias.find((f) => f.id === producto.familia_id) ?? null;
   // Debajo, otros de sus familias; si no hay, otros cualquiera.
   const suyas = v.productos.find((p) => p.producto.id === producto.id)?.familias ?? [];
@@ -157,12 +158,7 @@ export default async function PaginaProducto({ params }: Parametros) {
 
         <article className={estilos.ficha}>
           <header className={estilos.fichaCabecera}>
-            {foto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={foto} alt={producto.nombre} width={800} height={800} className={estilos.fotoGrande} />
-            ) : (
-              <IlustracionProducto nombre={producto.nombre} className={estilos.dibujoGrande} />
-            )}
+            <FotoDeProducto imagen={imagen} nombre={producto.nombre} className={estilos.fotoGrande} tamano={800} prioridad aviso />
           </header>
 
           <div className={estilos.fichaPrincipal}>
@@ -223,12 +219,12 @@ export default async function PaginaProducto({ params }: Parametros) {
                   return (
                     <li key={m.id} className={estilos.variante}>
                       <Link href={ruta} className={estilos.varianteEnlace} aria-label={`Ver ${producto.nombre} ${m.nombre}`}>
-                        {suFoto ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={suFoto} alt={`${producto.nombre} ${m.nombre}`} width={800} height={800} className={estilos.varianteFoto} loading="lazy" />
-                        ) : (
-                          <IlustracionProducto nombre={producto.nombre} className={estilos.varianteDibujo} />
-                        )}
+                        <FotoDeProducto
+                          imagen={suFoto ? { src: suFoto, referencial: false } : imagen}
+                          nombre={`${producto.nombre} ${m.nombre}`}
+                          className={estilos.varianteFoto}
+                          aviso
+                        />
                       </Link>
                       <div className={estilos.varianteTexto}>
                         <h3 className={estilos.varianteNombre}>

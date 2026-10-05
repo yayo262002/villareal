@@ -1182,16 +1182,18 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-/* El dibujo de un producto sin foto, pequeño en la lista y mediano en su ficha. */
-.dibujoPequeno {
+/* La foto de un producto en su lista y en su ficha: la suya o la de referencia. */
+.fotoPequena {
   flex: none;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radio);
 }
-.dibujoMediano {
+.fotoMediana {
   flex: none;
-  width: 72px;
-  height: 72px;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radio);
 }
 /* La portada y el icono de una familia en su lista. */
 .portadaFamilia {

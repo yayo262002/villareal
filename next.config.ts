@@ -13,6 +13,11 @@ const CABECERAS_DE_SEGURIDAD = [
 ];
 
 const nextConfig: NextConfig = {
+  // Las vistas previas de cada producto leen su foto de referencia de `public/productos/`; en Vercel esos archivos
+  // no viajan con la función si no se dice. Las demás páginas los sirven tal cual.
+  outputFileTracingIncludes: {
+    "/producto/**/opengraph-image*": ["./public/productos/**/*"],
+  },
   experimental: {
     serverActions: {
       // Las fotos de las notas suben por una acción del servidor. El

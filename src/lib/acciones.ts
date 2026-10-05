@@ -1014,7 +1014,7 @@ export async function retirarFotoDeProducto(datos: FormData): Promise<void> {
   const producto = id ? await buscarProducto(id) : null;
   if (!id || !producto) volverConError("/admin/productos", "No se encontró el producto.");
   await quitarFotoDeProducto(id);
-  volverConExito(`/admin/productos/${id}`, `Foto quitada de «${producto.nombre}»: la web vuelve a enseñar su dibujo.`);
+  volverConExito(`/admin/productos/${id}`, `Foto quitada de «${producto.nombre}»: la web vuelve a enseñar la foto de referencia.`);
 }
 
 /** La confirmación está en `/admin/productos/[id]/eliminar`. Uno ya vendido, comprado o contado no se borra: se esconde. */

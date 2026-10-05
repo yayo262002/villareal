@@ -40,7 +40,7 @@ export type Producto = {
   destacado: number;
   en_oferta: number;
   creado_en: string;
-  /** Cuándo se puso la foto principal, o null si no tiene (entonces va el dibujo). */
+  /** Cuándo se puso la foto principal, o null si no tiene (entonces va la de referencia). */
   foto_version: string | null;
 };
 
@@ -235,7 +235,7 @@ export async function quitarFotoDeProducto(productoId: number): Promise<boolean>
   return r.cambios > 0;
 }
 
-/** La dirección pública de la foto principal, o null si no tiene (entonces va el dibujo). */
+/** La dirección pública de la foto principal, o null si no tiene (entonces va la de referencia). */
 export function direccionDeFotoDeProducto(producto: Pick<Producto, "id" | "foto_version">): string | null {
   if (!producto.foto_version) return null;
   return `/foto-producto/${producto.id}?v=${encodeURIComponent(producto.foto_version.replace(/\D/g, ""))}`;

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { LARGO_MAXIMO_DEL_TEXTO, ejemplosPara, iniciales, leerResena } from "./resenas-texto.ts";
+import { LARGO_MAXIMO_DEL_TEXTO, ejemplosPara, iniciales, leerResena, tipoDeProducto } from "./resenas-texto.ts";
 
 function leida(escrito: Partial<{ autor: string; detalle: string; texto: string }>) {
   const lectura = leerResena({ autor: "Pizzería La Esquina", detalle: "", texto: "Gratina muy bien y no se quema.", ...escrito });
@@ -52,6 +52,17 @@ test("las iniciales del autor, sin contar «de» ni «la»", () => {
   assert.equal(iniciales("Restaurante El Fogón, C.A."), "RF");
   assert.equal(iniciales("0412-1234567"), "");
   assert.equal(iniciales(""), "");
+});
+
+test("qué clase de producto es, por su nombre, para elegir sus reseñas de ejemplo", () => {
+  assert.equal(tipoDeProducto("Queso amarillo"), "queso");
+  assert.equal(tipoDeProducto("Queso mozzarella"), "mozzarella");
+  assert.equal(tipoDeProducto("Queso Mozarella"), "mozzarella");
+  assert.equal(tipoDeProducto("Queso pecorino rallado"), "rallado");
+  assert.equal(tipoDeProducto("Queso parmesano"), "curado");
+  assert.equal(tipoDeProducto("Cartón de huevos"), "huevos");
+  assert.equal(tipoDeProducto("Suero Guaralac"), "suero");
+  assert.equal(tipoDeProducto("Mantequilla"), "generico");
 });
 
 test("cada producto tiene reseñas de ejemplo de lo que es", () => {

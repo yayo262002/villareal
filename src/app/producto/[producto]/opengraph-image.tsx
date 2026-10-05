@@ -1,15 +1,15 @@
 import { negocio } from "@/config/negocio";
-import { buscarProducto } from "@/lib/productos";
-import { variantesDeProducto } from "@/lib/variantes";
+import { buscarFotoDeProducto, buscarProducto } from "@/lib/productos";
+import { buscarFotoDeVariante, variantesDeProducto } from "@/lib/variantes";
 import { precioPublicado } from "@/lib/catalogo";
 import { unidadEnPalabras, usd } from "@/lib/dinero";
 import { idDeRuta } from "@/lib/enlaces";
-import { TAMANO_IMAGEN, imagenSocial } from "@/lib/imagen-social";
-import { dibujoComoDato } from "@/lib/dibujos";
+import { TAMANO_IMAGEN, fotoParaCompartir, imagenSocial } from "@/lib/imagen-social";
+import { fotoReferencialDe } from "@/lib/fotos-referenciales";
 
 /**
- * La vista previa de un producto al compartir su enlace: el dibujo, el
- * nombre y el precio en dólares. El precio en bolívares no va porque cambia
+ * La vista previa de un producto al compartir su enlace: su foto (la suya
+ * o la de referencia), el nombre y el precio en dólares. El precio en bolívares no va porque cambia
  * cada día y la imagen se queda guardada en el teléfono de quien la recibe.
  */
 export const alt = `Producto de ${negocio.nombre}`;
@@ -26,8 +26,12 @@ export default async function Imagen({ params }: { params: Promise<{ producto: s
   }
 
   // Con varias marcas, el precio es «desde» la más barata.
-  const publicado = precioPublicado(producto, await variantesDeProducto(producto.id, true));
+  const marcas = await variantesDeProducto(producto.id, true);
+  const publicado = precioPublicado(producto, marcas);
   const precio = publicado.precio_usd;
+  // La suya; si no, la de su única marca; si no, la de referencia.
+  const propia = (await buscarFotoDeProducto(producto.id)) ?? (marcas.length === 1 ? await buscarFotoDeVariante(marcas[0].id) : null);
+  const foto = await fotoParaCompartir(propia ? { datos: propia.datos } : { ruta: fotoReferencialDe(producto.nombre) });
   return imagenSocial({
     antetitulo: "Precio del día",
     titulo: producto.nombre,
@@ -36,6 +40,6 @@ export default async function Imagen({ params }: { params: Promise<{ producto: s
         ? `${publicado.desde ? "Desde " : ""}${usd(precio)} por ${unidadEnPalabras(producto.unidad)} · al mayor, a tasa BCV`
         : "Consulta el precio del día",
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
-    dibujo: <img src={dibujoComoDato(producto.nombre)} width={340} height={340} />,
+    foto: foto ? <img src={foto} width={340} height={340} style={{ borderRadius: 28 }} /> : undefined,
   });
 }

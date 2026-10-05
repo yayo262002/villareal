@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { direccionCompleta, enlaceCompartir, enlaceWhatsapp, negocio } from "@/config/negocio";
-import { buscarProducto, type Producto } from "@/lib/productos";
+import { buscarProducto, direccionDeFotoDeProducto, type Producto } from "@/lib/productos";
+import { imagenDeProducto } from "@/lib/fotos-referenciales";
 import { buscarVariante, direccionDeFotoDeVariante, variantesDeProducto, type Variante } from "@/lib/variantes";
 import { claveDe, nombreDeVenta, porQueSeCobra } from "@/lib/catalogo";
 import { leerTasa } from "@/lib/ajustes";
@@ -18,7 +19,7 @@ import {
   datosDeLaTienda,
   ventajasDe,
 } from "@/components/publico";
-import { IlustracionProducto } from "@/components/ilustracion-producto";
+import { FotoDeProducto } from "@/components/foto-de-producto";
 import { AvisoDeEjemplos, ListaDeResenas } from "@/components/resenas";
 import { ComoComprar } from "@/components/como-comprar";
 import { BotonAgregar } from "@/components/carrito/boton-agregar";
@@ -110,6 +111,8 @@ export default async function PaginaMarca({ params }: Parametros) {
   const [tasa, resenas, hermanas] = await Promise.all([leerTasa(), resenasDeVariante(variante.id, esElDueno), variantesDeProducto(producto.id, true)]);
   const nombre = nombreDeVenta(producto.nombre, variante.nombre);
   const foto = direccionDeFotoDeVariante(variante);
+  // Sin foto de la marca, la del producto (la suya o la de referencia).
+  const delProducto = imagenDeProducto(direccionDeFotoDeProducto(producto), producto.nombre);
   const ventajas = ventajasDe(variante.descripcion);
   const otras = hermanas.filter((v) => v.id !== variante.id);
   const pedir = enlaceWhatsapp(`Hola, quiero pedir ${nombre.toLowerCase()}.`);
@@ -131,12 +134,7 @@ export default async function PaginaMarca({ params }: Parametros) {
 
         <article className={estilos.ficha}>
           <header className={estilos.fichaCabecera}>
-            {foto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={foto} alt={nombre} width={800} height={800} className={estilos.fotoGrande} />
-            ) : (
-              <IlustracionProducto nombre={producto.nombre} className={estilos.dibujoGrande} />
-            )}
+            <FotoDeProducto imagen={foto ? { src: foto, referencial: false } : delProducto} nombre={nombre} className={estilos.fotoGrande} tamano={800} prioridad aviso />
           </header>
 
           <div className={estilos.fichaPrincipal}>
@@ -192,12 +190,7 @@ export default async function PaginaMarca({ params }: Parametros) {
                   return (
                     <li key={v.id}>
                       <Link href={rutaVariante(producto, v)} className={estilos.otro}>
-                        {suFoto ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={suFoto} alt="" width={64} height={64} className={estilos.otroFoto} loading="lazy" />
-                        ) : (
-                          <IlustracionProducto nombre={producto.nombre} />
-                        )}
+                        <FotoDeProducto imagen={suFoto ? { src: suFoto, referencial: false } : delProducto} nombre={v.nombre} className={estilos.otroFoto} tamano={128} />
                         {v.nombre}
                       </Link>
                     </li>

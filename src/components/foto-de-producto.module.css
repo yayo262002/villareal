@@ -1,0 +1,48 @@
+/*
+ * La foto de un producto ocupa toda su caja. La de referencia es una foto
+ * de comida y se recorta para llenarla; la que sube el dueño (el paquete
+ * sobre fondo blanco, ya centrado en su cuadrado) se enseña entera y su
+ * blanco se funde con el fondo.
+ */
+.marco {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--color-crema);
+}
+.marco img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.referencial {
+  object-fit: cover;
+}
+.propia {
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+.aviso {
+  position: absolute;
+  right: var(--espacio-2);
+  bottom: var(--espacio-2);
+  padding: 2px var(--espacio-2);
+  border-radius: 999px;
+  background: var(--velo-aviso);
+  color: var(--color-crema);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Sin foto: crema con el león en dorado tenue. */
+.sinFoto {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 40%, var(--color-crema) 0%, var(--color-crema-oscuro) 100%);
+}
+.sinFoto img {
+  width: 26%;
+  height: auto;
+  opacity: 0.32;
+}

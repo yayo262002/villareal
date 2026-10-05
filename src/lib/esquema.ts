@@ -161,7 +161,7 @@ export const ESQUEMA = `
   );
 
   -- La foto principal de un producto: sale en su tarjeta y en su página en
-  -- lugar del dibujo.
+  -- lugar de la foto de referencia.
   create table if not exists fotos_productos (
     producto_id integer primary key references productos(id) on delete cascade,
     tipo text not null,

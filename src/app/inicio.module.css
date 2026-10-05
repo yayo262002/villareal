@@ -1,7 +1,9 @@
 /*
- * La portada. Arriba, el título grande sobre las fotos de comida con un
- * velo verde para que se lea; debajo, las secciones de la vitrina
- * (`components/vitrina.module.css`). Primero el teléfono.
+ * La portada. En el teléfono, la foto (hamburguesa con papas y la pizza
+ * saliendo del horno) va arriba y se funde en el verde, y el título entra
+ * por encima de su borde de abajo; en la pantalla ancha, la foto llena el
+ * fondo y el texto va a la izquierda, sobre el verde. Debajo, las
+ * secciones de la vitrina (`components/vitrina.module.css`).
  */
 
 .heroe {
@@ -11,34 +13,32 @@
   background: var(--color-verde-noche);
   color: var(--color-crema);
 }
-.heroeFotos {
+.heroeFoto {
+  position: relative;
+  display: block;
+  z-index: -2;
+  aspect-ratio: 900 / 760;
+}
+.heroeFoto::after {
+  content: "";
   position: absolute;
   inset: 0;
-  z-index: -2;
-  display: grid;
+  background: var(--velo-foto-arriba);
 }
-.heroeFotos img {
+.heroeFoto img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.heroeFotos img + img {
-  display: none;
-}
-.heroe::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--velo-foto-movil);
-}
 .heroeTexto {
+  position: relative;
   display: grid;
   justify-items: start;
   gap: var(--espacio-4);
   max-width: var(--ancho-web);
-  margin: 0 auto;
-  padding: var(--espacio-7) var(--espacio-4) var(--espacio-6);
+  margin: -16vw auto 0;
+  padding: 0 var(--espacio-4) var(--espacio-6);
 }
 .heroeTexto > * {
   max-width: 640px;
@@ -71,40 +71,6 @@
 .texto {
   font-size: 16px;
   line-height: 1.5;
-}
-.atajos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--espacio-2);
-}
-.atajos a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 0 var(--espacio-3);
-  border: 1px solid var(--color-dorado-tenue);
-  border-radius: 999px;
-  background: var(--color-verde-profundo);
-  color: var(--color-crema);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-decoration: none;
-  text-transform: uppercase;
-}
-.atajos a:hover {
-  border-color: var(--color-dorado);
-  color: var(--color-dorado);
-}
-.atajos a:focus-visible {
-  outline: 3px solid var(--color-dorado);
-  outline-offset: 2px;
-}
-.atajoIcono {
-  width: 16px;
-  height: 16px;
-  color: var(--color-dorado);
 }
 .botones {
   display: grid;
@@ -139,20 +105,25 @@
   }
 }
 @media (min-width: 900px) {
-  /* Las fotos entran poco a poco desde el verde, sin un corte recto. */
-  .heroeFotos {
-    left: 34%;
-    grid-template-columns: 1.15fr 1fr;
-    mask-image: linear-gradient(to right, transparent 0, var(--color-verde-noche) 22%);
+  .heroeFoto {
+    position: absolute;
+    inset: 0;
+    aspect-ratio: auto;
   }
-  .heroeFotos img + img {
-    display: block;
-  }
-  .heroe::after {
+  .heroeFoto::after {
     background: var(--velo-foto);
   }
+  /* La foto se pega a la derecha: la hamburguesa y la pizza quedan siempre a la vista, y el texto, sobre el verde. */
+  .heroeFoto img {
+    object-position: 100% 50%;
+  }
   .heroeTexto {
-    padding: 88px var(--espacio-4) 96px;
+    margin-top: 0;
+    padding: 104px var(--espacio-4) 112px;
+  }
+  /* El texto se queda sobre el verde, sin pisar la hamburguesa. */
+  .heroeTexto > * {
+    max-width: 560px;
   }
 }
 
