@@ -13,8 +13,12 @@ import sharp from "sharp";
 export const LADO_DE_LA_FOTO = 800;
 /** Lo que queda de aire alrededor del producto. */
 const AIRE = 30;
-/** Cuánto puede diferir un píxel del color del borde para seguir siendo fondo (el JPEG mete ruido). */
-const TOLERANCIA_DEL_FONDO = 40;
+/**
+ * Cuánto puede diferir un píxel del color del borde para seguir siendo fondo.
+ * Poco: un producto claro (una bolsa de suero blanca) no puede tomarse por
+ * fondo y salir cortado. Si el fondo no es liso, mejor no recortar de más.
+ */
+const TOLERANCIA_DEL_FONDO = 15;
 
 export async function normalizarFotoDeProducto(datos: Uint8Array, tipo: string): Promise<{ datos: Uint8Array; tipo: string }> {
   try {
