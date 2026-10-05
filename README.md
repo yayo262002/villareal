@@ -908,8 +908,9 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - Registrar a los proveedores y lo que se les debe.
 - Completar los productos del catálogo que vende (precio, presentación,
   foto) y activarlos; borrar los que no vende. Lo mismo con los combos.
-  Las categorías de la portada (Embutidos, Papas, Bebidas…) aparecen solas
-  en cuanto tengan algún producto activo.
+  Las categorías (Embutidos, Papas, Bebidas…) ya salen en la portada;
+  mientras no tengan nada activo, su página invita a preguntar por
+  WhatsApp.
 - Marcar los productos destacados: mientras no haya ninguno, la portada
   enseña todos.
 - Si quiere, subir en Familias fotos propias para cada categoría: las que
