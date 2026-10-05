@@ -32,10 +32,26 @@ export function urlBaseDeDatos(): string {
   return "file:" + ruta.replace(/\\/g, "/");
 }
 
+/**
+ * Las consultas a Turso viajan por `fetch`, y Next guarda en su caché las
+ * respuestas de `fetch` de las páginas estáticas, también de una
+ * compilación a la siguiente: una consulta podía devolver la base de otro
+ * día (el 05/10/2026 la puesta al día leyó la base de antes de las familias
+ * y creó una). Por eso van por el `fetch` de siempre, el que Next guarda
+ * aparte y no pasa por su caché: la base se lee siempre al día, y las
+ * páginas estáticas se siguen guardando enteras y rehaciéndose con
+ * `revalidatePath`. Si algún día Next no lo guardara, se pide sin caché.
+ */
+function fetchSinCache(entrada: RequestInfo | URL, opciones?: RequestInit): Promise<Response> {
+  const deNext = globalThis.fetch as typeof fetch & { _nextOriginalFetch?: typeof fetch };
+  return deNext._nextOriginalFetch ? deNext._nextOriginalFetch(entrada, opciones) : deNext(entrada, { ...opciones, cache: "no-store" });
+}
+
 async function abrir(): Promise<Client> {
   const cliente = createClient({
     url: urlBaseDeDatos(),
     authToken: esRemota() ? process.env.TURSO_AUTH_TOKEN : undefined,
+    fetch: fetchSinCache,
   });
   if (!esRemota()) {
     await cliente.execute("pragma journal_mode = wal");
@@ -160,17 +176,15 @@ async function migrar(cliente: Client): Promise<void> {
     await cliente.execute("insert or ignore into ajustes (clave, valor) values ('catalogo_por_marcas', '1')");
   }
   await enlazarMarcasDeLosProductos(cliente);
-  // Las familias iniciales, la primera vez. Si dos procesos lo intentan a la vez, el slug único evita duplicarlas.
-  // (Las que se añadan al código después no se crean solas en una base que ya tiene familias: las crea el dueño.)
-  const familias = await cliente.execute("select count(*) as n from familias");
-  if (Number(familias.rows[0]?.n ?? 0) === 0) {
-    for (const f of FAMILIAS_INICIALES) {
-      await cliente.execute({
-        sql: "insert or ignore into familias (nombre, slug, descripcion, icono, orden) values (?, ?, ?, ?, ?)",
-        args: [f.nombre, f.slug, f.descripcion, f.icono, f.orden],
-      });
-    }
-  }
+  // Las familias iniciales, la primera vez. Lo decide la base en una sola sentencia (una lectura aparte podría
+  // llegar vieja), y el slug único evita duplicarlas si dos procesos lo intentan a la vez. Las que se añadan al
+  // código después no se crean solas en una base que ya tiene familias: las crea el dueño.
+  await cliente.execute({
+    sql: `insert or ignore into familias (nombre, slug, descripcion, icono, orden)
+          select column1, column2, column3, column4, column5 from (values ${FAMILIAS_INICIALES.map(() => "(?, ?, ?, ?, ?)").join(", ")})
+          where not exists (select 1 from familias)`,
+    args: FAMILIAS_INICIALES.flatMap((f) => [f.nombre, f.slug, f.descripcion, f.icono, f.orden]),
+  });
 }
 
 /**
@@ -291,11 +305,16 @@ async function asignarFamilias(cliente: Client): Promise<void> {
     const { principal, relacionadas } = familiasPorNombre(String(p.nombre));
     const familia = ids.get(principal);
     if (!familia) continue;
-    await cliente.execute({ sql: "update productos set familia_id = ? where id = ? and familia_id is null", args: [familia, p.id] });
+    // Las otras familias, antes que la suya y solo si sigue sin familia en la base: a uno que ya la tiene no se le toca nada.
     for (const slug of relacionadas) {
       const otra = ids.get(slug);
-      if (otra) await cliente.execute({ sql: "insert or ignore into producto_categorias (producto_id, familia_id) values (?, ?)", args: [p.id, otra] });
+      if (!otra) continue;
+      await cliente.execute({
+        sql: "insert or ignore into producto_categorias (producto_id, familia_id) select ?, ? where exists (select 1 from productos where id = ? and familia_id is null)",
+        args: [p.id, otra, p.id],
+      });
     }
+    await cliente.execute({ sql: "update productos set familia_id = ? where id = ? and familia_id is null", args: [familia, p.id] });
   }
 }
 
