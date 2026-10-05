@@ -3,6 +3,7 @@ import { createClient, type Client, type InValue, type Transaction } from "@libs
 import path from "node:path";
 import fs from "node:fs";
 import { ESQUEMA, PRODUCTOS_INICIALES, RECONSTRUIR_PRODUCTOS, RENOMBRES } from "./esquema";
+import { FAMILIAS_INICIALES, familiasPorNombre } from "./catalogo-inicial";
 
 /**
  * Conexión a la base de datos con el cliente de libsql, que habla el mismo
@@ -122,6 +123,32 @@ async function migrar(cliente: Client): Promise<void> {
   if (!(await definicionDe(cliente, "clientes")).includes("dias_credito")) {
     await añadirColumna(cliente, "clientes", "dias_credito integer not null default 7");
   }
+  // El catálogo por familias: la familia principal de cada producto, si es un borrador, su marca y su presentación,
+  // el precio al detal si lo hay, y si se destaca o sale en ofertas. Todo opcional: lo que había sigue igual.
+  const deProductos = await definicionDe(cliente, "productos");
+  for (const [columna, definicion] of [
+    ["familia_id", "familia_id integer references familias(id)"],
+    ["borrador", "borrador integer not null default 0"],
+    ["marca", "marca text not null default ''"],
+    ["presentacion", "presentacion text not null default ''"],
+    ["contenido", "contenido text not null default ''"],
+    ["precio_detal_usd", "precio_detal_usd real"],
+    ["destacado", "destacado integer not null default 0"],
+    ["en_oferta", "en_oferta integer not null default 0"],
+  ] as const) {
+    if (!new RegExp(`\\b${columna}\\b`).test(deProductos)) await añadirColumna(cliente, "productos", definicion);
+  }
+  await cliente.execute("create index if not exists productos_familia on productos(familia_id)");
+  // Las familias iniciales, la primera vez. Si dos procesos lo intentan a la vez, el slug único evita duplicarlas.
+  const familias = await cliente.execute("select count(*) as n from familias");
+  if (Number(familias.rows[0]?.n ?? 0) === 0) {
+    for (const f of FAMILIAS_INICIALES) {
+      await cliente.execute({
+        sql: "insert or ignore into familias (nombre, slug, descripcion, icono, orden) values (?, ?, ?, ?, ?)",
+        args: [f.nombre, f.slug, f.descripcion, f.icono, f.orden],
+      });
+    }
+  }
 }
 
 /** Las descripciones se comparan sin importar si los saltos de línea son de Windows. */
@@ -146,12 +173,18 @@ async function renombrar(cliente: Client): Promise<void> {
   }
 }
 
-/** Crea los productos iniciales que falten y pone la descripción del dueño si está vacía. */
+/**
+ * Crea los productos iniciales en una base nueva y pone la descripción del
+ * dueño si está vacía. En una base con productos no se crea ninguno: si el
+ * dueño borró o renombró uno de los iniciales, no vuelve a aparecer.
+ */
 async function sembrar(cliente: Client): Promise<void> {
   await renombrar(cliente);
+  const nueva = Number((await cliente.execute("select count(*) as n from productos")).rows[0]?.n ?? 0) === 0;
   for (const p of PRODUCTOS_INICIALES) {
     const hay = await cliente.execute({ sql: "select id, descripcion from productos where nombre = ?", args: [p.nombre] });
     if (hay.rows.length === 0) {
+      if (!nueva) continue;
       await cliente.execute({
         sql: "insert into productos (nombre, unidad, descripcion) values (?, ?, ?)",
         args: [p.nombre, p.unidad, p.descripcion],
@@ -161,6 +194,28 @@ async function sembrar(cliente: Client): Promise<void> {
     } else if (p.descripcionAnterior && mismoTexto(hay.rows[0].descripcion, p.descripcionAnterior)) {
       // El texto de siembra cambió y el dueño no había tocado el viejo: se pone el nuevo.
       await cliente.execute({ sql: "update productos set descripcion = ? where id = ?", args: [p.descripcion, hay.rows[0].id] });
+    }
+  }
+  await asignarFamilias(cliente);
+}
+
+/**
+ * Los productos sin familia (los de antes de las familias, o los iniciales
+ * de una base nueva) van a la suya según su nombre, con las otras en que
+ * salen. Uno que ya tiene familia no se toca: la elige el dueño.
+ */
+async function asignarFamilias(cliente: Client): Promise<void> {
+  const sinFamilia = await cliente.execute("select id, nombre from productos where familia_id is null");
+  if (sinFamilia.rows.length === 0) return;
+  const ids = new Map((await cliente.execute("select id, slug from familias")).rows.map((r) => [String(r.slug), Number(r.id)]));
+  for (const p of sinFamilia.rows) {
+    const { principal, relacionadas } = familiasPorNombre(String(p.nombre));
+    const familia = ids.get(principal);
+    if (!familia) continue;
+    await cliente.execute({ sql: "update productos set familia_id = ? where id = ? and familia_id is null", args: [familia, p.id] });
+    for (const slug of relacionadas) {
+      const otra = ids.get(slug);
+      if (otra) await cliente.execute({ sql: "insert or ignore into producto_categorias (producto_id, familia_id) values (?, ?)", args: [p.id, otra] });
     }
   }
 }

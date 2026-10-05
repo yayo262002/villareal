@@ -83,3 +83,43 @@ export function vendiblesDe(productos: ProductoDeCatalogo[], variantes: Variante
   }
   return lista;
 }
+
+// ---------- El estado de un producto, su presentación y las ofertas ----------
+
+/** Un producto en borrador no está completo ni publicado; uno inactivo, escondido; uno activo, en la web. */
+export type EstadoProducto = "borrador" | "activo" | "inactivo";
+
+export const NOMBRE_ESTADO_PRODUCTO: Record<EstadoProducto, string> = { borrador: "Borrador", activo: "En la web", inactivo: "Oculto" };
+
+export function estadoDeProducto(p: { activo: number; borrador: number }): EstadoProducto {
+  return p.borrador ? "borrador" : p.activo ? "activo" : "inactivo";
+}
+
+export function esEstadoDeProducto(valor: string): valor is EstadoProducto {
+  return valor === "borrador" || valor === "activo" || valor === "inactivo";
+}
+
+/** «Bolsa de 2,5 kg», «Caja», «2,5 kg» o nada: la presentación en una frase. */
+export function presentacionDe(p: { presentacion: string; contenido: string }): string {
+  const presentacion = p.presentacion.trim();
+  const contenido = p.contenido.trim();
+  if (presentacion && contenido) return `${presentacion} de ${contenido}`;
+  return presentacion || contenido;
+}
+
+/**
+ * Por qué se cobra: «kilo», «cartón», «bolsa de 2,5 kg», «unidad». Lo que
+ * va por kilo se cobra por kilo aunque traiga presentación; lo demás, por
+ * su presentación si la tiene.
+ */
+export function porQueSeCobra(p: { unidad: string; presentacion: string; contenido: string }): string {
+  if (p.unidad === "kg") return "kilo";
+  const presentacion = presentacionDe(p);
+  if (presentacion) return presentacion.charAt(0).toLowerCase() + presentacion.slice(1);
+  return p.unidad === "carton" ? "cartón" : "unidad";
+}
+
+/** Si una oferta está en la web hoy: activa y dentro de sus fechas (sin fecha, sin límite). */
+export function estaVigente(o: { estado: string; desde: string | null; hasta: string | null }, hoy: string): boolean {
+  return o.estado === "activa" && (!o.desde || o.desde <= hoy) && (!o.hasta || o.hasta >= hoy);
+}

@@ -149,7 +149,10 @@ async function enviar(ruta, marca, campos, conCookie = cookie, cabeceras = {}, s
   if (status !== 200) throw new Error(`GET ${ruta} → ${status}`);
   const datos = new FormData();
   datos.set(accionDe(html, marca, segundaMarca), "");
-  for (const [k, v] of Object.entries(campos)) datos.set(k, v);
+  for (const [k, v] of Object.entries(campos)) {
+    if (Array.isArray(v)) for (const uno of v) datos.append(k, uno);
+    else datos.set(k, v);
+  }
   const t = Date.now();
   const r = await fetch(base + ruta, { method: "POST", headers: { cookie: conCookie, ...cabeceras }, body: datos, redirect: "manual" });
   return {
@@ -296,25 +299,26 @@ async function probarPrecios() {
   let r = await enviar("/admin/productos", 'name="tasa"', { tasa: "36.5" });
   comprobar("guardar la tasa del día", r.destino.includes("Tasa del día guardada"));
 
-  r = await enviar("/admin/productos", 'id="precio-1"', {
+  r = await enviar("/admin/productos/1", 'id="precio-1"', {
     id: "1", nombre: "Queso amarillo", unidad: "kg", costo_usd: "6.8",
     margen_pct: "25", precio_usd: "",
   });
   comprobar("costo 6,80 con 25 %", r.destino.includes("guardado"), r.destino);
 
   const panel = (await pagina("/admin/productos")).html;
+  const fichaDelAmarillo = (await pagina("/admin/productos/1")).html;
   comprobar(
     "panel: precio al mayor USD 8,50 = Bs 310,25, y nada de detal",
-    panel.includes('value="8.5"') && panel.includes("Bs 310,25") && panel.includes("Precio al mayor") && !panel.includes("Al detal"),
+    fichaDelAmarillo.includes('value="8.5"') && panel.includes("Bs 310,25") && panel.includes("Precio al mayor") && !panel.includes("Al detal"),
   );
 
-  r = await enviar("/admin/productos", 'id="precio-2"', {
+  r = await enviar("/admin/productos/2", 'id="precio-2"', {
     id: "2", nombre: "Queso mozzarella", unidad: "kg", costo_usd: "",
     margen_pct: "20", precio_usd: "",
   });
   comprobar("un margen sin costo se rechaza", r.destino.includes("hace falta el costo"), r.destino);
 
-  r = await enviar("/admin/productos", 'id="precio-2"', {
+  r = await enviar("/admin/productos/2", 'id="precio-2"', {
     id: "2", nombre: "Queso mozzarella", unidad: "kg", costo_usd: "",
     margen_pct: "", precio_usd: "7",
   });
@@ -338,12 +342,12 @@ async function probarPrecios() {
   comprobar("web: pedir cada producto por WhatsApp", web.includes("quiero%20pedir%20queso%20amarillo"));
 
   // Marcas y presentaciones: dos bolsas de pecorino. La portada dice «desde» con la más barata; la página las enseña con su foto.
-  r = await enviar("/admin/productos", 'id="variante-nueva-4-nombre"', {
+  r = await enviar("/admin/productos/4", 'id="variante-nueva-4-nombre"', {
     producto_id: "4", nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4", foto: fotoFirmada(),
   });
   comprobar("añadir una marca con foto a un producto", r.destino.includes("«Sortilegio 500 g» añadida") && r.destino.includes("Con su foto"), r.destino);
   varianteSortilegio = Number((await consultar("select max(id) as id from variantes"))[0].id);
-  r = await enviar("/admin/productos", 'id="variante-nueva-4-nombre"', { producto_id: "4", nombre: "Guaralac 500 g", descripcion: "", costo_usd: "", precio_usd: "3.5" });
+  r = await enviar("/admin/productos/4", 'id="variante-nueva-4-nombre"', { producto_id: "4", nombre: "Guaralac 500 g", descripcion: "", costo_usd: "", precio_usd: "3.5" });
   comprobar("añadir otra sin foto", r.destino.includes("«Guaralac 500 g» añadida"), r.destino);
   const guaralacId = Number((await consultar("select max(id) as id from variantes"))[0].id);
   const portadaMarcas = (await portadaCon("Bs 127,75")).html;
@@ -368,9 +372,9 @@ async function probarPrecios() {
   const fotoVariante = await fetch(base + `/foto-variante/${varianteSortilegio}`);
   comprobar("la foto de la marca se sirve a la web", fotoVariante.status === 200 && fotoVariante.headers.get("content-type") === "image/png");
   comprobar("la vista previa del pecorino dice «desde»", (await fetch(base + "/producto/4-queso-pecorino-rallado/opengraph-image")).status === 200);
-  r = await enviar("/admin/productos", `id="variante-${varianteSortilegio}-nombre"`, { variante_id: String(varianteSortilegio), nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4.2" });
-  comprobar("cambiar el precio de una marca", r.destino.includes("guardada") && (await pagina("/admin/productos")).html.includes('value="4.2"'), r.destino);
-  r = await enviar("/admin/productos", `id="variante-${varianteSortilegio}-nombre"`, {
+  r = await enviar("/admin/productos/4", `id="variante-${varianteSortilegio}-nombre"`, { variante_id: String(varianteSortilegio), nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4.2" });
+  comprobar("cambiar el precio de una marca", r.destino.includes("guardada") && (await pagina("/admin/productos/4")).html.includes('value="4.2"'), r.destino);
+  r = await enviar("/admin/productos/4", `id="variante-${varianteSortilegio}-nombre"`, {
     variante_id: String(varianteSortilegio), nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado", costo_usd: "", precio_usd: "4.2", foto: await fotoDeProducto(),
   });
   const fotoGuardada = await fetch(base + `/foto-variante/${varianteSortilegio}`);
@@ -385,25 +389,25 @@ async function probarPrecios() {
       esRojo(pixel(400, 400)) && esRojo(pixel(45, 45)) && esRojo(pixel(755, 755)) && !esRojo(pixel(10, 10)),
     `${r.destino} ${fotoGuardada.headers.get("content-type")} ${fotoMeta.width}x${fotoMeta.height} centro=${pixel(400, 400)} esquina=${pixel(45, 45)}`,
   );
-  r = await enviar("/admin/productos", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "0" }, cookie, {}, 'name="activo"');
+  r = await enviar("/admin/productos/4", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "0" }, cookie, {}, 'name="activo"');
   const portadaUna = (await portadaCon("Bs 153,30")).html;
   comprobar(
     "escondida una, queda el precio de la otra sin «desde» (4,20 = Bs 153,30) y la página ya no la enseña",
     r.destino.includes("escondida") && !portadaUna.includes("desde </span>Bs 153,30") && !(await pagina("/producto/4", "")).html.includes("Guaralac"),
     r.destino,
   );
-  await enviar("/admin/productos", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "1" }, cookie, {}, 'name="activo"');
-  r = await enviar("/admin/productos", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio), activo: "0" }, cookie, {}, 'name="activo"');
+  await enviar("/admin/productos/4", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "1" }, cookie, {}, 'name="activo"');
+  r = await enviar("/admin/productos/4", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio), activo: "0" }, cookie, {}, 'name="activo"');
   comprobar(
     "la foto de una marca escondida no se sirve al público, solo al dueño",
     (await fetch(base + `/foto-variante/${varianteSortilegio}`)).status === 404 && (await fetch(base + `/foto-variante/${varianteSortilegio}`, { headers: { cookie } })).status === 200,
   );
-  await enviar("/admin/productos", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio), activo: "1" }, cookie, {}, 'name="activo"');
+  await enviar("/admin/productos/4", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio), activo: "1" }, cookie, {}, 'name="activo"');
   await portadaCon("desde </span>Bs 127,75");
 
   // Cada marca tiene su página: se llega pinchándola, con su foto, su precio, su descripción entera y su botón de pedir.
   const rutaSortilegio = `/producto/4-queso-pecorino-rallado/${varianteSortilegio}-sortilegio-500-g`;
-  r = await enviar("/admin/productos", `id="variante-${varianteSortilegio}-nombre"`, {
+  r = await enviar("/admin/productos/4", `id="variante-${varianteSortilegio}-nombre"`, {
     variante_id: String(varianteSortilegio), nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado\nBolsa de 500 g\nPara pastas y pizzas", costo_usd: "", precio_usd: "4.2",
   });
   comprobar("la descripción de una marca puede tener varias líneas", r.destino.includes("guardada"), r.destino);
@@ -423,9 +427,9 @@ async function probarPrecios() {
     String(paginaMarca.status),
   );
   const rutaGuaralac = `/producto/4-queso-pecorino-rallado/${guaralacId}-guaralac-500-g`;
-  await enviar("/admin/productos", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "0" }, cookie, {}, 'name="activo"');
+  await enviar("/admin/productos/4", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "0" }, cookie, {}, 'name="activo"');
   const escondida = (await pagina(rutaGuaralac, "")).status;
-  await enviar("/admin/productos", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "1" }, cookie, {}, 'name="activo"');
+  await enviar("/admin/productos/4", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "1" }, cookie, {}, 'name="activo"');
   comprobar(
     "una marca escondida, una de otro producto o un número que no existe dan 404; con otro nombre detrás, llega igual",
     escondida === 404 && (await pagina(`/producto/1-queso-amarillo/${varianteSortilegio}-sortilegio`, "")).status === 404 &&
@@ -542,7 +546,7 @@ async function probarNegocio() {
     r.destino,
   );
   comprobar("el despacho dice qué cargar, con la marca", legible((await pagina(`/admin/despacho?solo=entregas`)).html).includes("Queso pecorino rallado Sortilegio 500 g"));
-  r = await enviar("/admin/productos", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio) }, cookie, {}, "Sí, eliminar");
+  r = await enviar("/admin/productos/4", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio) }, cookie, {}, "Sí, eliminar");
   comprobar("una marca ya vendida no se borra: se esconde", r.destino.includes("no se puede borrar"), r.destino);
   await enviar(`/admin/ventas/${ventaMarca}/eliminar`, 'name="id"', { id: String(ventaMarca) });
   comprobar("borrada la venta, la cuenta vuelve a como estaba", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
@@ -1530,6 +1534,176 @@ async function probarInventario() {
   );
 }
 
+const FAMILIA_DE_PRUEBA = "Panadería de prueba";
+
+/**
+ * El catálogo por familias: las familias iniciales y los productos de antes
+ * en la suya, crear una familia (también desde el formulario de producto),
+ * el formulario completo con sus otras categorías, los borradores, cambiar
+ * solo el precio, borrar con cuidado, preparar el catálogo inicial y las
+ * ofertas.
+ */
+async function probarCatalogo() {
+  const familias = await consultar("select id, slug, nombre from familias order by orden");
+  const idDe = Object.fromEntries(familias.map((f) => [f.slug, Number(f.id)]));
+  comprobar("las diez familias iniciales, en su orden", familias.length >= 10 && familias[0].slug === "burger" && familias[1].slug === "pizzeria", JSON.stringify(familias.map((f) => f.slug)));
+  const [amarillo] = await consultar("select familia_id from productos where id = 1");
+  const otrasDelAmarillo = (await consultar("select familia_id from producto_categorias where producto_id = 1")).map((f) => Number(f.familia_id));
+  comprobar(
+    "el queso amarillo de antes quedó en Quesos y sale también en Burger",
+    Number(amarillo.familia_id) === idDe.quesos && otrasDelAmarillo.includes(idDe.burger),
+    JSON.stringify([amarillo, otrasDelAmarillo]),
+  );
+  const panelFamilias = legible((await pagina("/admin/familias")).html);
+  comprobar("el panel de familias las enseña con sus productos", panelFamilias.includes("Familias y categorías") && panelFamilias.includes("Embutidos") && panelFamilias.includes("productos suyos"));
+
+  // Una familia nueva desde su panel.
+  let r = await enviar("/admin/familias", 'id="familia-nueva-nombre"', { nombre: FAMILIA_DE_PRUEBA, descripcion: "Pan y harinas", icono: "otros", orden: "", activa: "1" });
+  comprobar("crear una familia", r.destino.includes(`Familia «${FAMILIA_DE_PRUEBA}» creada`), r.destino);
+  r = await enviar("/admin/familias", 'id="familia-nueva-nombre"', { nombre: "panaderia DE prueba", descripcion: "", icono: "otros", orden: "", activa: "1" });
+  comprobar("otra con el mismo nombre (sin mirar tildes ni mayúsculas) no se crea", r.destino.includes("Ya hay una familia"), r.destino);
+  const [panaderia] = await consultar("select id, slug, orden from familias where nombre = ?", [FAMILIA_DE_PRUEBA]);
+  comprobar("la familia nueva va detrás de las otras, con su slug", panaderia && panaderia.slug === "panaderia-de-prueba" && Number(panaderia.orden) >= 11, JSON.stringify(panaderia));
+
+  // «Agregar producto»: el formulario completo, con su familia y sus otras categorías.
+  const formulario = legible((await pagina("/admin/productos/nuevo")).html);
+  comprobar(
+    "el formulario de producto pregunta la familia y las otras categorías, y deja crear una familia",
+    formulario.includes("¿A qué familia pertenece este producto?") && formulario.includes("¿En qué otras categorías quieres mostrarlo?") &&
+      formulario.includes("＋ Crear nueva familia") && formulario.includes(FAMILIA_DE_PRUEBA),
+  );
+  const nuevo = {
+    formulario: "completo", nombre: "Tocineta ahumada (prueba)", descripcion: "Ahumada\nEn lonjas", familia_id: String(idDe.embutidos), unidad: "kg", marca: "",
+    presentacion: "Paquete", contenido: "1 kg", costo_usd: "", margen_pct: "", precio_usd: "12", precio_detal_usd: "", estado: "activo", destacado: "1", existencia: "",
+  };
+  r = await enviar("/admin/productos/nuevo", 'name="formulario"', { ...nuevo, categoria: [String(idDe.burger), String(idDe.pizzeria), String(idDe.embutidos)] });
+  const idTocineta = Number(r.destino.match(/\/admin\/productos\/(\d+)/)?.[1]);
+  comprobar("crear un producto con su familia, otras categorías y destacado", r.destino.includes("creado y publicado") && idTocineta > 0, r.destino);
+  const [tocineta] = await consultar("select familia_id, activo, borrador, destacado, presentacion, precio_usd from productos where id = ?", [idTocineta]);
+  const susOtras = (await consultar("select familia_id from producto_categorias where producto_id = ?", [idTocineta])).map((f) => Number(f.familia_id));
+  comprobar(
+    "queda en Embutidos y sale en Burger y en Pizzería, sin repetir la suya, en la web y destacado",
+    Number(tocineta.familia_id) === idDe.embutidos && susOtras.length === 2 && susOtras.includes(idDe.burger) && susOtras.includes(idDe.pizzeria) &&
+      Number(tocineta.activo) === 1 && Number(tocineta.borrador) === 0 && Number(tocineta.destacado) === 1 && tocineta.presentacion === "Paquete" && cerca(Number(tocineta.precio_usd), 12),
+    JSON.stringify([tocineta, susOtras]),
+  );
+  r = await enviar("/admin/productos/nuevo", 'name="formulario"', { ...nuevo, nombre: "Sin familia", familia_id: "" });
+  comprobar("sin familia no se guarda, y el formulario vuelve con lo escrito", r.destino.includes("Elige a qué familia pertenece") && r.destino.includes("nombre=Sin+familia") && r.destino.includes("relleno=1"), r.destino);
+
+  // «Crear la familia y elegirla» sin salir del formulario: vuelve con lo escrito y la familia nueva elegida.
+  r = await enviar("/admin/productos/nuevo", 'name="formulario"', {
+    ...nuevo, nombre: "Pan de prueba", familia_id: "", crear_familia: "1", nueva_familia_nombre: "Congelados de prueba", nueva_familia_icono: "papas", nueva_familia_orden: "", nueva_familia_activa: "1",
+  });
+  const [congelados] = await consultar("select id, icono from familias where nombre = ?", ["Congelados de prueba"]);
+  comprobar(
+    "crear una familia desde el formulario de producto la deja elegida, con lo escrito",
+    Boolean(congelados) && congelados.icono === "papas" && r.destino.includes(`familia_id=${congelados?.id}`) && r.destino.includes("nombre=Pan+de+prueba") && r.destino.includes("creada y elegida"),
+    r.destino,
+  );
+  const vuelta = (await pagina(r.destino)).html;
+  comprobar(
+    "el formulario vuelve relleno y con la familia nueva elegida",
+    vuelta.includes('value="Pan de prueba"') && new RegExp(`<option value="${congelados?.id}" selected=""`).test(vuelta),
+  );
+
+  // Un borrador no sale en la web ni en las ventas.
+  r = await enviar("/admin/productos/nuevo", 'name="formulario"', {
+    ...nuevo, nombre: "Salsa secreta (prueba)", familia_id: String(idDe["salsas-y-aderezos"]), unidad: "unidad", precio_usd: "", estado: "borrador", destacado: "",
+  });
+  const idBorrador = Number(r.destino.match(/\/admin\/productos\/(\d+)/)?.[1]);
+  comprobar(
+    "un borrador se guarda sin precio y no sale en la web ni en las ventas",
+    r.destino.includes("en borrador") && (await pagina(`/producto/${idBorrador}`, "")).status === 404 && !(await pagina("/admin/ventas")).html.includes(`cantidad_${idBorrador}"`),
+    r.destino,
+  );
+
+  // Cambiar solo el precio deja lo demás como estaba; con el formulario entero, una casilla sin marcar es un «no».
+  r = await enviar(`/admin/productos/${idTocineta}`, `id="precio-${idTocineta}"`, { id: String(idTocineta), precio_usd: "13" });
+  const [tras] = await consultar("select precio_usd, destacado from productos where id = ?", [idTocineta]);
+  const [{ n: otrasTras }] = await consultar("select count(*) as n from producto_categorias where producto_id = ?", [idTocineta]);
+  comprobar("cambiar solo el precio deja las categorías y el destacado", cerca(Number(tras.precio_usd), 13) && Number(tras.destacado) === 1 && Number(otrasTras) === 2, JSON.stringify([tras, otrasTras]));
+  r = await enviar(`/admin/productos/${idTocineta}`, `id="precio-${idTocineta}"`, { ...nuevo, id: String(idTocineta), precio_usd: "13", destacado: "", categoria: [String(idDe.burger)], existencia: "8" });
+  const [despues] = await consultar("select destacado from productos where id = ?", [idTocineta]);
+  const otrasDespues = (await consultar("select familia_id from producto_categorias where producto_id = ?", [idTocineta])).map((f) => Number(f.familia_id));
+  const [recuento] = await consultar("select cantidad from inventario_ajustes where producto_id = ? order by id desc limit 1", [idTocineta]);
+  comprobar(
+    "con el formulario entero, desmarcar es quitar; y la existencia escrita queda como recuento",
+    r.destino.includes("guardado") && Number(despues.destacado) === 0 && otrasDespues.length === 1 && otrasDespues[0] === idDe.burger && Boolean(recuento) && cerca(Number(recuento.cantidad), 8),
+    JSON.stringify([r.destino, despues, otrasDespues, recuento]),
+  );
+  r = await enviar(`/admin/productos/${idTocineta}`, `id="precio-${idTocineta}"`, { id: String(idTocineta), foto: await fotoDeProducto() });
+  const fotoTocineta = await fetch(base + `/foto-producto/${idTocineta}`);
+  comprobar("la foto del producto se guarda y se sirve", r.destino.includes("Con su foto") && fotoTocineta.status === 200 && fotoTocineta.headers.get("content-type") === "image/jpeg", r.destino);
+
+  // Borrar: uno sin ventas se borra con lo suyo; uno vendido, no.
+  const confirmar = legible((await pagina(`/admin/productos/${idBorrador}/eliminar`)).html);
+  comprobar("antes de borrar un producto, se confirma", confirmar.includes("No tiene vuelta atrás") && confirmar.includes("Sí, eliminar"));
+  r = await enviar(`/admin/productos/${idBorrador}/eliminar`, 'name="id"', { id: "1" }, cookie, {}, "Sí, eliminar");
+  comprobar("uno ya vendido no se borra ni a la fuerza", r.destino.includes("no se puede borrar") && (await consultar("select count(*) as n from productos where id = 1"))[0].n == 1, r.destino);
+  const vendido = legible((await pagina("/admin/productos/1/eliminar")).html);
+  comprobar("su pantalla de borrar lo explica y ofrece esconderlo", vendido.includes("No se puede borrar") && vendido.includes("Ocultarlo de la web"));
+  comprobar("uno con un recuento de inventario tampoco se borra", legible((await pagina(`/admin/productos/${idTocineta}/eliminar`)).html).includes("1 recuento de inventario"));
+  r = await enviar(`/admin/productos/${idBorrador}/eliminar`, 'name="id"', { id: String(idBorrador) }, cookie, {}, "Sí, eliminar");
+  comprobar("un producto sin ventas se borra", r.destino.includes("borrado") && (await consultar("select count(*) as n from productos where id = ?", [idBorrador]))[0].n == 0, r.destino);
+
+  // Borrar una familia con productos pide antes a cuál pasan.
+  await enviar(`/admin/productos/${idTocineta}`, `id="precio-${idTocineta}"`, { id: String(idTocineta), familia_id: String(panaderia.id) });
+  r = await enviar(`/admin/familias/${panaderia.id}/eliminar`, 'name="pasar_a"', { id: String(panaderia.id), pasar_a: "" });
+  comprobar("una familia con productos no se borra sin decir a cuál pasan", r.destino.includes("Elige a qué familia pasan"), r.destino);
+  r = await enviar(`/admin/familias/${panaderia.id}/eliminar`, 'name="pasar_a"', { id: String(panaderia.id), pasar_a: String(idDe.embutidos) });
+  const [movida] = await consultar("select familia_id from productos where id = ?", [idTocineta]);
+  comprobar(
+    "con la familia elegida, sus productos pasan a ella y la familia se borra",
+    r.destino.includes("borrada") && r.destino.includes("pasaron a «Embutidos»") && Number(movida.familia_id) === idDe.embutidos &&
+      (await consultar("select count(*) as n from familias where id = ?", [panaderia.id]))[0].n == 0,
+    r.destino,
+  );
+
+  // El catálogo inicial: en borrador, sin precio y sin publicar; los combos también.
+  r = await enviar("/admin/productos", "Preparar el catálogo inicial", {});
+  const borradores = await consultar("select nombre, activo, precio_usd from productos where borrador = 1");
+  comprobar(
+    "preparar el catálogo crea los productos en borrador, sin precio y sin publicar, y los combos",
+    r.destino.includes("Preparados") && r.destino.includes("3 combos") && borradores.length >= 40 && borradores.every((b) => Number(b.activo) === 0 && b.precio_usd === null),
+    `${r.destino} ${borradores.length}`,
+  );
+  const [{ n: noDuplica }] = await consultar("select count(*) as n from productos where nombre in ('Tocineta', 'Queso amarillo', 'Huevos', 'Queso mozzarella')");
+  comprobar("no duplica lo que ya había, y el botón ya no sale", Number(noDuplica) === 4 && !(await pagina("/admin/productos")).html.includes("Preparar el catálogo inicial"), String(noDuplica));
+  comprobar("los borradores no salen en la portada ni en las ventas", !(await pagina("/", "")).html.includes("Ketchup") && !(await pagina("/admin/ventas")).html.includes("Ketchup"));
+  const [tocinetaDelCatalogo] = await consultar("select p.id, f.slug from productos p join familias f on f.id = p.familia_id where p.nombre = 'Tocineta'");
+  const susCategorias = (await consultar("select f.slug from producto_categorias c join familias f on f.id = c.familia_id where c.producto_id = ? order by f.slug", [tocinetaDelCatalogo.id])).map((f) => f.slug);
+  comprobar(
+    "la tocineta del catálogo: en Embutidos y también en Burger y en Pizzería",
+    tocinetaDelCatalogo.slug === "embutidos" && susCategorias.join() === "burger,pizzeria",
+    JSON.stringify([tocinetaDelCatalogo, susCategorias]),
+  );
+  comprobar("la lista de productos filtra los borradores", legible((await pagina("/admin/productos?estado=borrador")).html).includes("Ketchup"));
+
+  // Las ofertas: nacen en borrador, se les pone precio, fechas y lo que llevan.
+  const ofertas = await consultar("select id, nombre, estado, precio_usd from ofertas order by orden");
+  const packBurger = ofertas.find((o) => o.nombre === "Pack Burger");
+  const lleva = (await consultar("select p.id, p.nombre from oferta_productos op join productos p on p.id = op.producto_id where op.oferta_id = ?", [packBurger?.id]));
+  comprobar(
+    "los tres combos en borrador y sin precio, con lo que llevan",
+    ofertas.length === 3 && ofertas.every((o) => o.estado === "borrador" && o.precio_usd === null) && lleva.some((p) => p.nombre === "Tocineta") && lleva.some((p) => p.nombre === "Ketchup"),
+    JSON.stringify([ofertas, lleva]),
+  );
+  r = await enviar(`/admin/ofertas/${packBurger.id}`, 'name="precio_usd"', {
+    id: String(packBurger.id), nombre: "Pack Burger", descripcion: "Queso, tocineta, papas y salsas", precio_usd: "45", desde: "2026-01-01", hasta: "2030-12-31",
+    estado: "activa", orden: "1", producto: lleva.map((p) => String(p.id)), [`cantidad_${tocinetaDelCatalogo.id}`]: "2 kg",
+  });
+  const [guardada] = await consultar("select estado, precio_usd, hasta from ofertas where id = ?", [packBurger.id]);
+  const [cuantoTocineta] = await consultar("select cantidad from oferta_productos where oferta_id = ? and producto_id = ?", [packBurger.id, tocinetaDelCatalogo.id]);
+  comprobar(
+    "editar una oferta: precio, fechas, estado y cuánto lleva de cada uno",
+    r.destino.includes("guardada") && guardada.estado === "activa" && cerca(Number(guardada.precio_usd), 45) && guardada.hasta === "2030-12-31" && cuantoTocineta?.cantidad === "2 kg",
+    JSON.stringify([r.destino, guardada, cuantoTocineta]),
+  );
+  r = await enviar(`/admin/ofertas/${packBurger.id}`, 'name="precio_usd"', { id: String(packBurger.id), nombre: "Pack Burger", descripcion: "", precio_usd: "", desde: "2026-02-01", hasta: "2026-01-01", estado: "activa", orden: "1" });
+  comprobar("una oferta que acaba antes de empezar no se guarda", r.destino.includes("no puede acabar antes de empezar"), r.destino);
+  comprobar("el panel de ofertas la enseña en la web, con su precio", legible((await pagina("/admin/ofertas")).html).includes("Pack Burger") && legible((await pagina("/admin/ofertas")).html).includes(usd("45,00")));
+}
+
 async function probarSinEscribir() {
   const pantallas = [
     ["/admin", "Resumen", "Hoy,"],
@@ -1541,6 +1715,9 @@ async function probarSinEscribir() {
     ["/admin/inventario", "Inventario", "Recuento o merma"],
     ["/admin/estadisticas", "Estadísticas", "Por mes"],
     ["/admin/productos", "Productos", "Tasa del día"],
+    ["/admin/productos/nuevo", "Agregar producto", "¿A qué familia pertenece este producto?"],
+    ["/admin/familias", "Familias", "Familias y categorías"],
+    ["/admin/ofertas", "Ofertas", "Ofertas y combos"],
     ["/admin/resenas", "Reseñas", "Reseña nueva"],
     ["/admin/proveedores", "Proveedores", "Proveedor nuevo"],
     ["/admin/caja", "Cierre del día", "Descargar para Excel"],
@@ -1565,6 +1742,8 @@ async function probarSinEscribir() {
   if (nota) comprobar("una nota de entrega", (await pagina(nota)).html.includes("No es una factura"));
   const proveedor = vistas["/admin/proveedores"].match(/href="(\/admin\/proveedores\/\d+)"/)?.[1];
   if (proveedor) comprobar("la ficha de un proveedor", (await pagina(proveedor)).html.includes("Registrar compra"));
+  const fichaDeProducto = vistas["/admin/productos"].match(/href="(\/admin\/productos\/\d+)"/)?.[1];
+  if (fichaDeProducto) comprobar("la ficha de un producto, con su formulario entero", (await pagina(fichaDeProducto)).html.includes("Datos del producto"));
   console.log(`      (con datos: ${cliente ? "cliente" : "sin clientes"}, ${nota ? "nota" : "sin notas"}, ${proveedor ? "proveedor" : "sin proveedores"})`);
 
   // Las descargas.
@@ -1651,6 +1830,7 @@ try {
     await probarProveedores();
     await probarCartera();
     await probarInventario();
+    await probarCatalogo();
     await probarTareaDiaria();
     await probarFreno();
   }

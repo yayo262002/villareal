@@ -61,7 +61,8 @@ npm run copia
 
 Guarda `copias/villareal-AAAA-MM-DD-HHMM.db` (un SQLite completo, fotos
 incluidas, salga del archivo local o de Turso) y borra las más viejas pasando
-de 30. Si quieres que las copias vayan a una carpeta que se sincronice con
+de 30. La copia se escribe aparte y solo se guarda si termina bien: una a
+medias no puede pasar por buena. Si quieres que las copias vayan a una carpeta que se sincronice con
 la nube, pon `CARPETA_COPIAS=` en `.env.local`.
 
 Para que salga sola cada día a las 8 de la noche, en PowerShell (una vez,
@@ -133,7 +134,15 @@ src/lib/tasa-oficial.ts   Trae la tasa del BCV (el fin de semana, la del lunes, 
 src/lib/certificado-bcv.ts  El intermedio que la página del BCV no manda, para comprobar su certificado
 src/lib/intentos.ts       Freno a quien pruebe claves en la entrada del panel
 src/lib/variantes.ts      Las marcas o presentaciones de un producto, con su foto
-src/lib/catalogo.ts       Qué precio publica un producto con marcas («desde») y las filas de la venta
+src/lib/catalogo.ts       Qué precio publica un producto con marcas («desde») y las filas de la venta; estados, presentación, ofertas vigentes
+src/lib/familias.ts       Las familias del catálogo, sus productos y su portada
+src/lib/catalogo-inicial.ts  Las familias iniciales, los borradores y los combos que pidió el dueño
+src/lib/preparar-catalogo.ts Crea en borrador lo que falte del catálogo inicial
+src/lib/ofertas.ts        Ofertas y combos: precio, fechas, estado y lo que llevan
+src/lib/iconos.ts         Los iconos de las familias, a trazo
+src/components/formulario-producto.tsx  El formulario completo de un producto, con «Crear nueva familia»
+src/components/marcas-producto.tsx  Las marcas de un producto, en su ficha del panel
+src/app/foto-producto/, foto-familia/  Sirven la foto de un producto y la portada de una familia
 src/app/foto-variante/    Sirve la foto de una marca a la web
 src/lib/dibujos.ts        El dibujo de cada producto, en SVG
 src/lib/imagen-social.tsx La imagen que sale al compartir un enlace
@@ -197,7 +206,7 @@ src/components/resenas.tsx  Las reseñas, como se ven en la página del producto
 src/app/foto-resena/      Sirve la foto de una reseña a la web
 src/components/entrada-foto.tsx  Reduce la foto en el teléfono antes de subirla
 src/components/nav-panel.tsx     El menú del panel, con la sección abierta marcada
-src/app/admin/            El panel
+src/app/admin/            El panel (productos/nuevo y productos/[id], familias, ofertas…)
 datos/                    La base de datos (fuera de Git)
 ```
 
@@ -629,6 +638,71 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   «cada pieza suele pesar 2,5 kg … y hoy anotaste 2 piezas y 8 kg». Nada
   se corrige solo.
 
+## Catálogo: familias, productos y ofertas
+
+- **Familias.** El catálogo se ordena en familias: Burger, Pizzería, Quesos,
+  Huevos, Embutidos, Salsas y aderezos, Papas y congelados, Bebidas,
+  Complementos gastronómicos y Otros productos (se crean solas la primera
+  vez, `FAMILIAS_INICIALES` en `src/lib/catalogo-inicial.ts`). Cada
+  producto tiene **una familia principal** (`productos.familia_id`) y puede
+  salir **también en otras** (`producto_categorias`) sin repetirse en la
+  base: la tocineta es de Embutidos y sale en Burger y en Pizzería. Cada
+  familia tiene su nombre, descripción, icono, portada, orden y si está
+  activa; su dirección (`/categoria/burger`) no cambia aunque cambie el
+  nombre.
+- Los productos de antes quedaron en la suya por el nombre: los quesos en
+  Quesos (el amarillo sale también en Burger; la mozzarella y el pecorino,
+  en Pizzería), los huevos en Huevos y el suero en Salsas y aderezos. Se
+  cambia en la ficha de cada uno.
+- **Productos** (`/admin/productos`): arriba la tasa del día; debajo la
+  lista, por estado (en la web, borradores, ocultos), por familia o
+  buscando, cada uno con su enlace a su ficha. **«Agregar producto»**
+  (`/admin/productos/nuevo`) abre el formulario completo: nombre, «¿A qué
+  familia pertenece este producto?», «¿En qué otras categorías quieres
+  mostrarlo?» (casillas), marca, estado, se vende por (kilo, unidad o
+  cartón), presentación («Bolsa») y contenido («2,5 kg»), costo, margen y
+  precio al mayor, precio al detal (opcional: vacío, la web no habla de
+  detal), existencia (opcional: se anota como recuento en Inventario),
+  descripción, foto, «Destacarlo en la portada» y «Mostrarlo en Ofertas».
+  Dentro está **«＋ Crear nueva familia»**: nombre, descripción, icono,
+  orden, portada y si está activa; la crea y vuelve al formulario con todo
+  lo escrito y la familia nueva ya elegida, sin JavaScript (la foto del
+  producto, si se había puesto, hay que volver a ponerla). Lo que no es por
+  kilo se cobra por su presentación: «por bolsa de 2,5 kg».
+- **La ficha de cada producto** (`/admin/productos/7`): el mismo
+  formulario, su foto (que la web enseña en lugar del dibujo), publicarlo u
+  ocultarlo, sus marcas y presentaciones, y borrarlo.
+- **Estados.** *Borrador* (sin terminar: no sale en la web ni en las
+  ventas), *activo* (en la web) e *inactivo* (oculto). Son las columnas
+  `activo` y `borrador`; publicar un borrador lo saca del borrador.
+- **Borrar un producto** pide confirmar y solo se puede si nunca se vendió,
+  se compró ni se contó: las notas y el inventario lo nombran. Si no, la
+  pantalla lo explica y ofrece ocultarlo. Al borrarlo se van con él sus
+  marcas sin vender, sus fotos, sus reseñas, sus categorías y su sitio en
+  las ofertas.
+- **Familias** (`/admin/familias`): cuántos productos tiene cada una (los
+  suyos, los que también salen en ella, los publicados), editarlas,
+  ordenarlas (el número de orden), esconderlas, ponerles portada (se
+  recorta en 4:3, `normalizarPortada`) y borrarlas. Borrar una que es la
+  principal de algún producto avisa y pide a qué familia pasan.
+- **El catálogo inicial.** El botón **«Preparar el catálogo inicial»**
+  (en Productos, mientras falte algo) crea en **borrador** los productos
+  que pidió el dueño (quesos cheddar, de año y parmesano, mozzarella
+  rallada, tocineta, jamón, pepperoni, salami, papas, nuggets, salsas,
+  pan y carne de hamburguesa, complementos de pizzería, refrescos…; la
+  lista está en `BORRADORES`) con su familia y sus otras categorías, **sin
+  precio, sin marca, sin presentación y sin publicar**, y los combos Pack
+  Burger, Pack Pizzería y Pack Emprendedor, también en borrador y sin
+  precio. No duplica lo que ya existe (sin mirar tildes ni mayúsculas):
+  «Huevos por cartón» es «Huevos» y «Queso pecorino» es el pecorino
+  rallado. Pulsarlo otra vez no hace nada (`src/lib/preparar-catalogo.ts`).
+- **Ofertas y combos** (`/admin/ofertas`): cada oferta tiene nombre,
+  descripción, precio en dólares (vacío: «consulta el precio»), fechas
+  desde y hasta (vacías: sin límite), estado (borrador, activa, inactiva),
+  orden y lo que lleva, con cuánto de cada producto («2 kg»). Sale en la
+  web solo activa y dentro de sus fechas (`estaVigente` en
+  `src/lib/catalogo.ts`). Borrarla pide confirmar y no toca los productos.
+
 ## La web hacia fuera
 
 - **Al compartir un enlace** por WhatsApp sale una vista previa con imagen:
@@ -687,6 +761,8 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - Las reseñas de verdad de cada producto: las que hay son de ejemplo y solo
   las ve el dueño.
 - Registrar a los proveedores y lo que se les debe.
+- Completar los productos del catálogo que vende (precio, presentación,
+  foto) y activarlos; borrar los que no vende. Lo mismo con los combos.
 - Poner `ANTHROPIC_API_KEY` en Vercel y en `.env.local` para que las
   fotos de las notas se lean solas. Sin ella, la foto se guarda sin más.
 - Un dominio propio.

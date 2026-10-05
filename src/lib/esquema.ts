@@ -77,7 +77,8 @@ export const ESQUEMA = `
   -- Cada producto tiene su precio de venta al mayor en dólares, que sale del
   -- costo más el margen; la web lo muestra en bolívares con la tasa del día
   -- (tabla ajustes). Las columnas «mayor» quedaron de cuando había dos
-  -- precios (detal y mayor): ya no se usan.
+  -- precios (detal y mayor): ya no se usan. El precio al detal de ahora,
+  -- opcional, va en precio_detal_usd.
   create table if not exists productos (
     id integer primary key autoincrement,
     nombre text not null,
@@ -89,6 +90,18 @@ export const ESQUEMA = `
     precio_mayor_usd real,
     descripcion text not null default '',
     activo integer not null default 1,
+    -- El catálogo: su familia principal (las otras, en producto_categorias),
+    -- si es un borrador sin publicar, su marca, su presentación («Bolsa») y
+    -- su contenido («2,5 kg»), el precio al detal si lo hay, y si se destaca
+    -- en la portada o sale en ofertas.
+    familia_id integer references familias(id),
+    borrador integer not null default 0,
+    marca text not null default '',
+    presentacion text not null default '',
+    contenido text not null default '',
+    precio_detal_usd real,
+    destacado integer not null default 0,
+    en_oferta integer not null default 0,
     creado_en text not null default (datetime('now'))
   );
 
@@ -114,6 +127,69 @@ export const ESQUEMA = `
     tamano integer not null,
     datos blob not null,
     actualizado_en text not null default (datetime('now'))
+  );
+
+  -- Las familias del catálogo (Burger, Pizzería, Quesos…). Cada producto
+  -- tiene una principal (productos.familia_id) y puede salir también en
+  -- otras (producto_categorias), sin repetirse en la base. El slug es el de
+  -- su dirección, /categoria/burger, y no cambia aunque cambie el nombre.
+  create table if not exists familias (
+    id integer primary key autoincrement,
+    nombre text not null,
+    slug text not null unique,
+    descripcion text not null default '',
+    icono text not null default '',
+    orden integer not null default 0,
+    activa integer not null default 1,
+    creado_en text not null default (datetime('now'))
+  );
+
+  -- La foto de portada de una familia: la de su tarjeta en la web.
+  create table if not exists fotos_familias (
+    familia_id integer primary key references familias(id) on delete cascade,
+    tipo text not null,
+    tamano integer not null,
+    datos blob not null,
+    actualizado_en text not null default (datetime('now'))
+  );
+
+  -- Las otras familias en que sale un producto, además de la principal.
+  create table if not exists producto_categorias (
+    producto_id integer not null references productos(id),
+    familia_id integer not null references familias(id),
+    primary key (producto_id, familia_id)
+  );
+
+  -- La foto principal de un producto: sale en su tarjeta y en su página en
+  -- lugar del dibujo.
+  create table if not exists fotos_productos (
+    producto_id integer primary key references productos(id) on delete cascade,
+    tipo text not null,
+    tamano integer not null,
+    datos blob not null,
+    actualizado_en text not null default (datetime('now'))
+  );
+
+  -- Ofertas y combos: varios productos juntos, con su precio y su vigencia.
+  -- Nacen en borrador y no salen en la web hasta que el dueño las activa.
+  create table if not exists ofertas (
+    id integer primary key autoincrement,
+    nombre text not null,
+    descripcion text not null default '',
+    precio_usd real,
+    desde text,
+    hasta text,
+    estado text not null default 'borrador' check (estado in ('borrador', 'activa', 'inactiva')),
+    orden integer not null default 0,
+    creado_en text not null default (datetime('now'))
+  );
+
+  -- Lo que lleva cada oferta, con cuánto de cada producto («2 kg»).
+  create table if not exists oferta_productos (
+    oferta_id integer not null references ofertas(id),
+    producto_id integer not null references productos(id),
+    cantidad text not null default '',
+    primary key (oferta_id, producto_id)
   );
 
   -- Ajustes sueltos del negocio, como la tasa del día.
@@ -326,14 +402,20 @@ export const ESQUEMA = `
   create index if not exists compra_lineas_compra on compra_lineas(compra_id);
   create index if not exists recordatorios_cliente on recordatorios(cliente_id);
   create index if not exists adjuntos_proveedores_proveedor on adjuntos_proveedores(proveedor_id);
+  create index if not exists producto_categorias_familia on producto_categorias(familia_id);
+  create index if not exists oferta_productos_producto on oferta_productos(producto_id);
 `;
 
 /** Las tablas en orden de dependencias, para copiar o restaurar en orden. */
 export const TABLAS = [
   "clientes",
+  "familias",
+  "fotos_familias",
   "productos",
   "variantes",
   "fotos_variantes",
+  "fotos_productos",
+  "producto_categorias",
   "ventas",
   "venta_lineas",
   "pagos",
@@ -350,6 +432,8 @@ export const TABLAS = [
   "tasas",
   "inventario_ajustes",
   "recordatorios",
+  "ofertas",
+  "oferta_productos",
 ] as const;
 
 /**

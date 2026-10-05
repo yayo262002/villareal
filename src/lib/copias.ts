@@ -48,7 +48,8 @@ function valorParaSqlite(v: Value): null | number | bigint | string | Uint8Array
 /**
  * Escribe en `destino` un archivo SQLite nuevo con todas las tablas de
  * `origen`. Si `destino` ya existe se sobrescribe (dos copias en el mismo
- * minuto son la misma copia).
+ * minuto son la misma copia). Se escribe aparte y solo se pone en su sitio
+ * si termina bien: una copia a medias no puede pasar por buena.
  */
 export async function exportarBaseDeDatos(origen: Client, destino: string): Promise<string> {
   // Se importa aquí y no arriba para que el resto de la web no dependa de
@@ -56,14 +57,18 @@ export async function exportarBaseDeDatos(origen: Client, destino: string): Prom
   const { DatabaseSync } = await import("node:sqlite");
 
   fs.mkdirSync(path.dirname(destino), { recursive: true });
-  fs.rmSync(destino, { force: true });
+  const parcial = `${destino}.parcial`;
+  fs.rmSync(parcial, { force: true });
 
   const lectura = await origen.transaction("read");
   try {
-    const salida = new DatabaseSync(destino);
+    // Solo las tablas que tiene la base: una que aún no se puso al día no tiene las nuevas.
+    const existentes = new Set((await lectura.execute("select name from sqlite_master where type = 'table'")).rows.map((f) => String(f.name)));
+    const salida = new DatabaseSync(parcial);
     try {
       salida.exec(ESQUEMA);
       for (const tabla of TABLAS) {
+        if (!existentes.has(tabla)) continue;
         const resultado = await lectura.execute(`select * from ${tabla}`);
         if (resultado.rows.length === 0) continue;
         const columnas = resultado.columns;
@@ -79,9 +84,14 @@ export async function exportarBaseDeDatos(origen: Client, destino: string): Prom
     } finally {
       salida.close();
     }
+  } catch (error) {
+    fs.rmSync(parcial, { force: true });
+    throw error;
   } finally {
     lectura.close();
   }
+  fs.rmSync(destino, { force: true });
+  fs.renameSync(parcial, destino);
   return destino;
 }
 

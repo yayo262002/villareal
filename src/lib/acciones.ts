@@ -38,9 +38,31 @@ import {
   buscarProducto,
   cambiarActivo,
   crearProducto,
+  eliminarProducto,
+  guardarFotoDeProducto,
+  ponerCategorias,
+  ponerEstado,
+  quitarFotoDeProducto,
+  type DatosProducto,
   type PreciosProducto,
+  type Producto,
   type Unidad,
 } from "./productos";
+import {
+  actualizarFamilia,
+  buscarFamilia,
+  buscarFamiliaPorNombre,
+  cambiarActivaFamilia,
+  crearFamilia,
+  eliminarFamilia,
+  guardarFotoDeFamilia,
+  quitarFotoDeFamilia,
+  siguienteOrden,
+  type DatosFamilia,
+} from "./familias";
+import { actualizarOferta, buscarOferta, crearOferta, eliminarOferta, esEstadoDeOferta, listarOfertas } from "./ofertas";
+import { prepararCatalogoInicial } from "./preparar-catalogo";
+import { esIcono } from "./iconos";
 import { describirFuenteDeTasa, guardarTasa, ponerAvisoTasa, ponerTasaAutomatica, quitarPreciosDeEjemplo, tasaEnFecha } from "./ajustes";
 import { actualizarTasaOficial } from "./tasa-oficial";
 import {
@@ -52,7 +74,7 @@ import {
 } from "./intentos";
 import { buscarVenta, crearVenta, eliminarVenta, marcarEntrega, ultimoPrecioAlCliente, type LineaVenta } from "./ventas";
 import { KILOS_MAXIMOS, PRECIO_MAXIMO, lineaRellena, revisarFecha, revisarVenta, type LineaEscrita } from "./venta-sensata";
-import { existenciasPorClave, registrarAjuste } from "./inventario";
+import { existenciaSinMarca, existenciasPorClave, registrarAjuste } from "./inventario";
 import { ajustePorRecuento } from "./stock";
 import { listarProductos } from "./productos";
 import {
@@ -66,7 +88,7 @@ import {
   quitarFotoDeVariante,
   type DatosVariante,
 } from "./variantes";
-import { claveDe, nombreDeVenta, vendiblesDe } from "./catalogo";
+import { claveDe, esEstadoDeProducto, estadoDeProducto, nombreDeVenta, vendiblesDe, type EstadoProducto } from "./catalogo";
 import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
@@ -791,17 +813,17 @@ export async function cambiarEnlaceDeProveedor(datos: FormData): Promise<void> {
  * Costo, margen y precio de un formulario de producto. Si están costo y
  * margen, el precio de venta sale de ahí; si no, vale el precio escrito.
  */
-function leerPrecios(datos: FormData): PreciosProducto {
+function leerPrecios(datos: FormData, volver: (mensaje: string) => never): PreciosProducto {
   const precios: PreciosProducto = {
     costo_usd: numero(datos, "costo_usd"),
     margen_pct: numero(datos, "margen_pct"),
     precio_usd: numero(datos, "precio_usd"),
   };
   for (const valor of Object.values(precios)) {
-    if (valor !== null && valor < 0) volverConError("/admin/productos", "Costo, margen y precio no pueden ser negativos.");
+    if (valor !== null && valor < 0) volver("Costo, margen y precio no pueden ser negativos.");
   }
   if (precios.costo_usd === null && precios.margen_pct !== null) {
-    volverConError("/admin/productos", "Para usar un margen hace falta el costo. Escríbelo, o pon el precio de venta a mano.");
+    volver("Para usar un margen hace falta el costo. Escríbelo, o pon el precio de venta a mano.");
   }
   return precios;
 }
@@ -811,38 +833,212 @@ function leerUnidad(datos: FormData): Unidad {
   return esUnidad(valor) ? valor : "kg";
 }
 
-export async function guardarProducto(datos: FormData): Promise<void> {
-  await exigirSesion();
-  const nombre = texto(datos, "nombre");
-  if (!nombre) volverConError("/admin/productos", "El nombre es obligatorio.");
+const iconoDe = (valor: string) => (esIcono(valor) ? valor : "otros");
 
-  await crearProducto({ nombre, unidad: leerUnidad(datos), descripcion: texto(datos, "descripcion"), ...leerPrecios(datos) });
-  volverConExito("/admin/productos", "Producto creado.");
+/** Los campos del formulario de producto que vuelven escritos si algo falla. */
+const CAMPOS_DEL_PRODUCTO = [
+  "nombre",
+  "descripcion",
+  "unidad",
+  "costo_usd",
+  "margen_pct",
+  "precio_usd",
+  "precio_detal_usd",
+  "marca",
+  "presentacion",
+  "contenido",
+  "familia_id",
+  "estado",
+  "destacado",
+  "en_oferta",
+  "existencia",
+  "nueva_familia_nombre",
+  "nueva_familia_descripcion",
+  "nueva_familia_icono",
+  "nueva_familia_orden",
+];
+
+/** Lo escrito en el formulario de producto, para que vuelva relleno: `relleno` dice que lo de la dirección manda. */
+function escritoDelProducto(datos: FormData): URLSearchParams {
+  const escrito = new URLSearchParams();
+  for (const campo of CAMPOS_DEL_PRODUCTO) {
+    const valor = texto(datos, campo);
+    if (valor) escrito.set(campo, valor);
+  }
+  for (const categoria of datos.getAll("categoria")) if (typeof categoria === "string" && categoria) escrito.append("categoria", categoria);
+  escrito.set("relleno", "1");
+  return escrito;
 }
 
 /**
- * Guarda la ficha entera de un producto. Los campos que el formulario no
- * traiga se dejan como estaban, así el mismo destino sirve para cambiar
- * solo el precio.
+ * «Crear la familia y elegirla», dentro del formulario de producto: crea la
+ * familia y vuelve al formulario con todo lo escrito y la familia nueva ya
+ * elegida. Sin JavaScript: la foto del producto, si se había puesto, hay
+ * que volver a ponerla.
+ */
+async function crearFamiliaDesdeElProducto(datos: FormData, origen: string): Promise<never> {
+  const escrito = escritoDelProducto(datos);
+  const volver = (mensaje: string): never => volverConError(`${origen}?${escrito.toString()}`, mensaje);
+  const nombre = texto(datos, "nueva_familia_nombre");
+  if (!nombre) volver("Escribe el nombre de la familia nueva.");
+  if (await buscarFamiliaPorNombre(nombre)) volver(`Ya hay una familia «${nombre}»: elígela en la lista.`);
+  const id = await crearFamilia({
+    nombre,
+    descripcion: texto(datos, "nueva_familia_descripcion"),
+    icono: iconoDe(texto(datos, "nueva_familia_icono")),
+    orden: numero(datos, "nueva_familia_orden") ?? (await siguienteOrden()),
+    activa: texto(datos, "nueva_familia_activa") === "1",
+  });
+  let aviso = "";
+  const portada = archivoDe(datos, "nueva_familia_portada");
+  if (portada) {
+    try {
+      await guardarFotoDeFamilia(id, portada.type, new Uint8Array(await portada.arrayBuffer()));
+    } catch (error) {
+      aviso = ` La portada no se guardó: ${mensajeDe(error)}`;
+    }
+  }
+  for (const campo of ["nueva_familia_nombre", "nueva_familia_descripcion", "nueva_familia_icono", "nueva_familia_orden"]) escrito.delete(campo);
+  escrito.set("familia_id", String(id));
+  volverConExito(`${origen}?${escrito.toString()}`, `Familia «${nombre}» creada y elegida.${aviso} Sigue con el producto y guárdalo.`);
+}
+
+type FormularioDeProducto = { datos: DatosProducto; estado: EstadoProducto; categorias: number[] | null; existencia: number | null };
+
+/**
+ * Lee el formulario de un producto. El formulario entero lleva
+ * `formulario=completo`: entonces una casilla sin marcar es un «no» y la
+ * familia es obligatoria. Uno que solo trae algunos campos (cambiar el
+ * precio) deja los demás como estaban.
+ */
+async function leerFormularioDeProducto(datos: FormData, actual: Producto | null, volver: (mensaje: string) => never): Promise<FormularioDeProducto> {
+  const completo = texto(datos, "formulario") === "completo";
+  const viene = (campo: string) => completo || datos.has(campo);
+  const nombre = viene("nombre") ? texto(datos, "nombre") : (actual?.nombre ?? "");
+  if (!nombre) volver("El nombre es obligatorio.");
+  const precios = datos.has("costo_usd") || datos.has("precio_usd") ? leerPrecios(datos, volver) : (actual ?? { costo_usd: null, margen_pct: null, precio_usd: null });
+  const detal = viene("precio_detal_usd") ? numero(datos, "precio_detal_usd") : (actual?.precio_detal_usd ?? null);
+  if (detal !== null && detal < 0) volver("El precio al detal no puede ser negativo.");
+  const familia = viene("familia_id") ? numero(datos, "familia_id") : (actual?.familia_id ?? null);
+  if (completo && (!familia || !(await buscarFamilia(familia)))) volver("Elige a qué familia pertenece el producto.");
+  const estadoEscrito = texto(datos, "estado");
+  const estado: EstadoProducto = esEstadoDeProducto(estadoEscrito) ? estadoEscrito : actual ? estadoDeProducto(actual) : "activo";
+  const existencia = numero(datos, "existencia");
+  if (existencia !== null && (existencia < 0 || existencia > KILOS_MAXIMOS * 100)) volver("Revisa la existencia: lo que contaste, en kilos o unidades.");
+  return {
+    datos: {
+      nombre,
+      unidad: viene("unidad") ? leerUnidad(datos) : (actual?.unidad ?? "kg"),
+      descripcion: viene("descripcion") ? texto(datos, "descripcion") : (actual?.descripcion ?? ""),
+      costo_usd: precios.costo_usd,
+      margen_pct: precios.margen_pct,
+      precio_usd: precios.precio_usd,
+      precio_detal_usd: detal,
+      familia_id: familia,
+      marca: viene("marca") ? texto(datos, "marca") : (actual?.marca ?? ""),
+      presentacion: viene("presentacion") ? texto(datos, "presentacion") : (actual?.presentacion ?? ""),
+      contenido: viene("contenido") ? texto(datos, "contenido") : (actual?.contenido ?? ""),
+      destacado: completo ? texto(datos, "destacado") === "1" : Boolean(actual?.destacado),
+      en_oferta: completo ? texto(datos, "en_oferta") === "1" : Boolean(actual?.en_oferta),
+    },
+    estado,
+    categorias: completo ? datos.getAll("categoria").map(Number).filter((n) => Number.isSafeInteger(n) && n > 0) : null,
+    existencia,
+  };
+}
+
+/** Lo que va después de guardar el producto: sus otras familias, su foto y, si se escribió, la existencia contada. */
+async function despuesDeGuardar(id: number, formulario: FormularioDeProducto, datos: FormData): Promise<string> {
+  if (formulario.categorias) await ponerCategorias(id, formulario.categorias, formulario.datos.familia_id);
+  let aviso = "";
+  const foto = archivoDe(datos, "foto");
+  if (foto) {
+    try {
+      await guardarFotoDeProducto(id, foto.type, new Uint8Array(await foto.arrayBuffer()));
+      aviso += " Con su foto.";
+    } catch (error) {
+      aviso += ` La foto no se guardó: ${mensajeDe(error)}`;
+    }
+  }
+  if (formulario.existencia !== null) {
+    const cambio = ajustePorRecuento(await existenciaSinMarca(id), formulario.existencia);
+    if (cambio !== 0) {
+      await registrarAjuste({ fecha: hoy(), producto_id: id, variante_id: null, cantidad: cambio, motivo: "Recuento desde la ficha del producto" });
+    }
+    aviso += ` Existencia: ${cantidad(formulario.existencia, formulario.datos.unidad)}.`;
+  }
+  return aviso;
+}
+
+const DESPUES_DE_CREAR: Record<EstadoProducto, string> = {
+  borrador: "en borrador: no sale en la web hasta que lo actives",
+  activo: "y publicado: ya sale en la web",
+  inactivo: "oculto: no sale en la web hasta que lo actives",
+};
+
+export async function guardarProducto(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const origen = "/admin/productos/nuevo";
+  if (texto(datos, "crear_familia") === "1") await crearFamiliaDesdeElProducto(datos, origen);
+  const volver = (mensaje: string): never => volverConError(`${origen}?${escritoDelProducto(datos).toString()}`, mensaje);
+  const formulario = await leerFormularioDeProducto(datos, null, volver);
+  const id = await crearProducto(formulario.datos, formulario.estado);
+  const aviso = await despuesDeGuardar(id, formulario, datos);
+  volverConExito(`/admin/productos/${id}`, `Producto «${formulario.datos.nombre}» creado ${DESPUES_DE_CREAR[formulario.estado]}.${aviso}`);
+}
+
+/**
+ * Guarda la ficha de un producto. Los campos que el formulario no traiga se
+ * dejan como estaban, así el mismo destino sirve para cambiar solo el
+ * precio.
  */
 export async function editarProducto(datos: FormData): Promise<void> {
   await exigirSesion();
   const id = numero(datos, "id");
   const producto = id ? await buscarProducto(id) : null;
   if (!id || !producto) volverConError("/admin/productos", "No se encontró el producto.");
-  const nombre = datos.has("nombre") ? texto(datos, "nombre") : producto.nombre;
-  if (!nombre) volverConError("/admin/productos", "El nombre es obligatorio.");
+  const origen = `/admin/productos/${id}`;
+  if (texto(datos, "crear_familia") === "1") await crearFamiliaDesdeElProducto(datos, origen);
+  const completo = texto(datos, "formulario") === "completo";
+  const volver = (mensaje: string): never => volverConError(completo ? `${origen}?${escritoDelProducto(datos).toString()}` : volverA(datos, origen), mensaje);
+  const formulario = await leerFormularioDeProducto(datos, producto, volver);
+  await actualizarProducto(id, formulario.datos);
+  if (formulario.estado !== estadoDeProducto(producto)) await ponerEstado(id, formulario.estado);
+  const aviso = await despuesDeGuardar(id, formulario, datos);
+  volverConExito(volverA(datos, origen), `«${formulario.datos.nombre}» guardado.${aviso} La web ya lo muestra así.`);
+}
 
-  const precios = datos.has("costo_usd") || datos.has("precio_usd") ? leerPrecios(datos) : producto;
-  await actualizarProducto(id, {
-    nombre,
-    unidad: datos.has("unidad") ? leerUnidad(datos) : producto.unidad,
-    descripcion: datos.has("descripcion") ? texto(datos, "descripcion") : producto.descripcion,
-    costo_usd: precios.costo_usd,
-    margen_pct: precios.margen_pct,
-    precio_usd: precios.precio_usd,
-  });
-  volverConExito("/admin/productos", `«${nombre}» guardado. La web ya lo muestra así.`);
+export async function retirarFotoDeProducto(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const producto = id ? await buscarProducto(id) : null;
+  if (!id || !producto) volverConError("/admin/productos", "No se encontró el producto.");
+  await quitarFotoDeProducto(id);
+  volverConExito(`/admin/productos/${id}`, `Foto quitada de «${producto.nombre}»: la web vuelve a enseñar su dibujo.`);
+}
+
+/** La confirmación está en `/admin/productos/[id]/eliminar`. Uno ya vendido, comprado o contado no se borra: se esconde. */
+export async function borrarProducto(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const producto = id ? await buscarProducto(id) : null;
+  if (!id || !producto) volverConError("/admin/productos", "No se encontró el producto.");
+  const resultado = await eliminarProducto(id);
+  if (resultado === "con_movimientos") {
+    volverConError(`/admin/productos/${id}`, `«${producto.nombre}» no se puede borrar: ya tiene ventas, compras o recuentos que lo nombran. Escóndelo de la web.`);
+  }
+  volverConExito("/admin/productos", `Producto «${producto.nombre}» borrado.`);
+}
+
+/** Crea en borrador los productos y los combos del catálogo inicial que falten. */
+export async function prepararCatalogo(): Promise<void> {
+  await exigirSesion();
+  const { productos, ofertas } = await prepararCatalogoInicial();
+  if (productos === 0 && ofertas === 0) volverConExito("/admin/productos", "El catálogo inicial ya estaba preparado: no faltaba nada.");
+  volverConExito(
+    "/admin/productos?estado=borrador",
+    `Preparados ${productos} productos y ${ofertas} combos en borrador: sin precio y sin publicar. Completa los que vendas y actívalos; borra los que no.`,
+  );
 }
 
 // ---------- Variantes: las marcas o presentaciones de un producto ----------
@@ -883,7 +1079,7 @@ export async function guardarVariante(datos: FormData): Promise<void> {
   const variante = leerVariante(datos);
   const id = await crearVariante(producto, variante);
   const foto = await ponerFotoDeVariante(datos, id);
-  volverConExito("/admin/productos", `«${variante.nombre}» añadida a ${producto.nombre}.${foto} La web ya la enseña.`);
+  volverConExito(`/admin/productos/${producto.id}`, `«${variante.nombre}» añadida a ${producto.nombre}.${foto} La web ya la enseña.`);
 }
 
 export async function editarVariante(datos: FormData): Promise<void> {
@@ -895,7 +1091,7 @@ export async function editarVariante(datos: FormData): Promise<void> {
   const nueva = leerVariante(datos);
   await actualizarVariante(id, producto, nueva);
   const foto = await ponerFotoDeVariante(datos, id);
-  volverConExito("/admin/productos", `«${producto.nombre} ${nueva.nombre}» guardada.${foto}`);
+  volverConExito(`/admin/productos/${producto.id}`, `«${producto.nombre} ${nueva.nombre}» guardada.${foto}`);
 }
 
 export async function alternarVariante(datos: FormData): Promise<void> {
@@ -905,7 +1101,7 @@ export async function alternarVariante(datos: FormData): Promise<void> {
   if (!id || !variante) volverConError("/admin/productos", "No se encontró la marca o presentación.");
   const activa = texto(datos, "activo") === "1";
   await cambiarActivaVariante(id, activa);
-  volverConExito("/admin/productos", activa ? `«${variante.nombre}» vuelve a estar en la web.` : `«${variante.nombre}» escondida: no sale en la web ni en las ventas.`);
+  volverConExito(`/admin/productos/${variante.producto_id}`, activa ? `«${variante.nombre}» vuelve a estar en la web.` : `«${variante.nombre}» escondida: no sale en la web ni en las ventas.`);
 }
 
 export async function retirarFotoDeVariante(datos: FormData): Promise<void> {
@@ -914,7 +1110,7 @@ export async function retirarFotoDeVariante(datos: FormData): Promise<void> {
   const variante = id ? await buscarVariante(id) : null;
   if (!id || !variante) volverConError("/admin/productos", "No se encontró la marca o presentación.");
   await quitarFotoDeVariante(id);
-  volverConExito("/admin/productos", `Foto quitada de «${variante.nombre}».`);
+  volverConExito(`/admin/productos/${variante.producto_id}`, `Foto quitada de «${variante.nombre}».`);
 }
 
 /** Solo se borra la que no se vendió nunca: las notas nombran a las demás. */
@@ -925,9 +1121,9 @@ export async function borrarVariante(datos: FormData): Promise<void> {
   if (!id || !variante) volverConError("/admin/productos", "No se encontró la marca o presentación.");
   const resultado = await eliminarVariante(id);
   if (resultado === "con_ventas") {
-    volverConError("/admin/productos", `«${variante.nombre}» ya está en alguna nota de venta: no se puede borrar. Escóndela y dejará de salir en la web y en las ventas.`);
+    volverConError(`/admin/productos/${variante.producto_id}`, `«${variante.nombre}» ya está en alguna nota de venta: no se puede borrar. Escóndela y dejará de salir en la web y en las ventas.`);
   }
-  volverConExito("/admin/productos", `«${variante.nombre}» eliminada.`);
+  volverConExito(`/admin/productos/${variante.producto_id}`, `«${variante.nombre}» eliminada.`);
 }
 
 export async function confirmarPrecios(): Promise<void> {
@@ -977,12 +1173,18 @@ export async function traerTasaOficial(): Promise<void> {
   volverConError("/admin/productos", `No se cambió la tasa: ${motivo}.`);
 }
 
+/** Publicar u ocultar un producto. Publicar un borrador lo saca del borrador. */
 export async function alternarProducto(datos: FormData): Promise<void> {
   await exigirSesion();
   const id = numero(datos, "id");
-  if (!id) volverConError("/admin/productos", "No se encontró el producto.");
-  await cambiarActivo(id, texto(datos, "activo") === "1");
-  volverConExito("/admin/productos", "Producto actualizado.");
+  const producto = id ? await buscarProducto(id) : null;
+  if (!id || !producto) volverConError("/admin/productos", "No se encontró el producto.");
+  const activo = texto(datos, "activo") === "1";
+  await cambiarActivo(id, activo);
+  volverConExito(
+    volverA(datos, "/admin/productos"),
+    activo ? `«${producto.nombre}» publicado: ya sale en la web.` : `«${producto.nombre}» oculto: no sale en la web ni en las ventas.`,
+  );
 }
 
 // ---------- Ventas ----------
@@ -1393,4 +1595,157 @@ export async function borrarAdjunto(datos: FormData): Promise<void> {
 
   await eliminarAdjunto(id);
   volverConExito(`/admin/clientes/${adjunto.cliente_id}`, "Foto eliminada.");
+}
+
+// ---------- Familias ----------
+
+/** Nombre, descripción, icono, orden y si está activa, del formulario de una familia. */
+async function leerFamilia(datos: FormData, volver: (mensaje: string) => never): Promise<DatosFamilia> {
+  const nombre = texto(datos, "nombre");
+  if (!nombre) volver("La familia necesita un nombre («Burger», «Bebidas»).");
+  const orden = numero(datos, "orden");
+  if (orden !== null && (!Number.isInteger(orden) || orden < 0 || orden > 999)) volver("El orden es un número entero: 1 sale primero.");
+  return {
+    nombre,
+    descripcion: texto(datos, "descripcion"),
+    icono: iconoDe(texto(datos, "icono")),
+    orden: orden ?? (await siguienteOrden()),
+    activa: texto(datos, "activa") === "1",
+  };
+}
+
+async function ponerPortadaDeFamilia(datos: FormData, id: number): Promise<string> {
+  const portada = archivoDe(datos, "portada");
+  if (!portada) return "";
+  try {
+    await guardarFotoDeFamilia(id, portada.type, new Uint8Array(await portada.arrayBuffer()));
+    return " Con su portada.";
+  } catch (error) {
+    return ` La portada no se guardó: ${mensajeDe(error)}`;
+  }
+}
+
+export async function guardarFamilia(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const origen = volverA(datos, "/admin/familias");
+  const familia = await leerFamilia(datos, (mensaje) => volverConError(origen, mensaje));
+  if (await buscarFamiliaPorNombre(familia.nombre)) volverConError(origen, `Ya hay una familia «${familia.nombre}».`);
+  const id = await crearFamilia(familia);
+  const portada = await ponerPortadaDeFamilia(datos, id);
+  volverConExito(origen, `Familia «${familia.nombre}» creada.${portada} Ya se puede elegir al crear o editar un producto.`);
+}
+
+export async function editarFamilia(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const actual = id ? await buscarFamilia(id) : null;
+  if (!id || !actual) volverConError("/admin/familias", "No se encontró la familia.");
+  const familia = await leerFamilia(datos, (mensaje) => volverConError("/admin/familias", mensaje));
+  const otra = await buscarFamiliaPorNombre(familia.nombre);
+  if (otra && otra.id !== id) volverConError("/admin/familias", `Ya hay otra familia «${familia.nombre}».`);
+  await actualizarFamilia(id, familia);
+  const portada = await ponerPortadaDeFamilia(datos, id);
+  volverConExito("/admin/familias", `Familia «${familia.nombre}» guardada.${portada}`);
+}
+
+export async function alternarFamilia(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const familia = id ? await buscarFamilia(id) : null;
+  if (!id || !familia) volverConError("/admin/familias", "No se encontró la familia.");
+  const activa = texto(datos, "activa") === "1";
+  await cambiarActivaFamilia(id, activa);
+  volverConExito(
+    "/admin/familias",
+    activa ? `«${familia.nombre}» vuelve a salir en la web.` : `«${familia.nombre}» escondida: su página y su tarjeta no salen. Sus productos siguen en la web.`,
+  );
+}
+
+export async function retirarPortadaDeFamilia(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const familia = id ? await buscarFamilia(id) : null;
+  if (!id || !familia) volverConError("/admin/familias", "No se encontró la familia.");
+  await quitarFotoDeFamilia(id);
+  volverConExito("/admin/familias", `Portada quitada de «${familia.nombre}».`);
+}
+
+/** La confirmación está en `/admin/familias/[id]/eliminar`: si tiene productos, ahí se elige a qué familia pasan. */
+export async function borrarFamilia(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const familia = id ? await buscarFamilia(id) : null;
+  if (!id || !familia) volverConError("/admin/familias", "No se encontró la familia.");
+  const pasarA = numero(datos, "pasar_a");
+  const resultado = await eliminarFamilia(id, pasarA);
+  if (resultado === "falta_destino") volverConError(`/admin/familias/${id}/eliminar`, "Elige a qué familia pasan sus productos antes de borrarla.");
+  const destino = pasarA ? await buscarFamilia(pasarA) : null;
+  volverConExito("/admin/familias", `Familia «${familia.nombre}» borrada.${destino ? ` Sus productos pasaron a «${destino.nombre}».` : ""}`);
+}
+
+// ---------- Ofertas y combos ----------
+
+/** Una fecha aaaa-mm-dd o nada. */
+function fechaDelFormulario(datos: FormData, campo: string, volver: (mensaje: string) => never): string | null {
+  const valor = texto(datos, campo);
+  if (!valor) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor) || Number.isNaN(new Date(valor + "T00:00:00Z").getTime())) volver("Revisa las fechas de la oferta.");
+  return valor;
+}
+
+export async function guardarOferta(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const nombre = texto(datos, "nombre");
+  if (!nombre) volverConError("/admin/ofertas", "La oferta necesita un nombre («Pack Burger»).");
+  const id = await crearOferta({
+    nombre,
+    descripcion: texto(datos, "descripcion"),
+    precio_usd: null,
+    desde: null,
+    hasta: null,
+    estado: "borrador",
+    orden: (await listarOfertas()).length + 1,
+  });
+  volverConExito(`/admin/ofertas/${id}`, `Oferta «${nombre}» creada en borrador. Elige lo que lleva, ponle precio y fechas, y actívala.`);
+}
+
+export async function editarOferta(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const oferta = id ? await buscarOferta(id) : null;
+  if (!id || !oferta) volverConError("/admin/ofertas", "No se encontró la oferta.");
+  const origen = `/admin/ofertas/${id}`;
+  const volver: (mensaje: string) => never = (mensaje) => volverConError(origen, mensaje);
+  const nombre = texto(datos, "nombre");
+  if (!nombre) volver("La oferta necesita un nombre.");
+  const precio = numero(datos, "precio_usd");
+  if (precio !== null && precio < 0) volver("El precio no puede ser negativo.");
+  const desde = fechaDelFormulario(datos, "desde", volver);
+  const hasta = fechaDelFormulario(datos, "hasta", volver);
+  if (desde && hasta && hasta < desde) volver("La oferta no puede acabar antes de empezar.");
+  const estado = texto(datos, "estado");
+  if (!esEstadoDeOferta(estado)) volver("Elige el estado de la oferta.");
+  const productos = datos
+    .getAll("producto")
+    .map(Number)
+    .filter((n) => Number.isSafeInteger(n) && n > 0)
+    .map((productoId) => ({ producto_id: productoId, cantidad: texto(datos, `cantidad_${productoId}`).slice(0, 40) }));
+  await actualizarOferta(id, { nombre, descripcion: texto(datos, "descripcion"), precio_usd: precio, desde, hasta, estado, orden: numero(datos, "orden") ?? oferta.orden }, productos);
+  const aviso =
+    estado === "activa" && productos.length === 0
+      ? " Ojo: está activa y no lleva ningún producto."
+      : estado === "activa" && precio === null
+        ? " Está activa sin precio: la web dice «consulta el precio»."
+        : "";
+  volverConExito(origen, `Oferta «${nombre}» guardada.${aviso}`);
+}
+
+/** La confirmación está en `/admin/ofertas/[id]/eliminar`. */
+export async function borrarOferta(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const oferta = id ? await buscarOferta(id) : null;
+  if (!id || !oferta) volverConError("/admin/ofertas", "No se encontró la oferta.");
+  await eliminarOferta(id);
+  volverConExito("/admin/ofertas", `Oferta «${oferta.nombre}» borrada.`);
 }

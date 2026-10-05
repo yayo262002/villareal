@@ -35,3 +35,19 @@ export async function normalizarFotoDeProducto(datos: Uint8Array, tipo: string):
     return { datos, tipo };
   }
 }
+
+/** El tamaño de la portada de una familia: apaisada, como su tarjeta en la web. */
+export const PORTADA = { ancho: 960, alto: 720 };
+
+/**
+ * La portada de una familia (una foto de comida, no un paquete): se recorta
+ * en 4:3 quedándose con lo que más llama la atención y se guarda como JPEG.
+ */
+export async function normalizarPortada(datos: Uint8Array, tipo: string): Promise<{ datos: Uint8Array; tipo: string }> {
+  try {
+    const salida = await sharp(datos).rotate().resize(PORTADA.ancho, PORTADA.alto, { fit: "cover", position: "attention" }).jpeg({ quality: 82 }).toBuffer();
+    return { datos: new Uint8Array(salida), tipo: "image/jpeg" };
+  } catch {
+    return { datos, tipo };
+  }
+}

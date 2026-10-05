@@ -1156,3 +1156,73 @@
   padding-top: var(--espacio-4);
   border-top: 1px solid var(--color-borde);
 }
+
+/* ---------- Catálogo: familias, categorías y ofertas ---------- */
+
+/* Las otras categorías de un producto: casillas en dos columnas en el teléfono, tres en pantallas anchas. */
+.categoriasProducto {
+  margin: 0;
+  padding: var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--espacio-2) var(--espacio-3);
+  min-width: 0;
+}
+.categoriasProducto legend {
+  padding: 0 var(--espacio-1);
+  font-weight: 700;
+}
+.categoriasProducto > .ayuda {
+  grid-column: 1 / -1;
+}
+@media (min-width: 640px) {
+  .categoriasProducto {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+/* El dibujo de un producto sin foto, pequeño en la lista y mediano en su ficha. */
+.dibujoPequeno {
+  flex: none;
+  width: 40px;
+  height: 40px;
+}
+.dibujoMediano {
+  flex: none;
+  width: 72px;
+  height: 72px;
+}
+/* La portada y el icono de una familia en su lista. */
+.portadaFamilia {
+  flex: none;
+  width: 56px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.iconoFamilia {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  color: var(--color-marca);
+}
+/* Lo que lleva una oferta: por familia, cada producto con su casilla y cuánto lleva. */
+.grupoOferta {
+  display: grid;
+  gap: var(--espacio-2);
+  padding-top: var(--espacio-2);
+}
+.grupoOferta + .grupoOferta {
+  border-top: 1px solid var(--color-borde);
+}
+.lineaOferta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-2);
+}
+.lineaOferta input[type="text"] {
+  width: 8rem;
+}

@@ -1,5 +1,5 @@
 import "server-only";
-import { ejecutar, filas } from "./db";
+import { ejecutar, fila, filas } from "./db";
 import { listarProductos } from "./productos";
 import { listarVariantes } from "./variantes";
 import { claveDe, nombreDeVenta, vendiblesDe } from "./catalogo";
@@ -108,4 +108,16 @@ export async function listarAjustes(limite = 20): Promise<Ajuste[]> {
     [limite],
   );
   return lista.map((a) => ({ ...a, cantidad: Number(a.cantidad), producto_nombre: nombreDeVenta(a.nombre_producto, a.variante_nombre) }));
+}
+
+/** Lo que hay de un producto sin marcas, esté publicado o no: lo comprado menos lo vendido, más los ajustes. */
+export async function existenciaSinMarca(productoId: number): Promise<number> {
+  const f = await fila<{ n: number }>(
+    `select
+       (select coalesce(sum(l.cantidad), 0) from compra_lineas l join compras c on c.id = l.compra_id where l.producto_id = ? and l.variante_id is null)
+       - (select coalesce(sum(cantidad), 0) from venta_lineas where producto_id = ? and variante_id is null)
+       + (select coalesce(sum(cantidad), 0) from inventario_ajustes where producto_id = ? and variante_id is null) as n`,
+    [productoId, productoId, productoId],
+  );
+  return Math.round(Number(f?.n ?? 0) * 1000) / 1000;
 }
