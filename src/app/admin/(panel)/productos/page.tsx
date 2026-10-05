@@ -16,7 +16,8 @@ import {
   guardarVariante,
   retirarFotoDeVariante,
 } from "@/lib/acciones";
-import { UNIDADES, aBolivares, bs, fechaCorta, fechaDeLaBase, nombreUnidad, usd } from "@/lib/dinero";
+import { UNIDADES, aBolivares, bs, diaDeLaSemana, fechaCorta, fechaDeLaBase, hoy, nombreUnidad, usd } from "@/lib/dinero";
+import { rutaVariante } from "@/lib/enlaces";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { EntradaFoto } from "@/components/entrada-foto";
 import estilos from "../panel.module.css";
@@ -127,15 +128,20 @@ function CamposVariante({ id, variante, producto }: { id: string; variante: Vari
   const conMargen = producto.margen_pct !== null;
   return (
     <>
-      <div className="formulario__fila">
-        <div className="campo">
-          <label htmlFor={`${id}-nombre`}>Marca o presentación</label>
-          <input id={`${id}-nombre`} name="nombre" type="text" required defaultValue={variante?.nombre ?? ""} placeholder="Kemmental · Sortilegio 500 g" />
-        </div>
-        <div className="campo">
-          <label htmlFor={`${id}-descripcion`}>Una línea sobre ella (se ve en la web)</label>
-          <input id={`${id}-descripcion`} name="descripcion" type="text" defaultValue={variante?.descripcion ?? ""} placeholder="Tipo Emmental, semiduro, madurado" />
-        </div>
+      <div className="campo">
+        <label htmlFor={`${id}-nombre`}>Marca o presentación</label>
+        <input id={`${id}-nombre`} name="nombre" type="text" required defaultValue={variante?.nombre ?? ""} placeholder="Kemmental · Sortilegio 500 g" />
+      </div>
+      <div className="campo">
+        <label htmlFor={`${id}-descripcion`}>Descripción (una ventaja por línea)</label>
+        <textarea
+          id={`${id}-descripcion`}
+          name="descripcion"
+          rows={3}
+          defaultValue={variante?.descripcion ?? ""}
+          placeholder={"Tipo Emmental, semiduro, madurado\nFunde bien en las hamburguesas"}
+        />
+        <span className="ayuda">Sale en su página. La primera línea se ve también en la lista de marcas del producto.</span>
       </div>
       <div className={estilos.filaTres}>
         <div className="campo">
@@ -235,7 +241,11 @@ export default async function PaginaProductos({
               {tasa
                 ? `Vigente: ${bs(tasa.valor)} por dólar, ${
                     tasa.origen === "bcv" ? "traída del BCV" : "escrita a mano"
-                  } el ${fechaCorta(fechaDeLaBase(tasa.actualizada_en))}. Al cambiarla cambian todos los precios en bolívares de la web.`
+                  } el ${fechaCorta(fechaDeLaBase(tasa.actualizada_en))}.${
+                    tasa.fecha_valor && tasa.fecha_valor > hoy()
+                      ? ` Es la del ${diaDeLaSemana(tasa.fecha_valor)} ${fechaCorta(tasa.fecha_valor)}: los fines de semana vale la del lunes, como en los comercios.`
+                      : ""
+                  } Al cambiarla cambian todos los precios en bolívares de la web.`
                 : "Sin tasa, la web muestra los precios solo en dólares."}
             </span>
           </div>
@@ -255,7 +265,7 @@ export default async function PaginaProductos({
         <div className={estilos.alternar}>
           <p className={estilos.ayuda}>
             {automatica
-              ? "Cada mañana, antes de abrir, la tasa se trae sola del BCV y los precios en bolívares se ponen al día. Si escribes una a mano, vale hasta la mañana siguiente."
+              ? "Cada mañana, antes de abrir, la tasa se trae sola del BCV y los precios en bolívares se ponen al día. Los sábados y domingos se trae la del lunes, que el BCV publica el viernes por la tarde. Si escribes una a mano, vale hasta la mañana siguiente."
               : "La tasa no se actualiza sola: vale la que escribas tú hasta que la cambies."}
           </p>
           <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
@@ -372,7 +382,7 @@ export default async function PaginaProductos({
               <h3 className={estilos.subtituloPequeno}>Marcas y presentaciones</h3>
               <p className={estilos.ayuda} style={{ marginBottom: 0 }}>
                 Si vendes el mismo producto de dos marcas o en dos tamaños, ponlas aquí con su precio y su foto. La portada dice «desde» con la más barata y la
-                página del producto las enseña todas. En la venta sale una fila por cada una.
+                página del producto las enseña todas; cada una tiene además su propia página, con su descripción y sus reseñas. En la venta sale una fila por cada una.
               </p>
               {suyas.map((v) => {
                 const foto = direccionDeFotoDeVariante(v);
@@ -401,6 +411,11 @@ export default async function PaginaProductos({
                       </div>
                     </form>
                     <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginTop: "var(--espacio-3)" }}>
+                      {p.activo && v.activo ? (
+                        <a href={rutaVariante(p, v)} target="_blank" rel="noopener" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                          Ver su página
+                        </a>
+                      ) : null}
                       <form action={alternarVariante}>
                         <input type="hidden" name="variante_id" value={v.id} />
                         <input type="hidden" name="activo" value={v.activo ? "0" : "1"} />

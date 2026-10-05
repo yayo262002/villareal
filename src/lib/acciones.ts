@@ -66,7 +66,7 @@ import {
   quitarFotoDeVariante,
   type DatosVariante,
 } from "./variantes";
-import { claveDe, vendiblesDe } from "./catalogo";
+import { claveDe, nombreDeVenta, vendiblesDe } from "./catalogo";
 import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
@@ -965,8 +965,14 @@ export async function traerTasaOficial(): Promise<void> {
   await exigirSesion();
   const resultado = await actualizarTasaOficial({ forzar: true });
   if (resultado.estado === "actualizada") {
-    volverConExito("/admin/productos", `Tasa del BCV puesta: ${resultado.valor} bolívares por dólar.`);
+    volverConExito(
+      "/admin/productos",
+      resultado.delLunes
+        ? `Tasa del lunes ${fechaCorta(resultado.delLunes)} puesta: ${resultado.valor} bolívares por dólar. Los fines de semana vale la del lunes, como en los comercios.`
+        : `Tasa del BCV puesta: ${resultado.valor} bolívares por dólar.`,
+    );
   }
+  if (resultado.estado === "se_queda") volverConExito("/admin/productos", `La tasa se queda en ${resultado.valor}: ${resultado.motivo}.`);
   const motivo = resultado.estado === "apagada" ? "la actualización está apagada" : resultado.motivo;
   volverConError("/admin/productos", `No se cambió la tasa: ${motivo}.`);
 }
@@ -1231,9 +1237,16 @@ export async function borrarPago(datos: FormData): Promise<void> {
 
 export async function guardarResena(datos: FormData): Promise<void> {
   await exigirSesion();
-  const productoId = numero(datos, "producto_id");
+  // De un producto («3») o, si tiene marcas, de una de ellas («1-7»): cada marca tiene sus propias reseñas.
+  const [delProducto, deLaMarca] = (texto(datos, "clave") || texto(datos, "producto_id")).split("-");
+  const productoId = Number(delProducto) || 0;
+  const varianteId = deLaMarca ? Number(deLaMarca) || 0 : null;
   const producto = productoId ? await buscarProducto(productoId) : null;
-  if (!productoId || !producto) volverConError("/admin/resenas", "Elige de qué producto es la reseña.");
+  const variante = varianteId ? await buscarVariante(varianteId) : null;
+  if (!producto || (varianteId !== null && (!variante || variante.producto_id !== producto.id))) {
+    volverConError("/admin/resenas", "Elige de qué producto es la reseña.");
+  }
+  const nombre = nombreDeVenta(producto.nombre, variante?.nombre);
 
   const lectura = leerResena({ autor: texto(datos, "autor"), detalle: texto(datos, "detalle"), texto: texto(datos, "texto") });
   if (!lectura.valida) volverConError("/admin/resenas", lectura.motivo);
@@ -1241,7 +1254,7 @@ export async function guardarResena(datos: FormData): Promise<void> {
   // La casilla dice que el cliente dio permiso para salir con su nombre.
   // Sin ella la reseña se guarda, pero escondida hasta tener el permiso.
   const conPermiso = texto(datos, "permiso") === "1";
-  const id = await crearResena(productoId, lectura.datos, conPermiso);
+  const id = await crearResena(producto.id, variante?.id ?? null, lectura.datos, conPermiso);
   const foto = archivoDe(datos, "foto");
   if (foto) {
     try {
@@ -1254,7 +1267,7 @@ export async function guardarResena(datos: FormData): Promise<void> {
   volverConExito(
     "/admin/resenas",
     conPermiso
-      ? `Reseña de ${lectura.datos.autor} guardada. Ya sale en la página de «${producto.nombre}».`
+      ? `Reseña de ${lectura.datos.autor} guardada. Ya sale en la página de «${nombre}».`
       : `Reseña de ${lectura.datos.autor} guardada, escondida: falta el permiso del cliente. Cuando te lo dé, pulsa «Ya me dio permiso: publicar».`,
   );
 }

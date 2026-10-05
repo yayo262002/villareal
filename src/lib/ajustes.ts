@@ -1,6 +1,7 @@
 import "server-only";
 import { ejecutar, fila, filas } from "./db";
 import { fechaCorta, hoy } from "./dinero";
+import { esFinDeSemana, lunesDespuesDe } from "./tasa";
 
 /**
  * Ajustes sueltos del negocio, guardados como clave y valor. La tasa del
@@ -11,7 +12,13 @@ import { fechaCorta, hoy } from "./dinero";
 /** De dónde salió la tasa vigente: la escribió el dueño o se trajo sola del BCV. */
 export type OrigenTasa = "manual" | "bcv";
 
-export type Tasa = { valor: number; actualizada_en: string; origen: OrigenTasa };
+export type Tasa = {
+  valor: number;
+  actualizada_en: string;
+  origen: OrigenTasa;
+  /** El día desde el que vale según el BCV: un fin de semana, el lunes. null en las de antes. */
+  fecha_valor: string | null;
+};
 
 type Ajuste = { clave: string; valor: string; actualizado_en: string };
 
@@ -34,7 +41,7 @@ async function quitar(clave: string): Promise<void> {
 }
 
 export async function leerTasa(): Promise<Tasa | null> {
-  const ajustes = await leer("tasa_bs", "tasa_origen");
+  const ajustes = await leer("tasa_bs", "tasa_origen", "tasa_fecha_valor");
   const tasa = ajustes.get("tasa_bs");
   if (!tasa) return null;
   const valor = Number(tasa.valor);
@@ -43,39 +50,56 @@ export async function leerTasa(): Promise<Tasa | null> {
     valor,
     actualizada_en: tasa.actualizado_en,
     origen: ajustes.get("tasa_origen")?.valor === "bcv" ? "bcv" : "manual",
+    fecha_valor: ajustes.get("tasa_fecha_valor")?.valor ?? null,
   };
 }
 
-export async function guardarTasa(valor: number, origen: OrigenTasa = "manual"): Promise<void> {
+/**
+ * Pone la tasa vigente y la deja en el historial. `fechaValor` es el día
+ * desde el que vale según el BCV: un sábado se guarda la del lunes, y queda
+ * también como la tasa de ese lunes.
+ */
+export async function guardarTasa(valor: number, origen: OrigenTasa = "manual", fechaValor: string | null = null): Promise<void> {
   if (!(valor > 0)) throw new Error("La tasa tiene que ser mayor que cero.");
+  const dia = hoy();
+  const valeDesde = fechaValor && /^\d{4}-\d{2}-\d{2}$/.test(fechaValor) ? fechaValor : dia;
   await guardar("tasa_bs", String(valor));
   await guardar("tasa_origen", origen);
+  await guardar("tasa_fecha_valor", valeDesde);
   // Queda en el historial: así un abono o una nota de días atrás se registran con la tasa que había ese día.
-  await ejecutar(
-    `insert into tasas (fecha, valor, origen, actualizada_en) values (?, ?, ?, datetime('now'))
-     on conflict(fecha) do update set valor = excluded.valor, origen = excluded.origen, actualizada_en = excluded.actualizada_en`,
-    [hoy(), valor, origen],
-  );
+  for (const fecha of valeDesde > dia ? [dia, valeDesde] : [dia]) {
+    await ejecutar(
+      `insert into tasas (fecha, valor, origen, actualizada_en) values (?, ?, ?, datetime('now'))
+       on conflict(fecha) do update set valor = excluded.valor, origen = excluded.origen, actualizada_en = excluded.actualizada_en`,
+      [fecha, valor, origen],
+    );
+  }
 }
 
-/** De dónde sale la tasa de un día: guardada ese día (del BCV o a mano), de un abono o una nota de ese día, la última anterior, o la vigente. */
-export type FuenteDeTasa = "bcv" | "manual" | "abono" | "nota" | "anterior" | "actual";
+/** De dónde sale la tasa de un día: guardada ese día (del BCV o a mano), la del lunes en un fin de semana, de un abono o una nota de ese día, la última anterior, o la vigente. */
+export type FuenteDeTasa = "bcv" | "manual" | "lunes" | "abono" | "nota" | "anterior" | "actual";
 
 export type TasaDeUnDia = {
   fecha: string;
   valor: number;
   fuente: FuenteDeTasa;
-  /** El día del que viene de verdad, cuando es la última anterior. */
+  /** El día del que viene de verdad: el de la última anterior, o el lunes en un fin de semana. */
   desde: string;
 };
 
 /**
- * La tasa que había un día: la guardada ese día, si no la de un abono o
- * una nota de ese día, si no la última guardada antes, y si no la
- * vigente. Para proponerla al registrar algo con fecha atrasada; el dueño
- * la puede cambiar.
+ * La tasa que había un día. Un sábado o un domingo, la del lunes que le
+ * sigue si ya se conoce, como en los comercios. Si no: la guardada ese día,
+ * la de un abono o una nota de ese día, la última guardada antes, y si no
+ * la vigente. Para proponerla al registrar algo con fecha atrasada; el
+ * dueño la puede cambiar.
  */
 export async function tasaEnFecha(fecha: string): Promise<TasaDeUnDia | null> {
+  if (esFinDeSemana(fecha)) {
+    const lunes = lunesDespuesDe(fecha);
+    const delLunes = await fila<{ valor: number }>("select valor from tasas where fecha = ?", [lunes]);
+    if (delLunes) return { fecha, valor: Number(delLunes.valor), fuente: "lunes", desde: lunes };
+  }
   const guardada = await fila<{ valor: number; origen: string }>("select valor, origen from tasas where fecha = ?", [fecha]);
   if (guardada) return { fecha, valor: Number(guardada.valor), fuente: fuenteDe(guardada.origen), desde: fecha };
   const deAbono = await fila<{ tasa: number }>("select tasa from pagos where fecha = ? and tasa is not null order by id desc limit 1", [fecha]);
@@ -92,13 +116,15 @@ function fuenteDe(origen: string): FuenteDeTasa {
   return origen === "bcv" || origen === "abono" || origen === "nota" ? origen : "manual";
 }
 
-/** «del BCV ese día», «la de un abono de ese día», «la última guardada, del 30/09/2026», «la vigente». */
+/** «del BCV ese día», «la del lunes 05/10/2026…», «la de un abono de ese día», «la última guardada, del 30/09/2026», «la vigente». */
 export function describirFuenteDeTasa(t: TasaDeUnDia): string {
   switch (t.fuente) {
     case "bcv":
       return "del BCV ese día";
     case "manual":
       return "escrita a mano ese día";
+    case "lunes":
+      return `la del lunes ${fechaCorta(t.desde)}: los fines de semana vale la del lunes`;
     case "abono":
       return "la de un abono de ese día";
     case "nota":

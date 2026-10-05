@@ -9,9 +9,10 @@ export const negocio = {
   // Como en el logo bordado: «Villa Real», en dos palabras.
   nombre: "Comercializadora Villa Real",
   nombreCorto: "Villa Real",
-  lema: "Quesos y huevos al mayor",
+  // Sin decir qué productos: el catálogo crece (embutidos, cosas para hamburguesas).
+  lema: "Insumos al mayor",
   descripcion:
-    "Queso mozzarella para pizza, queso amarillo, pecorino rallado y huevos, solo al mayor: pizzerías, panaderías, restaurantes y bodegas. Tienda física en el centro de Barquisimeto.",
+    "Insumos al mayor para pizzerías, panaderías, hamburgueserías, restaurantes y bodegas. Tienda física en el centro de Barquisimeto.",
 
   // La dirección de la web. Si se compra un dominio propio, se cambia aquí y
   // con ella cambian los enlaces que se comparten, el mapa del sitio y las

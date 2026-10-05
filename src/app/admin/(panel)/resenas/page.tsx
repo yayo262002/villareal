@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { listarProductos } from "@/lib/productos";
+import { agruparPorProducto, listarVariantes } from "@/lib/variantes";
+import { nombreDeVenta, vendiblesDe } from "@/lib/catalogo";
 import { direccionDeFoto, listarResenas, type Resena } from "@/lib/resenas";
 import { LARGO_MAXIMO_DEL_NOMBRE, LARGO_MAXIMO_DEL_TEXTO } from "@/lib/resenas-texto";
 import {
@@ -11,7 +13,7 @@ import {
   retirarResenasDeEjemplo,
 } from "@/lib/acciones";
 import { EntradaFoto } from "@/components/entrada-foto";
-import { rutaProducto } from "@/lib/enlaces";
+import { rutaProducto, rutaVariante } from "@/lib/enlaces";
 import { direccionCompleta, enlaceCompartir, negocio } from "@/config/negocio";
 import { mensajePedirResena } from "@/lib/whatsapp";
 import { fechaCorta, fechaDeLaBase } from "@/lib/dinero";
@@ -84,26 +86,84 @@ function ResenaDelPanel({ resena }: { resena: Resena }) {
   );
 }
 
+/** Las reseñas de un producto sin marcas, o de una marca: con sus botones para pedir una y ver la página. */
+function GrupoDeResenas({
+  titulo,
+  resenas,
+  enLaWeb,
+  pedir,
+  ruta,
+  clave,
+  pequeno = false,
+}: {
+  titulo: string;
+  resenas: Resena[];
+  enLaWeb: boolean;
+  pedir: string;
+  ruta: string;
+  clave: string;
+  pequeno?: boolean;
+}) {
+  return (
+    <>
+      <div className={estilos.encabezado} style={{ marginBottom: "var(--espacio-3)" }}>
+        {pequeno ? (
+          <h3 className={estilos.subtituloPequeno}>
+            {titulo} ({resenas.length})
+          </h3>
+        ) : (
+          <h2 className={estilos.subtitulo} style={{ marginBottom: 0 }}>
+            {titulo} ({resenas.length})
+          </h2>
+        )}
+        {enLaWeb ? (
+          <div className={estilos.carteraAcciones} style={{ marginTop: 0 }}>
+            <a href={pedir} target="_blank" rel="noopener" className={estilos.whatsapp}>
+              Pedir reseña por WhatsApp
+            </a>
+            <a href={ruta} target="_blank" rel="noopener">
+              Ver cómo queda en la web
+            </a>
+          </div>
+        ) : (
+          <span className="ayuda">Escondido de la web</span>
+        )}
+      </div>
+      {resenas.length === 0 ? (
+        <p className="vacio">
+          Todavía no tiene reseñas. <Link href={`/admin/resenas?clave=${clave}`}>Escribir la primera</Link>
+        </p>
+      ) : (
+        <ul className={estilos.cartera}>
+          {resenas.map((r) => (
+            <ResenaDelPanel key={r.id} resena={r} />
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
 /**
- * Las reseñas de cada producto: lo que dicen los negocios que lo compran.
- * El dueño le pide el comentario al cliente y lo escribe aquí con sus
- * palabras; sale en la página del producto, en «Por qué elegirlo».
+ * Las reseñas: lo que dicen los negocios que compran. El dueño le pide el
+ * comentario al cliente y lo escribe aquí con sus palabras. La de un
+ * producto sin marcas sale en la página del producto; la de una marca, en
+ * la página de esa marca, porque cada marca es otro producto.
  */
 export default async function PaginaResenas({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
-  const productoElegido = typeof parametros.producto === "string" ? parametros.producto : "";
-  const [productos, resenas] = await Promise.all([listarProductos(), listarResenas()]);
+  const elegido = typeof parametros.clave === "string" ? parametros.clave : typeof parametros.producto === "string" ? parametros.producto : "";
+  const [productos, variantes, resenas] = await Promise.all([listarProductos(), listarVariantes(), listarResenas()]);
 
-  const publicados = productos.filter((p) => p.activo);
+  const opciones = vendiblesDe(productos, variantes);
+  const variantesDe = agruparPorProducto(variantes);
   const deEjemplo = resenas.filter((r) => r.de_ejemplo).length;
   const delDueno = resenas.length - deEjemplo;
   const enLaWeb = resenas.filter((r) => !r.de_ejemplo && r.publicada && r.con_permiso).length;
   const sinPermiso = resenas.filter((r) => !r.de_ejemplo && !r.con_permiso).length;
   // El mensaje para pedir la reseña: sin número, para elegir el contacto en WhatsApp.
-  const pedir = (p: { id: number; nombre: string }) =>
-    enlaceCompartir(
-      mensajePedirResena({ negocio: negocio.nombre, producto: p.nombre, enlace: direccionCompleta(rutaProducto(p)) }),
-    );
+  const pedir = (nombre: string, ruta: string) =>
+    enlaceCompartir(mensajePedirResena({ negocio: negocio.nombre, producto: nombre, enlace: direccionCompleta(ruta) }));
 
   return (
     <>
@@ -130,22 +190,23 @@ export default async function PaginaResenas({ searchParams }: { searchParams: Pr
       <section className="tarjeta">
         <h2 className={estilos.subtitulo}>Reseña nueva</h2>
         <p className={estilos.ayuda}>
-          Pregúntale al cliente qué le parece el producto y escríbelo aquí con sus palabras. Sale en la página del
-          producto, en «Por qué elegirlo», con el nombre de su negocio: por eso hace falta su permiso.
+          Pregúntale al cliente qué le parece el producto y escríbelo aquí con sus palabras. Sale en la página del producto (o de la marca, si
+          tiene varias), en «Por qué elegirlo», con el nombre de su negocio: por eso hace falta su permiso.
         </p>
         <form action={guardarResena} className="formulario" encType="multipart/form-data">
           <div className="campo">
-            <label htmlFor="resena-producto">Producto</label>
-            <select id="resena-producto" name="producto_id" required defaultValue={productoElegido}>
+            <label htmlFor="resena-producto">Producto o marca</label>
+            <select id="resena-producto" name="clave" required defaultValue={elegido}>
               <option value="" disabled>
-                Elige un producto
+                Elige un producto o una marca
               </option>
-              {publicados.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
+              {opciones.map((o) => (
+                <option key={o.clave} value={o.clave}>
+                  {o.nombre}
                 </option>
               ))}
             </select>
+            <span className="ayuda">De un producto con marcas, la reseña es de una de ellas: cada marca tiene la suya.</span>
           </div>
           <div className="formulario__fila">
             <div className="campo">
@@ -209,36 +270,53 @@ export default async function PaginaResenas({ searchParams }: { searchParams: Pr
       {productos.map((p) => {
         const suyas = resenas.filter((r) => r.producto_id === p.id);
         if (!p.activo && suyas.length === 0) return null;
+        const marcas = (variantesDe.get(p.id) ?? []).filter((v) => v.activo || suyas.some((r) => r.variante_id === v.id));
+        const sinMarca = suyas.filter((r) => r.variante_id === null);
+        if (marcas.length === 0) {
+          return (
+            <section key={p.id} className="tarjeta">
+              <GrupoDeResenas
+                titulo={p.nombre}
+                resenas={suyas}
+                enLaWeb={p.activo === 1}
+                pedir={pedir(p.nombre, rutaProducto(p))}
+                ruta={rutaProducto(p)}
+                clave={String(p.id)}
+              />
+            </section>
+          );
+        }
         return (
           <section key={p.id} className="tarjeta">
-            <div className={estilos.encabezado} style={{ marginBottom: "var(--espacio-4)" }}>
-              <h2 className={estilos.subtitulo} style={{ marginBottom: 0 }}>
-                {p.nombre} ({suyas.length})
-              </h2>
-              {p.activo ? (
-                <div className={estilos.carteraAcciones} style={{ marginTop: 0 }}>
-                  <a href={pedir(p)} target="_blank" rel="noopener" className={estilos.whatsapp}>
-                    Pedir reseña por WhatsApp
-                  </a>
-                  <a href={rutaProducto(p)} target="_blank" rel="noopener">
-                    Ver cómo queda en la web
-                  </a>
-                </div>
-              ) : (
-                <span className="ayuda">Producto escondido de la web</span>
-              )}
-            </div>
-            {suyas.length === 0 ? (
-              <p className="vacio">
-                Todavía no tiene reseñas. <Link href={`/admin/resenas?producto=${p.id}`}>Escribir la primera</Link>
-              </p>
-            ) : (
-              <ul className={estilos.cartera}>
-                {suyas.map((r) => (
-                  <ResenaDelPanel key={r.id} resena={r} />
-                ))}
-              </ul>
+            <h2 className={estilos.subtitulo}>
+              {p.nombre} ({suyas.length})
+            </h2>
+            {sinMarca.length > 0 && (
+              <div className={estilos.grupoResenas}>
+                <h3 className={estilos.subtituloPequeno}>Del producto entero ({sinMarca.length})</h3>
+                <p className={estilos.ayuda}>
+                  Son de antes de las marcas: salen en la página de {p.nombre.toLowerCase()}. Las nuevas se escriben en su marca.
+                </p>
+                <ul className={estilos.cartera}>
+                  {sinMarca.map((r) => (
+                    <ResenaDelPanel key={r.id} resena={r} />
+                  ))}
+                </ul>
+              </div>
             )}
+            {marcas.map((v) => (
+              <div key={v.id} className={estilos.grupoResenas}>
+                <GrupoDeResenas
+                  titulo={v.nombre}
+                  resenas={suyas.filter((r) => r.variante_id === v.id)}
+                  enLaWeb={p.activo === 1 && v.activo === 1}
+                  pedir={pedir(nombreDeVenta(p.nombre, v.nombre), rutaVariante(p, v))}
+                  ruta={rutaVariante(p, v)}
+                  clave={`${p.id}-${v.id}`}
+                  pequeno
+                />
+              </div>
+            ))}
           </section>
         );
       })}
@@ -248,7 +326,7 @@ export default async function PaginaResenas({ searchParams }: { searchParams: Pr
         <p className={estilos.ayuda}>
           Sirven para ver cómo queda la página antes de tener las de verdad. No las dijo ningún cliente: por eso{" "}
           <strong>solo las ves tú</strong>, con el panel abierto, y llevan la etiqueta «Ejemplo». Quien entra a la web
-          no las ve.
+          no las ve. Cada marca lleva las suyas.
         </p>
         <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
           <form action={cargarResenasDeEjemplo}>

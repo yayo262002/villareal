@@ -366,3 +366,34 @@
   padding-top: var(--espacio-7);
   padding-bottom: var(--espacio-7);
 }
+
+/* ---------- La página de cada marca ---------- */
+
+/* La foto grande de la marca: el fondo blanco del paquete se funde con el de la página. */
+.fotoGrande {
+  width: min(260px, 70vw);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+/* En la página del producto, la foto de cada marca lleva a su página. */
+.varianteEnlace {
+  display: block;
+  border-radius: var(--radio);
+}
+.varianteEnlace:focus-visible {
+  outline: 3px solid var(--color-acento);
+  outline-offset: 2px;
+}
+.varianteNombre a {
+  color: inherit;
+  text-decoration: none;
+}
+/* La foto de otra marca, en la lista de abajo. */
+.otroFoto {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}

@@ -21,7 +21,8 @@ import { enlaceAlMapa, situar } from "@/lib/despacho";
 import { explicarMotivo } from "@/lib/direcciones";
 import { enlaceWhatsappA, esSoloUnTelefono, mensajeAbono, mensajeEnlaceDeCuenta, mensajeNota, mensajePedirResena, mensajeRecordatorio } from "@/lib/whatsapp";
 import { direccionDeCuenta } from "@/lib/enlace-cuenta";
-import { rutaProducto } from "@/lib/enlaces";
+import { rutaProducto, rutaVariante } from "@/lib/enlaces";
+import { claveDe } from "@/lib/catalogo";
 import { direccionCompleta } from "@/config/negocio";
 import estilos from "../../panel.module.css";
 
@@ -90,10 +91,21 @@ export default async function PaginaCliente({
       }),
     );
 
-  // Pedirle su opinión de lo que ha comprado, para las reseñas de la web.
-  const comprados = new Map(ventas.flatMap((v) => v.lineas).map((l) => [l.producto_id, l.producto_nombre]));
+  // Pedirle su opinión de lo que ha comprado, para las reseñas de la web: de cada marca, si la tiene, que tiene su propia página.
+  const comprados = new Map<string, { nombre: string; ruta: string }>();
+  for (const l of ventas.flatMap((v) => v.lineas)) {
+    const clave = claveDe(l.producto_id, l.variante_id ?? null);
+    if (comprados.has(clave)) continue;
+    // `producto_nombre` ya lleva la marca detrás («Queso amarillo Kemmental»); para la dirección hace falta el producto solo.
+    const delProducto = l.variante_nombre && l.producto_nombre.endsWith(` ${l.variante_nombre}`) ? l.producto_nombre.slice(0, -l.variante_nombre.length - 1) : l.producto_nombre;
+    const producto = { id: l.producto_id, nombre: delProducto };
+    comprados.set(clave, {
+      nombre: l.producto_nombre,
+      ruta: l.variante_id && l.variante_nombre ? rutaVariante(producto, { id: l.variante_id, nombre: l.variante_nombre }) : rutaProducto(producto),
+    });
+  }
   const pedirResena = [...comprados]
-    .map(([id, nombre]) => ({
+    .map(([id, { nombre, ruta }]) => ({
       id,
       nombre,
       enlace: enlaceWhatsappA(
@@ -102,11 +114,11 @@ export default async function PaginaCliente({
           negocio: negocio.nombre,
           cliente: cliente.nombre,
           producto: nombre,
-          enlace: direccionCompleta(rutaProducto({ id, nombre })),
+          enlace: direccionCompleta(ruta),
         }),
       ),
     }))
-    .filter((p): p is { id: number; nombre: string; enlace: string } => p.enlace !== null);
+    .filter((p): p is { id: string; nombre: string; enlace: string } => p.enlace !== null);
 
   // El recibo de cada abono, con el saldo como está hoy.
   const enlaceRecibo = (p: (typeof pagos)[number]) =>

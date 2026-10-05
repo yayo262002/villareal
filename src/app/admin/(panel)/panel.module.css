@@ -1149,3 +1149,10 @@
     padding: 0;
   }
 }
+
+/* Reseñas: las de cada marca, separadas dentro de la tarjeta de su producto. */
+.grupoResenas {
+  margin-top: var(--espacio-4);
+  padding-top: var(--espacio-4);
+  border-top: 1px solid var(--color-borde);
+}

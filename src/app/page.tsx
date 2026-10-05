@@ -24,8 +24,8 @@ export const metadata: Metadata = {
 /**
  * La web pública, pensada para abrirse en el teléfono desde un mensaje de
  * WhatsApp: los productos con su dibujo y su precio al mayor en bolívares,
- * y nada antes. Los detalles y las reseñas de cada uno están en su propia
- * página, no aquí. Lo que no está
+ * y nada antes. Sin marcas: las marcas, los detalles y las reseñas de cada
+ * uno están en su propia página, no aquí. Lo que no está
  * configurado (tasa, precios) no se inventa: se omite o se dice que está
  * pendiente.
  */
@@ -53,7 +53,7 @@ export default async function PaginaInicio() {
             <LineaTasa tasa={tasa} className={estilos.tasa} />
           </div>
           <p className={estilos.entradilla}>
-            Quesos y huevos al mayor, en el centro de {negocio.localidad}.
+            Insumos al mayor para pizzerías, panaderías, hamburgueserías, restaurantes y bodegas, en el centro de {negocio.localidad}.
           </p>
 
           {productos.length === 0 ? (

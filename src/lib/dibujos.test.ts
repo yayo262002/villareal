@@ -11,11 +11,13 @@ test("cada producto lleva el dibujo que le toca por su nombre", () => {
   assert.equal(tipoDeDibujo("Queso parmesano"), "curado");
   assert.equal(tipoDeDibujo("Huevos"), "huevos");
   assert.equal(tipoDeDibujo("Cartón de huevos"), "huevos");
+  assert.equal(tipoDeDibujo("Suero de leche"), "suero");
+  assert.equal(tipoDeDibujo("Suero Guaralac"), "suero");
   assert.equal(tipoDeDibujo("Mantequilla"), "generico");
 });
 
 test("el dibujo es SVG bien cerrado, sin nada que no sea dibujo", () => {
-  for (const nombre of ["Queso amarillo", "Queso mozzarella", "Queso pecorino rallado", "Queso pecorino", "Huevos", "Mantequilla"]) {
+  for (const nombre of ["Queso amarillo", "Queso mozzarella", "Queso pecorino rallado", "Queso pecorino", "Huevos", "Suero de leche", "Mantequilla"]) {
     const interior = interiorDelDibujo(nombre);
     assert.ok(interior.startsWith("<circle"), nombre);
     assert.doesNotMatch(interior, /<script|on[a-z]+=|javascript:/i, nombre);

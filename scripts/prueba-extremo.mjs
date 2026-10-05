@@ -78,6 +78,16 @@ async function consultar(sql, args = []) {
   }
 }
 
+/** Escribe en el archivo temporal. Solo en local, para casos que el panel no deja crear (las tasas de otros días). */
+function escribirEnLocal(sql, args = []) {
+  const db = new DatabaseSync(rutaDb);
+  try {
+    db.prepare(sql).run(...args);
+  } finally {
+    db.close();
+  }
+}
+
 async function cuentasDe(clienteId) {
   const [f] = await consultar(
     `select
@@ -267,7 +277,7 @@ async function probarTareaDiaria() {
   comprobar("la tarea diaria exporta el día anterior (o dice que no hubo movimientos)", ["guardada", "sin_movimientos"].includes(resultado.exportacion?.estado), JSON.stringify(resultado.exportacion));
   comprobar(
     "una tasa que salta demasiado no entra sola",
-    ["rechazada", "sin_respuesta"].includes(resultado.tasa?.estado),
+    ["rechazada", "sin_respuesta", "se_queda"].includes(resultado.tasa?.estado),
     JSON.stringify(resultado.tasa),
   );
   const panel = (await pagina("/admin/productos")).html;
@@ -390,6 +400,39 @@ async function probarPrecios() {
   );
   await enviar("/admin/productos", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio), activo: "1" }, cookie, {}, 'name="activo"');
   await portadaCon("desde </span>Bs 127,75");
+
+  // Cada marca tiene su página: se llega pinchándola, con su foto, su precio, su descripción entera y su botón de pedir.
+  const rutaSortilegio = `/producto/4-queso-pecorino-rallado/${varianteSortilegio}-sortilegio-500-g`;
+  r = await enviar("/admin/productos", `id="variante-${varianteSortilegio}-nombre"`, {
+    variante_id: String(varianteSortilegio), nombre: "Sortilegio 500 g", descripcion: "Rallado, semigraso, madurado\nBolsa de 500 g\nPara pastas y pizzas", costo_usd: "", precio_usd: "4.2",
+  });
+  comprobar("la descripción de una marca puede tener varias líneas", r.destino.includes("guardada"), r.destino);
+  const conEnlace = (await pagina("/producto/4-queso-pecorino-rallado", "")).html;
+  comprobar(
+    "en la página del producto cada marca lleva a la suya, y de su descripción se ve la primera línea",
+    conEnlace.includes(`href="${rutaSortilegio}"`) && conEnlace.includes(">Ver detalles<") && conEnlace.includes("Rallado, semigraso, madurado") && !conEnlace.includes("Para pastas y pizzas"),
+  );
+  const paginaMarca = await pagina(rutaSortilegio, "");
+  const textoMarca = legible(paginaMarca.html);
+  comprobar(
+    "la página de la marca: su nombre, su foto, su precio, toda su descripción, su botón de pedir y las otras marcas",
+    paginaMarca.status === 200 && textoMarca.includes("Queso pecorino rallado Sortilegio 500 g") && paginaMarca.html.includes(`/foto-variante/${varianteSortilegio}?v=`) &&
+      textoMarca.includes("Bs 153,30") && textoMarca.includes("<li>Para pastas y pizzas</li>") && paginaMarca.html.includes(">Pedir por WhatsApp<") &&
+      paginaMarca.html.includes("quiero%20pedir%20queso%20pecorino%20rallado%20sortilegio%20500%20g") && textoMarca.includes("Otras marcas de queso pecorino rallado") &&
+      textoMarca.includes("Guaralac 500 g") && paginaMarca.html.includes('rel="canonical"'),
+    String(paginaMarca.status),
+  );
+  const rutaGuaralac = `/producto/4-queso-pecorino-rallado/${guaralacId}-guaralac-500-g`;
+  await enviar("/admin/productos", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "0" }, cookie, {}, 'name="activo"');
+  const escondida = (await pagina(rutaGuaralac, "")).status;
+  await enviar("/admin/productos", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "1" }, cookie, {}, 'name="activo"');
+  comprobar(
+    "una marca escondida, una de otro producto o un número que no existe dan 404; con otro nombre detrás, llega igual",
+    escondida === 404 && (await pagina(`/producto/1-queso-amarillo/${varianteSortilegio}-sortilegio`, "")).status === 404 &&
+      (await pagina("/producto/4-queso-pecorino-rallado/999999-nada", "")).status === 404 && (await pagina(`/producto/4/${varianteSortilegio}`, "")).status === 200,
+    String(escondida),
+  );
+  comprobar("la vista previa de la marca al compartirla", (await fetch(base + `${rutaSortilegio}/opengraph-image`)).status === 200);
 }
 
 /** Alta de cliente, ventas, pago, cuentas, foto, descargas y borrados. */
@@ -604,6 +647,18 @@ async function probarNegocio() {
     JSON.stringify([tasaDel21, tasaDel10]),
   );
   comprobar("la tasa de un día no se consulta sin sesión", (await fetch(base + "/admin/tasas/2026-09-21", { redirect: "manual" })).status !== 200);
+
+  // Los fines de semana vale la tasa del lunes, como en los comercios (aquí, con tasas de 2031 puestas a mano en la base temporal).
+  escribirEnLocal("insert or replace into tasas (fecha, valor, origen) values ('2031-03-07', 40, 'bcv'), ('2031-03-10', 41, 'bcv')");
+  const [viernes, sabado, domingo] = await Promise.all(
+    ["2031-03-07", "2031-03-08", "2031-03-09"].map(async (f) => (await fetch(base + `/admin/tasas/${f}`, { headers: { cookie } })).json()),
+  );
+  comprobar(
+    "el sábado y el domingo valen con la tasa del lunes; el viernes, con la suya",
+    viernes?.valor === 40 && viernes.fuente === "bcv" && sabado?.valor === 41 && sabado.fuente === "lunes" && sabado.desde === "2031-03-10" &&
+      domingo?.valor === 41 && String(sabado.descripcion).includes("lunes 10/03/2031"),
+    JSON.stringify([viernes, sabado, domingo]),
+  );
   r = await enviar(fichaDetal, 'name="monto"', { cliente_id: String(detalId), fecha: "2026-09-21", metodo: "pago_movil", monto: "365", tasa: "", volver_a: fichaDetal, foto: fotoFirmada() });
   const [sinTasa] = await consultar("select id, tasa, monto_usd from pagos where cliente_id = ? order by id desc limit 1", [detalId]);
   comprobar(
@@ -1223,6 +1278,25 @@ async function probarResenas() {
   r = await enviar(`/admin/resenas/${id}/eliminar`, 'name="id"', { id: String(id) });
   comprobar("borrar la reseña, con su confirmación", r.destino.includes("Reseña eliminada") && (await idDeLaPrueba()) === 0, r.destino);
   comprobar("una reseña ya borrada da 404", (await pagina(`/admin/resenas/${id}/eliminar`)).status === 404);
+  // La reseña de una marca sale en la página de esa marca, no en la del producto ni en la de la otra marca.
+  const rutaSortilegio = `/producto/4-queso-pecorino-rallado/${varianteSortilegio}-sortilegio-500-g`;
+  const deLaMarca = "Rinde más en las pastas y no se apelmaza.";
+  const panelConMarcas = (await pagina("/admin/resenas")).html;
+  comprobar(
+    "en el panel la reseña se escribe en su marca, y cada marca tiene su botón para pedirla",
+    panelConMarcas.includes(`value="4-${varianteSortilegio}"`) && panelConMarcas.includes("Queso pecorino rallado Sortilegio 500 g") && !panelConMarcas.includes('<option value="4">'),
+  );
+  r = await enviar("/admin/resenas", 'name="autor"', { clave: `4-${varianteSortilegio}`, autor: "Restaurante de la marca (prueba)", detalle: "", texto: deLaMarca, permiso: "1" });
+  comprobar("guardar la reseña de una marca", r.destino.includes("Ya sale en la página de «Queso pecorino rallado Sortilegio 500 g»"), r.destino);
+  const marcaConResena = legible((await pagina(rutaSortilegio, "")).html);
+  const productoSinElla = legible((await pagina("/producto/4-queso-pecorino-rallado", "")).html);
+  comprobar(
+    "sale en la página de la marca y no en la del producto, que dice cuántas tiene cada marca",
+    marcaConResena.includes(`«${deLaMarca}»`) && marcaConResena.indexOf(deLaMarca) > marcaConResena.indexOf("Por qué elegirlo") &&
+      !productoSinElla.includes(deLaMarca) && productoSinElla.includes("1 reseña"),
+  );
+  r = await enviar("/admin/resenas", 'name="autor"', { clave: `1-${varianteSortilegio}`, autor: "Nadie", detalle: "", texto: "No vale", permiso: "1" });
+  comprobar("una marca que no es de ese producto no se acepta", r.destino.includes("Elige de qué producto"), r.destino);
 }
 
 const PROVEEDOR_DE_PRUEBA = "Quesos de prueba (borrar)";
@@ -1549,6 +1623,21 @@ try {
   const primera = web.html.match(/href="(\/producto\/\d+[a-z0-9-]*)"/)?.[1];
   const detalle = primera ? await pagina(primera, "") : null;
   comprobar("la página de un producto abre desde la portada", Boolean(detalle) && detalle.status === 200 && detalle.html.includes("Cómo comprar") && detalle.html.includes("Todos los productos"), String(primera));
+  comprobar("la portada ya no dice «quesos y huevos»: habla de insumos al mayor", !web.html.includes("Quesos y huevos") && legible(web.html).includes("Insumos al mayor"));
+  // La página de una marca, si hay alguna publicada: se llega desde la de su producto.
+  let rutaDeMarca = null;
+  for (const ruta of [...new Set(web.html.match(/\/producto\/\d+[a-z0-9-]*/g) ?? [])]) {
+    rutaDeMarca = (await pagina(ruta, "")).html.match(/href="(\/producto\/\d+[a-z0-9-]*\/\d+[a-z0-9-]*)"/)?.[1] ?? null;
+    if (rutaDeMarca) break;
+  }
+  if (rutaDeMarca) {
+    const deMarca = await pagina(rutaDeMarca, "");
+    comprobar(
+      "la página de una marca abre desde la de su producto, con su precio y su botón de pedir",
+      deMarca.status === 200 && deMarca.html.includes(">Pedir por WhatsApp<") && deMarca.html.includes("Cómo comprar") && deMarca.html.includes('rel="canonical"'),
+      rutaDeMarca,
+    );
+  }
   comprobar("una cuenta de cliente inventada da 404", (await pagina("/cuenta/abcdefghjkmnpq", "")).status === 404 && (await pagina("/cuenta/nada", "")).status === 404);
 
   await probarPresentacion(web);

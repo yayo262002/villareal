@@ -207,6 +207,8 @@ export const ESQUEMA = `
   create table if not exists resenas (
     id integer primary key autoincrement,
     producto_id integer not null references productos(id),
+    -- La marca de la que habla, si el producto tiene varias: cada marca tiene sus reseñas.
+    variante_id integer references variantes(id),
     autor text not null,
     detalle text not null default '',
     texto text not null,

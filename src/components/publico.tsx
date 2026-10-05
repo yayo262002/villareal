@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { enlaceWhatsapp, negocio } from "@/config/negocio";
 import type { Tasa } from "@/lib/ajustes";
-import { aBolivares, bs, fechaCorta, fechaDeLaBase, unidadEnPalabras, usd } from "@/lib/dinero";
+import { aBolivares, bs, diaDeLaSemana, fechaCorta, fechaDeLaBase, hoy, unidadEnPalabras, usd } from "@/lib/dinero";
 import estilos from "./publico.module.css";
 
 /**
@@ -54,13 +54,19 @@ export function PiePublico() {
   );
 }
 
-/** «Tasa BCV: Bs 857,89 por dólar · 29/09/2026». Sin tasa no se enseña nada. */
+/**
+ * «Tasa BCV: Bs 857,89 por dólar · 29/09/2026». Un fin de semana, con la
+ * del lunes: «Tasa BCV del lunes 05/10/2026: Bs 871,37 por dólar». Sin
+ * tasa no se enseña nada.
+ */
 export function LineaTasa({ tasa, className }: { tasa: Tasa | null; className?: string }) {
   if (!tasa) return null;
+  const adelantada = tasa.fecha_valor !== null && tasa.fecha_valor > hoy() ? tasa.fecha_valor : null;
   return (
     <p className={className}>
-      {tasa.origen === "bcv" ? "Tasa BCV" : "Tasa"}: {bs(tasa.valor)} por dólar ·{" "}
-      {fechaCorta(fechaDeLaBase(tasa.actualizada_en))}
+      {tasa.origen === "bcv" ? "Tasa BCV" : "Tasa"}
+      {adelantada ? ` del ${diaDeLaSemana(adelantada)} ${fechaCorta(adelantada)}` : ""}: {bs(tasa.valor)} por dólar
+      {adelantada ? "" : ` · ${fechaCorta(fechaDeLaBase(tasa.actualizada_en))}`}
     </p>
   );
 }

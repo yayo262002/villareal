@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aSlug, idDeRuta, rutaProducto } from "./enlaces.ts";
+import { aSlug, idDeRuta, rutaProducto, rutaVariante } from "./enlaces.ts";
 
 test("el nombre se convierte en una dirección limpia", () => {
   assert.equal(aSlug("Queso Mozzarella"), "queso-mozzarella");
@@ -22,4 +22,10 @@ test("de la dirección se saca el número, aunque el nombre haya cambiado", () =
   assert.equal(idDeRuta("0-nada"), null);
   assert.equal(idDeRuta("2abc"), null);
   assert.equal(idDeRuta(""), null);
+});
+
+test("la página de una marca cuelga de la de su producto, con los dos números delante", () => {
+  assert.equal(rutaVariante({ id: 4, nombre: "Queso pecorino rallado" }, { id: 7, nombre: "Sortilegio 500 g" }), "/producto/4-queso-pecorino-rallado/7-sortilegio-500-g");
+  assert.equal(rutaVariante({ id: 5, nombre: "Suero de leche" }, { id: 9, nombre: "Guaralact" }), "/producto/5-suero-de-leche/9-guaralact");
+  assert.equal(idDeRuta("7-sortilegio-500-g"), 7);
 });

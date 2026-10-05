@@ -156,6 +156,13 @@ export function hoy(): string {
   return fechaEnVenezuela(new Date());
 }
 
+const DIAS_DE_LA_SEMANA = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"] as const;
+
+/** «lunes», para una fecha «2026-10-05». */
+export function diaDeLaSemana(iso: string): string {
+  return DIAS_DE_LA_SEMANA[new Date(`${iso.slice(0, 10)}T12:00:00Z`).getUTCDay()];
+}
+
 export function fechaCorta(iso: string): string {
   const [a, m, d] = iso.slice(0, 10).split("-");
   return `${d}/${m}/${a}`;

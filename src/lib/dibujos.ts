@@ -13,11 +13,12 @@ import { aSlug } from "./enlaces.ts";
  * van escritos aquí y no en `tokens.css`.
  */
 
-export type TipoDeDibujo = "mozzarella" | "curado" | "rallado" | "huevos" | "queso" | "generico";
+export type TipoDeDibujo = "mozzarella" | "curado" | "rallado" | "huevos" | "suero" | "queso" | "generico";
 
 export function tipoDeDibujo(nombre: string): TipoDeDibujo {
   const n = aSlug(nombre);
   if (n.includes("huevo")) return "huevos";
+  if (n.includes("suero")) return "suero";
   if (n.includes("rallado")) return "rallado";
   if (n.includes("mozzarella") || n.includes("mozarela") || n.includes("mozarella")) return "mozzarella";
   if (n.includes("pecorino") || n.includes("parmesano") || n.includes("anejo")) return "curado";
@@ -98,7 +99,28 @@ const HUEVOS = `${sombra(100, 48)}
 <path d="M10 70 Q18 62 32 72 Q46 62 60 72 Q74 62 88 72 Q102 62 110 70 L106 92 Q105 98 98 98 L22 98 Q15 98 14 92 Z" fill="#a99276"/>
 <path d="M12 80 L108 80" stroke="#8f7a60" stroke-width="2"/>`;
 
-/** Una caja, para lo que no sea queso ni huevos. */
+/**
+ * Una bolsa de suero de leche atada arriba, con su etiqueta: como se vende
+ * aquí. Blanca con el borde marcado, como la mozzarella, para que se vea
+ * sobre el fondo.
+ */
+const BOLSA = "M54 41 C44 45 37 51 35 61 C33 71 32 81 33 90 Q34 99 44 99 L77 99 Q87 99 88 90 C89 81 88 69 86 60 C84 51 77 45 67 41 Z";
+const SUERO = `${sombra(101, 31)}
+<path d="${BOLSA}" fill="#fffdf4"/>
+<path d="M77 47 C84 53 87 63 87 75 L87 90 Q87 97 80 98 C83 86 84 71 81 58 C80 53 79 50 77 47 Z" fill="#efe4c4"/>
+<path d="${BOLSA}" fill="none" stroke="#b9a46a" stroke-width="2.5" stroke-linejoin="round"/>
+<path d="M41 62 Q38 74 40 86" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+<path d="M53 42 Q60 37 68 42 L66 34 Q60 31 55 34 Z" fill="#f4ecd5" stroke="#b9a46a" stroke-width="2" stroke-linejoin="round"/>
+<path d="M56 34 C56 26 61 19 69 15 C73 13 77 15 76 19 C74 24 67 28 64 33 Z" fill="#fffdf4" stroke="#b9a46a" stroke-width="2.5" stroke-linejoin="round"/>
+<path d="M61 30 C63 25 67 20 72 17" fill="none" stroke="#dccb98" stroke-width="1.5" stroke-linecap="round"/>
+<rect x="44" y="64" width="34" height="27" rx="3" fill="#2f6db3"/>
+<rect x="47" y="67" width="28" height="21" rx="2" fill="#f7f4ea"/>
+<path d="M51 71.5 L71 71.5" stroke="#5b6f8f" stroke-width="2" stroke-linecap="round"/>
+<path d="M54 75 L68 75" stroke="#9aa6ba" stroke-width="1.4" stroke-linecap="round"/>
+<path d="M47 81 Q54 77 61 81 T75 80" fill="none" stroke="#2a9fd0" stroke-width="2.4"/>
+<path d="M47 84.5 Q54 80.5 61 84.5 T75 83.5" fill="none" stroke="#f0b62c" stroke-width="2"/>`;
+
+/** Una caja, para lo que no tenga dibujo propio. */
 const GENERICO = `${sombra(98, 44)}
 <path d="M20 46 L60 30 L100 46 L100 84 L60 100 L20 84 Z" fill="#d8b56a"/>
 <path d="M20 46 L60 62 L100 46 L60 30 Z" fill="#edd193"/>
@@ -110,6 +132,7 @@ const DIBUJOS: Record<TipoDeDibujo, string> = {
   curado: CURADO,
   rallado: rallado(),
   huevos: HUEVOS,
+  suero: SUERO,
   generico: GENERICO,
 };
 

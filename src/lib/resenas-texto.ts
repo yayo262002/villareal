@@ -133,6 +133,18 @@ const EJEMPLOS: Record<TipoDeDibujo, DatosResena[]> = {
       texto: "Buen precio al mayor y siempre tienen.",
     },
   ],
+  suero: [
+    {
+      autor: "Lonchería de ejemplo",
+      detalle: "Comida rápida · Barquisimeto",
+      texto: "Espeso y con buen sabor: con las arepas y los pastelitos es lo que piden.",
+    },
+    {
+      autor: "Bodega de ejemplo",
+      detalle: "Bodega · Barquisimeto",
+      texto: "Sale todos los días. Llega fresco y bien cerrado.",
+    },
+  ],
   generico: [
     {
       autor: "Negocio de ejemplo",

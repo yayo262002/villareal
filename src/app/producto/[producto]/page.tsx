@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { direccionCompleta, enlaceCompartir, enlaceMapa, enlaceWhatsapp, negocio } from "@/config/negocio";
+import { direccionCompleta, enlaceCompartir, enlaceWhatsapp, negocio } from "@/config/negocio";
 import { buscarProducto, listarProductos, type Producto } from "@/lib/productos";
 import { direccionDeFotoDeVariante, variantesDeProducto, type Variante } from "@/lib/variantes";
 import { precioPublicado, type PrecioPublicado } from "@/lib/catalogo";
 import { leerTasa } from "@/lib/ajustes";
-import { resenasDeProducto } from "@/lib/resenas";
+import { contarResenasPorVariante, resenasDeProducto } from "@/lib/resenas";
 import { haySesion } from "@/lib/sesion";
 import { unidadEnPalabras } from "@/lib/dinero";
-import { idDeRuta, rutaProducto } from "@/lib/enlaces";
+import { idDeRuta, rutaProducto, rutaVariante } from "@/lib/enlaces";
 import {
   CabeceraPublica,
   DatosEstructurados,
@@ -22,6 +22,7 @@ import {
 } from "@/components/publico";
 import { IlustracionProducto } from "@/components/ilustracion-producto";
 import { AvisoDeEjemplos, ListaDeResenas } from "@/components/resenas";
+import { ComoComprar } from "@/components/como-comprar";
 import estilos from "../../page.module.css";
 
 type Parametros = { params: Promise<{ producto: string }> };
@@ -99,7 +100,9 @@ function datosDelProducto(producto: Producto, publicado: PrecioPublicado, varian
  * La página de un producto: a ella llevan «Ver detalles» y el nombre de
  * cada tarjeta de la portada. Dibujo grande, precios, por qué elegirlo (lo
  * que dicen los negocios que lo compran y sus ventajas), cómo se paga y
- * dónde se recoge, con el botón de pedir siempre a mano.
+ * dónde se recoge, con el botón de pedir siempre a mano. Si tiene marcas,
+ * cada una con su foto y su precio lleva a su propia página, con su
+ * descripción y sus reseñas.
  *
  * Las reseñas de ejemplo solo se enseñan al dueño, con la sesión del panel
  * abierta: al público, nunca.
@@ -110,11 +113,12 @@ export default async function PaginaProducto({ params }: Parametros) {
   if (!producto) notFound();
 
   const esElDueno = await haySesion();
-  const [tasa, todos, resenas, variantes] = await Promise.all([
+  const [tasa, todos, resenas, variantes, resenasPorMarca] = await Promise.all([
     leerTasa(),
     listarProductos(true),
     resenasDeProducto(producto.id, esElDueno),
     variantesDeProducto(producto.id, true),
+    contarResenasPorVariante(producto.id, esElDueno),
   ]);
   const publicado = precioPublicado(producto, variantes);
   const ventajas = ventajasDe(producto.descripcion);
@@ -125,7 +129,6 @@ export default async function PaginaProducto({ params }: Parametros) {
   const compartir = enlaceCompartir(
     `${producto.nombre} en ${negocio.nombre}: ${direccionCompleta(rutaProducto(producto))}`,
   );
-  const mapa = enlaceMapa();
 
   return (
     <>
@@ -169,31 +172,42 @@ export default async function PaginaProducto({ params }: Parametros) {
               </a>
             </div>
 
-            {/* Las marcas o presentaciones en que se vende, cada una con su foto y su precio. */}
+            {/* Las marcas o presentaciones en que se vende, cada una con su foto, su precio y su propia página. */}
             {variantes.length > 0 && (
               <div className={estilos.bloque} id="marcas">
                 <h2 className={estilos.bloqueTitulo}>Marcas y presentaciones</h2>
                 <ul className={estilos.variantes}>
                   {variantes.map((v) => {
                     const foto = direccionDeFotoDeVariante(v);
+                    const ruta = rutaVariante(producto, v);
+                    const primera = ventajasDe(v.descripcion)[0];
+                    const cuantas = resenasPorMarca.get(v.id) ?? 0;
                     const pedirEsta = enlaceWhatsapp(`Hola, quiero pedir ${nombre} ${v.nombre.toLowerCase()}.`);
                     return (
                       <li key={v.id} className={estilos.variante}>
-                        {foto ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={foto} alt={`${producto.nombre} ${v.nombre}`} width={800} height={800} className={estilos.varianteFoto} loading="lazy" />
-                        ) : (
-                          <IlustracionProducto nombre={producto.nombre} className={estilos.varianteDibujo} />
-                        )}
+                        <Link href={ruta} className={estilos.varianteEnlace} aria-label={`Ver ${producto.nombre} ${v.nombre}`}>
+                          {foto ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={foto} alt={`${producto.nombre} ${v.nombre}`} width={800} height={800} className={estilos.varianteFoto} loading="lazy" />
+                          ) : (
+                            <IlustracionProducto nombre={producto.nombre} className={estilos.varianteDibujo} />
+                          )}
+                        </Link>
                         <div className={estilos.varianteTexto}>
-                          <h3 className={estilos.varianteNombre}>{v.nombre}</h3>
-                          {v.descripcion && <p className={estilos.varianteDetalle}>{v.descripcion}</p>}
+                          <h3 className={estilos.varianteNombre}>
+                            <Link href={ruta}>{v.nombre}</Link>
+                          </h3>
+                          {primera && <p className={estilos.varianteDetalle}>{primera}</p>}
+                          {cuantas > 0 && <p className={estilos.varianteDetalle}>{cuantas === 1 ? "1 reseña" : `${cuantas} reseñas`}</p>}
                           <PreciosEnLinea precios={v} unidad={producto.unidad} tasa={tasa?.valor ?? null} />
                           {pedirEsta && (
                             <a className={`boton ${estilos.varianteBoton}`} href={pedirEsta} target="_blank" rel="noopener" aria-label={`Pedir ${v.nombre}`}>
                               Pedir
                             </a>
                           )}
+                          <Link href={ruta} className={`boton boton--secundario ${estilos.varianteBoton}`}>
+                            Ver detalles
+                          </Link>
                         </div>
                       </li>
                     );
@@ -217,47 +231,7 @@ export default async function PaginaProducto({ params }: Parametros) {
               </div>
             )}
 
-            <div className={estilos.bloque}>
-              <h2 className={estilos.bloqueTitulo}>Cómo comprar</h2>
-              <dl className={estilos.datos}>
-                <div>
-                  <dt>Formas de pago</dt>
-                  <dd>Pago móvil, transferencia, efectivo, Zelle o Binance. En bolívares, a la tasa del día.</dd>
-                </div>
-                {(negocio.direccion || negocio.ciudad) && (
-                  <div>
-                    <dt>Tienda física</dt>
-                    <dd>
-                      {[negocio.direccion, negocio.ciudad].filter(Boolean).join(", ")}
-                      {mapa && (
-                        <>
-                          {" · "}
-                          <a href={mapa} target="_blank" rel="noopener">
-                            Cómo llegar
-                          </a>
-                        </>
-                      )}
-                    </dd>
-                  </div>
-                )}
-                {negocio.horario && (
-                  <div>
-                    <dt>Horario</dt>
-                    <dd>{negocio.horario}</dd>
-                  </div>
-                )}
-                {mayor && (
-                  <div>
-                    <dt>Al mayor</dt>
-                    <dd>
-                      <a href={mayor} target="_blank" rel="noopener">
-                        Pide el precio según la cantidad
-                      </a>
-                    </dd>
-                  </div>
-                )}
-              </dl>
-            </div>
+            <ComoComprar mayor={mayor} />
 
             {otros.length > 0 && (
               <div>

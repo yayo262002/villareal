@@ -3,7 +3,9 @@ import { ejecutar, fila, filas, transaccion } from "./db";
 import { ejemplosPara, type DatosResena } from "./resenas-texto";
 
 /**
- * Las reseñas de cada producto, en la base. Una reseña tiene tres marcas:
+ * Las reseñas de cada producto, en la base. La de un producto con varias
+ * marcas es de una de ellas (`variante_id`): cada marca tiene las suyas, en
+ * su propia página. Una reseña tiene tres marcas:
  *
  * - `con_permiso`: el cliente dijo que se puede publicar con su nombre. Sin
  *   permiso no sale en la web, aunque esté marcada como publicada.
@@ -16,6 +18,9 @@ export type Resena = DatosResena & {
   id: number;
   producto_id: number;
   producto_nombre: string;
+  /** La marca de la que habla, o null si es del producto entero. */
+  variante_id: number | null;
+  variante_nombre: string | null;
   de_ejemplo: number;
   con_permiso: number;
   publicada: number;
@@ -25,10 +30,11 @@ export type Resena = DatosResena & {
 };
 
 const CONSULTA_RESENAS = `
-  select r.*, p.nombre as producto_nombre,
+  select r.*, p.nombre as producto_nombre, v.nombre as variante_nombre,
     (select f.actualizado_en from fotos_resenas f where f.resena_id = r.id) as foto_version
   from resenas r
   join productos p on p.id = r.producto_id
+  left join variantes v on v.id = r.variante_id
 `;
 
 export const TIPOS_DE_FOTO = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -65,25 +71,51 @@ export function direccionDeFoto(resena: Pick<Resena, "id" | "foto_version">): st
   return `/foto-resena/${resena.id}?v=${encodeURIComponent(resena.foto_version.replace(/\D/g, ""))}`;
 }
 
-/** Todas, para el panel: por producto y, dentro, de la más nueva a la más vieja. */
+/** Todas, para el panel: por producto y marca y, dentro, de la más nueva a la más vieja. */
 export async function listarResenas(): Promise<Resena[]> {
-  return filas<Resena>(`${CONSULTA_RESENAS} order by r.producto_id, r.id desc`);
+  return filas<Resena>(`${CONSULTA_RESENAS} order by r.producto_id, r.variante_id, r.id desc`);
 }
 
 /**
- * Las que enseña la página de un producto. Al público, las del dueño que
- * están publicadas y tienen el permiso del cliente. Al dueño con la sesión
- * abierta, además, las de ejemplo.
+ * Las que enseña la página de un producto: las del producto entero, no las
+ * de una de sus marcas (esas van en la página de la marca). Al público, las
+ * del dueño que están publicadas y tienen el permiso del cliente. Al dueño
+ * con la sesión abierta, además, las de ejemplo.
  */
 export async function resenasDeProducto(productoId: number, conLasDeEjemplo: boolean): Promise<Resena[]> {
   const deEjemplo = conLasDeEjemplo ? "or r.de_ejemplo = 1" : "";
   return filas<Resena>(
     `${CONSULTA_RESENAS}
-     where r.producto_id = ? and r.publicada = 1
+     where r.producto_id = ? and r.variante_id is null and r.publicada = 1
        and ((r.de_ejemplo = 0 and r.con_permiso = 1) ${deEjemplo})
      order by r.de_ejemplo, r.id desc`,
     [productoId],
   );
+}
+
+/** Las de una marca, para su página: con las mismas reglas que las de un producto. */
+export async function resenasDeVariante(varianteId: number, conLasDeEjemplo: boolean): Promise<Resena[]> {
+  const deEjemplo = conLasDeEjemplo ? "or r.de_ejemplo = 1" : "";
+  return filas<Resena>(
+    `${CONSULTA_RESENAS}
+     where r.variante_id = ? and r.publicada = 1
+       and ((r.de_ejemplo = 0 and r.con_permiso = 1) ${deEjemplo})
+     order by r.de_ejemplo, r.id desc`,
+    [varianteId],
+  );
+}
+
+/** Cuántas reseñas se ven de cada marca de un producto: id de la marca → cuántas. */
+export async function contarResenasPorVariante(productoId: number, conLasDeEjemplo: boolean): Promise<Map<number, number>> {
+  const deEjemplo = conLasDeEjemplo ? "or de_ejemplo = 1" : "";
+  const lista = await filas<{ variante_id: number; n: number }>(
+    `select variante_id, count(*) as n from resenas
+     where producto_id = ? and variante_id is not null and publicada = 1
+       and ((de_ejemplo = 0 and con_permiso = 1) ${deEjemplo})
+     group by variante_id`,
+    [productoId],
+  );
+  return new Map(lista.map((f) => [Number(f.variante_id), Number(f.n)]));
 }
 
 /** Una reseña cabe en la tarjeta de la portada si es corta. */
@@ -113,10 +145,10 @@ export async function buscarResena(id: number): Promise<Resena | null> {
 }
 
 /** Con permiso se publica en el momento; sin él se guarda escondida hasta tenerlo. */
-export async function crearResena(productoId: number, datos: DatosResena, conPermiso: boolean): Promise<number> {
+export async function crearResena(productoId: number, varianteId: number | null, datos: DatosResena, conPermiso: boolean): Promise<number> {
   const r = await ejecutar(
-    "insert into resenas (producto_id, autor, detalle, texto, con_permiso, publicada) values (?, ?, ?, ?, ?, ?)",
-    [productoId, datos.autor, datos.detalle, datos.texto, conPermiso ? 1 : 0, conPermiso ? 1 : 0],
+    "insert into resenas (producto_id, variante_id, autor, detalle, texto, con_permiso, publicada) values (?, ?, ?, ?, ?, ?, ?)",
+    [productoId, varianteId, datos.autor, datos.detalle, datos.texto, conPermiso ? 1 : 0, conPermiso ? 1 : 0],
   );
   return r.ultimoId;
 }
@@ -146,23 +178,27 @@ export async function contarResenasDeEjemplo(): Promise<number> {
 }
 
 /**
- * Pone las reseñas de ejemplo de cada producto publicado. Primero quita las
- * que hubiera, así pulsar el botón dos veces no las duplica. Devuelve
- * cuántas puso.
+ * Pone las reseñas de ejemplo de cada producto publicado; del que tiene
+ * marcas, las de cada marca. Primero quita las que hubiera, así pulsar el
+ * botón dos veces no las duplica. Devuelve cuántas puso.
  */
 export async function ponerResenasDeEjemplo(): Promise<number> {
   const productos = await filas<{ id: number; nombre: string }>("select id, nombre from productos where activo = 1 order by id");
+  const marcas = await filas<{ id: number; producto_id: number }>("select id, producto_id from variantes where activo = 1 order by id");
   return transaccion(async (tx) => {
     await tx.execute("delete from fotos_resenas where resena_id in (select id from resenas where de_ejemplo = 1)");
     await tx.execute("delete from resenas where de_ejemplo = 1");
     let puestas = 0;
     for (const producto of productos) {
-      for (const ejemplo of ejemplosPara(producto.nombre)) {
-        await tx.execute({
-          sql: "insert into resenas (producto_id, autor, detalle, texto, de_ejemplo) values (?, ?, ?, ?, 1)",
-          args: [producto.id, ejemplo.autor, ejemplo.detalle, ejemplo.texto],
-        });
-        puestas++;
+      const suyas = marcas.filter((m) => m.producto_id === producto.id).map((m) => m.id);
+      for (const varianteId of suyas.length > 0 ? suyas : [null]) {
+        for (const ejemplo of ejemplosPara(producto.nombre)) {
+          await tx.execute({
+            sql: "insert into resenas (producto_id, variante_id, autor, detalle, texto, de_ejemplo) values (?, ?, ?, ?, ?, 1)",
+            args: [producto.id, varianteId, ejemplo.autor, ejemplo.detalle, ejemplo.texto],
+          });
+          puestas++;
+        }
       }
     }
     return puestas;

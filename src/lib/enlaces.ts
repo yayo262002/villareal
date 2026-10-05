@@ -20,7 +20,13 @@ export function rutaProducto(producto: { id: number; nombre: string }): string {
   return `/producto/${producto.id}${slug ? `-${slug}` : ""}`;
 }
 
-/** El número del producto de una dirección, o null si no empieza por un número. */
+/** La de una marca o presentación, dentro de la de su producto: `/producto/1-queso-amarillo/2-kemmental`. */
+export function rutaVariante(producto: { id: number; nombre: string }, variante: { id: number; nombre: string }): string {
+  const slug = aSlug(variante.nombre);
+  return `${rutaProducto(producto)}/${variante.id}${slug ? `-${slug}` : ""}`;
+}
+
+/** El número del producto (o de la marca) de una dirección, o null si no empieza por un número. */
 export function idDeRuta(segmento: string): number | null {
   const numero = segmento.match(/^(\d+)(?:-|$)/)?.[1];
   if (!numero) return null;

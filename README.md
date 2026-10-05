@@ -1,9 +1,11 @@
 # Comercializadora Villareal
 
-Web y sistema de gestión para un local de quesos en Barquisimeto, Venezuela:
-queso amarillo, mozzarella, pecorino rallado, huevos y lo que se vaya
-añadiendo. Vende solo al mayor: a pizzerías, panaderías, restaurantes y
-bodegas.
+Web y sistema de gestión para un local de insumos al mayor en Barquisimeto,
+Venezuela: queso amarillo, mozzarella, pecorino rallado, huevos, suero de
+leche y lo que se vaya añadiendo (embutidos, cosas para hamburguesas). Vende
+solo al mayor: a pizzerías, panaderías, hamburgueserías, restaurantes y
+bodegas. Por eso la web no dice «quesos y huevos» sino «insumos al mayor»
+(`lema` en `src/config/negocio.ts`).
 
 Tiene dos partes:
 
@@ -127,7 +129,8 @@ src/lib/ventas.ts         Ventas con sus líneas de producto
 src/lib/pagos.ts          Pagos: método, moneda, tasa, equivalente en USD
 src/lib/ajustes.ts        La tasa del día y los demás ajustes
 src/lib/tasa.ts           Cuándo se acepta una tasa que llega de fuera
-src/lib/tasa-oficial.ts   Trae la tasa del BCV
+src/lib/tasa-oficial.ts   Trae la tasa del BCV (el fin de semana, la del lunes, de la página del BCV)
+src/lib/certificado-bcv.ts  El intermedio que la página del BCV no manda, para comprobar su certificado
 src/lib/intentos.ts       Freno a quien pruebe claves en la entrada del panel
 src/lib/variantes.ts      Las marcas o presentaciones de un producto, con su foto
 src/lib/catalogo.ts       Qué precio publica un producto con marcas («desde») y las filas de la venta
@@ -180,7 +183,8 @@ scripts/prueba-extremo.mjs  La prueba de extremo a extremo, en local o contra la
 src/lib/sesion.ts         La clave del panel y la cookie
 src/proxy.ts              Corta el paso a /admin sin sesión
 src/app/page.tsx          La portada de la web pública
-src/app/producto/         La página de cada producto
+src/app/producto/         La página de cada producto, y dentro la de cada una de sus marcas
+src/components/como-comprar.tsx  «Cómo comprar», en la página del producto y en la de la marca
 src/components/publico.tsx  Cabecera, pie y cajas de precio de la web pública
 src/components/ilustracion-producto.tsx  El dibujo de un producto dentro de la página
 src/app/opengraph-image.tsx  La vista previa de la portada al compartirla
@@ -216,6 +220,19 @@ datos/                    La base de datos (fuera de Git)
   más de un 15 % por día de la tasa vigente, se deja la que había y el
   panel lo avisa. En Productos el dueño puede escribir la tasa a mano,
   traer la del BCV en el momento, o apagar la actualización automática.
+- **Los fines de semana vale la tasa del lunes**, como en los comercios:
+  el BCV la publica el viernes por la tarde («Fecha Valor: lunes») y con
+  ella no se pierde con la que sube el lunes. DolarApi sigue dando la del
+  viernes hasta el lunes, así que el sábado y el domingo la tasa se lee de
+  la página del BCV (`leerTasaDelBcv` en `src/lib/tasa.ts`). Su servidor
+  no manda el certificado intermedio que firmó el suyo; en vez de apagar la
+  comprobación, a esa petición se le da (`src/lib/certificado-bcv.ts`, el
+  público de Sectigo, vale hasta 2036). La web dice «Tasa BCV del lunes
+  05/10/2026», y un abono o una nota con fecha de sábado o domingo van con
+  la del lunes que les sigue (`tasaEnFecha`). Si la del lunes no se puede
+  leer, sigue la última y el panel lo avisa; una tasa puesta ese fin de
+  semana (la del lunes, o una escrita a mano) no se pisa con la del
+  viernes, y el lunes temprano tampoco.
 - Cada producto lleva sus **ventajas** (una por línea) y tiene su **propia
   página** en la web, `/producto/2-queso-mozzarella`: dibujo grande,
   precios, ventajas, cómo se paga y dónde está la tienda. En la portada
@@ -243,10 +260,21 @@ datos/                    La base de datos (fuera de Git)
   ven del mismo tamaño y el producto llena su foto. En la web se enseña sin
   su fondo blanco (se funde con el fondo de la página): conviene
   fotografiar los paquetes sobre fondo blanco o muy claro.
+- **Cada marca tiene su página** (`/producto/1-queso-amarillo/2-kemmental`):
+  se llega pinchando su foto, su nombre o «Ver detalles» en la página del
+  producto. Enseña su foto grande, su precio, su botón de pedir, **su
+  propia descripción** (una ventaja por línea; la primera sale también en
+  la lista de marcas del producto), **sus reseñas** y las otras marcas. La
+  portada nunca enseña marcas: solo el producto («Suero de leche», no
+  «Suero Guaralact»).
 - **Reseñas.** En la página de cada producto, «Por qué elegirlo» enseña
   primero lo que dicen los negocios que lo compran y después las ventajas.
   Las reseñas solo se ven dentro de la página del producto: la portada no
-  enseña ninguna.
+  enseña ninguna. **De un producto con marcas, cada reseña es de una
+  marca** (`resenas.variante_id`) y sale en la página de esa marca: dos
+  marcas son dos productos distintos y lo que se dice de una no vale para
+  la otra. En el panel, la reseña se escribe eligiendo el producto o la
+  marca, y cada marca tiene su «Pedir reseña por WhatsApp».
   El dueño le pide el comentario al cliente y lo escribe en el panel, en
   Reseñas, con las palabras del cliente: producto, quién lo dice, qué
   negocio es y qué dijo. Una reseña se puede esconder sin borrarla.
@@ -274,7 +302,8 @@ datos/                    La base de datos (fuera de Git)
   - Las reseñas no van en los datos para buscadores: Google no acepta las
     que un negocio recoge sobre sí mismo.
 - El **dibujo** de cada producto se elige por su nombre (queso, mozzarella,
-  rallado, curado, huevos) en `src/lib/dibujos.ts`. Un producto que no
+  rallado, curado, huevos, suero: una bolsa de suero atada) en
+  `src/lib/dibujos.ts`. Un producto que no
   encaje lleva un dibujo genérico.
 - **Precios de ejemplo.** Si en `ajustes` está la clave
   `precios_de_ejemplo`, el panel avisa en rojo arriba de Productos de que

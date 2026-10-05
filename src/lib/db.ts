@@ -99,6 +99,7 @@ async function migrar(cliente: Client): Promise<void> {
   }
   if (!clientes.includes("enlace")) await añadirColumna(cliente, "clientes", "enlace text");
   if (!(await definicionDe(cliente, "adjuntos")).includes("pago_id")) await añadirColumna(cliente, "adjuntos", "pago_id integer references pagos(id)");
+  if (!(await definicionDe(cliente, "resenas")).includes("variante_id")) await añadirColumna(cliente, "resenas", "variante_id integer references variantes(id)");
   // El historial de tasas empieza con las que ya quedaron guardadas en los abonos y las notas de antes.
   const tasas = await cliente.execute("select count(*) as n from tasas");
   if (Number(tasas.rows[0]?.n ?? 0) === 0) {
