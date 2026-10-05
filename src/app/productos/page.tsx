@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { negocio } from "@/config/negocio";
-import { buscarEnLaVitrina, vitrina } from "@/lib/vitrina";
+import { buscarEnLaVitrina, deLasMarcas, marcasDeLaLista, vitrina, type ProductoDeVitrina } from "@/lib/vitrina";
+import { marcasDelFiltro } from "@/lib/marcas-texto";
 import { CabeceraPublica, LineaTasa, PiePublico } from "@/components/publico";
-import { ChipsDeFamilias, EncabezadoDePagina, NotaDePrecios, PaginaDeVitrina, RejillaDeProductos, SinProductos } from "@/components/vitrina";
+import { ChipsDeFamilias, EncabezadoDePagina, FiltroDeMarcas, NotaDePrecios, PaginaDeVitrina, RejillaDeProductos, SinProductos } from "@/components/vitrina";
 import estilos from "@/components/vitrina.module.css";
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/productos" },
 };
 
-type Parametros = { searchParams: Promise<{ q?: string | string[] }> };
+type Parametros = { searchParams: Promise<{ q?: string | string[]; marca?: string | string[] }> };
 
 /**
  * Todos los productos publicados, con su precio de hoy y su «Agregar», las
@@ -21,11 +22,13 @@ type Parametros = { searchParams: Promise<{ q?: string | string[] }> };
  * se dice, y se ofrece preguntarlo por WhatsApp.
  */
 export default async function PaginaProductos({ searchParams }: Parametros) {
-  const { q } = await searchParams;
+  const { q, marca } = await searchParams;
   const busqueda = (Array.isArray(q) ? q[0] : (q ?? "")).trim().slice(0, 80);
+  const elegidas = marcasDelFiltro(marca);
   const v = await vitrina();
   const tasa = v.tasa?.valor ?? null;
-  const lista = busqueda ? buscarEnLaVitrina(v, busqueda) : v.productos;
+  const encontrados = busqueda ? buscarEnLaVitrina(v, busqueda) : v.productos;
+  const lista = encontrados.map((p) => deLasMarcas(p, elegidas)).filter((p): p is ProductoDeVitrina => p !== null);
 
   return (
     <>
@@ -53,6 +56,7 @@ export default async function PaginaProductos({ searchParams }: Parametros) {
             </button>
           </form>
           <ChipsDeFamilias familias={v.familias} actual={busqueda ? "" : null} />
+          <FiltroDeMarcas marcas={marcasDeLaLista(encontrados)} elegidas={elegidas} accion="/productos" conservar={busqueda ? { q: busqueda } : {}} />
           {lista.length === 0 ? (
             <SinProductos
               texto={busqueda ? `No encontramos «${busqueda}» en la web. Pregúntanos: puede que lo tengamos o que lo consigamos.` : "Todavía no hay productos publicados."}
@@ -61,7 +65,7 @@ export default async function PaginaProductos({ searchParams }: Parametros) {
           ) : (
             <>
               <RejillaDeProductos items={lista} tasa={tasa} />
-              <NotaDePrecios hayTasa={tasa !== null} />
+              <NotaDePrecios hayTasa={tasa !== null} items={lista} />
             </>
           )}
         </section>

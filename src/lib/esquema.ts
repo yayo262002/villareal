@@ -102,13 +102,28 @@ export const ESQUEMA = `
     precio_detal_usd real,
     destacado integer not null default 0,
     en_oferta integer not null default 0,
+    creado_en text not null default (datetime('now')),
+    -- La marca, si se vende de una sola sin separarla (marca repite su nombre),
+    -- y la sección en que sale dentro de su familia («Proteínas» en Burger).
+    marca_id integer references marcas(id),
+    seccion text not null default ''
+  );
+
+  -- Las marcas: Guaralact, Kemmental, El Legado… Una marca puede vender
+  -- varios tipos de producto (suero y crema de leche). Se crean desde el
+  -- panel al escribirlas por primera vez.
+  create table if not exists marcas (
+    id integer primary key autoincrement,
+    nombre text not null collate nocase unique,
     creado_en text not null default (datetime('now'))
   );
 
-  -- Las marcas o presentaciones en que se vende un producto (queso amarillo
-  -- Kemmental y El Legado; pecorino Sortilegio y Guaralac de 500 g). Cada
-  -- una con su costo, sus precios y su foto. La web publica «desde» la más
-  -- barata y la página del producto las enseña todas.
+  -- Los artículos de un tipo de producto: cada marca y presentación en que
+  -- se vende (queso amarillo Kemmental y El Legado; pecorino Sortilegio y
+  -- Guaralac en bolsa de 500 g). Cada uno con su marca, su presentación, su
+  -- contenido, su costo, su precio y su foto. El nombre es el que dicen las
+  -- notas («Sortilegio 500 g») y sale de lo demás al guardar. La web publica
+  -- «desde» el más barato y la página del tipo los enseña todos.
   create table if not exists variantes (
     id integer primary key autoincrement,
     producto_id integer not null references productos(id),
@@ -118,7 +133,10 @@ export const ESQUEMA = `
     precio_usd real,
     precio_mayor_usd real,
     activo integer not null default 1,
-    creado_en text not null default (datetime('now'))
+    creado_en text not null default (datetime('now')),
+    marca_id integer references marcas(id),
+    presentacion text not null default '',
+    contenido text not null default ''
   );
 
   create table if not exists fotos_variantes (
@@ -153,10 +171,12 @@ export const ESQUEMA = `
     actualizado_en text not null default (datetime('now'))
   );
 
-  -- Las otras familias en que sale un producto, además de la principal.
+  -- Las otras familias en que sale un producto, además de la principal, y la
+  -- sección en que sale en cada una (vacía: la de su familia principal).
   create table if not exists producto_categorias (
     producto_id integer not null references productos(id),
     familia_id integer not null references familias(id),
+    seccion text not null default '',
     primary key (producto_id, familia_id)
   );
 
@@ -409,6 +429,7 @@ export const ESQUEMA = `
 /** Las tablas en orden de dependencias, para copiar o restaurar en orden. */
 export const TABLAS = [
   "clientes",
+  "marcas",
   "familias",
   "fotos_familias",
   "productos",

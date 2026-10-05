@@ -3,7 +3,8 @@ import { createClient, type Client, type InValue, type Transaction } from "@libs
 import path from "node:path";
 import fs from "node:fs";
 import { ESQUEMA, PRODUCTOS_INICIALES, RECONSTRUIR_PRODUCTOS, RENOMBRES } from "./esquema";
-import { FAMILIAS_INICIALES, familiasPorNombre } from "./catalogo-inicial";
+import { BORRADORES, FAMILIAS_INICIALES, familiasPorNombre, mismoNombre } from "./catalogo-inicial";
+import { limpiarTexto, separarMarcaYContenido } from "./marcas-texto";
 
 /**
  * Conexión a la base de datos con el cliente de libsql, que habla el mismo
@@ -135,11 +136,32 @@ async function migrar(cliente: Client): Promise<void> {
     ["precio_detal_usd", "precio_detal_usd real"],
     ["destacado", "destacado integer not null default 0"],
     ["en_oferta", "en_oferta integer not null default 0"],
+    ["marca_id", "marca_id integer references marcas(id)"],
+    ["seccion", "seccion text not null default ''"],
   ] as const) {
     if (!new RegExp(`\\b${columna}\\b`).test(deProductos)) await añadirColumna(cliente, "productos", definicion);
   }
   await cliente.execute("create index if not exists productos_familia on productos(familia_id)");
+  if (!/\bseccion\b/.test(await definicionDe(cliente, "producto_categorias"))) {
+    await añadirColumna(cliente, "producto_categorias", "seccion text not null default ''");
+  }
+  // Las marcas como algo propio: cada artículo con su marca, su presentación y su contenido.
+  if (!/\bmarca_id\b/.test(await definicionDe(cliente, "variantes"))) {
+    await añadirColumna(cliente, "variantes", "marca_id integer references marcas(id)");
+    await añadirColumna(cliente, "variantes", "presentacion text not null default ''");
+    await añadirColumna(cliente, "variantes", "contenido text not null default ''");
+  }
+  // Una sola vez, y queda anotado en los ajustes (una copia hecha con el código nuevo ya trae las columnas, vacías):
+  // los artículos de antes, que tenían marca y tamaño en un solo nombre («Sortilegio 500 g»), con los dos separados
+  // (el nombre que dicen las notas no cambia), y las secciones del catálogo inicial en lo que ya estaba preparado.
+  if (!(await cliente.execute("select 1 from ajustes where clave = 'catalogo_por_marcas'")).rows.length) {
+    await separarMarcasDeLosArticulos(cliente);
+    await ponerSeccionesDelCatalogo(cliente);
+    await cliente.execute("insert or ignore into ajustes (clave, valor) values ('catalogo_por_marcas', '1')");
+  }
+  await enlazarMarcasDeLosProductos(cliente);
   // Las familias iniciales, la primera vez. Si dos procesos lo intentan a la vez, el slug único evita duplicarlas.
+  // (Las que se añadan al código después no se crean solas en una base que ya tiene familias: las crea el dueño.)
   const familias = await cliente.execute("select count(*) as n from familias");
   if (Number(familias.rows[0]?.n ?? 0) === 0) {
     for (const f of FAMILIAS_INICIALES) {
@@ -148,6 +170,63 @@ async function migrar(cliente: Client): Promise<void> {
         args: [f.nombre, f.slug, f.descripcion, f.icono, f.orden],
       });
     }
+  }
+}
+
+/**
+ * Las secciones del catálogo inicial (la tocineta, en Burger, en
+ * «Proteínas»; la carne de hamburguesa, en «Proteínas») a los productos que
+ * ya estaban preparados, por su nombre. Una sola vez, y solo donde no hay
+ * ninguna: después las pone el dueño.
+ */
+async function ponerSeccionesDelCatalogo(cliente: Client): Promise<void> {
+  const [productos, familias] = await Promise.all([
+    cliente.execute("select id, nombre, familia_id from productos"),
+    cliente.execute("select id, slug from familias"),
+  ]);
+  const idDe = new Map(familias.rows.map((f) => [String(f.slug), Number(f.id)]));
+  for (const b of BORRADORES) {
+    const p = productos.rows.find((x) => mismoNombre(String(x.nombre), b.nombre));
+    if (!p) continue;
+    if (b.seccion && Number(p.familia_id) === idDe.get(b.familia)) {
+      await cliente.execute({ sql: "update productos set seccion = ? where id = ? and seccion = ''", args: [b.seccion, p.id] });
+    }
+    for (const [slug, seccion] of Object.entries(b.secciones ?? {})) {
+      const familia = idDe.get(slug);
+      if (!familia) continue;
+      await cliente.execute({
+        sql: "update producto_categorias set seccion = ? where producto_id = ? and familia_id = ? and seccion = ''",
+        args: [seccion, p.id, familia],
+      });
+    }
+  }
+}
+
+/** El id de una marca por su nombre, creándola si no está. El nombre único (sin mirar mayúsculas) evita duplicarla. */
+async function idDeMarca(cliente: Client, nombre: string): Promise<number | null> {
+  const limpio = limpiarTexto(nombre);
+  if (!limpio) return null;
+  await cliente.execute({ sql: "insert or ignore into marcas (nombre) values (?)", args: [limpio] });
+  const r = await cliente.execute({ sql: "select id from marcas where nombre = ?", args: [limpio] });
+  return r.rows[0] ? Number(r.rows[0].id) : null;
+}
+
+/** Una vez: cada artículo de antes con su marca y su contenido separados. Uno que ya tiene marca no se toca. */
+async function separarMarcasDeLosArticulos(cliente: Client): Promise<void> {
+  const viejos = await cliente.execute("select id, nombre from variantes where marca_id is null and presentacion = '' and contenido = ''");
+  for (const v of viejos.rows) {
+    const { marca, contenido } = separarMarcaYContenido(String(v.nombre ?? ""));
+    const id = await idDeMarca(cliente, marca);
+    if (id) await cliente.execute({ sql: "update variantes set marca_id = ?, contenido = ? where id = ? and marca_id is null", args: [id, contenido, v.id] });
+  }
+}
+
+/** Un producto que se vende de una sola marca, escrita a mano, queda enlazado a esa marca. No hace nada si ya lo están todos. */
+async function enlazarMarcasDeLosProductos(cliente: Client): Promise<void> {
+  const sueltos = await cliente.execute("select id, marca from productos where marca_id is null and trim(marca) != ''");
+  for (const p of sueltos.rows) {
+    const id = await idDeMarca(cliente, String(p.marca ?? ""));
+    if (id) await cliente.execute({ sql: "update productos set marca_id = ? where id = ? and marca_id is null", args: [id, p.id] });
   }
 }
 

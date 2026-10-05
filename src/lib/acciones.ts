@@ -43,6 +43,7 @@ import {
   ponerCategorias,
   ponerEstado,
   quitarFotoDeProducto,
+  seccionesDeProducto,
   type DatosProducto,
   type PreciosProducto,
   type Producto,
@@ -85,9 +86,11 @@ import {
   eliminarVariante,
   guardarFotoDeVariante,
   listarVariantes,
+  pasarAArticulo,
   quitarFotoDeVariante,
   type DatosVariante,
 } from "./variantes";
+import { buscarMarca, eliminarMarca, marcaPorNombre, renombrarMarca, unirMarcas } from "./marcas";
 import { claveDe, esEstadoDeProducto, estadoDeProducto, nombreDeVenta, vendiblesDe, type EstadoProducto } from "./catalogo";
 import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
@@ -150,7 +153,9 @@ function numero(datos: FormData, campo: string): number | null {
 
 /** La ruta con el aviso añadido, tenga ya parámetros o no. */
 function conAviso(ruta: string, clave: "ok" | "error", mensaje: string): string {
-  return `${ruta}${ruta.includes("?") ? "&" : "?"}${clave}=${encodeURIComponent(mensaje)}`;
+  // El aviso va antes del «#»: lo que va detrás no llega al servidor.
+  const [camino, ancla] = ruta.split("#", 2);
+  return `${camino}${camino.includes("?") ? "&" : "?"}${clave}=${encodeURIComponent(mensaje)}${ancla ? `#${ancla}` : ""}`;
 }
 
 function volverConError(ruta: string, mensaje: string): never {
@@ -822,7 +827,8 @@ function leerPrecios(datos: FormData, volver: (mensaje: string) => never): Preci
   for (const valor of Object.values(precios)) {
     if (valor !== null && valor < 0) volver("Costo, margen y precio no pueden ser negativos.");
   }
-  if (precios.costo_usd === null && precios.margen_pct !== null) {
+  // Con marcas, el margen es para sacar el precio de cada una de su costo: el tipo no necesita costo propio.
+  if (precios.costo_usd === null && precios.margen_pct !== null && texto(datos, "precios_de") !== "marcas") {
     volver("Para usar un margen hace falta el costo. Escríbelo, o pon el precio de venta a mano.");
   }
   return precios;
@@ -856,6 +862,7 @@ const CAMPOS_DEL_PRODUCTO = [
   "nueva_familia_descripcion",
   "nueva_familia_icono",
   "nueva_familia_orden",
+  "seccion",
 ];
 
 /** Lo escrito en el formulario de producto, para que vuelva relleno: `relleno` dice que lo de la dirección manda. */
@@ -866,6 +873,7 @@ function escritoDelProducto(datos: FormData): URLSearchParams {
     if (valor) escrito.set(campo, valor);
   }
   for (const categoria of datos.getAll("categoria")) if (typeof categoria === "string" && categoria) escrito.append("categoria", categoria);
+  for (const [campo, valor] of datos.entries()) if (campo.startsWith("seccion_") && typeof valor === "string" && valor.trim()) escrito.set(campo, valor);
   escrito.set("relleno", "1");
   return escrito;
 }
@@ -903,17 +911,28 @@ async function crearFamiliaDesdeElProducto(datos: FormData, origen: string): Pro
   volverConExito(`${origen}?${escrito.toString()}`, `Familia «${nombre}» creada y elegida.${aviso} Sigue con el producto y guárdalo.`);
 }
 
-type FormularioDeProducto = { datos: DatosProducto; estado: EstadoProducto; categorias: number[] | null; existencia: number | null };
+type FormularioDeProducto = {
+  datos: DatosProducto;
+  estado: EstadoProducto;
+  categorias: number[] | null;
+  /** La sección en cada otra familia, si el formulario las trae. */
+  secciones: Map<number, string> | null;
+  existencia: number | null;
+  /** Si la marca escrita no existía y se acaba de crear. */
+  marcaNueva: string | null;
+};
 
 /**
  * Lee el formulario de un producto. El formulario entero lleva
  * `formulario=completo`: entonces una casilla sin marcar es un «no» y la
- * familia es obligatoria. Uno que solo trae algunos campos (cambiar el
- * precio) deja los demás como estaban.
+ * familia es obligatoria. Un campo de texto que no viene se deja como
+ * estaba: así sirve el mismo destino para cambiar solo el precio, y un
+ * campo que el formulario no enseña (la marca de un producto con varias)
+ * no se borra.
  */
 async function leerFormularioDeProducto(datos: FormData, actual: Producto | null, volver: (mensaje: string) => never): Promise<FormularioDeProducto> {
   const completo = texto(datos, "formulario") === "completo";
-  const viene = (campo: string) => completo || datos.has(campo);
+  const viene = (campo: string) => datos.has(campo) || (completo && !actual);
   const nombre = viene("nombre") ? texto(datos, "nombre") : (actual?.nombre ?? "");
   if (!nombre) volver("El nombre es obligatorio.");
   const precios = datos.has("costo_usd") || datos.has("precio_usd") ? leerPrecios(datos, volver) : (actual ?? { costo_usd: null, margen_pct: null, precio_usd: null });
@@ -921,10 +940,25 @@ async function leerFormularioDeProducto(datos: FormData, actual: Producto | null
   if (detal !== null && detal < 0) volver("El precio al detal no puede ser negativo.");
   const familia = viene("familia_id") ? numero(datos, "familia_id") : (actual?.familia_id ?? null);
   if (completo && (!familia || !(await buscarFamilia(familia)))) volver("Elige a qué familia pertenece el producto.");
+  const categorias = completo ? datos.getAll("categoria").map(Number).filter((n) => Number.isSafeInteger(n) && n > 0) : null;
+  // La sección en cada otra familia: la escrita, o la que tenía si el formulario no la trae.
+  let secciones: Map<number, string> | null = null;
+  if (categorias) {
+    const antes = actual ? await seccionesDeProducto(actual.id) : new Map<number, string>();
+    secciones = new Map(categorias.map((f) => [f, datos.has(`seccion_${f}`) ? texto(datos, `seccion_${f}`) : (antes.get(f) ?? "")]));
+  }
   const estadoEscrito = texto(datos, "estado");
   const estado: EstadoProducto = esEstadoDeProducto(estadoEscrito) ? estadoEscrito : actual ? estadoDeProducto(actual) : "activo";
   const existencia = numero(datos, "existencia");
   if (existencia !== null && (existencia < 0 || existencia > KILOS_MAXIMOS * 100)) volver("Revisa la existencia: lo que contaste, en kilos o unidades.");
+  // La marca escrita es una de la lista o una nueva, que se crea aquí: ya no hay nada más que revisar.
+  let marca = { nombre: actual?.marca ?? "", id: actual?.marca_id ?? null };
+  let marcaNueva: string | null = null;
+  if (datos.has("marca")) {
+    const elegida = await marcaPorNombre(texto(datos, "marca"));
+    marca = { nombre: elegida.marca?.nombre ?? "", id: elegida.marca?.id ?? null };
+    if (elegida.nueva && elegida.marca) marcaNueva = elegida.marca.nombre;
+  }
   return {
     datos: {
       nombre,
@@ -935,22 +969,26 @@ async function leerFormularioDeProducto(datos: FormData, actual: Producto | null
       precio_usd: precios.precio_usd,
       precio_detal_usd: detal,
       familia_id: familia,
-      marca: viene("marca") ? texto(datos, "marca") : (actual?.marca ?? ""),
+      marca: marca.nombre,
+      marca_id: marca.id,
+      seccion: viene("seccion") ? texto(datos, "seccion") : (actual?.seccion ?? ""),
       presentacion: viene("presentacion") ? texto(datos, "presentacion") : (actual?.presentacion ?? ""),
       contenido: viene("contenido") ? texto(datos, "contenido") : (actual?.contenido ?? ""),
       destacado: completo ? texto(datos, "destacado") === "1" : Boolean(actual?.destacado),
       en_oferta: completo ? texto(datos, "en_oferta") === "1" : Boolean(actual?.en_oferta),
     },
     estado,
-    categorias: completo ? datos.getAll("categoria").map(Number).filter((n) => Number.isSafeInteger(n) && n > 0) : null,
+    categorias,
+    secciones,
     existencia,
+    marcaNueva,
   };
 }
 
 /** Lo que va después de guardar el producto: sus otras familias, su foto y, si se escribió, la existencia contada. */
 async function despuesDeGuardar(id: number, formulario: FormularioDeProducto, datos: FormData): Promise<string> {
-  if (formulario.categorias) await ponerCategorias(id, formulario.categorias, formulario.datos.familia_id);
-  let aviso = "";
+  if (formulario.categorias) await ponerCategorias(id, formulario.categorias, formulario.datos.familia_id, formulario.secciones ?? undefined);
+  let aviso = formulario.marcaNueva ? ` Marca «${formulario.marcaNueva}» creada.` : "";
   const foto = archivoDe(datos, "foto");
   if (foto) {
     try {
@@ -984,7 +1022,10 @@ export async function guardarProducto(datos: FormData): Promise<void> {
   const formulario = await leerFormularioDeProducto(datos, null, volver);
   const id = await crearProducto(formulario.datos, formulario.estado);
   const aviso = await despuesDeGuardar(id, formulario, datos);
-  volverConExito(`/admin/productos/${id}`, `Producto «${formulario.datos.nombre}» creado ${DESPUES_DE_CREAR[formulario.estado]}.${aviso}`);
+  volverConExito(
+    `/admin/productos/${id}`,
+    `Producto «${formulario.datos.nombre}» creado ${DESPUES_DE_CREAR[formulario.estado]}.${aviso} Sus marcas y presentaciones se añaden abajo, en «Marcas y presentaciones».`,
+  );
 }
 
 /**
@@ -1041,22 +1082,38 @@ export async function prepararCatalogo(): Promise<void> {
   );
 }
 
-// ---------- Variantes: las marcas o presentaciones de un producto ----------
+// ---------- Artículos: cada marca y presentación de un tipo de producto ----------
 
-/** Nombre, descripción, costo y precios de una variante, del formulario. */
-function leerVariante(datos: FormData): DatosVariante {
-  const nombre = texto(datos, "nombre");
-  if (!nombre) volverConError("/admin/productos", "La marca o presentación necesita un nombre («Kemmental», «Sortilegio 500 g»).");
-  const variante: DatosVariante = {
-    nombre,
-    descripcion: texto(datos, "descripcion"),
-    costo_usd: numero(datos, "costo_usd"),
-    precio_usd: numero(datos, "precio_usd"),
-  };
-  for (const valor of [variante.costo_usd, variante.precio_usd]) {
-    if (valor !== null && valor < 0) volverConError("/admin/productos", "Costo y precios no pueden ser negativos.");
+/**
+ * Marca, presentación, contenido, descripción, costo y precio de un
+ * artículo, del formulario. La marca es una de la lista o una nueva, que
+ * se crea al guardar; hace falta la marca o la presentación.
+ */
+async function leerVariante(datos: FormData, origen: string): Promise<{ variante: DatosVariante; marcaNueva: string | null }> {
+  const escrita = texto(datos, "marca");
+  const presentacion = texto(datos, "presentacion");
+  const contenido = texto(datos, "contenido");
+  if (!escrita && !presentacion && !contenido) {
+    volverConError(origen, "Escribe la marca (o elígela de la lista), la presentación o las dos: «Guaralact», «Bolsa de 1 kg».");
   }
-  return variante;
+  const costo = numero(datos, "costo_usd");
+  const precio = numero(datos, "precio_usd");
+  for (const valor of [costo, precio]) {
+    if (valor !== null && valor < 0) volverConError(origen, "Costo y precios no pueden ser negativos.");
+  }
+  const { marca, nueva } = await marcaPorNombre(escrita);
+  return {
+    variante: {
+      marca_id: marca?.id ?? null,
+      marca: marca?.nombre ?? "",
+      presentacion,
+      contenido,
+      descripcion: texto(datos, "descripcion"),
+      costo_usd: costo,
+      precio_usd: precio,
+    },
+    marcaNueva: nueva && marca ? marca.nombre : null,
+  };
 }
 
 /** La foto de una variante, si viene en el formulario. */
@@ -1071,15 +1128,33 @@ async function ponerFotoDeVariante(datos: FormData, varianteId: number): Promise
   }
 }
 
+/**
+ * Añade un artículo (una marca o presentación) a un tipo de producto. Si el
+ * tipo se vendía hasta ahora sin separar artículos, lo que vendía pasa
+ * antes a la lista (`pasarAArticulo`): así no desaparece de la web. Desde
+ * «Agregar producto», el formulario trae también las otras categorías del
+ * tipo, que se guardan con él.
+ */
 export async function guardarVariante(datos: FormData): Promise<void> {
   await exigirSesion();
   const productoId = numero(datos, "producto_id");
   const producto = productoId ? await buscarProducto(productoId) : null;
   if (!productoId || !producto) volverConError("/admin/productos", "No se encontró el producto.");
-  const variante = leerVariante(datos);
+  const origen = volverA(datos, `/admin/productos/${producto.id}`);
+  const { variante, marcaNueva } = await leerVariante(datos, origen);
+  const pasado = await pasarAArticulo(producto);
   const id = await crearVariante(producto, variante);
   const foto = await ponerFotoDeVariante(datos, id);
-  volverConExito(`/admin/productos/${producto.id}`, `«${variante.nombre}» añadida a ${producto.nombre}.${foto} La web ya la enseña.`);
+  if (texto(datos, "categorias_del_tipo") === "1") {
+    const categorias = datos.getAll("categoria").map(Number).filter((n) => Number.isSafeInteger(n) && n > 0);
+    await ponerCategorias(producto.id, categorias, producto.familia_id);
+  }
+  const etiqueta = nombreDeVenta(producto.nombre, (await buscarVariante(id))?.nombre);
+  const antes = pasado ? ` Lo que ya vendías de ${producto.nombre} pasó a la lista como un artículo más.` : "";
+  volverConExito(
+    `/admin/productos/${producto.id}#marcas`,
+    `«${etiqueta}» añadido.${marcaNueva ? ` Marca «${marcaNueva}» creada.` : ""}${foto}${antes} La web ya lo enseña dentro de ${producto.nombre}.`,
+  );
 }
 
 export async function editarVariante(datos: FormData): Promise<void> {
@@ -1088,10 +1163,47 @@ export async function editarVariante(datos: FormData): Promise<void> {
   const variante = id ? await buscarVariante(id) : null;
   const producto = variante ? await buscarProducto(variante.producto_id) : null;
   if (!id || !variante || !producto) volverConError("/admin/productos", "No se encontró la marca o presentación.");
-  const nueva = leerVariante(datos);
+  const { variante: nueva, marcaNueva } = await leerVariante(datos, `/admin/productos/${producto.id}`);
   await actualizarVariante(id, producto, nueva);
   const foto = await ponerFotoDeVariante(datos, id);
-  volverConExito(`/admin/productos/${producto.id}`, `«${producto.nombre} ${nueva.nombre}» guardada.${foto}`);
+  const etiqueta = nombreDeVenta(producto.nombre, (await buscarVariante(id))?.nombre);
+  volverConExito(`/admin/productos/${producto.id}#marcas`, `«${etiqueta}» guardado.${marcaNueva ? ` Marca «${marcaNueva}» creada.` : ""}${foto}`);
+}
+
+// ---------- Marcas ----------
+
+export async function cambiarNombreDeMarca(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const marca = id ? await buscarMarca(id) : null;
+  if (!id || !marca) volverConError("/admin/marcas", "No se encontró la marca.");
+  const nombre = texto(datos, "nombre");
+  const resultado = await renombrarMarca(id, nombre);
+  if (resultado === "vacio") volverConError("/admin/marcas", "Escribe el nombre de la marca.");
+  if (resultado === "ya_existe") volverConError("/admin/marcas", `Ya hay una marca «${nombre}». Si es la misma, únelas.`);
+  volverConExito("/admin/marcas", `«${marca.nombre}» ahora se llama «${nombre.trim()}», también en sus artículos.`);
+}
+
+/** Une dos marcas que son la misma (por una errata): todo lo de una pasa a la otra. */
+export async function juntarMarcas(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const destino = numero(datos, "destino");
+  const [marca, otra] = await Promise.all([id ? buscarMarca(id) : null, destino ? buscarMarca(destino) : null]);
+  if (!id || !destino || !marca || !otra) volverConError("/admin/marcas", "Elige con qué marca unirla.");
+  const resultado = await unirMarcas(id, destino);
+  if (resultado === "misma") volverConError("/admin/marcas", "Es la misma marca.");
+  volverConExito("/admin/marcas", `«${marca.nombre}» unida a «${otra.nombre}»: sus artículos ya dicen «${otra.nombre}».`);
+}
+
+export async function borrarMarca(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const marca = id ? await buscarMarca(id) : null;
+  if (!id || !marca) volverConError("/admin/marcas", "No se encontró la marca.");
+  const resultado = await eliminarMarca(id);
+  if (resultado === "en_uso") volverConError("/admin/marcas", `«${marca.nombre}» todavía tiene artículos: cámbialos de marca o únela con otra.`);
+  volverConExito("/admin/marcas", `Marca «${marca.nombre}» borrada.`);
 }
 
 export async function alternarVariante(datos: FormData): Promise<void> {

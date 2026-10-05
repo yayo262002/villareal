@@ -30,8 +30,8 @@ export const metadata: Metadata = {
 const DESTACADOS_EN_PORTADA = 8;
 /** Cuántos combos enseña la portada; todos están en Ofertas. */
 const OFERTAS_EN_PORTADA = 3;
-/** Cuántas familias enseña la portada, en el orden del dueño: Burger, Pizzería, Quesos, Huevos, Embutidos, Salsas, Papas y Bebidas. */
-const FAMILIAS_EN_PORTADA = 8;
+/** Cuántas familias enseña la portada, en el orden del dueño: Burger, Pizzería, Quesos, Lácteos, Huevos, Embutidos, Salsas, Papas y Bebidas. */
+const FAMILIAS_EN_PORTADA = 9;
 
 /**
  * Los atajos de la foto de arriba, cada uno a su categoría (la tocineta, a
@@ -59,7 +59,7 @@ function atajosDe(familias: Familia[]): Atajo[] {
 /**
  * La portada: «Todo para tu burger & pizzería» sobre una foto oscura de
  * hamburguesa, pizza y papas, con los atajos a cada categoría; la franja
- * dorada de precios al mayor; las ocho familias principales con su foto;
+ * dorada de precios al mayor; las nueve familias principales con su foto;
  * los productos destacados con su foto, su precio y «Agregar»; los combos
  * vigentes; la franja de confianza; la llamada a quien monta su negocio y
  * dónde está la tienda. Sin marcas: cada marca sale al entrar en su

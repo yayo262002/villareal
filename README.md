@@ -136,7 +136,9 @@ src/lib/tasa.ts           Cuándo se acepta una tasa que llega de fuera
 src/lib/tasa-oficial.ts   Trae la tasa del BCV (el fin de semana, la del lunes, de la página del BCV)
 src/lib/certificado-bcv.ts  El intermedio que la página del BCV no manda, para comprobar su certificado
 src/lib/intentos.ts       Freno a quien pruebe claves en la entrada del panel
-src/lib/variantes.ts      Las marcas o presentaciones de un producto, con su foto
+src/lib/variantes.ts      Los artículos de un tipo de producto (marca, presentación, contenido), con su foto
+src/lib/marcas.ts         Las marcas: listar, renombrar, unir dos que son la misma y borrar la que no se usa
+src/lib/marcas-texto.ts   El nombre de un artículo («Guaralact bolsa de 1 kg»), el filtro por marca y las secciones de una categoría
 src/lib/catalogo.ts       Qué precio publica un producto con marcas («desde») y las filas de la venta; estados, presentación, ofertas vigentes
 src/lib/familias.ts       Las familias del catálogo, sus productos y su portada
 src/lib/catalogo-inicial.ts  Las familias iniciales, los borradores y los combos que pidió el dueño
@@ -153,7 +155,7 @@ src/app/productos/, categoria/, ofertas/, carrito/  Las páginas de la vitrina
 src/components/menu-movil.tsx  El menú del teléfono, que se cierra solo al cambiar de página
 public/portada/, public/familias/  Las fotos de comida de la portada y de las familias (CREDITOS.md)
 src/components/formulario-producto.tsx  El formulario completo de un producto, con «Crear nueva familia»
-src/components/marcas-producto.tsx  Las marcas de un producto, en su ficha del panel
+src/components/marcas-producto.tsx  Los artículos de un tipo, en su ficha del panel, y sus campos (también en «Agregar producto»)
 src/app/foto-producto/, foto-familia/  Sirven la foto de un producto y la portada de una familia
 src/app/foto-variante/    Sirve la foto de una marca a la web
 src/lib/fotos-referenciales.ts  La foto de referencia de cada producto por su nombre, mientras no tenga la suya
@@ -219,7 +221,7 @@ src/components/resenas.tsx  Las reseñas, como se ven en la página del producto
 src/app/foto-resena/      Sirve la foto de una reseña a la web
 src/components/entrada-foto.tsx  Reduce la foto en el teléfono antes de subirla
 src/components/nav-panel.tsx     El menú del panel, con la sección abierta marcada
-src/app/admin/            El panel (productos/nuevo y productos/[id], familias, ofertas…)
+src/app/admin/            El panel (productos/nuevo y productos/[id], marcas, familias, ofertas…)
 datos/                    La base de datos (fuera de Git)
 ```
 
@@ -262,21 +264,46 @@ datos/                    La base de datos (fuera de Git)
   foto arriba (la mitad de la tarjeta), el nombre, la presentación, el
   precio al mayor en bolívares bien grande con los dólares debajo («USD
   7,70 / kg»), «Agregar» y «Ver detalles».
-- **Marcas y presentaciones.** Un producto puede venderse de varias marcas
-  o en varios tamaños (queso amarillo Kemmental y El Legado; pecorino
-  Sortilegio y Guaralac en bolsa de 500 g). En Productos, cada producto
-  tiene «Marcas y presentaciones»: nombre, una línea para la web, costo y
-  precios (con el costo salen de los márgenes del producto) y una foto,
-  que el teléfono reduce antes de subir. La portada dice «desde» con el
-  precio más barato de las publicadas y cuántas hay; la página del
-  producto las enseña todas con su foto, su precio y su botón de pedir
-  (`src/lib/catalogo.ts`). Con dos o más marcas, la tarjeta no lleva
-  «Agregar» (sería pedir a ciegas): lleva «Ver opciones», que abre la lista
-  de marcas, y cada marca tiene su «Agregar» y su «Pedir por WhatsApp», con
-  su precio, para que el pedido diga cuál es. Mientras haya alguna publicada, los precios del
-  producto no se usan. En la venta sale una fila por cada marca, la nota la
-  nombra («Queso pecorino rallado Sortilegio 500 g») y el despacho carga
-  cada marca aparte. Una marca ya vendida no se borra, se esconde. La foto
+- **Familia → tipo → marca → presentación → precio.** El catálogo nunca
+  confunde el producto con la marca: el **tipo de producto** es lo que el
+  cliente busca («Queso amarillo / Cheddar», «Mozzarella», «Suero») y es
+  cada producto de Productos, con su familia; sus **artículos** son las
+  marcas y presentaciones en que se vende (`variantes`): cada uno con su
+  **marca** (una de la lista o una nueva, que se crea al escribirla), su
+  **presentación** («Bloque», «Bolsa») y su **peso o contenido** («1 kg»),
+  su precio y su foto. El nombre del artículo sale de ahí («Sortilegio
+  500 g», «Guaralact bolsa de 1 kg», `src/lib/marcas-texto.ts`). La marca
+  va siempre debajo del tipo: «Marca Guaralact», nunca en su lugar.
+  - **Las marcas** son algo propio (tabla `marcas`, `src/lib/marcas.ts`):
+    en Productos → «Marcas» (`/admin/marcas`) se ve cuántos artículos
+    tiene cada una y en qué tipos, se renombra (una errata: cambia también
+    sus artículos y las notas que los nombran), se **une** con otra que es
+    la misma y se borra la que ya no tiene nada. Dos marcas escritas con
+    otras mayúsculas son la misma («guaralact» y «Guaralact»).
+  - Un tipo que se vende de **una sola forma** lleva el precio, la marca y
+    la presentación en su propia ficha (la mozzarella, en bloque cuadrado,
+    por kilo). Al añadirle la primera marca, lo que ya vendía **pasa a la
+    lista como un artículo más**, con su precio, su foto y lo que había en
+    inventario (`pasarAArticulo`): no se pierde nada.
+  - En Productos, cada tipo tiene «Marcas y presentaciones» con sus
+    artículos: marca, presentación, contenido, descripción (una línea por
+    ventaja), costo y precio (con el costo salen del margen del tipo) y una
+    foto, que el teléfono reduce antes de subir. La tarjeta del tipo dice
+    «desde» con el precio más barato y «2 marcas para elegir»; con dos o
+    más no lleva «Agregar» (sería pedir a ciegas) sino «Ver opciones», y
+    en la página del tipo cada artículo tiene su «Agregar» y su «Pedir por
+    WhatsApp», con su precio, para que el pedido diga cuál es. Con un solo
+    artículo (el suero, de Guaralact) se pide directo desde arriba, como
+    sin marcas. Mientras haya alguno publicado, los precios del tipo no se
+    usan (`src/lib/catalogo.ts`).
+  - **Filtrar por marca.** En cada categoría, en Productos y en la página
+    de un tipo con tres marcas o más, «Filtrar por marca» (casillas, sin
+    JavaScript: `?marca=guaralact`) deja los tipos que se venden de esas
+    marcas, cada uno solo con ellas. El cliente busca primero lo que
+    necesita y después elige la marca.
+  - En la venta sale una fila por cada artículo, la nota lo nombra («Queso
+    pecorino rallado Sortilegio 500 g») y el despacho carga cada uno
+    aparte. Un artículo ya vendido no se borra, se esconde. La foto
   se sirve en `/foto-variante/[id]` solo mientras la marca y el producto
   estén publicados. Al guardarla se recorta el fondo liso que sobre, se
   centra el producto en un cuadrado de 800 px con un poco de aire y se
@@ -284,13 +311,14 @@ datos/                    La base de datos (fuera de Git)
   ven del mismo tamaño y el producto llena su foto. En la web se enseña sin
   su fondo blanco (se funde con el fondo de la página): conviene
   fotografiar los paquetes sobre fondo blanco o muy claro.
-- **Cada marca tiene su página** (`/producto/1-queso-amarillo/2-kemmental`):
+- **Cada marca tiene su página** (`/producto/1-queso-amarillo-cheddar/2-kemmental`):
   se llega pinchando su foto, su nombre o «Ver detalles» en la página del
-  producto. Enseña su foto grande, su precio, su botón de pedir, **su
-  propia descripción** (una ventaja por línea; la primera sale también en
-  la lista de marcas del producto), **sus reseñas** y las otras marcas. La
-  portada nunca enseña marcas: solo el producto («Suero de leche», no
-  «Suero Guaralact»).
+  tipo. De título, el tipo («Queso amarillo / Cheddar»), con «Marca
+  Kemmental» encima y su presentación debajo; su foto grande, su precio,
+  su botón de pedir, **su propia descripción** (una ventaja por línea; la
+  primera sale también en la lista de marcas del tipo), **sus reseñas** y
+  las otras del mismo tipo. La portada nunca enseña marcas: solo el tipo
+  («Suero», no «Suero Guaralact»).
 - **Reseñas.** En la página de cada producto, «Por qué elegirlo» enseña
   primero lo que dicen los negocios que lo compran y después las ventajas.
   Las reseñas solo se ven dentro de la página del producto: la portada no
@@ -662,25 +690,41 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 ## Catálogo: familias, productos y ofertas
 
 - **Familias.** El catálogo se ordena en familias: Burger, Pizzería, Quesos,
-  Huevos, Embutidos, Salsas y aderezos, Papas y congelados, Bebidas,
-  Complementos gastronómicos y Otros productos (se crean solas la primera
-  vez, `FAMILIAS_INICIALES` en `src/lib/catalogo-inicial.ts`). Cada
-  producto tiene **una familia principal** (`productos.familia_id`) y puede
-  salir **también en otras** (`producto_categorias`) sin repetirse en la
-  base: la tocineta es de Embutidos y sale en Burger y en Pizzería. Cada
+  Lácteos (sueros y cremas de leche), Huevos, Embutidos, Salsas y
+  aderezos, Papas y congelados, Bebidas, Complementos gastronómicos y
+  Otros productos (se crean solas en una base nueva, `FAMILIAS_INICIALES`
+  en `src/lib/catalogo-inicial.ts`; en una que ya tiene familias, las
+  nuevas las crea el dueño en Familias). Cada tipo de producto tiene **una
+  familia principal** (`productos.familia_id`) y puede salir **también en
+  otras** (`producto_categorias`) sin repetirse en la base: la tocineta es
+  de Embutidos y sale en Burger y en Pizzería, con un solo precio. Cada
   familia tiene su nombre, descripción, icono, portada, orden y si está
   activa; su dirección (`/categoria/burger`) no cambia aunque cambie el
-  nombre.
+  nombre. La portada enseña las nueve primeras, en su orden.
+- **Secciones.** Dentro de una categoría los tipos van por secciones: los
+  que vienen de otra familia, en la de su familia («Quesos», «Embutidos»),
+  o en la que el dueño puso para esa categoría (la tocineta, en Burger, en
+  «Proteínas»: `producto_categorias.seccion`); los suyos, en su sección
+  (`productos.seccion`: la carne de hamburguesa, en «Proteínas») o sin
+  título, primero. Se escriben en el formulario del tipo, en «Secciones
+  dentro de cada categoría». Así Burger queda en Quesos, Proteínas,
+  Salsas y aderezos, Papas y congelados…, y Pizzería en Quesos, Embutidos
+  y «Salsas y complementos».
 - Los productos de antes quedaron en la suya por el nombre: los quesos en
-  Quesos (el amarillo sale también en Burger; la mozzarella y el pecorino,
-  en Pizzería), los huevos en Huevos y el suero en Salsas y aderezos. Se
-  cambia en la ficha de cada uno.
+  Quesos (el amarillo y la mozzarella salen también en Burger; la
+  mozzarella y el pecorino, en Pizzería), los huevos en Huevos y el suero
+  y la crema de leche en Lácteos. Se cambia en la ficha de cada uno.
 - **Productos** (`/admin/productos`): arriba la tasa del día; debajo la
   lista, por estado (en la web, borradores, ocultos), por familia o
-  buscando, cada uno con su enlace a su ficha. **«Agregar producto»**
-  (`/admin/productos/nuevo`) abre el formulario completo: nombre, «¿A qué
-  familia pertenece este producto?», «¿En qué otras categorías quieres
-  mostrarlo?» (casillas), marca, estado, se vende por (kilo, unidad o
+  buscando, cada uno con su enlace a su ficha, y el enlace a Marcas.
+  **«Agregar producto»** (`/admin/productos/nuevo`) va en el orden del
+  catálogo: primero se elige el **tipo** (agrupados por familia) o «Un
+  tipo nuevo». Si ya está, se le añade el artículo: marca (de la lista o
+  una nueva), presentación, peso o contenido, precio, foto y las
+  categorías en que sale el tipo. Si es nuevo, el formulario completo:
+  tipo de producto, «¿A qué familia pertenece este producto?», «¿En qué
+  otras categorías quieres mostrarlo?» (casillas) con sus secciones,
+  marca si se vende de una sola, estado, se vende por (kilo, unidad o
   cartón), presentación («Bolsa») y contenido («2,5 kg»), costo, margen y
   precio al mayor, precio al detal (opcional: vacío, la web no habla de
   detal), existencia (opcional: se anota como recuento en Inventario),
@@ -689,10 +733,14 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   orden, portada y si está activa; la crea y vuelve al formulario con todo
   lo escrito y la familia nueva ya elegida, sin JavaScript (la foto del
   producto, si se había puesto, hay que volver a ponerla). Lo que no es por
-  kilo se cobra por su presentación: «por bolsa de 2,5 kg».
+  kilo se cobra por su presentación: «por bolsa de 2,5 kg». Nada de esto
+  necesita tocar el código: familias, tipos, marcas y presentaciones se
+  crean desde el panel.
 - **La ficha de cada producto** (`/admin/productos/7`): el mismo
   formulario, su foto (que la web enseña en lugar de la de referencia), publicarlo u
-  ocultarlo, sus marcas y presentaciones, y borrarlo.
+  ocultarlo, sus marcas y presentaciones, y borrarlo. Con varias marcas, el
+  precio, la marca y la presentación van en cada artículo: en la ficha del
+  tipo queda el margen.
 - **Estados.** *Borrador* (sin terminar: no sale en la web ni en las
   ventas), *activo* (en la web) e *inactivo* (oculto). Son las columnas
   `activo` y `borrador`; publicar un borrador lo saca del borrador.
@@ -707,16 +755,21 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   recorta en 4:3, `normalizarPortada`) y borrarlas. Borrar una que es la
   principal de algún producto avisa y pide a qué familia pasan.
 - **El catálogo inicial.** El botón **«Preparar el catálogo inicial»**
-  (en Productos, mientras falte algo) crea en **borrador** los productos
-  que pidió el dueño (quesos cheddar, de año y parmesano, mozzarella
-  rallada, tocineta, jamón, pepperoni, salami, papas, nuggets, salsas,
-  pan y carne de hamburguesa, complementos de pizzería, refrescos…; la
-  lista está en `BORRADORES`) con su familia y sus otras categorías, **sin
-  precio, sin marca, sin presentación y sin publicar**, y los combos Pack
-  Burger, Pack Pizzería y Pack Emprendedor, también en borrador y sin
-  precio. No duplica lo que ya existe (sin mirar tildes ni mayúsculas):
-  «Huevos por cartón» es «Huevos» y «Queso pecorino» es el pecorino
-  rallado. Pulsarlo otra vez no hace nada (`src/lib/preparar-catalogo.ts`).
+  (en Productos, mientras falte algo) crea en **borrador** los tipos que
+  pidió el dueño (quesos de año y parmesano, crema de leche, tocineta,
+  jamón, pepperoni, salami, papas, hash browns, nuggets, salsas, pan y
+  carne de hamburguesa, complementos de pizzería, refrescos…; la lista
+  está en `BORRADORES`) con su familia, sus otras categorías y su sección,
+  **sin precio, sin marca, sin presentación y sin publicar**, y los combos
+  Pack Burger, Pack Pizzería y Pack Emprendedor, también en borrador y sin
+  precio. No duplica lo que ya existe (sin mirar tildes ni mayúsculas).
+  Pulsarlo otra vez no hace nada (`src/lib/preparar-catalogo.ts`). Lo que
+  era otra presentación de un tipo ya no va aparte (`BORRADORES_RETIRADOS`):
+  el queso cheddar y el amarillo en lonchas son «Queso amarillo /
+  Cheddar», la mozzarella rallada es una presentación de la mozzarella,
+  los huevos por caja o por unidad son presentaciones de Huevos, los
+  refrescos individuales y familiares, de Refrescos, y las papas ralladas
+  son los hash browns.
 - **Ofertas y combos** (`/admin/ofertas`): cada oferta tiene nombre,
   descripción, precio en dólares (vacío: «consulta el precio»), fechas
   desde y hasta (vacías: sin límite), estado (borrador, activa, inactiva),
@@ -840,12 +893,14 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 
 - El comprobante de RIF que hay venció el 15/07/2019: conviene renovarlo en
   el SENIAT antes de imprimirlo en facturas o ponerlo en la web.
-- Poner los precios reales del queso amarillo, los huevos y el pecorino
-  rallado: los que hay son de ejemplo y el panel lo avisa. El de la
-  mozzarella (7,70 USD el kilo) es real.
-- Los precios de cada marca (Kemmental, El Legado, Sortilegio, Guaralac):
-  están creadas con su foto y sin precio. El pecorino se vende en bolsa de
-  500 g, por unidad.
+- Poner los precios reales: el de los huevos es de ejemplo y el panel lo
+  avisa; las marcas del queso amarillo / cheddar (Kemmental, El Legado) y
+  del pecorino (Sortilegio, Guaralac) están creadas con su foto y sin
+  precio, y la web dice «consulta el precio del día». El pecorino se vende
+  en bolsa de 500 g, por unidad. El de la mozzarella (7,70 USD el kilo) es
+  real.
+- Ver si Guaralac (la marca del pecorino) y Guaralact (la del suero) son
+  la misma: si lo son, unirlas en Productos → Marcas.
 - Fotos propias de los productos: hoy llevan una foto de referencia, marcada
   como tal. Se suben en la ficha de cada producto del panel.
 - Las reseñas de verdad de cada producto: las que hay son de ejemplo y solo

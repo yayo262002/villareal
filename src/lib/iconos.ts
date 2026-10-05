@@ -17,6 +17,10 @@ export const ICONOS = {
     nombre: "Queso",
     trazo: '<path d="M3 17.5 21 11v7.5H3Z"/><path d="M3 17.5 15 7l6 4"/><circle cx="9" cy="15.3" r="1.2"/><circle cx="15" cy="14.8" r="1.4"/>',
   },
+  lacteos: {
+    nombre: "Lácteos",
+    trazo: '<path d="M8 3h8"/><path d="M9 3v3l-2.5 3.5V20a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V9.5L15 6V3"/><path d="M6.5 13h11"/>',
+  },
   huevo: {
     nombre: "Huevo",
     trazo: '<path d="M12 3c3.6 0 6.5 6 6.5 10.2A6.5 6.5 0 0 1 5.5 13.2C5.5 9 8.4 3 12 3Z"/>',

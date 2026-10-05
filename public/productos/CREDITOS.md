@@ -6,7 +6,8 @@ Todas son **CC0** o de **dominio público**: se pueden usar, también en un come
 
 - `productos/queso-amarillo.webp`: «Montgomerys cheddar cheese.jpg», de Jon Sullivan, dominio público. https://commons.wikimedia.org/wiki/File:Montgomerys_cheddar_cheese.jpg
 - `productos/queso-cheddar.webp`: «Olives Cheese», de ISO Republic, CC0. https://stocksnap.io/photo/olives-cheese-VUAQNMLAPF
-- `productos/mozzarella.webp`: «Mozzarella cheese.jpg», de Jon Sullivan, dominio público. https://commons.wikimedia.org/wiki/File:Mozzarella_cheese.jpg
+- `productos/mozzarella.webp`: «White cheddar cheese.jpg», de Jon Sullivan, dominio público. https://commons.wikimedia.org/wiki/File:White_cheddar_cheese.jpg (un bloque blanco y cuadrado, como la mozzarella que se vende aquí; no una bola)
+- `productos/crema.webp` (el suero y la crema de leche): «Milk Splash», de George Desipris, CC0. https://stocksnap.io/photo/milk-splash-0PIWORZOK5
 - `productos/queso-rallado.webp`: «Food Spaghetti», de Krzysztof Puszczyński, CC0. https://stocksnap.io/photo/food-spaghetti-T6J8OZBM38
 - `productos/queso-de-ano.webp`: «Cheese Food», de Jakub Rostkowski, CC0. https://stocksnap.io/photo/cheese-food-ABFRSZL8XB
 - `productos/parmesano.webp`: «Close up of parmesan cheese.jpg», de Monika Grabkowska, CC0. https://commons.wikimedia.org/wiki/File:Close_up_of_parmesan_cheese.jpg

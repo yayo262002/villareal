@@ -1,5 +1,7 @@
 import type { Producto } from "@/lib/productos";
 import { direccionDeFotoDeVariante, type Variante } from "@/lib/variantes";
+import type { Marca } from "@/lib/marcas";
+import { presentacionYContenido } from "@/lib/marcas-texto";
 import { rutaVariante } from "@/lib/enlaces";
 import { aBolivares, bs, nombreUnidad, usd } from "@/lib/dinero";
 import { alternarVariante, borrarVariante, editarVariante, guardarVariante, retirarFotoDeVariante } from "@/lib/acciones";
@@ -50,18 +52,48 @@ export function LineaPrecio({
   );
 }
 
+/** Las listas que proponen marcas y presentaciones al escribir: una vez por página. */
+export function ListasDeMarcas({ marcas, presentaciones }: { marcas: Marca[]; presentaciones: string[] }) {
+  return (
+    <>
+      <datalist id="lista-marcas">
+        {marcas.map((m) => (
+          <option key={m.id} value={m.nombre} />
+        ))}
+      </datalist>
+      <datalist id="lista-presentaciones">
+        {presentaciones.map((p) => (
+          <option key={p} value={p} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
 /**
- * Los campos de una marca o presentación: nombre, su descripción (una
+ * Los campos de un artículo: su marca (una de la lista o una nueva, que se
+ * crea al guardar), su presentación y su contenido, su descripción (una
  * ventaja por línea), costo y precio (con el costo sale del margen del
  * producto), y la foto, que el teléfono reduce antes de subir.
  */
-function CamposVariante({ id, variante, producto }: { id: string; variante: Variante | null; producto: Producto }) {
+export function CamposVariante({ id, variante, producto }: { id: string; variante: Variante | null; producto: Producto }) {
   const conMargen = producto.margen_pct !== null;
   return (
     <>
       <div className="campo">
-        <label htmlFor={`${id}-nombre`}>Marca o presentación</label>
-        <input id={`${id}-nombre`} name="nombre" type="text" required defaultValue={variante?.nombre ?? ""} placeholder="Kemmental · Sortilegio 500 g" />
+        <label htmlFor={`${id}-marca`}>Marca</label>
+        <input id={`${id}-marca`} name="marca" type="text" list="lista-marcas" autoComplete="off" defaultValue={variante?.marca ?? ""} placeholder="Guaralact · Kemmental" />
+        <span className="ayuda">Elige una de la lista o escribe una nueva: se crea sola. Vacía si no tiene marca.</span>
+      </div>
+      <div className="formulario__fila">
+        <div className="campo">
+          <label htmlFor={`${id}-presentacion`}>Presentación</label>
+          <input id={`${id}-presentacion`} name="presentacion" type="text" list="lista-presentaciones" autoComplete="off" defaultValue={variante?.presentacion ?? ""} placeholder="Bloque · Bolsa · Rallada" />
+        </div>
+        <div className="campo">
+          <label htmlFor={`${id}-contenido`}>Peso o contenido</label>
+          <input id={`${id}-contenido`} name="contenido" type="text" defaultValue={variante?.contenido ?? ""} placeholder="1 kg · 500 g · 30 unidades" />
+        </div>
       </div>
       <div className="campo">
         <label htmlFor={`${id}-descripcion`}>Descripción (una ventaja por línea)</label>
@@ -98,19 +130,40 @@ function CamposVariante({ id, variante, producto }: { id: string; variante: Vari
 }
 
 /**
- * Las marcas o presentaciones en que se vende un producto, cada una con su
- * precio, su foto y su propia página en la web; y el formulario para
- * añadir otra.
+ * Los artículos en que se vende un tipo de producto (cada marca y
+ * presentación), cada uno con su precio, su foto y su propia página en la
+ * web; y el formulario para añadir otro.
  */
-export function MarcasDelProducto({ producto, variantes, tasa }: { producto: Producto; variantes: Variante[]; tasa: number | null }) {
+export function MarcasDelProducto({
+  producto,
+  variantes,
+  tasa,
+  marcas,
+  presentaciones,
+}: {
+  producto: Producto;
+  variantes: Variante[];
+  tasa: number | null;
+  marcas: Marca[];
+  presentaciones: string[];
+}) {
+  const sinSeparar = variantes.length === 0 && (producto.precio_usd !== null || producto.marca_id !== null || Boolean(producto.presentacion || producto.contenido));
   return (
     <section className={`tarjeta ${estilos.variantes}`} id="marcas" aria-label={`Marcas y presentaciones de ${producto.nombre}`}>
+      <ListasDeMarcas marcas={marcas} presentaciones={presentaciones} />
       <h2 className={estilos.subtitulo}>Marcas y presentaciones</h2>
       <p className={estilos.ayuda} style={{ marginBottom: 0 }}>
-        Si vendes el mismo producto de dos marcas o en dos tamaños, ponlas aquí con su precio y su foto. La portada dice «desde» con la más barata y la
-        página del producto las enseña todas; cada una tiene además su propia página, con su descripción y sus reseñas. En la venta sale una fila por
-        cada una.
+        {producto.nombre} es el tipo de producto; aquí van los artículos en que lo vendes, cada uno con su marca, su presentación, su precio y su foto. La
+        web enseña primero el tipo y dentro sus marcas, con «desde» el precio más barato; cada artículo tiene además su propia página, con su
+        descripción y sus reseñas. En la venta sale una fila por cada uno.
       </p>
+      {sinSeparar && (
+        <p className="aviso aviso--aviso">
+          Hoy {producto.nombre} se vende sin separar marcas
+          {[producto.marca, presentacionYContenido(producto)].filter(Boolean).length > 0 ? ` (${[producto.marca, presentacionYContenido(producto)].filter(Boolean).join(", ")})` : ""}. Al añadir
+          la primera marca, eso pasa también a la lista como un artículo más, con su precio, su foto y lo que haya en inventario: no se pierde.
+        </p>
+      )}
       {variantes.map((v) => {
         const foto = direccionDeFotoDeVariante(v);
         return (
@@ -170,7 +223,7 @@ export function MarcasDelProducto({ producto, variantes, tasa }: { producto: Pro
         );
       })}
       <details className={estilos.masDatos}>
-        <summary>Añadir una marca o presentación</summary>
+        <summary>＋ Añadir una marca o presentación</summary>
         <form action={guardarVariante} className="formulario" encType="multipart/form-data" style={{ marginTop: "var(--espacio-3)" }}>
           <input type="hidden" name="producto_id" value={producto.id} />
           <CamposVariante id={`variante-nueva-${producto.id}`} variante={null} producto={producto} />

@@ -24,14 +24,19 @@ export async function prepararCatalogoInicial(): Promise<{ productos: number; of
     const creados = [...productos.map((p) => ({ id: Number(p.id), nombre: p.nombre }))];
     for (const b of faltan) {
       const r = await tx.execute({
-        sql: "insert into productos (nombre, unidad, descripcion, familia_id, activo, borrador) values (?, ?, '', ?, 0, 1) returning id",
-        args: [b.nombre, b.unidad, familia.get(b.familia)!],
+        sql: "insert into productos (nombre, unidad, descripcion, familia_id, activo, borrador, seccion) values (?, ?, '', ?, 0, 1, ?) returning id",
+        args: [b.nombre, b.unidad, familia.get(b.familia)!, b.seccion ?? ""],
       });
       const id = Number(r.rows[0].id);
       creados.push({ id, nombre: b.nombre });
       for (const slug of b.relacionadas) {
         const otra = familia.get(slug);
-        if (otra) await tx.execute({ sql: "insert or ignore into producto_categorias (producto_id, familia_id) values (?, ?)", args: [id, otra] });
+        if (otra) {
+          await tx.execute({
+            sql: "insert or ignore into producto_categorias (producto_id, familia_id, seccion) values (?, ?, ?)",
+            args: [id, otra, b.secciones?.[slug] ?? ""],
+          });
+        }
       }
     }
     for (const [i, o] of combos.entries()) {

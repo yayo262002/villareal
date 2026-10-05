@@ -3,15 +3,18 @@ import { ejecutar, fila, filas, transaccion } from "./db";
 import { precioDeVenta, type Unidad } from "./dinero";
 import { normalizarFotoDeProducto } from "./foto-producto";
 import type { EstadoProducto } from "./catalogo";
+import { limpiarTexto } from "./marcas-texto";
 
 export type { Unidad };
 
 /**
- * El negocio vende al mayor: cada producto tiene su precio de mayor, que
- * sale del costo más el margen del dueño, o se escribe a mano; y puede
- * tener también uno al detal. Cada producto tiene una familia principal y
- * puede salir en otras (`familias.ts`), y está en borrador, en la web u
- * oculto.
+ * Un producto es un TIPO de producto (Mozzarella, Suero, Tocineta): lo que
+ * el cliente busca. Se vende en artículos de cada marca y presentación
+ * (`variantes.ts`) o, si se vende de una sola forma, él mismo, con su
+ * precio al mayor (del costo más el margen, o escrito a mano), su marca si
+ * la tiene y su presentación. Tiene una familia principal y puede salir en
+ * otras (`familias.ts`), en una sección de cada una, y está en borrador,
+ * en la web u oculto.
  */
 export type Producto = {
   id: number;
@@ -31,14 +34,17 @@ export type Producto = {
   /** Un borrador no se publica ni se vende hasta que el dueño lo completa y lo activa. */
   borrador: number;
   familia_id: number | null;
-  /** La marca, si es una sola; si tiene varias, son sus variantes. */
+  /** La marca, si se vende de una sola sin separar artículos; si tiene varias, van en sus artículos. */
   marca: string;
+  marca_id: number | null;
   /** «Bolsa», «Caja», «Galón». */
   presentacion: string;
   /** «2,5 kg», «12 unidades». */
   contenido: string;
   destacado: number;
   en_oferta: number;
+  /** La sección en que sale dentro de su familia principal («Proteínas» en Burger); vacía, sin sección. */
+  seccion: string;
   creado_en: string;
   /** Cuándo se puso la foto principal, o null si no tiene (entonces va la de referencia). */
   foto_version: string | null;
@@ -52,11 +58,13 @@ export type DatosProducto = PreciosProducto & {
   descripcion: string;
   familia_id: number | null;
   marca: string;
+  marca_id: number | null;
   presentacion: string;
   contenido: string;
   precio_detal_usd: number | null;
   destacado: boolean;
   en_oferta: boolean;
+  seccion: string;
 };
 
 const CONSULTA = `
@@ -84,10 +92,12 @@ function completar(p: Producto): Producto {
     borrador: Number(p.borrador ?? 0),
     familia_id: p.familia_id ?? null,
     marca: p.marca ?? "",
+    marca_id: p.marca_id === null || p.marca_id === undefined ? null : Number(p.marca_id),
     presentacion: p.presentacion ?? "",
     contenido: p.contenido ?? "",
     destacado: Number(p.destacado ?? 0),
     en_oferta: Number(p.en_oferta ?? 0),
+    seccion: p.seccion ?? "",
     creado_en: p.creado_en,
     foto_version: p.foto_version ?? null,
   };
@@ -120,8 +130,8 @@ export async function crearProducto(datos: DatosProducto, estado: EstadoProducto
   const { activo, borrador } = columnasDeEstado(estado);
   const r = await ejecutar(
     `insert into productos (nombre, unidad, costo_usd, margen_pct, precio_usd, descripcion, familia_id, marca, presentacion, contenido,
-                            precio_detal_usd, destacado, en_oferta, activo, borrador)
-     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            precio_detal_usd, destacado, en_oferta, activo, borrador, marca_id, seccion)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       datos.nombre,
       datos.unidad,
@@ -138,6 +148,8 @@ export async function crearProducto(datos: DatosProducto, estado: EstadoProducto
       datos.en_oferta ? 1 : 0,
       activo,
       borrador,
+      datos.marca_id,
+      limpiarTexto(datos.seccion),
     ],
   );
   return r.ultimoId;
@@ -147,7 +159,7 @@ export async function actualizarProducto(id: number, datos: DatosProducto): Prom
   await ejecutar(
     `update productos
      set nombre = ?, unidad = ?, costo_usd = ?, margen_pct = ?, precio_usd = ?, descripcion = ?, familia_id = ?, marca = ?,
-         presentacion = ?, contenido = ?, precio_detal_usd = ?, destacado = ?, en_oferta = ?
+         presentacion = ?, contenido = ?, precio_detal_usd = ?, destacado = ?, en_oferta = ?, marca_id = ?, seccion = ?
      where id = ?`,
     [
       datos.nombre,
@@ -163,6 +175,8 @@ export async function actualizarProducto(id: number, datos: DatosProducto): Prom
       datos.precio_detal_usd,
       datos.destacado ? 1 : 0,
       datos.en_oferta ? 1 : 0,
+      datos.marca_id,
+      limpiarTexto(datos.seccion),
       id,
     ],
   );
@@ -194,13 +208,39 @@ export async function categoriasDeTodos(): Promise<Map<number, number[]>> {
   return mapa;
 }
 
-/** Pone las otras familias de un producto; la principal no se repite entre ellas. */
-export async function ponerCategorias(productoId: number, familias: number[], principal: number | null): Promise<void> {
+/** La sección en que sale un producto en cada una de sus otras familias: id de la familia → sección (vacía: la de su familia principal). */
+export async function seccionesDeProducto(productoId: number): Promise<Map<number, string>> {
+  const lista = await filas<{ familia_id: number; seccion: string }>("select familia_id, seccion from producto_categorias where producto_id = ?", [productoId]);
+  return new Map(lista.map((f) => [Number(f.familia_id), f.seccion ?? ""]));
+}
+
+/** Las de todos los productos: id del producto → (id de la familia → sección). */
+export async function seccionesDeTodos(): Promise<Map<number, Map<number, string>>> {
+  const lista = await filas<{ producto_id: number; familia_id: number; seccion: string }>("select producto_id, familia_id, seccion from producto_categorias where seccion != ''");
+  const mapa = new Map<number, Map<number, string>>();
+  for (const f of lista) {
+    const suyas = mapa.get(Number(f.producto_id)) ?? new Map<number, string>();
+    suyas.set(Number(f.familia_id), f.seccion);
+    mapa.set(Number(f.producto_id), suyas);
+  }
+  return mapa;
+}
+
+/**
+ * Pone las otras familias de un producto; la principal no se repite entre
+ * ellas. Con `secciones`, la sección en cada una; sin ellas, cada familia que
+ * sigue marcada conserva la que tenía.
+ */
+export async function ponerCategorias(productoId: number, familias: number[], principal: number | null, secciones?: Map<number, string>): Promise<void> {
   const sinRepetir = [...new Set(familias)].filter((f) => f > 0 && f !== principal);
+  const antes = secciones ?? (await seccionesDeProducto(productoId));
   await transaccion(async (tx) => {
     await tx.execute({ sql: "delete from producto_categorias where producto_id = ?", args: [productoId] });
     for (const familia of sinRepetir) {
-      await tx.execute({ sql: "insert or ignore into producto_categorias (producto_id, familia_id) values (?, ?)", args: [productoId, familia] });
+      await tx.execute({
+        sql: "insert or ignore into producto_categorias (producto_id, familia_id, seccion) values (?, ?, ?)",
+        args: [productoId, familia, limpiarTexto(antes.get(familia) ?? "")],
+      });
     }
   });
 }

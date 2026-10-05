@@ -9,7 +9,9 @@ import { normalizar } from "./buscar.ts";
  * foto que sube el dueño va siempre primero; si no la hay y el producto se
  * vende de una sola marca con foto (el suero Guaralact), va la de la marca,
  * que es el producto de verdad; y sin ninguna, un fondo neutro con el
- * león: nunca un dibujo. Cálculo puro, con pruebas.
+ * león: nunca un dibujo. Una foto de referencia enseña lo que es el
+ * producto como se vende aquí: la mozzarella, en bloque cuadrado, no en
+ * bola. Cálculo puro, con pruebas.
  */
 
 /** La foto de un producto tal como la enseña la web: la suya o una de referencia (y entonces se dice). */
@@ -40,10 +42,13 @@ export const FOTOS_REFERENCIALES: { foto: string; palabras: string[] }[] = [
   { foto: "queso-rallado", palabras: ["rallado", "rallada", "queso rallado"] },
   { foto: "parmesano", palabras: ["parmesano", "pecorino", "grana padano"] },
   { foto: "queso-de-ano", palabras: ["queso de ano"] },
+  // «Queso amarillo / Cheddar», con el bloque de cheddar; el cheddar a secas, con la tabla de quesos.
+  { foto: "queso-amarillo", palabras: ["queso amarillo"] },
   { foto: "queso-cheddar", palabras: ["cheddar"] },
   { foto: "mozzarella", palabras: ["mozzarella", "mozarella", "mozzarela"] },
   { foto: "queso-amarillo", palabras: ["queso amarillo", "gouda", "queso"] },
-  // Lácteos y huevos
+  // Lácteos y huevos: el suero y la crema, con la foto de un bol de crema.
+  { foto: "crema", palabras: ["crema de leche", "suero", "crema", "nata"] },
   { foto: "huevos", palabras: ["huevos", "huevo"] },
   // Embutidos
   { foto: "tocineta", palabras: ["tocineta", "tocino", "bacon", "beicon"] },

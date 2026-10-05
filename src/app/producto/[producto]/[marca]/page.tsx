@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { direccionCompleta, enlaceCompartir, enlaceWhatsapp, negocio } from "@/config/negocio";
 import { buscarProducto, direccionDeFotoDeProducto, type Producto } from "@/lib/productos";
 import { imagenDeProducto } from "@/lib/fotos-referenciales";
+import { buscarFamilia } from "@/lib/familias";
+import { presentacionYContenido } from "@/lib/marcas-texto";
 import { buscarVariante, direccionDeFotoDeVariante, variantesDeProducto, type Variante } from "@/lib/variantes";
 import { claveDe, nombreDeVenta, porQueSeCobra } from "@/lib/catalogo";
 import { leerTasa } from "@/lib/ajustes";
@@ -78,7 +80,7 @@ function datosDeLaMarca(producto: Producto, variante: Variante): Record<string, 
     description: resumenDe(producto, variante),
     image: `${ruta}/opengraph-image`,
     url: ruta,
-    brand: { "@type": "Brand", name: variante.nombre },
+    brand: variante.marca ? { "@type": "Brand", name: variante.marca } : undefined,
     offers:
       variante.precio_usd === null
         ? undefined
@@ -108,7 +110,13 @@ export default async function PaginaMarca({ params }: Parametros) {
   const { producto, variante } = encontrada;
 
   const esElDueno = await haySesion();
-  const [tasa, resenas, hermanas] = await Promise.all([leerTasa(), resenasDeVariante(variante.id, esElDueno), variantesDeProducto(producto.id, true)]);
+  const [tasa, resenas, hermanas, familia] = await Promise.all([
+    leerTasa(),
+    resenasDeVariante(variante.id, esElDueno),
+    variantesDeProducto(producto.id, true),
+    producto.familia_id ? buscarFamilia(producto.familia_id) : null,
+  ]);
+  const presentacion = presentacionYContenido(variante);
   const nombre = nombreDeVenta(producto.nombre, variante.nombre);
   const foto = direccionDeFotoDeVariante(variante);
   // Sin foto de la marca, la del producto (la suya o la de referencia).
@@ -128,8 +136,9 @@ export default async function PaginaMarca({ params }: Parametros) {
         <nav className={estilos.migas} aria-label="Estás en">
           <Link href="/">Inicio</Link>
           <Link href="/productos">Productos</Link>
+          {familia && familia.activa === 1 && <Link href={`/categoria/${familia.slug}`}>{familia.nombre}</Link>}
           <Link href={rutaProducto(producto)}>{producto.nombre}</Link>
-          <span aria-current="page">{variante.nombre}</span>
+          <span aria-current="page">{variante.marca || variante.nombre}</span>
         </nav>
 
         <article className={estilos.ficha}>
@@ -138,8 +147,12 @@ export default async function PaginaMarca({ params }: Parametros) {
           </header>
 
           <div className={estilos.fichaPrincipal}>
-            <h1 className={estilos.fichaNombre}>{nombre}</h1>
-            <p className={estilos.fichaUnidad}>Al mayor, por {porQueSeCobra({ ...producto, presentacion: "", contenido: "" })}</p>
+            {/* El tipo de producto manda; la marca y la presentación lo acompañan. */}
+            {variante.marca && <p className={estilos.fichaMarca}>Marca {variante.marca}</p>}
+            <h1 className={estilos.fichaNombre}>{producto.nombre}</h1>
+            <p className={estilos.fichaUnidad}>
+              {presentacion ? `${presentacion} · ` : ""}Al mayor, por {porQueSeCobra({ ...producto, presentacion: "", contenido: "" })}
+            </p>
 
             <div className={estilos.bloque}>
               <h2 className={estilos.bloqueTitulo}>Precio de hoy</h2>
@@ -182,7 +195,7 @@ export default async function PaginaMarca({ params }: Parametros) {
           {otras.length > 0 && (
             <section className={estilos.fichaAncha} aria-labelledby="titulo-otras">
               <h2 id="titulo-otras" className={estilos.subtitulo}>
-                Otras marcas de {producto.nombre.toLowerCase()}
+                Más de {producto.nombre.toLowerCase()}
               </h2>
               <ul className={estilos.otros}>
                 {otras.map((v) => {
@@ -191,7 +204,8 @@ export default async function PaginaMarca({ params }: Parametros) {
                     <li key={v.id}>
                       <Link href={rutaVariante(producto, v)} className={estilos.otro}>
                         <FotoDeProducto imagen={suFoto ? { src: suFoto, referencial: false } : delProducto} nombre={v.nombre} className={estilos.otroFoto} tamano={128} />
-                        {v.nombre}
+                        {v.marca || v.nombre}
+                        {v.marca && presentacionYContenido(v) && <span className={estilos.otroDetalle}>{presentacionYContenido(v)}</span>}
                       </Link>
                     </li>
                   );

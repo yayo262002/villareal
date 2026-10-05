@@ -155,7 +155,7 @@ export default async function PaginaProductos({ searchParams }: { searchParams: 
           </Link>
         </div>
         <p className={estilos.ayuda}>
-          <Link href="/admin/familias">Familias y categorías</Link> · <Link href="/admin/ofertas">Ofertas y combos</Link> ·{" "}
+          <Link href="/admin/familias">Familias y categorías</Link> · <Link href="/admin/marcas">Marcas</Link> · <Link href="/admin/ofertas">Ofertas y combos</Link> ·{" "}
           <Link href="/admin/inventario">Inventario</Link>
         </p>
 

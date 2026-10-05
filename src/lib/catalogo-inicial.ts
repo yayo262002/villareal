@@ -15,13 +15,14 @@ export const FAMILIAS_INICIALES: FamiliaInicial[] = [
   { nombre: "Burger", slug: "burger", descripcion: "Para hamburgueserías: lo que necesitas para tus hamburguesas.", icono: "burger", orden: 1 },
   { nombre: "Pizzería", slug: "pizzeria", descripcion: "Para pizzerías: lo que necesitas para tus pizzas.", icono: "pizza", orden: 2 },
   { nombre: "Quesos", slug: "quesos", descripcion: "Quesos al mayor para cocinas y negocios de comida.", icono: "queso", orden: 3 },
-  { nombre: "Huevos", slug: "huevos", descripcion: "Huevos al mayor.", icono: "huevo", orden: 4 },
-  { nombre: "Embutidos", slug: "embutidos", descripcion: "Embutidos al mayor.", icono: "embutido", orden: 5 },
-  { nombre: "Salsas y aderezos", slug: "salsas-y-aderezos", descripcion: "Salsas y aderezos al mayor.", icono: "salsa", orden: 6 },
-  { nombre: "Papas y congelados", slug: "papas-y-congelados", descripcion: "Papas y congelados al mayor.", icono: "papas", orden: 7 },
-  { nombre: "Bebidas", slug: "bebidas", descripcion: "Bebidas al mayor para tu negocio.", icono: "bebida", orden: 8 },
-  { nombre: "Complementos gastronómicos", slug: "complementos-gastronomicos", descripcion: "Complementos para la cocina de tu negocio.", icono: "complementos", orden: 9 },
-  { nombre: "Otros productos", slug: "otros-productos", descripcion: "Otros productos al mayor.", icono: "otros", orden: 10 },
+  { nombre: "Lácteos", slug: "lacteos", descripcion: "Sueros y cremas de leche al mayor.", icono: "lacteos", orden: 4 },
+  { nombre: "Huevos", slug: "huevos", descripcion: "Huevos al mayor.", icono: "huevo", orden: 5 },
+  { nombre: "Embutidos", slug: "embutidos", descripcion: "Embutidos al mayor.", icono: "embutido", orden: 6 },
+  { nombre: "Salsas y aderezos", slug: "salsas-y-aderezos", descripcion: "Salsas y aderezos al mayor.", icono: "salsa", orden: 7 },
+  { nombre: "Papas y congelados", slug: "papas-y-congelados", descripcion: "Papas y congelados al mayor.", icono: "papas", orden: 8 },
+  { nombre: "Bebidas", slug: "bebidas", descripcion: "Bebidas al mayor para tu negocio.", icono: "bebida", orden: 9 },
+  { nombre: "Complementos gastronómicos", slug: "complementos-gastronomicos", descripcion: "Complementos para la cocina de tu negocio.", icono: "complementos", orden: 10 },
+  { nombre: "Otros productos", slug: "otros-productos", descripcion: "Otros productos al mayor.", icono: "otros", orden: 11 },
 ];
 
 /**
@@ -32,10 +33,10 @@ export const FAMILIAS_INICIALES: FamiliaInicial[] = [
 export function familiasPorNombre(nombre: string): { principal: string; relacionadas: string[] } {
   const n = aSlug(nombre);
   if (n.includes("huevo")) return { principal: "huevos", relacionadas: [] };
-  if (n.includes("suero")) return { principal: "salsas-y-aderezos", relacionadas: [] };
-  if (n.includes("mozzarella") || n.includes("mozarela") || n.includes("pecorino") || n.includes("parmesano")) {
-    return { principal: "quesos", relacionadas: ["pizzeria"] };
-  }
+  if (n.includes("suero") || n.includes("crema-de-leche")) return { principal: "lacteos", relacionadas: [] };
+  // La mozzarella sale también en Burger, en sus quesos; el pecorino y el parmesano, solo en Pizzería.
+  if (n.includes("mozzarella") || n.includes("mozarela")) return { principal: "quesos", relacionadas: ["pizzeria", "burger"] };
+  if (n.includes("pecorino") || n.includes("parmesano")) return { principal: "quesos", relacionadas: ["pizzeria"] };
   if (n.includes("queso")) return { principal: "quesos", relacionadas: ["burger"] };
   return { principal: "otros-productos", relacionadas: [] };
 }
@@ -47,36 +48,43 @@ export type BorradorInicial = {
   /** Las otras familias en que sale. */
   relacionadas: string[];
   unidad: "kg" | "unidad" | "carton";
+  /** La sección en que sale en su familia, si no es la de siempre: la carne de hamburguesa, en «Proteínas». */
+  seccion?: string;
+  /** La sección en que sale en cada otra familia, si no es la de su familia principal: la tocineta, en Burger, en «Proteínas». */
+  secciones?: Record<string, string>;
 };
 
-const b = (nombre: string, familia: string, relacionadas: string[], unidad: BorradorInicial["unidad"] = "unidad"): BorradorInicial => ({
-  nombre,
-  familia,
-  relacionadas,
-  unidad,
-});
+const b = (
+  nombre: string,
+  familia: string,
+  relacionadas: string[],
+  unidad: BorradorInicial["unidad"] = "unidad",
+  extra: Pick<BorradorInicial, "seccion" | "secciones"> = {},
+): BorradorInicial => ({ nombre, familia, relacionadas, unidad, ...extra });
+
+/** En Pizzería, las salsas y los complementos van juntos. */
+const SALSAS_Y_COMPLEMENTOS = { pizzeria: "Salsas y complementos" };
 
 /**
- * Los productos que el dueño pidió preparar, una sola vez cada uno aunque
- * su lista los nombrara en varias familias (la tocineta va en Embutidos y
- * sale también en Burger y en Pizzería). No están los que ya existen con
- * otro nombre: «Huevos por cartón» es «Huevos», «Queso pecorino» es
- * «Queso pecorino rallado», y el queso amarillo y la mozzarella ya están.
- * Los de kilo van por kilo; lo demás, por unidad, y el dueño pone después
- * la presentación (bolsa, caja, galón).
+ * Los TIPOS de producto que el dueño pidió preparar, una sola vez cada uno
+ * aunque su lista los nombrara en varias familias (la tocineta va en
+ * Embutidos y sale también en Burger y en Pizzería). Una presentación no es
+ * un tipo: la mozzarella rallada, el queso en lonchas, los huevos por caja
+ * o los refrescos familiares se añaden como artículos del suyo (Mozzarella,
+ * Queso amarillo / Cheddar, Huevos, Refrescos), con su marca y su precio. No
+ * están los que ya existen con otro nombre: «Huevos por cartón» es
+ * «Huevos», «Queso pecorino» es «Queso pecorino rallado», y el queso
+ * amarillo, la mozzarella y el suero ya están. Los de kilo van por kilo; lo
+ * demás, por unidad.
  */
 export const BORRADORES: BorradorInicial[] = [
   // Quesos
-  b("Queso cheddar", "quesos", ["burger"], "kg"),
-  b("Queso amarillo en lonchas", "quesos", ["burger"], "kg"),
-  b("Mozzarella rallada", "quesos", ["pizzeria", "burger"], "kg"),
   b("Queso de año", "quesos", ["pizzeria"], "kg"),
   b("Queso parmesano", "quesos", ["pizzeria"], "kg"),
-  // Huevos
-  b("Huevos por caja", "huevos", []),
-  b("Huevos por unidad", "huevos", []),
+  // Lácteos
+  b("Crema de leche", "lacteos", []),
   // Embutidos
-  b("Tocineta", "embutidos", ["burger", "pizzeria"], "kg"),
+  b("Tocineta", "embutidos", ["burger", "pizzeria"], "kg", { secciones: { burger: "Proteínas" } }),
   b("Jamón", "embutidos", ["pizzeria"], "kg"),
   b("Pepperoni", "embutidos", ["pizzeria"], "kg"),
   b("Salami", "embutidos", ["pizzeria"], "kg"),
@@ -85,7 +93,6 @@ export const BORRADORES: BorradorInicial[] = [
   b("Chorizo", "embutidos", [], "kg"),
   // Papas y congelados
   b("Papas fritas congeladas", "papas-y-congelados", ["burger"]),
-  b("Papas ralladas", "papas-y-congelados", ["burger"]),
   b("Hash browns", "papas-y-congelados", ["burger"]),
   b("Nuggets", "papas-y-congelados", ["burger"]),
   b("Aros de cebolla", "papas-y-congelados", ["burger"]),
@@ -97,27 +104,41 @@ export const BORRADORES: BorradorInicial[] = [
   b("Salsa de ajo", "salsas-y-aderezos", ["burger"]),
   b("Salsa cheddar", "salsas-y-aderezos", ["burger"]),
   b("Salsa picante", "salsas-y-aderezos", ["burger"]),
-  b("Salsa para pizza", "salsas-y-aderezos", ["pizzeria"]),
+  b("Salsa para pizza", "salsas-y-aderezos", ["pizzeria"], "unidad", { secciones: SALSAS_Y_COMPLEMENTOS }),
   // Burger
-  b("Pan de hamburguesa", "burger", []),
-  b("Carne para hamburguesa", "burger", []),
+  b("Pan de hamburguesa", "burger", [], "unidad", { seccion: "Panes" }),
+  b("Carne para hamburguesa", "burger", [], "unidad", { seccion: "Proteínas" }),
   b("Pepinillos", "complementos-gastronomicos", ["burger"]),
   b("Cebolla crispy", "complementos-gastronomicos", ["burger"]),
   // Pizzería
-  b("Harina para pizza", "pizzeria", []),
-  b("Levadura", "pizzeria", []),
-  b("Cajas para pizza", "pizzeria", []),
-  b("Orégano", "complementos-gastronomicos", ["pizzeria"]),
-  b("Champiñones", "complementos-gastronomicos", ["pizzeria"]),
-  b("Aceitunas", "complementos-gastronomicos", ["pizzeria"]),
-  b("Maíz", "complementos-gastronomicos", ["pizzeria"]),
-  b("Piña", "complementos-gastronomicos", ["pizzeria"]),
+  b("Harina para pizza", "pizzeria", [], "unidad", { seccion: "Masa y harinas" }),
+  b("Levadura", "pizzeria", [], "unidad", { seccion: "Masa y harinas" }),
+  b("Cajas para pizza", "pizzeria", [], "unidad", { seccion: "Empaques" }),
+  b("Orégano", "complementos-gastronomicos", ["pizzeria"], "unidad", { secciones: SALSAS_Y_COMPLEMENTOS }),
+  b("Champiñones", "complementos-gastronomicos", ["pizzeria"], "unidad", { secciones: SALSAS_Y_COMPLEMENTOS }),
+  b("Aceitunas", "complementos-gastronomicos", ["pizzeria"], "unidad", { secciones: SALSAS_Y_COMPLEMENTOS }),
+  b("Maíz", "complementos-gastronomicos", ["pizzeria"], "unidad", { secciones: SALSAS_Y_COMPLEMENTOS }),
+  b("Piña", "complementos-gastronomicos", ["pizzeria"], "unidad", { secciones: SALSAS_Y_COMPLEMENTOS }),
   // Bebidas
   b("Refrescos", "bebidas", []),
-  b("Refrescos individuales", "bebidas", []),
-  b("Refrescos familiares", "bebidas", []),
   b("Agua mineral", "bebidas", []),
-  b("Bebidas para restaurantes", "bebidas", []),
+];
+
+/**
+ * Los borradores de antes que eran presentaciones de otro tipo, o el mismo
+ * tipo dos veces. Al reorganizar el catálogo se quitan (solo si siguen en
+ * borrador y nunca se vendieron): ahora se añaden como artículos del suyo.
+ */
+export const BORRADORES_RETIRADOS: { nombre: string; ahora: string }[] = [
+  { nombre: "Queso cheddar", ahora: "Queso amarillo / Cheddar" },
+  { nombre: "Queso amarillo en lonchas", ahora: "una presentación de Queso amarillo / Cheddar" },
+  { nombre: "Mozzarella rallada", ahora: "una presentación de la mozzarella" },
+  { nombre: "Huevos por caja", ahora: "una presentación de Huevos" },
+  { nombre: "Huevos por unidad", ahora: "una presentación de Huevos" },
+  { nombre: "Papas ralladas", ahora: "Hash browns" },
+  { nombre: "Refrescos individuales", ahora: "una presentación de Refrescos" },
+  { nombre: "Refrescos familiares", ahora: "una presentación de Refrescos" },
+  { nombre: "Bebidas para restaurantes", ahora: "Refrescos y Agua mineral" },
 ];
 
 export type OfertaInicial = { nombre: string; descripcion: string; productos: string[] };
@@ -127,7 +148,7 @@ export const OFERTAS_INICIALES: OfertaInicial[] = [
   {
     nombre: "Pack Burger",
     descripcion: "Queso, tocineta, papas y salsas para tu hamburguesería.",
-    productos: ["Queso cheddar", "Tocineta", "Papas fritas congeladas", "Ketchup", "Mayonesa"],
+    productos: ["Queso amarillo", "Tocineta", "Papas fritas congeladas", "Ketchup", "Mayonesa"],
   },
   {
     nombre: "Pack Pizzería",

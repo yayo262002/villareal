@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { buscarProducto, categoriasDeProducto, direccionDeFotoDeProducto } from "@/lib/productos";
+import { buscarProducto, categoriasDeProducto, direccionDeFotoDeProducto, seccionesDeProducto } from "@/lib/productos";
+import { listarMarcas, presentacionesUsadas } from "@/lib/marcas";
 import { direccionDeFotoDeVariante, variantesDeProducto } from "@/lib/variantes";
 import { listarFamilias } from "@/lib/familias";
 import { existenciaSinMarca } from "@/lib/inventario";
@@ -31,12 +32,15 @@ export default async function PaginaProducto({ params, searchParams }: { params:
   const producto = Number.isSafeInteger(numero) && numero > 0 ? await buscarProducto(numero) : null;
   if (!producto) notFound();
 
-  const [categorias, variantes, familias, tasa, existencia] = await Promise.all([
+  const [categorias, variantes, familias, tasa, existencia, secciones, marcas, presentaciones] = await Promise.all([
     categoriasDeProducto(producto.id),
     variantesDeProducto(producto.id),
     listarFamilias(),
     leerTasa(),
     existenciaSinMarca(producto.id),
+    seccionesDeProducto(producto.id),
+    listarMarcas(),
+    presentacionesUsadas(),
   ]);
   const estado = estadoDeProducto(producto);
   const conMarcas = variantes.some((v) => v.activo);
@@ -90,7 +94,7 @@ export default async function PaginaProducto({ params, searchParams }: { params:
       </section>
 
       <section className="tarjeta">
-        <h2 className={estilos.subtitulo}>Datos del producto</h2>
+        <h2 className={estilos.subtitulo}>Datos del tipo de producto</h2>
         <FormularioProducto
           producto={producto}
           categorias={categorias}
@@ -99,10 +103,11 @@ export default async function PaginaProducto({ params, searchParams }: { params:
           tasa={tasa?.valor ?? null}
           conMarcas={conMarcas}
           existencia={conMarcas ? null : existencia}
+          secciones={secciones}
         />
       </section>
 
-      <MarcasDelProducto producto={producto} variantes={variantes} tasa={tasa?.valor ?? null} />
+      <MarcasDelProducto producto={producto} variantes={variantes} tasa={tasa?.valor ?? null} marcas={marcas} presentaciones={presentaciones} />
 
       <section className="tarjeta">
         <h2 className={estilos.subtitulo}>Borrar el producto</h2>

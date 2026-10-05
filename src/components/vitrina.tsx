@@ -1,14 +1,15 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { enlaceWhatsapp } from "@/config/negocio";
-import { nombreDeVenta, porQueSeCobra, presentacionDe } from "@/lib/catalogo";
+import { nombreDeVenta, porQueSeCobra } from "@/lib/catalogo";
 import { direccionDePortada, type Familia } from "@/lib/familias";
 import { rutaProducto } from "@/lib/enlaces";
 import { aBolivares, bs, fechaCorta, unidadEnPalabras, usd } from "@/lib/dinero";
 import { claveDeOferta } from "@/lib/carrito";
 import { fotoDeCombo } from "@/lib/fotos-referenciales";
 import type { Oferta } from "@/lib/ofertas";
-import type { ProductoDeVitrina } from "@/lib/vitrina";
+import type { MarcaDeVitrina, ProductoDeVitrina } from "@/lib/vitrina";
+import { presentacionYContenido } from "@/lib/marcas-texto";
 import { FotoDeProducto } from "@/components/foto-de-producto";
 import { Icono } from "@/components/icono";
 import { BotonAgregar } from "@/components/carrito/boton-agregar";
@@ -61,11 +62,19 @@ function PrecioDeTarjeta({ item, tasa }: { item: ProductoDeVitrina; tasa: number
   );
 }
 
-/** Bajo el nombre: la presentación, cómo se vende, o cuántas marcas hay para elegir. */
+/**
+ * Bajo el nombre del tipo, lo secundario: cuántas marcas hay para elegir;
+ * con una sola, su marca y su presentación («Guaralact · bolsa de 1 kg»);
+ * sin marca, la presentación o cómo se vende.
+ */
 function detalleDe(item: ProductoDeVitrina): string {
-  const { producto, variantes } = item;
-  if (variantes.length >= 2) return `${variantes.length} marcas o presentaciones`;
-  const presentacion = presentacionDe(producto);
+  const { producto, variantes, marcas } = item;
+  if (marcas.length >= 2) return `${marcas.length} marcas para elegir`;
+  if (variantes.length >= 2) return `${variantes.length} presentaciones`;
+  const unico = variantes[0];
+  const presentacion = presentacionYContenido(unico ?? producto);
+  const marca = marcas[0]?.nombre;
+  if (marca) return [`Marca ${marca}`, presentacion].filter(Boolean).join(" · ");
   return presentacion ? `Presentación: ${presentacion}` : `Venta por ${unidadEnPalabras(producto.unidad)}`;
 }
 
@@ -109,6 +118,81 @@ export function RejillaDeProductos({ items, tasa }: { items: ProductoDeVitrina[]
         <TarjetaDeProducto key={item.producto.id} item={item} tasa={tasa} prioridad={i < 2} />
       ))}
     </ul>
+  );
+}
+
+/**
+ * Los tipos de una familia por secciones: «Quesos», «Proteínas», «Salsas
+ * y aderezos»… Una sección sin título (los propios de la familia) va sin
+ * encabezado.
+ */
+export function SeccionesDeProductos({ secciones, tasa }: { secciones: { titulo: string; items: ProductoDeVitrina[] }[]; tasa: number | null }) {
+  return (
+    <div className={estilos.secciones}>
+      {secciones.map((s) => (
+        <section key={s.titulo || "-"} className={estilos.seccionDeFamilia} aria-label={s.titulo || undefined}>
+          {s.titulo && (
+            <h2 className={estilos.tituloDeSeccion}>
+              {s.titulo}
+              <span>{s.items.length === 1 ? "1 producto" : `${s.items.length} productos`}</span>
+            </h2>
+          )}
+          <RejillaDeProductos items={s.items} tasa={tasa} />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * «Filtrar por marca»: casillas con las marcas de lo que se ve, y el
+ * botón. Va y vuelve sin JavaScript (`?marca=guaralact`); el cliente busca
+ * primero lo que necesita y después elige la marca. Con una sola marca no
+ * hace falta.
+ */
+export function FiltroDeMarcas({
+  marcas,
+  elegidas,
+  accion,
+  conservar = {},
+  desde = 2,
+}: {
+  marcas: MarcaDeVitrina[];
+  elegidas: string[];
+  /** La página a la que vuelve el filtro. */
+  accion: string;
+  /** Lo demás de la dirección que se mantiene (la búsqueda, por ejemplo). */
+  conservar?: Record<string, string>;
+  /** Cuántas marcas hacen falta para que valga la pena filtrar. */
+  desde?: number;
+}) {
+  if (marcas.length < desde) return null;
+  const sinFiltro = Object.keys(conservar).length > 0 ? `${accion}?${new URLSearchParams(conservar).toString()}` : accion;
+  return (
+    <form action={accion} method="get" className={estilos.filtroMarcas} aria-label="Filtrar por marca">
+      {Object.entries(conservar).map(([nombre, valor]) => (
+        <input key={nombre} type="hidden" name={nombre} value={valor} />
+      ))}
+      <p className={estilos.filtroTitulo}>Filtrar por marca</p>
+      <div className={estilos.filtroOpciones}>
+        {marcas.map((m) => (
+          <label key={m.slug} className={estilos.filtroOpcion}>
+            <input type="checkbox" name="marca" value={m.slug} defaultChecked={elegidas.includes(m.slug)} />
+            <span>{m.nombre}</span>
+          </label>
+        ))}
+      </div>
+      <div className={estilos.filtroAcciones}>
+        <button type="submit" className="boton">
+          Filtrar
+        </button>
+        {elegidas.length > 0 && (
+          <Link href={sinFiltro} className={estilos.verDetalles}>
+            Ver todas las marcas
+          </Link>
+        )}
+      </div>
+    </form>
   );
 }
 

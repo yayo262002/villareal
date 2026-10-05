@@ -79,6 +79,14 @@
   color: var(--color-verde-profundo);
   overflow-wrap: anywhere;
 }
+/* «Marca Guaralact», sobre el nombre del tipo. */
+.fichaMarca {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-dorado-texto);
+}
 .fichaUnidad {
   font-size: 16px;
   color: var(--color-texto-suave);
@@ -180,6 +188,13 @@
   color: inherit;
   text-decoration: none;
 }
+/* «Bolsa de 1 kg», bajo la marca. */
+.variantePresentacion {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-texto);
+}
 .varianteDetalle {
   margin: 0;
   font-size: 14px;
@@ -279,6 +294,12 @@
   text-align: center;
   font-weight: 700;
   line-height: 1.2;
+}
+.otroDetalle {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-texto-suave);
 }
 .otroFoto {
   width: 72px;

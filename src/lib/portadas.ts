@@ -7,6 +7,7 @@ export const PORTADAS_INCLUIDAS: ReadonlySet<string> = new Set<string>([
   "burger",
   "pizzeria",
   "quesos",
+  "lacteos",
   "huevos",
   "embutidos",
   "salsas-y-aderezos",

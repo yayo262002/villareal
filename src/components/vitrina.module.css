@@ -214,6 +214,95 @@
   color: var(--color-verde-profundo);
 }
 
+/* ---------- Secciones de una familia (Burger: Quesos, Proteínas, Salsas…) ---------- */
+
+.secciones {
+  display: grid;
+  gap: var(--espacio-6);
+}
+.seccionDeFamilia {
+  display: grid;
+  gap: var(--espacio-3);
+}
+.tituloDeSeccion {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  padding-bottom: var(--espacio-2);
+  border-bottom: 3px solid var(--color-dorado);
+  font-family: var(--fuente-titulos);
+  font-weight: 400;
+  font-size: clamp(24px, 6vw, 32px);
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--color-verde-profundo);
+}
+.tituloDeSeccion span {
+  flex: none;
+  font-family: var(--fuente);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--color-texto-suave);
+}
+
+/* ---------- Filtrar por marca ---------- */
+
+.filtroMarcas {
+  display: grid;
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie);
+}
+.filtroTitulo {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-dorado-texto);
+}
+.filtroOpciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+}
+.filtroOpcion {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  min-height: 42px;
+  padding: 0 var(--espacio-4) 0 var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+  background: var(--color-crema);
+  font-weight: 700;
+  cursor: pointer;
+}
+.filtroOpcion input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-verde-boton);
+}
+.filtroOpcion:has(input:checked) {
+  border-color: var(--color-verde-profundo);
+  background: var(--color-verde-profundo);
+  color: var(--color-crema);
+}
+.filtroAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-4);
+}
+.filtroAcciones .boton {
+  min-height: 42px;
+  background: var(--color-verde-boton);
+}
+
 /* ---------- Tarjetas de familias ---------- */
 
 .rejillaFamilias {
@@ -224,10 +313,23 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--espacio-3);
 }
+/* En el teléfono, de dos en dos; si sobra una, va sola a lo ancho. */
+.rejillaFamilias > li:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.rejillaFamilias > li:last-child:nth-child(odd) .familia {
+  aspect-ratio: 2 / 1;
+}
 @media (min-width: 720px) {
   .rejillaFamilias {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--espacio-4);
+  }
+  .rejillaFamilias > li:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+  .rejillaFamilias > li:last-child:nth-child(odd) .familia {
+    aspect-ratio: 16 / 9;
   }
 }
 /* La foto llena la tarjeta; el mismo velo verde abajo en todas, con el nombre encima. */
@@ -244,7 +346,7 @@
 }
 @media (min-width: 720px) {
   .familia {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 16 / 9;
   }
 }
 .familia::after {

@@ -9,12 +9,14 @@ const foto = (nombre: string) => fotoReferencialDe(nombre)?.replace(/^\/producto
 
 test("los productos de hoy llevan una foto de lo que son", () => {
   assert.equal(foto("Queso amarillo"), "queso-amarillo");
+  assert.equal(foto("Queso amarillo / Cheddar"), "queso-amarillo");
   assert.equal(foto("Queso mozzarella"), "mozzarella");
   assert.equal(foto("Huevos"), "huevos");
   assert.equal(foto("Queso pecorino rallado"), "queso-rallado");
   assert.equal(foto("Queso parmesano"), "parmesano");
-  // Del suero no hay foto de referencia buena: lleva la de su marca (ver abajo) o el fondo neutro.
-  assert.equal(fotoReferencialDe("Suero de leche"), null);
+  // El suero y la crema de leche, con la de la crema; con su marca, la de la marca (ver abajo).
+  assert.equal(foto("Suero"), "crema");
+  assert.equal(foto("Crema de leche"), "crema");
 });
 
 test("lo más concreto gana: la salsa cheddar no es un queso, ni la caja una pizza", () => {
