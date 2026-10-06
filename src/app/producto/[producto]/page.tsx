@@ -130,9 +130,13 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
   ]);
   const tasa = v.tasa;
   const publicado = precioPublicado(producto, variantes);
-  // Con un solo artículo (el suero, de Guaralact) se pide directo, como sin marcas, y su descripción y sus reseñas van aquí mismo.
+  // Con un solo artículo (el suero, de Guaralact) se pide directo, como sin marcas, y su descripción va aquí mismo.
   const unico = variantes.length === 1 ? variantes[0] : null;
-  const resenas = unico ? [...resenasDelTipo, ...(await resenasDeVariante(unico.id, esElDueno))] : resenasDelTipo;
+  // Las reseñas del tipo y las de cada una de sus marcas, diciendo de cuál hablan: cada comentario de un cliente sale en los detalles del producto.
+  const deLasMarcas = (await Promise.all(variantes.map((m) => resenasDeVariante(m.id, esElDueno)))).flat();
+  const resenas = [...resenasDelTipo, ...deLasMarcas]
+    .sort((a, b) => b.creado_en.localeCompare(a.creado_en))
+    .map((r) => ({ ...r, etiqueta: variantes.length > 1 && r.variante_id ? (variantes.find((m) => m.id === r.variante_id)?.marca || r.variante_nombre) : null }));
   const ventajas = [...new Set([...ventajasDe(producto.descripcion), ...(unico ? ventajasDe(unico.descripcion) : [])])];
   const imagen = imagenDeProducto(direccionDeFotoDeProducto(producto), producto.nombre, fotoDeAlgunaVariante(variantes));
   const familia = v.todasLasFamilias.find((f) => f.id === producto.familia_id) ?? null;

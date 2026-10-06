@@ -325,13 +325,18 @@ datos/                    La base de datos (fuera de Git)
   primero lo que dicen los negocios que lo compran y después las ventajas.
   Las reseñas solo se ven dentro de la página del producto: la portada no
   enseña ninguna. **De un producto con marcas, cada reseña es de una
-  marca** (`resenas.variante_id`) y sale en la página de esa marca: dos
-  marcas son dos productos distintos y lo que se dice de una no vale para
-  la otra. En el panel, la reseña se escribe eligiendo el producto o la
-  marca, y cada marca tiene su «Pedir reseña por WhatsApp».
-  El dueño le pide el comentario al cliente y lo escribe en el panel, en
-  Reseñas, con las palabras del cliente: producto, quién lo dice, qué
-  negocio es y qué dijo. Una reseña se puede esconder sin borrarla.
+  marca** (`resenas.variante_id`): sale en los detalles del producto,
+  diciendo de qué marca habla («Sobre Kemmental»), y en la página de esa
+  marca, que solo enseña las suyas; lo que se dice de una marca no se
+  cuelga de la otra. En el panel, la reseña se escribe **en la ficha del
+  producto** (`/admin/productos/7`, sección «Reseñas»: las que tiene, con
+  su marca y su estado, «＋ Añadir una reseña de un cliente» y «Pedir
+  reseña por WhatsApp», por el producto o por cada marca) o en Reseñas,
+  que las enseña todas juntas, eligiendo el producto o la marca
+  (`src/components/resenas-panel.tsx`).
+  El dueño le pide el comentario al cliente y lo escribe con las palabras
+  del cliente: producto o marca, quién lo dice, qué negocio es y qué dijo.
+  Una reseña se puede esconder sin borrarla.
   - **El permiso del cliente.** La reseña sale con el nombre del negocio,
     así que hace falta su permiso. Al guardarla se marca «Me dio permiso
     para publicarla con su nombre» y sale en el momento. Sin marcar se

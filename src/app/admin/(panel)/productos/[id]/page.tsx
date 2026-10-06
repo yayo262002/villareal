@@ -12,6 +12,8 @@ import { alternarProducto, retirarFotoDeProducto } from "@/lib/acciones";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioProducto } from "@/components/formulario-producto";
 import { LineaPrecio, MarcasDelProducto } from "@/components/marcas-producto";
+import { ResenasDelProducto } from "@/components/resenas-panel";
+import { listarResenas } from "@/lib/resenas";
 import { FotoDeProducto } from "@/components/foto-de-producto";
 import { imagenDeProducto } from "@/lib/fotos-referenciales";
 import estilos from "../../panel.module.css";
@@ -32,7 +34,7 @@ export default async function PaginaProducto({ params, searchParams }: { params:
   const producto = Number.isSafeInteger(numero) && numero > 0 ? await buscarProducto(numero) : null;
   if (!producto) notFound();
 
-  const [categorias, variantes, familias, tasa, existencia, secciones, marcas, presentaciones] = await Promise.all([
+  const [categorias, variantes, familias, tasa, existencia, secciones, marcas, presentaciones, todasLasResenas] = await Promise.all([
     categoriasDeProducto(producto.id),
     variantesDeProducto(producto.id),
     listarFamilias(),
@@ -41,7 +43,9 @@ export default async function PaginaProducto({ params, searchParams }: { params:
     seccionesDeProducto(producto.id),
     listarMarcas(),
     presentacionesUsadas(),
+    listarResenas(),
   ]);
+  const resenas = todasLasResenas.filter((r) => r.producto_id === producto.id);
   const estado = estadoDeProducto(producto);
   const conMarcas = variantes.some((v) => v.activo);
   const foto = direccionDeFotoDeProducto(producto);
@@ -107,6 +111,8 @@ export default async function PaginaProducto({ params, searchParams }: { params:
       </section>
 
       <MarcasDelProducto producto={producto} variantes={variantes} tasa={tasa?.valor ?? null} marcas={marcas} presentaciones={presentaciones} />
+
+      <ResenasDelProducto producto={producto} variantes={variantes} resenas={resenas} />
 
       <section className="tarjeta">
         <h2 className={estilos.subtitulo}>Borrar el producto</h2>

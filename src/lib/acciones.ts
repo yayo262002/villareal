@@ -1638,6 +1638,8 @@ export async function borrarPago(datos: FormData): Promise<void> {
 
 export async function guardarResena(datos: FormData): Promise<void> {
   await exigirSesion();
+  // Se escribe en Reseñas o en la ficha del producto: se vuelve a donde se escribió.
+  const vuelta = volverA(datos, "/admin/resenas");
   // De un producto («3») o, si tiene marcas, de una de ellas («1-7»): cada marca tiene sus propias reseñas.
   const [delProducto, deLaMarca] = (texto(datos, "clave") || texto(datos, "producto_id")).split("-");
   const productoId = Number(delProducto) || 0;
@@ -1645,12 +1647,12 @@ export async function guardarResena(datos: FormData): Promise<void> {
   const producto = productoId ? await buscarProducto(productoId) : null;
   const variante = varianteId ? await buscarVariante(varianteId) : null;
   if (!producto || (varianteId !== null && (!variante || variante.producto_id !== producto.id))) {
-    volverConError("/admin/resenas", "Elige de qué producto es la reseña.");
+    volverConError(vuelta, "Elige de qué producto es la reseña.");
   }
   const nombre = nombreDeVenta(producto.nombre, variante?.nombre);
 
   const lectura = leerResena({ autor: texto(datos, "autor"), detalle: texto(datos, "detalle"), texto: texto(datos, "texto") });
-  if (!lectura.valida) volverConError("/admin/resenas", lectura.motivo);
+  if (!lectura.valida) volverConError(vuelta, lectura.motivo);
 
   // La casilla dice que el cliente dio permiso para salir con su nombre.
   // Sin ella la reseña se guarda, pero escondida hasta tener el permiso.
@@ -1662,11 +1664,11 @@ export async function guardarResena(datos: FormData): Promise<void> {
       await guardarFotoDeResena(id, foto.type, new Uint8Array(await foto.arrayBuffer()));
     } catch (error) {
       // La reseña ya está guardada; solo falta la foto, y se dice.
-      volverConError("/admin/resenas", `Reseña guardada, pero sin la foto: ${mensajeDe(error)}`);
+      volverConError(vuelta, `Reseña guardada, pero sin la foto: ${mensajeDe(error)}`);
     }
   }
   volverConExito(
-    "/admin/resenas",
+    vuelta,
     conPermiso
       ? `Reseña de ${lectura.datos.autor} guardada. Ya sale en la página de «${nombre}».`
       : `Reseña de ${lectura.datos.autor} guardada, escondida: falta el permiso del cliente. Cuando te lo dé, pulsa «Ya me dio permiso: publicar».`,
@@ -1682,14 +1684,14 @@ export async function alternarResena(datos: FormData): Promise<void> {
   const id = numero(datos, "id");
   const resena = id ? await buscarResena(id) : null;
   if (!id || !resena) volverConError("/admin/resenas", "No se encontró la reseña.");
-  if (resena.de_ejemplo) volverConError("/admin/resenas", "Una reseña de ejemplo no se publica: no la dijo ningún cliente.");
+  if (resena.de_ejemplo) volverConError(volverA(datos, "/admin/resenas"), "Una reseña de ejemplo no se publica: no la dijo ningún cliente.");
 
   if (texto(datos, "publicada") === "1") {
     await publicarResena(id);
-    volverConExito("/admin/resenas", `Reseña de ${resena.autor} publicada.`);
+    volverConExito(volverA(datos, "/admin/resenas"), `Reseña de ${resena.autor} publicada.`);
   }
   await esconderResena(id);
-  volverConExito("/admin/resenas", "Reseña escondida. No se borró.");
+  volverConExito(volverA(datos, "/admin/resenas"), "Reseña escondida. No se borró.");
 }
 
 /** Pone o cambia la foto de una reseña que ya existe. */
@@ -1699,13 +1701,13 @@ export async function cambiarFotoDeResena(datos: FormData): Promise<void> {
   const resena = id ? await buscarResena(id) : null;
   if (!id || !resena) volverConError("/admin/resenas", "No se encontró la reseña.");
   const foto = archivoDe(datos, "foto");
-  if (!foto) volverConError("/admin/resenas", "Elige una foto.");
+  if (!foto) volverConError(volverA(datos, "/admin/resenas"), "Elige una foto.");
   try {
     await guardarFotoDeResena(id, foto.type, new Uint8Array(await foto.arrayBuffer()));
   } catch (error) {
-    volverConError("/admin/resenas", mensajeDe(error));
+    volverConError(volverA(datos, "/admin/resenas"), mensajeDe(error));
   }
-  volverConExito("/admin/resenas", `Foto puesta en la reseña de ${resena.autor}.`);
+  volverConExito(volverA(datos, "/admin/resenas"), `Foto puesta en la reseña de ${resena.autor}.`);
 }
 
 export async function retirarFotoDeResena(datos: FormData): Promise<void> {
@@ -1714,7 +1716,7 @@ export async function retirarFotoDeResena(datos: FormData): Promise<void> {
   const resena = id ? await buscarResena(id) : null;
   if (!id || !resena) volverConError("/admin/resenas", "No se encontró la reseña.");
   await quitarFotoDeResena(id);
-  volverConExito("/admin/resenas", "Foto quitada. La reseña se queda.");
+  volverConExito(volverA(datos, "/admin/resenas"), "Foto quitada. La reseña se queda.");
 }
 
 /** La confirmación está en `/admin/resenas/[id]/eliminar`. */

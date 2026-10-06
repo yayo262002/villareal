@@ -10,6 +10,8 @@ type ResenaParaMostrar = {
   texto: string;
   de_ejemplo: number;
   foto_version: string | null;
+  /** De qué marca habla, cuando la reseña sale en la página del tipo con varias marcas. */
+  etiqueta?: string | null;
 };
 
 /**
@@ -46,6 +48,7 @@ export function ListaDeResenas({ resenas }: { resenas: ResenaParaMostrar[] }) {
               <span>
                 <strong>{r.autor}</strong>
                 {r.detalle && <span className={estilos.detalle}>{r.detalle}</span>}
+                {r.etiqueta && <span className={estilos.detalle}>Sobre {r.etiqueta}</span>}
               </span>
             </p>
           </li>

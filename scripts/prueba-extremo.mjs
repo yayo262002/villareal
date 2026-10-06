@@ -1389,12 +1389,40 @@ async function probarResenas() {
   const marcaConResena = legible((await pagina(rutaSortilegio, "")).html);
   const productoSinElla = legible((await pagina("/producto/4-pecorino", "")).html);
   comprobar(
-    "sale en la página de la marca y no en la del producto, que dice cuántas tiene cada marca",
+    "sale en la página de la marca y también en los detalles del producto, diciendo de qué marca habla",
     marcaConResena.includes(`«${deLaMarca}»`) && marcaConResena.indexOf(deLaMarca) > marcaConResena.indexOf("Por qué elegirlo") &&
-      !productoSinElla.includes(deLaMarca) && productoSinElla.includes("1 reseña"),
+      productoSinElla.includes(`«${deLaMarca}»`) && productoSinElla.includes(">Sobre Sortilegio<") && productoSinElla.includes("1 reseña"),
   );
   r = await enviar("/admin/resenas", 'name="autor"', { clave: `1-${varianteSortilegio}`, autor: "Nadie", detalle: "", texto: "No vale", permiso: "1" });
   comprobar("una marca que no es de ese producto no se acepta", r.destino.includes("Elige de qué producto"), r.destino);
+  // En la ficha del producto del panel están sus reseñas, con la marca de cada una, y la siguiente se escribe ahí mismo.
+  const fichaConResenas = legible((await pagina("/admin/productos/4")).html);
+  comprobar(
+    "la ficha del producto enseña sus reseñas, dice de qué marca es cada una y tiene el formulario para escribir otra",
+    fichaConResenas.includes(`«${deLaMarca}»`) && fichaConResenas.includes("sobre Sortilegio") && fichaConResenas.includes('value="/admin/productos/4#resenas"') &&
+      fichaConResenas.includes(`value="4-${varianteSortilegio}"`) && fichaConResenas.includes("Pedir reseña por WhatsApp"),
+  );
+  const desdeLaFicha = "Escrita desde la ficha del producto, de prueba.";
+  r = await enviar("/admin/productos/4", 'name="autor"', {
+    clave: `4-${varianteSortilegio}`,
+    autor: "Pizzería de la ficha (prueba)",
+    detalle: "",
+    texto: desdeLaFicha,
+    permiso: "1",
+    volver_a: "/admin/productos/4#resenas",
+  });
+  const fichaDespues = legible((await pagina("/admin/productos/4")).html);
+  const productoDespues = legible((await pagina("/producto/4-pecorino", "")).html);
+  comprobar(
+    "una reseña escrita desde la ficha vuelve a la ficha y sale en los detalles del producto en la web",
+    r.destino.startsWith("/admin/productos/4?") && r.destino.includes("Ya sale en la página") && fichaDespues.includes(`«${desdeLaFicha}»`) &&
+      productoDespues.includes(`«${desdeLaFicha}»`) && productoDespues.includes("2 reseñas"),
+    r.destino,
+  );
+  const [escritaEnLaFicha] = await consultar("select id from resenas where texto = ?", [desdeLaFicha]);
+  r = await enviar("/admin/productos/4", `name="id" value="${escritaEnLaFicha.id}"`, { id: String(escritaEnLaFicha.id), publicada: "0", volver_a: "/admin/productos/4#resenas" });
+  comprobar("esconderla desde la ficha vuelve a la ficha", r.destino.startsWith("/admin/productos/4?") && r.destino.includes("Reseña escondida"), r.destino);
+  await enviar(`/admin/resenas/${escritaEnLaFicha.id}/eliminar`, 'name="id"', { id: String(escritaEnLaFicha.id) });
 }
 
 const PROVEEDOR_DE_PRUEBA = "Quesos de prueba (borrar)";
