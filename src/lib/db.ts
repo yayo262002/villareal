@@ -176,14 +176,23 @@ async function migrar(cliente: Client): Promise<void> {
     await cliente.execute("insert or ignore into ajustes (clave, valor) values ('catalogo_por_marcas', '1')");
   }
   await enlazarMarcasDeLosProductos(cliente);
+  // Burger y Pizzería no son familias de productos sino colecciones por tipo de negocio: al llegar la columna,
+  // las que ya estaban se marcan por su slug (una sola vez; después lo decide el dueño en Familias).
+  if (!/\bcoleccion\b/.test(await definicionDe(cliente, "familias"))) {
+    await añadirColumna(cliente, "familias", "coleccion integer not null default 0");
+    await cliente.execute({
+      sql: `update familias set coleccion = 1 where slug in (${FAMILIAS_INICIALES.filter((f) => f.coleccion).map(() => "?").join(", ")})`,
+      args: FAMILIAS_INICIALES.filter((f) => f.coleccion).map((f) => f.slug),
+    });
+  }
   // Las familias iniciales, la primera vez. Lo decide la base en una sola sentencia (una lectura aparte podría
   // llegar vieja), y el slug único evita duplicarlas si dos procesos lo intentan a la vez. Las que se añadan al
   // código después no se crean solas en una base que ya tiene familias: las crea el dueño.
   await cliente.execute({
-    sql: `insert or ignore into familias (nombre, slug, descripcion, icono, orden)
-          select column1, column2, column3, column4, column5 from (values ${FAMILIAS_INICIALES.map(() => "(?, ?, ?, ?, ?)").join(", ")})
+    sql: `insert or ignore into familias (nombre, slug, descripcion, icono, orden, coleccion)
+          select column1, column2, column3, column4, column5, column6 from (values ${FAMILIAS_INICIALES.map(() => "(?, ?, ?, ?, ?, ?)").join(", ")})
           where not exists (select 1 from familias)`,
-    args: FAMILIAS_INICIALES.flatMap((f) => [f.nombre, f.slug, f.descripcion, f.icono, f.orden]),
+    args: FAMILIAS_INICIALES.flatMap((f) => [f.nombre, f.slug, f.descripcion, f.icono, f.orden, f.coleccion ? 1 : 0]),
   });
 }
 

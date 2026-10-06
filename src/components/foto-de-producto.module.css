@@ -8,7 +8,7 @@
   position: relative;
   display: block;
   overflow: hidden;
-  background: var(--color-crema);
+  background: var(--color-superficie);
 }
 .marco img {
   display: block;

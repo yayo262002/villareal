@@ -86,12 +86,13 @@
   transform: translateY(-3px);
   box-shadow: var(--sombra-tarjeta-alta);
 }
-/* La foto, cuadrada y a todo el ancho: la mitad de arriba de la tarjeta. */
+/* La foto, cuadrada y a todo el ancho, sobre blanco en todas las tarjetas: el mismo marco para todos los productos. */
 .tarjetaImagen {
   position: relative;
   display: block;
   aspect-ratio: 1;
-  background: var(--color-crema);
+  border-bottom: 1px solid var(--color-borde);
+  background: var(--color-superficie);
 }
 .tarjetaFoto {
   width: 100%;
@@ -463,13 +464,13 @@
   display: inline-flex;
   align-items: center;
   gap: var(--espacio-2);
-  min-height: 42px;
-  padding: 4px var(--espacio-4) 4px 4px;
+  min-height: 38px;
+  padding: 3px var(--espacio-3) 3px 3px;
   border: 1px solid var(--color-dorado-tenue);
   border-radius: 999px;
   background: var(--color-vidrio);
   color: var(--color-crema);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-decoration: none;
@@ -487,50 +488,114 @@
 }
 .atajos img {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-/* ---------- La franja mayorista ---------- */
+/* ---------- La franja mayorista: una línea discreta, verde con los lemas en dorado ---------- */
 
 .mayorista {
   display: grid;
-  gap: var(--espacio-2);
-  padding: var(--espacio-5) var(--espacio-4);
-  background: var(--color-dorado);
-  color: var(--color-verde-profundo);
+  gap: var(--espacio-1);
+  padding: var(--espacio-3) var(--espacio-4);
+  border-top: 1px solid var(--color-dorado-tenue);
+  background: var(--color-verde-profundo);
+  color: var(--color-crema);
   text-align: center;
 }
 .mayoristaLemas {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 2px;
-  font-family: var(--fuente-titulos);
-  font-size: clamp(22px, 6vw, 32px);
-  line-height: 1.1;
-  letter-spacing: 0.02em;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px var(--espacio-3);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  color: var(--color-dorado);
 }
-@media (min-width: 900px) {
-  .mayoristaLemas {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+/* En el teléfono, un lema por línea, sin puntos sueltos al principio. */
+.mayoristaLemas li {
+  flex: 1 1 100%;
+}
+@media (min-width: 720px) {
+  .mayoristaLemas li {
+    flex: 0 0 auto;
   }
   .mayoristaLemas li + li::before {
     content: "·";
-    margin: 0 var(--espacio-4);
+    margin-right: var(--espacio-3);
+    color: var(--color-crema);
   }
 }
 .mayoristaProductos {
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--color-crema);
+  opacity: 0.85;
+}
+
+/* ---------- Las colecciones por negocio: dos tarjetas grandes con su foto, su nombre y para quién son ---------- */
+
+.rejillaColecciones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--espacio-3);
+}
+@media (min-width: 720px) {
+  .rejillaColecciones {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--espacio-5);
+  }
+}
+.rejillaColecciones .familia {
+  aspect-ratio: 16 / 9;
+}
+@media (min-width: 720px) {
+  .rejillaColecciones .familia {
+    aspect-ratio: 2 / 1;
+  }
+}
+.rejillaColecciones .familiaNombre {
+  font-size: clamp(30px, 8vw, 44px);
+}
+.familiaDescripcion {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-crema);
+}
+
+/* Las familias de productos, compactas: cuatro por fila en la pantalla ancha. */
+.rejillaFamilias--compacta {
+  gap: var(--espacio-3);
+}
+@media (min-width: 720px) {
+  .rejillaFamilias--compacta {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--espacio-4);
+  }
+  .rejillaFamilias--compacta .familia,
+  .rejillaFamilias--compacta > li:last-child:nth-child(odd) .familia {
+    aspect-ratio: 4 / 3;
+  }
+  .rejillaFamilias--compacta > li:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+}
+.rejillaFamilias--compacta .familiaNombre {
+  font-size: clamp(19px, 5vw, 24px);
 }
 
 /* ---------- La franja de confianza: tarjetas claras con su icono ---------- */
@@ -774,32 +839,56 @@
 }
 
 /* El buscador grande de la página de productos. */
-.buscador {
-  display: flex;
-  gap: var(--espacio-2);
-  max-width: 560px;
-}
-.buscador input {
-  flex: 1;
-  min-width: 0;
-  min-height: 50px;
-  padding: 0 var(--espacio-4);
-  border: 2px solid var(--color-borde);
-  border-radius: 999px;
+/* Buscar y filtrar: el buscador, la familia, el negocio y el botón, en una tarjeta clara. */
+.filtros {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-grande);
   background: var(--color-superficie);
 }
-.buscador input:focus-visible {
+@media (min-width: 720px) {
+  .filtros {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: end;
+  }
+}
+.filtroCampo {
+  display: grid;
+  gap: var(--espacio-1);
+  min-width: 0;
+}
+.filtroCampo label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-dorado-texto);
+}
+.filtroCampo input,
+.filtroCampo select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--espacio-3);
+  border: 2px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  font: inherit;
+  color: var(--color-texto);
+}
+.filtroCampo input:focus-visible,
+.filtroCampo select:focus-visible {
   outline: 3px solid var(--color-dorado);
   outline-offset: 1px;
   border-color: var(--color-verde-profundo);
 }
-.buscador button {
-  min-height: 50px;
-  border-radius: 999px;
+.filtros .boton {
+  min-height: 48px;
   background: var(--color-verde-boton);
-  font-weight: 800;
 }
-.buscador button:hover {
+.filtros .boton:hover {
   background: var(--color-verde-boton-oscuro);
 }
 

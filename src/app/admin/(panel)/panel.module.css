@@ -1174,7 +1174,9 @@
   padding: 0 var(--espacio-1);
   font-weight: 700;
 }
-.categoriasProducto > .ayuda {
+/* La ayuda y los desplegables van a lo ancho; solo las casillas se reparten en columnas. */
+.categoriasProducto > :global(.ayuda),
+.categoriasProducto > details {
   grid-column: 1 / -1;
 }
 @media (min-width: 640px) {

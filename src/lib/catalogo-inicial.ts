@@ -9,17 +9,30 @@ import { aSlug } from "./enlaces.ts";
  * marcas ni existencias. Datos puros, con pruebas.
  */
 
-export type FamiliaInicial = { nombre: string; slug: string; descripcion: string; icono: string; orden: number };
+export type FamiliaInicial = {
+  nombre: string;
+  slug: string;
+  descripcion: string;
+  icono: string;
+  orden: number;
+  /** Una colección por tipo de negocio (Burger, Pizzería): junta productos de varias familias. */
+  coleccion?: boolean;
+};
 
+/**
+ * Primero las dos colecciones por negocio; después las familias de productos
+ * en el orden que pidió el dueño: Quesos, Embutidos, Salsas, Papas, Huevos,
+ * Lácteos, Bebidas, y al final las dos de cajón de sastre.
+ */
 export const FAMILIAS_INICIALES: FamiliaInicial[] = [
-  { nombre: "Burger", slug: "burger", descripcion: "Para hamburgueserías: lo que necesitas para tus hamburguesas.", icono: "burger", orden: 1 },
-  { nombre: "Pizzería", slug: "pizzeria", descripcion: "Para pizzerías: lo que necesitas para tus pizzas.", icono: "pizza", orden: 2 },
+  { nombre: "Burger", slug: "burger", descripcion: "Productos para hamburgueserías.", icono: "burger", orden: 1, coleccion: true },
+  { nombre: "Pizzería", slug: "pizzeria", descripcion: "Productos para pizzerías.", icono: "pizza", orden: 2, coleccion: true },
   { nombre: "Quesos", slug: "quesos", descripcion: "Quesos al mayor para cocinas y negocios de comida.", icono: "queso", orden: 3 },
-  { nombre: "Lácteos", slug: "lacteos", descripcion: "Sueros y cremas de leche al mayor.", icono: "lacteos", orden: 4 },
-  { nombre: "Huevos", slug: "huevos", descripcion: "Huevos al mayor.", icono: "huevo", orden: 5 },
-  { nombre: "Embutidos", slug: "embutidos", descripcion: "Embutidos al mayor.", icono: "embutido", orden: 6 },
-  { nombre: "Salsas y aderezos", slug: "salsas-y-aderezos", descripcion: "Salsas y aderezos al mayor.", icono: "salsa", orden: 7 },
-  { nombre: "Papas y congelados", slug: "papas-y-congelados", descripcion: "Papas y congelados al mayor.", icono: "papas", orden: 8 },
+  { nombre: "Embutidos", slug: "embutidos", descripcion: "Embutidos al mayor.", icono: "embutido", orden: 4 },
+  { nombre: "Salsas y aderezos", slug: "salsas-y-aderezos", descripcion: "Salsas y aderezos al mayor.", icono: "salsa", orden: 5 },
+  { nombre: "Papas y congelados", slug: "papas-y-congelados", descripcion: "Papas y congelados al mayor.", icono: "papas", orden: 6 },
+  { nombre: "Huevos", slug: "huevos", descripcion: "Huevos al mayor.", icono: "huevo", orden: 7 },
+  { nombre: "Lácteos", slug: "lacteos", descripcion: "Sueros y cremas de leche al mayor.", icono: "lacteos", orden: 8 },
   { nombre: "Bebidas", slug: "bebidas", descripcion: "Bebidas al mayor para tu negocio.", icono: "bebida", orden: 9 },
   { nombre: "Complementos gastronómicos", slug: "complementos-gastronomicos", descripcion: "Complementos para la cocina de tu negocio.", icono: "complementos", orden: 10 },
   { nombre: "Otros productos", slug: "otros-productos", descripcion: "Otros productos al mayor.", icono: "otros", orden: 11 },
@@ -64,6 +77,8 @@ const b = (
 
 /** En Pizzería, las salsas y los complementos van juntos. */
 const SALSAS_Y_COMPLEMENTOS = { pizzeria: "Salsas y complementos" };
+/** En Burger, los embutidos y la carne de hamburguesa van juntos. */
+const EMBUTIDOS_Y_PROTEINAS = "Embutidos / Proteínas";
 
 /**
  * Los TIPOS de producto que el dueño pidió preparar, una sola vez cada uno
@@ -73,19 +88,21 @@ const SALSAS_Y_COMPLEMENTOS = { pizzeria: "Salsas y complementos" };
  * o los refrescos familiares se añaden como artículos del suyo (Mozzarella,
  * Queso amarillo / Cheddar, Huevos, Refrescos), con su marca y su precio. No
  * están los que ya existen con otro nombre: «Huevos por cartón» es
- * «Huevos», «Queso pecorino» es «Queso pecorino rallado», y el queso
- * amarillo, la mozzarella y el suero ya están. Los de kilo van por kilo; lo
- * demás, por unidad.
+ * «Huevos», «Queso pecorino» es «Pecorino», y el queso amarillo, la
+ * mozzarella y el suero ya están. Los de kilo van por kilo; lo demás, por
+ * unidad. En Burger, los embutidos y la carne van juntos en «Embutidos /
+ * Proteínas»; en Pizzería, las salsas y los complementos, en «Salsas y
+ * complementos»; los refrescos salen en las dos colecciones.
  */
 export const BORRADORES: BorradorInicial[] = [
   // Quesos
   b("Queso de año", "quesos", ["pizzeria"], "kg"),
-  b("Queso parmesano", "quesos", ["pizzeria"], "kg"),
+  b("Parmesano", "quesos", ["pizzeria"], "kg"),
   // Lácteos
   { ...b("Crema de leche", "lacteos", []), seccion: "Cremas de leche" },
   // Embutidos
-  b("Tocineta", "embutidos", ["burger", "pizzeria"], "kg", { secciones: { burger: "Proteínas" } }),
-  b("Jamón", "embutidos", ["pizzeria"], "kg"),
+  b("Tocineta", "embutidos", ["burger", "pizzeria"], "kg", { secciones: { burger: EMBUTIDOS_Y_PROTEINAS } }),
+  b("Jamón", "embutidos", ["burger", "pizzeria"], "kg", { secciones: { burger: EMBUTIDOS_Y_PROTEINAS } }),
   b("Pepperoni", "embutidos", ["pizzeria"], "kg"),
   b("Salami", "embutidos", ["pizzeria"], "kg"),
   b("Mortadela", "embutidos", [], "kg"),
@@ -107,7 +124,7 @@ export const BORRADORES: BorradorInicial[] = [
   b("Salsa para pizza", "salsas-y-aderezos", ["pizzeria"], "unidad", { secciones: SALSAS_Y_COMPLEMENTOS }),
   // Burger
   b("Pan de hamburguesa", "burger", [], "unidad", { seccion: "Panes" }),
-  b("Carne para hamburguesa", "burger", [], "unidad", { seccion: "Proteínas" }),
+  b("Carne para hamburguesa", "burger", [], "unidad", { seccion: EMBUTIDOS_Y_PROTEINAS }),
   b("Pepinillos", "complementos-gastronomicos", ["burger"]),
   b("Cebolla crispy", "complementos-gastronomicos", ["burger"]),
   // Pizzería
@@ -120,7 +137,7 @@ export const BORRADORES: BorradorInicial[] = [
   b("Maíz", "complementos-gastronomicos", ["pizzeria"], "unidad", { secciones: SALSAS_Y_COMPLEMENTOS }),
   b("Piña", "complementos-gastronomicos", ["pizzeria"], "unidad", { secciones: SALSAS_Y_COMPLEMENTOS }),
   // Bebidas
-  b("Refrescos", "bebidas", []),
+  b("Refrescos", "bebidas", ["burger", "pizzeria"]),
   b("Agua mineral", "bebidas", []),
 ];
 
@@ -153,7 +170,7 @@ export const OFERTAS_INICIALES: OfertaInicial[] = [
   {
     nombre: "Pack Pizzería",
     descripcion: "Mozzarella, pepperoni, jamón y salsa para pizza.",
-    productos: ["Queso mozzarella", "Pepperoni", "Jamón", "Salsa para pizza"],
+    productos: ["Mozzarella", "Pepperoni", "Jamón", "Salsa para pizza"],
   },
   {
     nombre: "Pack Emprendedor",

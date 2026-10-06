@@ -196,8 +196,8 @@ export function FiltroDeMarcas({
   );
 }
 
-/** La tarjeta de una familia: su foto a todo el ancho, con el nombre encima, todas con el mismo velo. */
-export function TarjetaDeFamilia({ familia }: { familia: Familia }) {
+/** La tarjeta de una familia (o de una colección): su foto a todo el ancho, con el nombre encima, todas con el mismo velo. */
+export function TarjetaDeFamilia({ familia, conDescripcion = false }: { familia: Familia; conDescripcion?: boolean }) {
   const portada = direccionDePortada(familia);
   return (
     <li>
@@ -213,6 +213,7 @@ export function TarjetaDeFamilia({ familia }: { familia: Familia }) {
         )}
         <span className={estilos.familiaTexto}>
           <span className={estilos.familiaNombre}>{familia.nombre}</span>
+          {conDescripcion && familia.descripcion && <span className={estilos.familiaDescripcion}>{familia.descripcion}</span>}
           <span className={estilos.familiaVer}>
             Ver productos
             <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -225,11 +226,23 @@ export function TarjetaDeFamilia({ familia }: { familia: Familia }) {
   );
 }
 
-export function RejillaDeFamilias({ familias }: { familias: Familia[] }) {
+/** Las familias de productos para comprar por categoría; `compacta`, cuatro por fila. */
+export function RejillaDeFamilias({ familias, compacta = false }: { familias: Familia[]; compacta?: boolean }) {
   return (
-    <ul className={estilos.rejillaFamilias}>
+    <ul className={`${estilos.rejillaFamilias} ${compacta ? estilos["rejillaFamilias--compacta"] : ""}`}>
       {familias.map((f) => (
         <TarjetaDeFamilia key={f.id} familia={f} />
+      ))}
+    </ul>
+  );
+}
+
+/** Las colecciones por tipo de negocio («¿Qué necesitas para tu negocio?»): Burger, Pizzería…, cada una con para quién es. */
+export function RejillaDeColecciones({ colecciones }: { colecciones: Familia[] }) {
+  return (
+    <ul className={estilos.rejillaColecciones}>
+      {colecciones.map((f) => (
+        <TarjetaDeFamilia key={f.id} familia={f} conDescripcion />
       ))}
     </ul>
   );
@@ -272,15 +285,16 @@ export function AtajosDeCategorias({ atajos, className }: { atajos: Atajo[]; cla
 }
 
 /** La franja dorada que dice a quién le vende Villa Real: al mayor, a negocios de burger y pizza. */
+/** Una línea discreta bajo la portada: el mensaje mayorista, sin cubrir la página de dorado. */
 export function FranjaMayorista() {
   return (
     <section className={estilos.mayorista} aria-label="Precios al mayor">
       <ul className={estilos.mayoristaLemas}>
         <li>Precios al mayor</li>
-        <li>Compra más · Paga menos</li>
+        <li>Compra más, paga menos</li>
         <li>Tu proveedor para burger &amp; pizza</li>
       </ul>
-      <p className={estilos.mayoristaProductos}>Quesos · Huevos · Embutidos · Papas · Salsas · Tocineta · Bebidas</p>
+      <p className={estilos.mayoristaProductos}>Quesos · Embutidos · Salsas · Papas · Huevos · Lácteos · Bebidas</p>
     </section>
   );
 }

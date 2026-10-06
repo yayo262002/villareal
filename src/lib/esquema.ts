@@ -159,6 +159,8 @@ export const ESQUEMA = `
     icono text not null default '',
     orden integer not null default 0,
     activa integer not null default 1,
+    -- 1: una colección por tipo de negocio (Burger, Pizzería), que junta productos de varias familias; 0: una familia de productos (Quesos).
+    coleccion integer not null default 0,
     creado_en text not null default (datetime('now'))
   );
 
@@ -498,7 +500,7 @@ export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion:
     descripcionAnterior: "Para sándwiches, arepas y hamburguesas\nFunde bien al calentar\nSe vende por kilo, al detal y al mayor",
   },
   {
-    nombre: "Queso mozzarella",
+    nombre: "Mozzarella",
     unidad: "kg",
     descripcion:
       "Perfecta para rallar\nGratina dorado y no se quema\nAl rebanar no se desborona\nPerfecta para pizza\nMuy buen gusto",
@@ -510,7 +512,7 @@ export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion:
     descripcionAnterior: "Se venden por cartón\nPara negocios y para la casa\nAl detal y al mayor",
   },
   {
-    nombre: "Queso pecorino rallado",
+    nombre: "Pecorino",
     unidad: "kg",
     descripcion: "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
   },
@@ -519,14 +521,29 @@ export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion:
 /**
  * Productos que cambiaron de nombre. La siembra busca por nombre, así que
  * sin esto un producto renombrado aquí se crearía otra vez. El texto viejo
- * solo se sustituye si el dueño no lo ha tocado.
+ * solo se sustituye si el dueño no lo ha tocado. Los nombres de los tipos
+ * van sin la palabra «queso» delante (el dueño los pidió así, 05/10/2026):
+ * «Mozzarella», «Pecorino», «Parmesano»; la familia ya dice que son quesos.
  */
 export const RENOMBRES: { de: string; a: string; descripcionVieja: string; descripcionNueva: string }[] = [
   {
     de: "Queso pecorino",
-    a: "Queso pecorino rallado",
+    a: "Pecorino",
     descripcionVieja:
       "Queso curado de sabor intenso\nPara rallar sobre pastas y ensaladas\nSe vende por kilo, al detal y al mayor",
     descripcionNueva: "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
   },
+  {
+    de: "Queso pecorino rallado",
+    a: "Pecorino",
+    descripcionVieja: "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
+    descripcionNueva: "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
+  },
+  {
+    de: "Queso mozzarella",
+    a: "Mozzarella",
+    descripcionVieja: "Perfecta para rallar\nGratina dorado y no se quema\nAl rebanar no se desborona\nPerfecta para pizza\nMuy buen gusto",
+    descripcionNueva: "Perfecta para rallar\nGratina dorado y no se quema\nAl rebanar no se desborona\nPerfecta para pizza\nMuy buen gusto",
+  },
+  { de: "Queso parmesano", a: "Parmesano", descripcionVieja: "", descripcionNueva: "" },
 ];

@@ -37,6 +37,7 @@ import {
   actualizarProducto,
   buscarProducto,
   cambiarActivo,
+  categoriasDeProducto,
   crearProducto,
   eliminarProducto,
   guardarFotoDeProducto,
@@ -91,7 +92,7 @@ import {
   type DatosVariante,
 } from "./variantes";
 import { buscarMarca, eliminarMarca, marcaPorNombre, renombrarMarca, unirMarcas } from "./marcas";
-import { claveDe, esEstadoDeProducto, estadoDeProducto, nombreDeVenta, vendiblesDe, type EstadoProducto } from "./catalogo";
+import { NOMBRE_ESTADO_PRODUCTO, claveDe, esEstadoDeProducto, estadoDeProducto, nombreDeVenta, vendiblesDe, type EstadoProducto } from "./catalogo";
 import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, registrarPago } from "./pagos";
@@ -843,6 +844,7 @@ const iconoDe = (valor: string) => (esIcono(valor) ? valor : "otros");
 
 /** Los campos del formulario de producto que vuelven escritos si algo falla. */
 const CAMPOS_DEL_PRODUCTO = [
+  "tipo",
   "nombre",
   "descripcion",
   "unidad",
@@ -851,7 +853,9 @@ const CAMPOS_DEL_PRODUCTO = [
   "precio_usd",
   "precio_detal_usd",
   "marca",
+  "marca_lista",
   "presentacion",
+  "presentacion_lista",
   "contenido",
   "familia_id",
   "estado",
@@ -862,8 +866,25 @@ const CAMPOS_DEL_PRODUCTO = [
   "nueva_familia_descripcion",
   "nueva_familia_icono",
   "nueva_familia_orden",
+  "nueva_familia_coleccion",
   "seccion",
 ];
+
+/**
+ * La marca y la presentación llegan de dos sitios: una lista para elegir
+ * (`marca_lista`, `presentacion_lista`) y un campo para escribir una nueva
+ * (`marca`, `presentacion`). Lo escrito manda; «nueva» en la lista sin
+ * escribir nada es nada.
+ */
+function marcaEscrita(datos: FormData): string {
+  const lista = texto(datos, "marca_lista");
+  return texto(datos, "marca") || (lista && lista !== "nueva" ? lista : "");
+}
+
+function presentacionEscrita(datos: FormData): string {
+  const lista = texto(datos, "presentacion_lista");
+  return texto(datos, "presentacion") || (lista && lista !== "nueva" ? lista : "");
+}
 
 /** Lo escrito en el formulario de producto, para que vuelva relleno: `relleno` dice que lo de la dirección manda. */
 function escritoDelProducto(datos: FormData): URLSearchParams {
@@ -896,6 +917,7 @@ async function crearFamiliaDesdeElProducto(datos: FormData, origen: string): Pro
     icono: iconoDe(texto(datos, "nueva_familia_icono")),
     orden: numero(datos, "nueva_familia_orden") ?? (await siguienteOrden()),
     activa: texto(datos, "nueva_familia_activa") === "1",
+    coleccion: texto(datos, "nueva_familia_coleccion") === "1",
   });
   let aviso = "";
   const portada = archivoDe(datos, "nueva_familia_portada");
@@ -954,8 +976,8 @@ async function leerFormularioDeProducto(datos: FormData, actual: Producto | null
   // La marca escrita es una de la lista o una nueva, que se crea aquí: ya no hay nada más que revisar.
   let marca = { nombre: actual?.marca ?? "", id: actual?.marca_id ?? null };
   let marcaNueva: string | null = null;
-  if (datos.has("marca")) {
-    const elegida = await marcaPorNombre(texto(datos, "marca"));
+  if (datos.has("marca") || datos.has("marca_lista")) {
+    const elegida = await marcaPorNombre(marcaEscrita(datos));
     marca = { nombre: elegida.marca?.nombre ?? "", id: elegida.marca?.id ?? null };
     if (elegida.nueva && elegida.marca) marcaNueva = elegida.marca.nombre;
   }
@@ -972,7 +994,7 @@ async function leerFormularioDeProducto(datos: FormData, actual: Producto | null
       marca: marca.nombre,
       marca_id: marca.id,
       seccion: viene("seccion") ? texto(datos, "seccion") : (actual?.seccion ?? ""),
-      presentacion: viene("presentacion") ? texto(datos, "presentacion") : (actual?.presentacion ?? ""),
+      presentacion: viene("presentacion") || datos.has("presentacion_lista") ? presentacionEscrita(datos) : (actual?.presentacion ?? ""),
       contenido: viene("contenido") ? texto(datos, "contenido") : (actual?.contenido ?? ""),
       destacado: completo ? texto(datos, "destacado") === "1" : Boolean(actual?.destacado),
       en_oferta: completo ? texto(datos, "en_oferta") === "1" : Boolean(actual?.en_oferta),
@@ -1090,8 +1112,8 @@ export async function prepararCatalogo(): Promise<void> {
  * se crea al guardar; hace falta la marca o la presentación.
  */
 async function leerVariante(datos: FormData, origen: string): Promise<{ variante: DatosVariante; marcaNueva: string | null }> {
-  const escrita = texto(datos, "marca");
-  const presentacion = texto(datos, "presentacion");
+  const escrita = marcaEscrita(datos);
+  const presentacion = presentacionEscrita(datos);
   const contenido = texto(datos, "contenido");
   if (!escrita && !presentacion && !contenido) {
     volverConError(origen, "Escribe la marca (o elígela de la lista), la presentación o las dos: «Guaralact», «Bolsa de 1 kg».");
@@ -1142,19 +1164,47 @@ export async function guardarVariante(datos: FormData): Promise<void> {
   if (!productoId || !producto) volverConError("/admin/productos", "No se encontró el producto.");
   const origen = volverA(datos, `/admin/productos/${producto.id}`);
   const { variante, marcaNueva } = await leerVariante(datos, origen);
+  if (!variante.marca && !variante.presentacion && !variante.contenido && texto(datos, "tipo")) {
+    volverConError(origen, `${producto.nombre} ya está: para añadirle un artículo di su marca (de la lista o una nueva), su presentación o su contenido.`);
+  }
   const pasado = await pasarAArticulo(producto);
   const id = await crearVariante(producto, variante);
   const foto = await ponerFotoDeVariante(datos, id);
+  // Desde «Agregar producto»: las casillas marcadas se suman a las categorías del tipo (quitarle una se hace en su ficha),
+  // marcarlo destacado lo destaca, y el estado elegido se le aplica (así un borrador se publica al darle su primera marca).
   if (texto(datos, "categorias_del_tipo") === "1") {
-    const categorias = datos.getAll("categoria").map(Number).filter((n) => Number.isSafeInteger(n) && n > 0);
-    await ponerCategorias(producto.id, categorias, producto.familia_id);
+    const marcadas = datos.getAll("categoria").map(Number).filter((n) => Number.isSafeInteger(n) && n > 0);
+    const deAntes = await categoriasDeProducto(producto.id);
+    await ponerCategorias(producto.id, [...new Set([...deAntes, ...marcadas])], producto.familia_id);
+    if (texto(datos, "destacado") === "1" && !producto.destacado) {
+      await actualizarProducto(producto.id, { ...producto, destacado: true, en_oferta: Boolean(producto.en_oferta) });
+    }
   }
+  const estadoPedido = texto(datos, "estado");
+  const publicado = esEstadoDeProducto(estadoPedido) && estadoPedido !== estadoDeProducto(producto) ? estadoPedido : null;
+  if (publicado) await ponerEstado(producto.id, publicado);
   const etiqueta = nombreDeVenta(producto.nombre, (await buscarVariante(id))?.nombre);
   const antes = pasado ? ` Lo que ya vendías de ${producto.nombre} pasó a la lista como un artículo más.` : "";
+  const estadoAviso = publicado ? ` ${producto.nombre} queda ${NOMBRE_ESTADO_PRODUCTO[publicado].toLowerCase()}.` : "";
   volverConExito(
     `/admin/productos/${producto.id}#marcas`,
-    `«${etiqueta}» añadido.${marcaNueva ? ` Marca «${marcaNueva}» creada.` : ""}${foto}${antes} La web ya lo enseña dentro de ${producto.nombre}.`,
+    `«${etiqueta}» añadido.${marcaNueva ? ` Marca «${marcaNueva}» creada.` : ""}${foto}${antes}${estadoAviso} La web ya lo enseña dentro de ${producto.nombre}.`,
   );
+}
+
+/**
+ * «Agregar producto», en un solo formulario: si el tipo elegido es uno que
+ * ya está, se le añade el artículo (marca, presentación, precio, foto); si
+ * es «nuevo», se crea el tipo con todo lo escrito, como siempre.
+ */
+export async function agregarProducto(datos: FormData): Promise<void> {
+  // El tipo viene del selector; un formulario de antes lo manda como `producto_id`.
+  const tipo = texto(datos, "tipo") || texto(datos, "producto_id");
+  if (!tipo || tipo === "nuevo") return guardarProducto(datos);
+  datos.set("producto_id", tipo);
+  datos.set("categorias_del_tipo", "1");
+  if (!texto(datos, "volver_a")) datos.set("volver_a", `/admin/productos/nuevo?tipo=${encodeURIComponent(tipo)}`);
+  return guardarVariante(datos);
 }
 
 export async function editarVariante(datos: FormData): Promise<void> {
@@ -1723,6 +1773,7 @@ async function leerFamilia(datos: FormData, volver: (mensaje: string) => never):
     icono: iconoDe(texto(datos, "icono")),
     orden: orden ?? (await siguienteOrden()),
     activa: texto(datos, "activa") === "1",
+    coleccion: texto(datos, "coleccion") === "1",
   };
 }
 

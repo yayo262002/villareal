@@ -8,10 +8,10 @@ import { direccionDePortada, type Familia } from "@/lib/familias";
 import { CabeceraPublica, DatosEstructurados, LineaTasa, PiePublico, datosDeLaTienda } from "@/components/publico";
 import {
   AtajosDeCategorias,
-  FranjaDeConfianza,
   FranjaMayorista,
   MontandoTuNegocio,
   NotaDePrecios,
+  RejillaDeColecciones,
   RejillaDeFamilias,
   RejillaDeOfertas,
   RejillaDeProductos,
@@ -26,45 +26,43 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-/** Cuántos productos destacados enseña la portada; todos están en Productos. */
-const DESTACADOS_EN_PORTADA = 8;
+/** Cuántos productos destacados enseña la portada: cuatro, no una lista interminable; todos están en Productos. */
+const DESTACADOS_EN_PORTADA = 4;
 /** Cuántos combos enseña la portada; todos están en Ofertas. */
 const OFERTAS_EN_PORTADA = 3;
-/** Cuántas familias enseña la portada, en el orden del dueño: Burger, Pizzería, Quesos, Lácteos, Huevos, Embutidos, Salsas, Papas y Bebidas. */
-const FAMILIAS_EN_PORTADA = 9;
 
 /**
- * Los atajos de la foto de arriba, cada uno a su categoría (la tocineta, a
- * buscarla). Un atajo cuya familia no existe o está escondida no sale: no
- * se lleva a nadie a una página que no existe.
+ * Los atajos de la foto de arriba, cada uno a su familia. Un atajo cuya
+ * familia no existe o está escondida no sale: no se lleva a nadie a una
+ * página que no existe.
  */
-const ATAJOS: { texto: string; familia?: string; busqueda?: string; foto?: string }[] = [
+const ATAJOS: { texto: string; familia: string; foto?: string }[] = [
   { texto: "Quesos", familia: "quesos" },
-  { texto: "Huevos", familia: "huevos" },
   { texto: "Embutidos", familia: "embutidos" },
   { texto: "Salsas", familia: "salsas-y-aderezos" },
   { texto: "Papas", familia: "papas-y-congelados" },
-  { texto: "Tocineta", busqueda: "tocineta", foto: "/productos/tocineta.webp" },
-  { texto: "Refrescos", familia: "bebidas", foto: "/productos/refrescos.webp" },
+  { texto: "Huevos", familia: "huevos" },
+  { texto: "Lácteos", familia: "lacteos" },
+  { texto: "Bebidas", familia: "bebidas", foto: "/productos/refrescos.webp" },
 ];
 
 function atajosDe(familias: Familia[]): Atajo[] {
   return ATAJOS.flatMap((a) => {
-    if (a.busqueda) return [{ texto: a.texto, ruta: `/productos?q=${encodeURIComponent(a.busqueda)}`, foto: a.foto ?? null }];
     const familia = familias.find((f) => f.slug === a.familia);
     return familia ? [{ texto: a.texto, ruta: `/categoria/${familia.slug}`, foto: a.foto ?? direccionDePortada(familia) }] : [];
   });
 }
 
 /**
- * La portada: «Todo para tu burger & pizzería» sobre una foto oscura de
- * hamburguesa, pizza y papas, con los atajos a cada categoría; la franja
- * dorada de precios al mayor; las nueve familias principales con su foto;
- * los productos destacados con su foto, su precio y «Agregar»; los combos
- * vigentes; la franja de confianza; la llamada a quien monta su negocio y
- * dónde está la tienda. Sin marcas: cada marca sale al entrar en su
- * producto. Lo que no está (tasa, precios) no se inventa, y una familia sin
- * productos publicados lo dice en su página.
+ * La portada vende la idea de Villa Real, no un supermercado: «Todo para tu
+ * burger & pizzería» con la foto al lado (compacta: entra en la pantalla),
+ * una línea con el mensaje mayorista, «¿Qué necesitas para tu negocio?»
+ * (las colecciones: Burger, Pizzería), «Comprar por categoría» (las
+ * familias de productos), cuatro productos destacados como mucho (los que
+ * el dueño marca; si no marca ninguno, los primeros), los combos vigentes,
+ * la llamada a quien monta su negocio y dónde está la tienda. Sin marcas:
+ * cada marca sale al entrar en su producto. Lo que no está (tasa, precios)
+ * no se inventa.
  */
 export default async function PaginaInicio() {
   const [v, ofertas] = await Promise.all([vitrina(), ofertasVigentes(hoy())]);
@@ -72,7 +70,6 @@ export default async function PaginaInicio() {
   const lista = destacados(v.productos).slice(0, DESTACADOS_EN_PORTADA);
   const whatsapp = enlaceWhatsapp("Hola, quiero hacer un pedido.");
   const mapa = enlaceMapa();
-  const familias = v.todasLasFamilias.slice(0, FAMILIAS_EN_PORTADA);
 
   return (
     <>
@@ -81,42 +78,52 @@ export default async function PaginaInicio() {
 
       <main id="contenido">
         <section className={estilos.heroe} aria-labelledby="titulo-portada">
-          <picture className={estilos.heroeFoto}>
-            <source media="(min-width: 900px)" srcSet="/portada/heroe.webp" />
-            <img src="/portada/heroe-movil.webp" alt="" width={900} height={760} fetchPriority="high" />
-          </picture>
-          <div className={estilos.heroeTexto}>
-            <p className={estilos.antetitulo}>{negocio.nombreCorto} · Precios al mayor</p>
-            <h1 id="titulo-portada" className={estilos.titulo}>
-              Todo para tu <span>burger &amp; pizzería</span>
-            </h1>
-            <p className={estilos.subtitulo}>Tu proveedor de confianza para negocios de comida en {negocio.localidad}.</p>
-            <p className={estilos.texto}>Quesos, huevos, embutidos, papas, salsas, tocineta y bebidas a precios especiales por volumen.</p>
-            <AtajosDeCategorias atajos={atajosDe(v.todasLasFamilias)} />
-            <div className={estilos.botones}>
-              <Link href="/productos" className={`boton boton--acento ${estilos.botonGrande}`}>
-                Ver todos los productos
-              </Link>
-              {whatsapp && (
-                <a href={whatsapp} target="_blank" rel="noopener" className={`boton ${estilos.botonWhatsapp} ${estilos.botonGrande}`}>
-                  <IconoWhatsapp tamano={22} />
-                  Pedir por WhatsApp
-                </a>
-              )}
+          <div className={estilos.heroeDentro}>
+            <picture className={estilos.heroeFoto}>
+              <source media="(min-width: 900px)" srcSet="/portada/heroe.webp" />
+              <img src="/portada/heroe-movil.webp" alt="" width={900} height={760} fetchPriority="high" />
+            </picture>
+            <div className={estilos.heroeTexto}>
+              <p className={estilos.antetitulo}>{negocio.nombreCorto} · Precios al mayor</p>
+              <h1 id="titulo-portada" className={estilos.titulo}>
+                Todo para tu <span>burger &amp; pizzería</span>
+              </h1>
+              <p className={estilos.subtitulo}>Tu proveedor de confianza para negocios de comida en {negocio.localidad}.</p>
+              <AtajosDeCategorias atajos={atajosDe(v.todasLasFamilias)} />
+              <div className={estilos.botones}>
+                <Link href="/productos" className={`boton boton--acento ${estilos.botonGrande}`}>
+                  Ver todos los productos
+                </Link>
+                {whatsapp && (
+                  <a href={whatsapp} target="_blank" rel="noopener" className={`boton ${estilos.botonWhatsapp} ${estilos.botonGrande}`}>
+                    <IconoWhatsapp tamano={22} />
+                    Pedir por WhatsApp
+                  </a>
+                )}
+              </div>
+              <LineaTasa tasa={v.tasa} className={estilos.tasa} />
             </div>
-            <LineaTasa tasa={v.tasa} className={estilos.tasa} />
           </div>
         </section>
 
         <FranjaMayorista />
 
         <div className={estilos.cuerpo}>
-          {familias.length > 0 && (
-            <section className={estilos.seccion} aria-labelledby="titulo-categorias">
-              <TituloDeSeccion id="titulo-categorias" antetitulo="Todo para tu cocina">
-                Categorías principales
+          {v.colecciones.length > 0 && (
+            <section className={estilos.seccion} aria-labelledby="titulo-negocios">
+              <TituloDeSeccion id="titulo-negocios" antetitulo="Colecciones por tipo de negocio">
+                ¿Qué necesitas para tu negocio?
               </TituloDeSeccion>
-              <RejillaDeFamilias familias={familias} />
+              <RejillaDeColecciones colecciones={v.colecciones} />
+            </section>
+          )}
+
+          {v.familiasDeProductos.length > 0 && (
+            <section className={estilos.seccion} aria-labelledby="titulo-categorias">
+              <TituloDeSeccion id="titulo-categorias" antetitulo="El catálogo, por familias">
+                Comprar por categoría
+              </TituloDeSeccion>
+              <RejillaDeFamilias familias={v.familiasDeProductos} compacta />
             </section>
           )}
 
@@ -141,7 +148,7 @@ export default async function PaginaInicio() {
 
           {ofertas.length > 0 && (
             <section className={estilos.seccion} aria-labelledby="titulo-ofertas">
-              <TituloDeSeccion id="titulo-ofertas" antetitulo="Compra más · Paga menos">
+              <TituloDeSeccion id="titulo-ofertas" antetitulo="Compra más, paga menos">
                 Ofertas y combos
               </TituloDeSeccion>
               <RejillaDeOfertas ofertas={ofertas.slice(0, OFERTAS_EN_PORTADA)} tasa={tasa} rutas={rutasPublicas(v.productos)} />
@@ -153,7 +160,6 @@ export default async function PaginaInicio() {
             </section>
           )}
 
-          <FranjaDeConfianza />
           <MontandoTuNegocio />
 
           <section id="contacto" className={`${estilos.seccion} ${estilos.contacto}`} aria-labelledby="titulo-contacto">

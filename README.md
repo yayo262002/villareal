@@ -698,18 +698,23 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 
 ## Catálogo: familias, productos y ofertas
 
-- **Familias.** El catálogo se ordena en familias: Burger, Pizzería, Quesos,
-  Lácteos (sueros y cremas de leche), Huevos, Embutidos, Salsas y
-  aderezos, Papas y congelados, Bebidas, Complementos gastronómicos y
-  Otros productos (se crean solas en una base nueva, `FAMILIAS_INICIALES`
-  en `src/lib/catalogo-inicial.ts`; en una que ya tiene familias, las
-  nuevas las crea el dueño en Familias). Cada tipo de producto tiene **una
-  familia principal** (`productos.familia_id`) y puede salir **también en
-  otras** (`producto_categorias`) sin repetirse en la base: la tocineta es
-  de Embutidos y sale en Burger y en Pizzería, con un solo precio. Cada
-  familia tiene su nombre, descripción, icono, portada, orden y si está
-  activa; su dirección (`/categoria/burger`) no cambia aunque cambie el
-  nombre. La portada enseña las nueve primeras, en su orden.
+- **Familias y colecciones.** Hay dos cosas distintas, y el panel las
+  distingue (`familias.coleccion`): las **familias de productos** (Quesos,
+  Embutidos, Salsas y aderezos, Papas y congelados, Huevos, Lácteos,
+  Bebidas…) y las **colecciones por tipo de negocio** (Burger, Pizzería),
+  que no son categorías de productos sino lo que necesita cada negocio,
+  juntando productos de varias familias por secciones. Se crean solas en
+  una base nueva (`FAMILIAS_INICIALES` en `src/lib/catalogo-inicial.ts`);
+  en una que ya tiene familias, las nuevas las crea el dueño en Familias,
+  marcando si es una colección. Cada tipo de producto tiene **una familia
+  principal** (`productos.familia_id`) y sale **también en los negocios y
+  otras familias que se marquen** (`producto_categorias`) sin repetirse en
+  la base: la tocineta es de Embutidos y sale en Burger y en Pizzería, con
+  un solo precio. Cada familia tiene su nombre, descripción, icono,
+  portada, orden y si está activa; su dirección (`/categoria/burger`) no
+  cambia aunque cambie el nombre. La portada enseña primero las
+  colecciones («¿Qué necesitas para tu negocio?») y después las familias
+  activas («Comprar por categoría»).
 - **Secciones.** Dentro de una categoría los tipos van por secciones: los
   que vienen de otra familia, en la de su familia («Quesos», «Embutidos»),
   o en la que el dueño puso para esa categoría (la tocineta, en Burger, en
@@ -726,25 +731,25 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - **Productos** (`/admin/productos`): arriba la tasa del día; debajo la
   lista, por estado (en la web, borradores, ocultos), por familia o
   buscando, cada uno con su enlace a su ficha, y el enlace a Marcas.
-  **«Agregar producto»** (`/admin/productos/nuevo`) va en el orden del
-  catálogo: primero se elige el **tipo** (agrupados por familia) o «Un
-  tipo nuevo». Si ya está, se le añade el artículo: marca (de la lista o
-  una nueva), presentación, peso o contenido, precio, foto y las
-  categorías en que sale el tipo. Si es nuevo, el formulario completo:
-  tipo de producto, «¿A qué familia pertenece este producto?», «¿En qué
-  otras categorías quieres mostrarlo?» (casillas) con sus secciones,
-  marca si se vende de una sola, estado, se vende por (kilo, unidad o
-  cartón), presentación («Bolsa») y contenido («2,5 kg»), costo, margen y
-  precio al mayor, precio al detal (opcional: vacío, la web no habla de
-  detal), existencia (opcional: se anota como recuento en Inventario),
-  descripción, foto, «Destacarlo en la portada» y «Mostrarlo en Ofertas».
-  Dentro está **«＋ Crear nueva familia»**: nombre, descripción, icono,
-  orden, portada y si está activa; la crea y vuelve al formulario con todo
-  lo escrito y la familia nueva ya elegida, sin JavaScript (la foto del
-  producto, si se había puesto, hay que volver a ponerla). Lo que no es por
-  kilo se cobra por su presentación: «por bolsa de 2,5 kg». Nada de esto
-  necesita tocar el código: familias, tipos, marcas y presentaciones se
-  crean desde el panel.
+  **«Agregar producto»** (`/admin/productos/nuevo`) es un solo formulario
+  en el orden del catálogo: arriba el **tipo de producto** (los que hay,
+  agrupados por familia, o «un tipo nuevo»); «¿A qué familia pertenece?»
+  con **«＋ Crear nueva familia»** dentro (nombre, descripción, icono,
+  orden, portada, si está activa y si es una colección; la crea y vuelve
+  con todo lo escrito y la familia ya elegida, sin JavaScript); los
+  negocios y otras familias en que sale (casillas) con sus secciones; la
+  **marca**, de la lista o «＋ Nueva marca» escrita al lado (se crea al
+  guardar); la **presentación**, de la lista o una nueva; peso o
+  contenido; estado; se vende por (kilo, unidad o cartón); costo, margen y
+  precio al mayor; precio al detal (opcional); existencia (opcional, solo
+  para un tipo nuevo); descripción; foto; «Destacarlo en la portada» y
+  «Mostrarlo en Ofertas». Si el tipo elegido ya está, lo escrito es el
+  **artículo** que se le añade (marca, presentación, precio, foto) y las
+  casillas marcadas se le suman; si es nuevo, es el tipo entero
+  (`agregarProducto` en `src/lib/acciones.ts`). Lo que no es por kilo se
+  cobra por su presentación: «por bolsa de 2,5 kg». Nada de esto necesita
+  tocar el código: familias, colecciones, tipos, marcas y presentaciones
+  se crean desde el panel.
 - **La ficha de cada producto** (`/admin/productos/7`): el mismo
   formulario, su foto (que la web enseña en lugar de la de referencia), publicarlo u
   ocultarlo, sus marcas y presentaciones, y borrarlo. Con varias marcas, el
@@ -795,29 +800,39 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   teléfono, el león, el carrito, WhatsApp y un menú que se despliega con
   el buscador y las secciones (funciona sin JavaScript; con él, se cierra
   solo al ir a otra página).
-- **La portada**: «Todo para tu burger & pizzería» sobre una foto oscura
-  de hamburguesa con papas y pizza saliendo del horno (en el teléfono, la
-  foto arriba y el título debajo), con los atajos a Quesos, Huevos,
-  Embutidos, Salsas, Papas, Tocineta y Refrescos (cada uno con su foto
-  pequeña), los dos botones y la tasa del día; la franja dorada «Precios al
-  mayor · Compra más · Paga menos · Tu proveedor para burger & pizza»; las
-  **ocho categorías principales** con su foto y el mismo velo verde (una
-  sin productos publicados lo dice en su página y ofrece preguntar); los
-  **productos destacados** (los marcados «Destacarlo en
-  la portada»; si no hay ninguno, todos); los combos vigentes; la franja de
-  confianza; «¿Estás montando tu negocio?» y dónde está la tienda. Se
+- **La portada** vende la idea, no un supermercado: «Todo para tu burger &
+  pizzería» con la foto de la hamburguesa y la pizza al lado, compacta
+  (en la pantalla ancha, texto a la izquierda y foto a la derecha, sin
+  ocupar más de lo que se ve; en el teléfono, la foto arriba y el título
+  debajo), los atajos a las familias, los dos botones y la tasa del día;
+  una línea discreta con el mensaje mayorista («Precios al mayor · Compra
+  más, paga menos»: el dorado es para los botones y los detalles, no para
+  cubrir la página); **«¿Qué necesitas para tu negocio?»** con las
+  colecciones (Burger, Pizzería), **«Comprar por categoría»** con las
+  familias activas, cada una con su foto y el mismo velo verde (una sin
+  productos publicados lo dice en su página y ofrece preguntar); los
+  **productos destacados**, cuatro como mucho (los marcados «Destacarlo en
+  la portada»; si no hay ninguno, los cuatro primeros); los combos
+  vigentes; «¿Estás montando tu negocio?» y dónde está la tienda. Se
   guarda hecha y se rehace con cada cambio del panel y cada mañana con la
   tarea diaria (así un combo que vence deja de salir).
-- **Productos** (`/productos`): todos los publicados, las familias para
-  saltar y el **buscador** (`?q=`): cada palabra tiene que estar en el
-  nombre, la marca, la presentación, la descripción, las marcas o las
-  familias del producto, sin tildes ni mayúsculas y en singular o plural
-  (`textoCoincide` en `src/lib/buscar.ts`). Lo que no se encuentra se
-  dice, con un botón para preguntarlo por WhatsApp.
-- **Cada categoría** (`/categoria/burger`): su portada, sus productos (los
-  suyos y los que también salen en ella, sin repetirse; los destacados
-  primero) y las demás familias. Una familia escondida da 404; una sin nada
-  publicado lo dice y ofrece preguntar.
+- **Productos** (`/productos`): todos los publicados y los **filtros**, que
+  van y vuelven por la dirección: el **buscador** (`?q=`; «mozzarella» trae
+  todas las mozzarellas: cada palabra tiene que estar en el nombre, la
+  marca, la presentación, la descripción, las marcas o las familias del
+  producto, sin tildes ni mayúsculas y en singular o plural,
+  `textoCoincide` en `src/lib/buscar.ts`), la **familia** (`?familia=`),
+  el **negocio** (`?negocio=burger`) y la **marca** (`?marca=guaralact`).
+  Lo que no se encuentra se dice, con un botón para preguntarlo por
+  WhatsApp.
+- **Cada colección y cada familia** (`/categoria/burger`,
+  `/categoria/quesos`): su portada, sus productos (los suyos y los que
+  también salen en ella, sin repetirse; los destacados primero) por
+  secciones, el filtro por marca y las demás familias. Burger lleva a
+  Quesos → Queso amarillo / Cheddar, Mozzarella; Embutidos / Proteínas →
+  Tocineta, Jamón, Carne de hamburguesa; Papas y congelados; Salsas y
+  aderezos; Bebidas. Una familia escondida da 404; una sin nada publicado
+  lo dice y ofrece preguntar.
 - **Ofertas** (`/ofertas`): los combos activos y en fecha, con lo que
   llevan (cada producto publicado con su enlace), su precio o «Consulta el
   precio del combo», hasta cuándo valen, «Agregar» y «Pedir este combo por

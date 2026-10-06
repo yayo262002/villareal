@@ -327,13 +327,13 @@ async function probarPrecios() {
   );
 
   r = await enviar("/admin/productos/2", 'id="precio-2"', {
-    id: "2", nombre: "Queso mozzarella", unidad: "kg", costo_usd: "",
+    id: "2", nombre: "Mozzarella", unidad: "kg", costo_usd: "",
     margen_pct: "20", precio_usd: "",
   });
   comprobar("un margen sin costo se rechaza", r.destino.includes("hace falta el costo"), r.destino);
 
   r = await enviar("/admin/productos/2", 'id="precio-2"', {
-    id: "2", nombre: "Queso mozzarella", unidad: "kg", costo_usd: "",
+    id: "2", nombre: "Mozzarella", unidad: "kg", costo_usd: "",
     margen_pct: "", precio_usd: "7",
   });
   comprobar("un precio escrito a mano se acepta", r.destino.includes("guardado"), r.destino);
@@ -350,8 +350,8 @@ async function probarPrecios() {
       !web.includes("Dibujo de") && !web.includes("<svg viewBox=\"0 0 120 120\""),
   );
   comprobar("portada: los detalles ya no están en la portada", !web.includes("no se desborona"));
-  const ficha = await pagina("/producto/2-queso-mozzarella", "");
-  comprobar("página de la mozzarella: ventajas, precio y pedir", ficha.status === 200 && ficha.html.includes("Perfecta para rallar") && ficha.html.includes("no se desborona") && ficha.html.includes("Bs 255,50") && ficha.html.includes("quiero%20pedir%20queso%20mozzarella"));
+  const ficha = await pagina("/producto/2-mozzarella", "");
+  comprobar("página de la mozzarella: ventajas, precio y pedir", ficha.status === 200 && ficha.html.includes("Perfecta para rallar") && ficha.html.includes("no se desborona") && ficha.html.includes("Bs 255,50") && ficha.html.includes("quiero%20pedir%20mozzarella"));
   const fichaAmarillo = await pagina("/producto/1-cualquier-nombre", "");
   comprobar(
     "página del queso amarillo: el precio al mayor, sus detalles, «Agregar al carrito» y otros de su familia",
@@ -360,7 +360,7 @@ async function probarPrecios() {
   );
   comprobar("todos los productos tienen detalles", (await Promise.all([3, 4].map((id) => pagina(`/producto/${id}`, "")))).every((p) => p.status === 200 && p.html.includes("Por qué elegirlo")));
   comprobar("un producto que no existe da 404", (await pagina("/producto/999-nada", "")).status === 404 && (await pagina("/producto/queso", "")).status === 404);
-  comprobar("web: huevos y pecorino rallado, sin precio inventado", web.includes("Huevos") && web.includes("Queso pecorino rallado") && web.includes("Consulta el precio del día"));
+  comprobar("web: huevos y pecorino rallado, sin precio inventado", web.includes("Huevos") && web.includes("Pecorino") && web.includes("Consulta el precio del día"));
   comprobar("web: cada tarjeta con su «Agregar» y sus detalles; en la página, el pedido directo por WhatsApp", web.includes(">Agregar<") && web.includes(">Ver detalles<") && fichaAmarillo.html.includes("quiero%20pedir%20queso%20amarillo"));
 
   // Tipo → marca → presentación: el pecorino rallado de dos marcas, en bolsa de 500 g. Una marca nueva se crea sola al escribirla.
@@ -369,12 +369,12 @@ async function probarPrecios() {
   });
   comprobar(
     "añadir una marca nueva con foto a un tipo de producto: la marca se crea sola y el aviso vuelve a su sección",
-    r.destino.includes("?ok=«Queso pecorino rallado Sortilegio 500 g» añadido") && r.destino.includes("Marca «Sortilegio» creada") && r.destino.includes("Con su foto") && r.destino.endsWith("#marcas"),
+    r.destino.includes("?ok=«Pecorino Sortilegio 500 g» añadido") && r.destino.includes("Marca «Sortilegio» creada") && r.destino.includes("Con su foto") && r.destino.endsWith("#marcas"),
     r.destino,
   );
   varianteSortilegio = Number((await consultar("select max(id) as id from variantes"))[0].id);
   r = await enviar("/admin/productos/4", 'id="variante-nueva-4-marca"', { producto_id: "4", marca: "Guaralac", presentacion: "", contenido: "500 g", descripcion: "", costo_usd: "", precio_usd: "3.5" });
-  comprobar("añadir otra sin foto", r.destino.includes("«Queso pecorino rallado Guaralac 500 g» añadido"), r.destino);
+  comprobar("añadir otra sin foto", r.destino.includes("«Pecorino Guaralac 500 g» añadido"), r.destino);
   const guaralacId = Number((await consultar("select max(id) as id from variantes"))[0].id);
   // La misma marca escrita con otras mayúsculas no se repite; la presentación va en el nombre del artículo.
   r = await enviar("/admin/productos/4", 'id="variante-nueva-4-marca"', { producto_id: "4", marca: "SORTILEGIO", presentacion: "Bolsa", contenido: "1 kg", descripcion: "", costo_usd: "", precio_usd: "" });
@@ -391,17 +391,17 @@ async function probarPrecios() {
     "portada: el pecorino dice «desde» con la más barata (3,50) y cuántas marcas hay, sin nombrar ninguna, y lleva la foto de la primera marca (mercancía de verdad, no la de referencia)",
     /Al mayor, desde<\/p><p[^>]*>Bs 127,75/.test(portadaMarcas) && portadaMarcas.includes("2 marcas para elegir") && !portadaMarcas.includes("Sortilegio") &&
       portadaMarcas.includes(`/foto-variante/${varianteSortilegio}?v=`) && !portadaMarcas.includes("/productos/queso-rallado.webp") &&
-      portadaMarcas.includes('href="/producto/4-queso-pecorino-rallado#marcas"') && portadaMarcas.includes(">Ver opciones<") && portadaMarcas.includes("Ver las 2 opciones de Queso pecorino rallado"),
+      portadaMarcas.includes('href="/producto/4-pecorino#marcas"') && portadaMarcas.includes(">Ver opciones<") && portadaMarcas.includes("Ver las 2 opciones de Pecorino"),
     portadaMarcas.slice(Math.max(0, portadaMarcas.indexOf("pecorino rallado</a>") - 100), portadaMarcas.indexOf("pecorino rallado</a>") + 900).replace(/\s+/g, " "),
   );
-  const fichaPecorino = await pagina("/producto/4-queso-pecorino-rallado", "");
+  const fichaPecorino = await pagina("/producto/4-pecorino", "");
   const textoPecorino = legible(fichaPecorino.html);
   comprobar(
     "página del pecorino: el tipo primero y dentro sus marcas, cada una con su foto, su presentación, su precio y su botón de pedir",
-    textoPecorino.includes("Elige la marca de queso pecorino rallado") && /<h3[^>]*><a[^>]*>Sortilegio<\/a><\/h3><p[^>]*>500 g<\/p>/.test(textoPecorino) &&
+    textoPecorino.includes("Elige la marca de pecorino") && /<h3[^>]*><a[^>]*>Sortilegio<\/a><\/h3><p[^>]*>500 g<\/p>/.test(textoPecorino) &&
       /<h3[^>]*><a[^>]*>Guaralac<\/a><\/h3>/.test(textoPecorino) && fichaPecorino.html.includes(`/foto-variante/${varianteSortilegio}?v=`) &&
       fichaPecorino.html.includes("Rallado, semigraso, madurado") && fichaPecorino.html.includes("Bs 146,00") &&
-      fichaPecorino.html.includes("quiero%20pedir%20queso%20pecorino%20rallado%20sortilegio%20500%20g") &&
+      fichaPecorino.html.includes("quiero%20pedir%20pecorino%20sortilegio%20500%20g") &&
       // Con dos marcas se ven las dos de un vistazo: el filtro sale desde tres.
       !textoPecorino.includes("Filtrar por marca"),
   );
@@ -411,11 +411,11 @@ async function probarPrecios() {
   comprobar(
     "con marcas, se pide desde la marca elegida: el botón de arriba lleva a las marcas y cada una tiene el suyo",
     fichaPecorino.html.includes('href="#marcas"') && fichaPecorino.html.includes('id="marcas"') && fichaPecorino.html.includes('aria-label="Pedir Sortilegio 500 g por WhatsApp"') &&
-      !fichaPecorino.html.includes('quiero%20pedir%20queso%20pecorino%20rallado."') && (seccionDeMarcas.match(/>Agregar</g) ?? []).length === 2,
+      !fichaPecorino.html.includes('quiero%20pedir%20pecorino."') && (seccionDeMarcas.match(/>Agregar</g) ?? []).length === 2,
   );
   const fotoVariante = await fetch(base + `/foto-variante/${varianteSortilegio}`);
   comprobar("la foto de la marca se sirve a la web", fotoVariante.status === 200 && fotoVariante.headers.get("content-type") === "image/png");
-  comprobar("la vista previa del pecorino dice «desde»", (await fetch(base + "/producto/4-queso-pecorino-rallado/opengraph-image")).status === 200);
+  comprobar("la vista previa del pecorino dice «desde»", (await fetch(base + "/producto/4-pecorino/opengraph-image")).status === 200);
   const sortilegio = { variante_id: String(varianteSortilegio), marca: "Sortilegio", presentacion: "", contenido: "500 g", costo_usd: "" };
   r = await enviar("/admin/productos/4", `id="variante-${varianteSortilegio}-marca"`, { ...sortilegio, descripcion: "Rallado, semigraso, madurado", precio_usd: "4.2" });
   comprobar("cambiar el precio de una marca", r.destino.includes("guardado") && (await pagina("/admin/productos/4")).html.includes('value="4.2"'), r.destino);
@@ -449,12 +449,12 @@ async function probarPrecios() {
   await portadaCon("Bs 127,75");
 
   // Cada marca tiene su página: se llega pinchándola, con su foto, su precio, su descripción entera y su botón de pedir.
-  const rutaSortilegio = `/producto/4-queso-pecorino-rallado/${varianteSortilegio}-sortilegio-500-g`;
+  const rutaSortilegio = `/producto/4-pecorino/${varianteSortilegio}-sortilegio-500-g`;
   r = await enviar("/admin/productos/4", `id="variante-${varianteSortilegio}-marca"`, {
     ...sortilegio, descripcion: "Rallado, semigraso, madurado\nBolsa de 500 g\nPara pastas y pizzas", precio_usd: "4.2",
   });
   comprobar("la descripción de una marca puede tener varias líneas", r.destino.includes("guardado"), r.destino);
-  const conEnlace = (await pagina("/producto/4-queso-pecorino-rallado", "")).html;
+  const conEnlace = (await pagina("/producto/4-pecorino", "")).html;
   comprobar(
     "en la página del producto cada marca lleva a la suya, y de su descripción se ve la primera línea",
     conEnlace.includes(`href="${rutaSortilegio}"`) && conEnlace.includes(">Ver detalles<") && conEnlace.includes("Rallado, semigraso, madurado") && !conEnlace.includes("Para pastas y pizzas"),
@@ -463,28 +463,28 @@ async function probarPrecios() {
   const textoMarca = legible(paginaMarca.html);
   comprobar(
     "la página de la marca: el tipo de título, su marca y su presentación, su foto, su precio, toda su descripción, su botón de pedir y las otras",
-    paginaMarca.status === 200 && /<h1[^>]*>Queso pecorino rallado<\/h1>/.test(textoMarca) && textoMarca.includes(">Marca Sortilegio<") && textoMarca.includes("500 g · Al mayor") &&
+    paginaMarca.status === 200 && /<h1[^>]*>Pecorino<\/h1>/.test(textoMarca) && textoMarca.includes(">Marca Sortilegio<") && textoMarca.includes("500 g · Al mayor") &&
       paginaMarca.html.includes(`/foto-variante/${varianteSortilegio}?v=`) && textoMarca.includes("Bs 153,30") && textoMarca.includes("<li>Para pastas y pizzas</li>") &&
-      paginaMarca.html.includes(">Pedir por WhatsApp<") && paginaMarca.html.includes("quiero%20pedir%20queso%20pecorino%20rallado%20sortilegio%20500%20g") &&
-      textoMarca.includes("Más de queso pecorino rallado") && textoMarca.includes("Guaralac") && paginaMarca.html.includes('rel="canonical"') &&
+      paginaMarca.html.includes(">Pedir por WhatsApp<") && paginaMarca.html.includes("quiero%20pedir%20pecorino%20sortilegio%20500%20g") &&
+      textoMarca.includes("Más de pecorino") && textoMarca.includes("Guaralac") && paginaMarca.html.includes('rel="canonical"') &&
       paginaMarca.html.includes('href="/categoria/quesos"') && paginaMarca.html.includes('"brand":{"@type":"Brand","name":"Sortilegio"}'),
     String(paginaMarca.status),
   );
-  const rutaGuaralac = `/producto/4-queso-pecorino-rallado/${guaralacId}-guaralac-500-g`;
+  const rutaGuaralac = `/producto/4-pecorino/${guaralacId}-guaralac-500-g`;
   await enviar("/admin/productos/4", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "0" }, cookie, {}, 'name="activo"');
   const escondida = (await pagina(rutaGuaralac, "")).status;
   await enviar("/admin/productos/4", `name="variante_id" value="${guaralacId}"`, { variante_id: String(guaralacId), activo: "1" }, cookie, {}, 'name="activo"');
   comprobar(
     "una marca escondida, una de otro producto o un número que no existe dan 404; con otro nombre detrás, llega igual",
     escondida === 404 && (await pagina(`/producto/1-queso-amarillo/${varianteSortilegio}-sortilegio`, "")).status === 404 &&
-      (await pagina("/producto/4-queso-pecorino-rallado/999999-nada", "")).status === 404 && (await pagina(`/producto/4/${varianteSortilegio}`, "")).status === 200,
+      (await pagina("/producto/4-pecorino/999999-nada", "")).status === 404 && (await pagina(`/producto/4/${varianteSortilegio}`, "")).status === 200,
     String(escondida),
   );
   comprobar("la vista previa de la marca al compartirla", (await fetch(base + `${rutaSortilegio}/opengraph-image`)).status === 200);
 
   // Las marcas en su página del panel: cuántos artículos tiene cada una, renombrar, unir dos que son la misma y borrar la que no tiene nada.
   const panelMarcas = legible((await pagina("/admin/marcas")).html);
-  comprobar("el panel de marcas las enseña con sus artículos y sus tipos", panelMarcas.includes("Sortilegio") && panelMarcas.includes("Guaralac") && panelMarcas.includes("En: Queso pecorino rallado"));
+  comprobar("el panel de marcas las enseña con sus artículos y sus tipos", panelMarcas.includes("Sortilegio") && panelMarcas.includes("Guaralac") && panelMarcas.includes("En: Pecorino"));
   const [{ id: marcaGuaralac }] = await consultar("select id from marcas where nombre = 'Guaralac'");
   r = await enviar("/admin/marcas", `id="marca-${marcaGuaralac}-nombre"`, { id: String(marcaGuaralac), nombre: "Guaralac Rallado" });
   const [renombrada] = await consultar("select nombre from variantes where id = ?", [guaralacId]);
@@ -507,7 +507,7 @@ async function probarPrecios() {
   await enviar("/admin/productos/4", 'id="variante-nueva-4-marca"', { producto_id: "4", marca: "Marca de paso (prueba)", presentacion: "", contenido: "", descripcion: "", costo_usd: "", precio_usd: "" });
   const [dePaso] = await consultar("select v.id, m.id as marca_id from variantes v join marcas m on m.id = v.marca_id where m.nombre = 'Marca de paso (prueba)'");
   // Con tres marcas, la página del tipo ya se filtra por marca.
-  const conTres = legible((await pagina("/producto/4-queso-pecorino-rallado?marca=sortilegio", "")).html);
+  const conTres = legible((await pagina("/producto/4-pecorino?marca=sortilegio", "")).html);
   const partesConTres = [
     conTres.includes("Filtrar por marca"),
     conTres.includes('aria-label="Pedir Sortilegio 500 g por WhatsApp"'),
@@ -631,10 +631,10 @@ async function probarNegocio() {
   comprobar(
     "vender una marca concreta: la línea la guarda y la nota la nombra",
     r.destino.includes("Venta registrada") && Number(lineaMarca.variante_id) === varianteSortilegio && cerca(Number(lineaMarca.subtotal_usd), 8.4) &&
-      (await pagina(`/admin/ventas/${ventaMarca}/nota`)).html.includes("Queso pecorino rallado Sortilegio 500 g"),
+      (await pagina(`/admin/ventas/${ventaMarca}/nota`)).html.includes("Pecorino Sortilegio 500 g"),
     r.destino,
   );
-  comprobar("el despacho dice qué cargar, con la marca", legible((await pagina(`/admin/despacho?solo=entregas`)).html).includes("Queso pecorino rallado Sortilegio 500 g"));
+  comprobar("el despacho dice qué cargar, con la marca", legible((await pagina(`/admin/despacho?solo=entregas`)).html).includes("Pecorino Sortilegio 500 g"));
   r = await enviar("/admin/productos/4", `name="variante_id" value="${varianteSortilegio}"`, { variante_id: String(varianteSortilegio) }, cookie, {}, "Sí, eliminar");
   comprobar("una marca ya vendida no se borra: se esconde", r.destino.includes("no se puede borrar"), r.destino);
   await enviar(`/admin/ventas/${ventaMarca}/eliminar`, 'name="id"', { id: String(ventaMarca) });
@@ -677,7 +677,7 @@ async function probarNegocio() {
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida({ ...cuadra, lineas: [{ descripcion: "Mozzarella", clave: "2", cantidad: 1, precio: 7, importe: 7 }], total: 7 }) });
   comprobar(
     "la nota dice otros kilos: lo dice con el nombre del producto, y no repite el total",
-    r.destino.includes("En la nota Queso mozzarella son 1 kg y anotaste 0,5 kg") && r.destino.includes(`importa ${usd("7,00")} y lo anotado da ${usd("3,50")}`) && !r.destino.includes("lo anotado suma"),
+    r.destino.includes("En la nota Mozzarella son 1 kg y anotaste 0,5 kg") && r.destino.includes(`importa ${usd("7,00")} y lo anotado da ${usd("3,50")}`) && !r.destino.includes("lo anotado suma"),
     r.destino,
   );
   r = await enviar("/admin/ventas", 'name="cantidad_1"', {
@@ -1287,7 +1287,7 @@ async function probarResenas() {
   await enviar("/admin/resenas", 'value="poner"', { ejemplo: "poner" });
   comprobar("pulsar dos veces no las duplica", Number((await consultar("select count(*) as n from resenas where de_ejemplo = 1"))[0].n) === puestas);
 
-  const mozzarella = "/producto/2-queso-mozzarella";
+  const mozzarella = "/producto/2-mozzarella";
   const loQueVeElPublico = legible((await pagina(mozzarella, "")).html);
   const loQueVeElDueno = legible((await pagina(mozzarella)).html);
   comprobar(
@@ -1377,17 +1377,17 @@ async function probarResenas() {
   comprobar("borrar la reseña, con su confirmación", r.destino.includes("Reseña eliminada") && (await idDeLaPrueba()) === 0, r.destino);
   comprobar("una reseña ya borrada da 404", (await pagina(`/admin/resenas/${id}/eliminar`)).status === 404);
   // La reseña de una marca sale en la página de esa marca, no en la del producto ni en la de la otra marca.
-  const rutaSortilegio = `/producto/4-queso-pecorino-rallado/${varianteSortilegio}-sortilegio-500-g`;
+  const rutaSortilegio = `/producto/4-pecorino/${varianteSortilegio}-sortilegio-500-g`;
   const deLaMarca = "Rinde más en las pastas y no se apelmaza.";
   const panelConMarcas = (await pagina("/admin/resenas")).html;
   comprobar(
     "en el panel la reseña se escribe en su marca, y cada marca tiene su botón para pedirla",
-    panelConMarcas.includes(`value="4-${varianteSortilegio}"`) && panelConMarcas.includes("Queso pecorino rallado Sortilegio 500 g") && !panelConMarcas.includes('<option value="4">'),
+    panelConMarcas.includes(`value="4-${varianteSortilegio}"`) && panelConMarcas.includes("Pecorino Sortilegio 500 g") && !panelConMarcas.includes('<option value="4">'),
   );
   r = await enviar("/admin/resenas", 'name="autor"', { clave: `4-${varianteSortilegio}`, autor: "Restaurante de la marca (prueba)", detalle: "", texto: deLaMarca, permiso: "1" });
-  comprobar("guardar la reseña de una marca", r.destino.includes("Ya sale en la página de «Queso pecorino rallado Sortilegio 500 g»"), r.destino);
+  comprobar("guardar la reseña de una marca", r.destino.includes("Ya sale en la página de «Pecorino Sortilegio 500 g»"), r.destino);
   const marcaConResena = legible((await pagina(rutaSortilegio, "")).html);
-  const productoSinElla = legible((await pagina("/producto/4-queso-pecorino-rallado", "")).html);
+  const productoSinElla = legible((await pagina("/producto/4-pecorino", "")).html);
   comprobar(
     "sale en la página de la marca y no en la del producto, que dice cuántas tiene cada marca",
     marcaConResena.includes(`«${deLaMarca}»`) && marcaConResena.indexOf(deLaMarca) > marcaConResena.indexOf("Por qué elegirlo") &&
@@ -1565,7 +1565,7 @@ async function probarInventario() {
   const [compra] = await consultar("select id, total_usd, descripcion from compras where proveedor_id = ? order by id desc limit 1", [proveedorId]);
   comprobar(
     "el total sale de las líneas más lo otro, y la descripción se escribe sola",
-    compra && cerca(compra.total_usd, 124) && compra.descripcion.includes("20 kg de Queso mozzarella") && compra.descripcion.includes("Huevos") && compra.descripcion.includes("otras cosas"),
+    compra && cerca(compra.total_usd, 124) && compra.descripcion.includes("20 kg de Mozzarella") && compra.descripcion.includes("Huevos") && compra.descripcion.includes("otras cosas"),
     JSON.stringify(compra),
   );
   const lineasDeCompra = await consultar("select * from compra_lineas where compra_id = ? order by id", [compra.id]);
@@ -1574,7 +1574,7 @@ async function probarInventario() {
     lineasDeCompra.length === 2 && lineasDeCompra[0].piezas == 8 && cerca(lineasDeCompra[0].subtotal_usd, 100) && cerca(lineasDeCompra[1].subtotal_usd, 20),
     JSON.stringify(lineasDeCompra),
   );
-  comprobar("la ficha del proveedor enseña la compra con sus productos", legible((await pagina(`/admin/proveedores/${proveedorId}`)).html).includes("20 kg de Queso mozzarella"));
+  comprobar("la ficha del proveedor enseña la compra con sus productos", legible((await pagina(`/admin/proveedores/${proveedorId}`)).html).includes("20 kg de Mozzarella"));
 
   // El inventario: lo comprado menos todo lo vendido de mozzarella en estas pruebas.
   const [{ vendido }] = await consultar("select coalesce(sum(cantidad), 0) as vendido from venta_lineas where producto_id = 2 and variante_id is null");
@@ -1641,8 +1641,8 @@ async function probarCatalogo() {
   const familias = await consultar("select id, slug, nombre from familias order by orden");
   const idDe = Object.fromEntries(familias.map((f) => [f.slug, Number(f.id)]));
   comprobar(
-    "las once familias iniciales, en su orden, con Lácteos detrás de Quesos",
-    familias.length >= 11 && familias[0].slug === "burger" && familias[1].slug === "pizzeria" && familias[2].slug === "quesos" && familias[3].slug === "lacteos",
+    "las once familias iniciales, en su orden, con Embutidos detrás de Quesos",
+    familias.length >= 11 && familias[0].slug === "burger" && familias[1].slug === "pizzeria" && familias[2].slug === "quesos" && familias[3].slug === "embutidos",
     JSON.stringify(familias.map((f) => f.slug)),
   );
   const [amarillo] = await consultar("select familia_id from productos where id = 1");
@@ -1654,6 +1654,12 @@ async function probarCatalogo() {
   );
   const panelFamilias = legible((await pagina("/admin/familias")).html);
   comprobar("el panel de familias las enseña con sus productos", panelFamilias.includes("Familias y categorías") && panelFamilias.includes("Embutidos") && panelFamilias.includes("productos suyos"));
+  const colecciones = (await consultar("select slug from familias where coleccion = 1 order by orden")).map((f) => f.slug);
+  comprobar(
+    "Burger y Pizzería son colecciones por negocio, no familias de productos, y el panel lo dice",
+    colecciones.join() === "burger,pizzeria" && panelFamilias.includes("colección por negocio") && panelFamilias.includes('name="coleccion"'),
+    colecciones.join(),
+  );
 
   // Una familia nueva desde su panel.
   let r = await enviar("/admin/familias", 'id="familia-nueva-nombre"', { nombre: FAMILIA_DE_PRUEBA, descripcion: "Pan y harinas", icono: "otros", orden: "", activa: "1" });
@@ -1667,7 +1673,7 @@ async function probarCatalogo() {
   const paso1 = legible((await pagina("/admin/productos/nuevo")).html);
   comprobar(
     "«Agregar producto» empieza por el tipo de producto, agrupado por familias, o uno nuevo",
-    paso1.includes("¿Qué vas a agregar?") && paso1.includes('<optgroup label="Quesos">') && paso1.includes(">Queso mozzarella</option>") && paso1.includes("＋ Un tipo nuevo"),
+    paso1.includes("¿Qué vas a agregar?") && paso1.includes('<optgroup label="Quesos">') && paso1.includes(">Mozzarella</option>") && paso1.includes("＋ Un tipo nuevo"),
   );
   const formulario = legible((await pagina("/admin/productos/nuevo?tipo=nuevo")).html);
   comprobar(
@@ -1814,7 +1820,7 @@ async function probarCatalogo() {
     crema?.slug === "lacteos" && Number(repetidos) === 0,
     JSON.stringify([crema, repetidos]),
   );
-  const [{ n: noDuplica }] = await consultar("select count(*) as n from productos where nombre in ('Tocineta', 'Queso amarillo', 'Huevos', 'Queso mozzarella')");
+  const [{ n: noDuplica }] = await consultar("select count(*) as n from productos where nombre in ('Tocineta', 'Queso amarillo', 'Huevos', 'Mozzarella')");
   comprobar("no duplica lo que ya había, y el botón ya no sale", Number(noDuplica) === 4 && !(await pagina("/admin/productos")).html.includes("Preparar el catálogo inicial"), String(noDuplica));
   comprobar("los borradores no salen en la portada ni en las ventas", !(await pagina("/", "")).html.includes("Ketchup") && !(await pagina("/admin/ventas")).html.includes("Ketchup"));
   const [tocinetaDelCatalogo] = await consultar("select p.id, f.slug from productos p join familias f on f.id = p.familia_id where p.nombre = 'Tocineta'");
@@ -1823,7 +1829,7 @@ async function probarCatalogo() {
   );
   comprobar(
     "la tocineta del catálogo: en Embutidos y también en Burger (en «Proteínas») y en Pizzería",
-    tocinetaDelCatalogo.slug === "embutidos" && susCategorias.join() === "burger:Proteínas,pizzeria:",
+    tocinetaDelCatalogo.slug === "embutidos" && susCategorias.join() === "burger:Embutidos / Proteínas,pizzeria:",
     JSON.stringify([tocinetaDelCatalogo, susCategorias]),
   );
   comprobar("la lista de productos filtra los borradores", legible((await pagina("/admin/productos?estado=borrador")).html).includes("Ketchup"));
@@ -1866,7 +1872,7 @@ async function probarVitrina() {
   const [packPizzeria] = await consultar("select id from ofertas where nombre = 'Pack Pizzería'");
 
   const todos = legible((await pagina("/productos", "")).html);
-  comprobar("todos los productos: los publicados sí, los borradores no", todos.includes("Tocineta ahumada (prueba)") && todos.includes("Queso mozzarella") && !todos.includes("Ketchup"));
+  comprobar("todos los productos: los publicados sí, los borradores no", todos.includes("Tocineta ahumada (prueba)") && todos.includes("Mozzarella") && !todos.includes("Ketchup"));
   const fichaHuevos = legible((await pagina("/producto/3", "")).html);
   comprobar(
     "un producto sin foto propia enseña la de referencia y lo dice; su vista previa sale con foto",
@@ -1882,9 +1888,9 @@ async function probarVitrina() {
   const buscada = legible((await pagina("/productos?q=TOCINETA", "")).html);
   comprobar(
     "buscar sin mirar mayúsculas encuentra la tocineta, y solo lo que coincide",
-    buscada.includes("Tocineta ahumada (prueba)") && !buscada.includes("Queso mozzarella") && buscada.includes("1 producto encontrado"),
+    buscada.includes("Tocineta ahumada (prueba)") && !buscada.includes("Mozzarella") && buscada.includes("1 producto encontrado"),
   );
-  comprobar("buscar por una familia encuentra lo que sale en ella", legible((await pagina("/productos?q=pizzeria", "")).html).includes("Queso mozzarella"));
+  comprobar("buscar por una familia encuentra lo que sale en ella", legible((await pagina("/productos?q=pizzeria", "")).html).includes("Mozzarella"));
   const nada = legible((await pagina("/productos?q=ketchup", "")).html);
   comprobar(
     "un borrador no se encuentra, y se ofrece preguntarlo por WhatsApp",
@@ -1919,15 +1925,34 @@ async function probarVitrina() {
   const conGuaralac = legible((await pagina("/categoria/quesos?marca=guaralac", "")).html);
   comprobar(
     "con una marca elegida, solo los tipos que se venden de ella, y cada uno solo con esa marca",
-    conGuaralac.includes(">Queso pecorino rallado<") && conGuaralac.includes("Marca Guaralac · 500 g") && !conGuaralac.includes(">Queso mozzarella<") &&
+    conGuaralac.includes(">Pecorino<") && conGuaralac.includes("Marca Guaralac · 500 g") && !conGuaralac.includes(">Mozzarella<") &&
       !conGuaralac.includes(">Queso de prueba (marcas)<") && conGuaralac.includes(usd("3,50")) && conGuaralac.includes("Ver todas las marcas"),
   );
   const sinNada = legible((await pagina("/categoria/quesos?marca=no-existe", "")).html);
   comprobar("una marca que no tiene nada lo dice", sinNada.includes("Ninguno de estos productos se vende de esas marcas"));
+  // Los filtros de Productos: por familia y por negocio, además de la búsqueda y la marca.
+  const porFamilia = legible((await pagina("/productos?familia=quesos", "")).html);
+  comprobar(
+    "Productos se filtra por familia: Quesos trae la mozzarella y no la tocineta",
+    porFamilia.includes(">Mozzarella<") && !porFamilia.includes(">Tocineta ahumada (prueba)<") && porFamilia.includes("en Quesos") && porFamilia.includes('<option value="quesos" selected=""'),
+  );
+  const porNegocio = legible((await pagina("/productos?negocio=burger", "")).html);
+  comprobar(
+    "y por negocio: Burger trae lo que sale en Burger, de cualquier familia",
+    porNegocio.includes(">Tocineta ahumada (prueba)<") && porNegocio.includes(">Queso amarillo<") && !porNegocio.includes(">Huevos</a>") && porNegocio.includes("en Burger"),
+  );
+  const portadaOrdenada = legible((await portadaCon("Comprar por categoría")).html);
+  comprobar(
+    "la portada vende la idea: primero los negocios (Burger, Pizzería), después las familias, y como mucho cuatro destacados",
+    portadaOrdenada.indexOf("¿Qué necesitas para tu negocio?") < portadaOrdenada.indexOf("Comprar por categoría") &&
+      portadaOrdenada.indexOf("Comprar por categoría") < portadaOrdenada.indexOf("Productos destacados") &&
+      portadaOrdenada.includes('href="/categoria/burger"') && portadaOrdenada.includes('href="/categoria/quesos"') &&
+      (portadaOrdenada.slice(portadaOrdenada.indexOf("Productos destacados")).match(/>Ver detalles</g) ?? []).length <= 4,
+  );
   const buscadaConMarca = legible((await pagina("/productos?q=queso&marca=marca-dos-prueba", "")).html);
   comprobar(
     "en Productos, la búsqueda y el filtro de marca van juntos",
-    buscadaConMarca.includes(">Queso de prueba (marcas)<") && !buscadaConMarca.includes(">Queso pecorino rallado<") && buscadaConMarca.includes('<input type="hidden" name="q" value="queso"/>'),
+    buscadaConMarca.includes(">Queso de prueba (marcas)<") && !buscadaConMarca.includes(">Pecorino<") && buscadaConMarca.includes('<input type="hidden" name="q" value="queso"/>'),
   );
   const vacia = await pagina("/categoria/congelados-de-prueba", "");
   comprobar("una familia sin nada publicado lo dice y ofrece preguntar", vacia.status === 200 && legible(vacia.html).includes("Todavía no hay productos de congelados de prueba publicados"));
@@ -1951,7 +1976,7 @@ async function probarVitrina() {
   const de = Object.fromEntries(api.productos.map((p) => [p.clave, p]));
   comprobar(
     "el carrito: el producto y la marca con su precio de hoy, el combo activo como combo; lo que tiene marcas suelto, un borrador y un combo sin publicar, no",
-    cerca(de[String(tocineta.id)]?.precio_usd, 13) && de[String(tocineta.id)]?.porQue === "kilo" && de[`4-${sortilegio.id}`]?.nombre === "Queso pecorino rallado Sortilegio 500 g" &&
+    cerca(de[String(tocineta.id)]?.precio_usd, 13) && de[String(tocineta.id)]?.porQue === "kilo" && de[`4-${sortilegio.id}`]?.nombre === "Pecorino Sortilegio 500 g" &&
       cerca(de[`4-${sortilegio.id}`]?.precio_usd, 4.2) && de[`o${packBurger.id}`]?.porQue === "combo" && cerca(de[`o${packBurger.id}`]?.precio_usd, 45) &&
       !de["4"] && !de[String(ketchup.id)] && !de[`o${packPizzeria.id}`] && api.productos.length === 3,
     JSON.stringify(api).slice(0, 700),

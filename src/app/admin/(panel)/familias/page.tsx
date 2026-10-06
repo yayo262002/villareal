@@ -48,6 +48,10 @@ function CamposFamilia({ id, familia }: { id: string; familia: Familia | null })
         <input type="checkbox" name="activa" value="1" defaultChecked={familia ? familia.activa === 1 : true} />
         <span>Activa: sale en la web</span>
       </label>
+      <label className={estilos.casilla}>
+        <input type="checkbox" name="coleccion" value="1" defaultChecked={familia?.coleccion === 1} />
+        <span>Es una colección por tipo de negocio (Burger, Pizzería): junta productos de varias familias, por secciones</span>
+      </label>
     </>
   );
 }
@@ -72,8 +76,9 @@ export default async function PaginaFamilias({ searchParams }: { searchParams: P
       </div>
       <Avisos parametros={parametros} />
       <p className={estilos.ayuda}>
-        Cada producto tiene una familia principal y puede salir también en otras (la tocineta es de Embutidos y sale en Burger y en Pizzería) sin
-        repetirse. En la web, cada familia activa con productos publicados tiene su tarjeta y su página.
+        Hay familias de productos (Quesos, Embutidos…) y colecciones por tipo de negocio (Burger, Pizzería). Cada producto tiene una familia principal
+        y sale también en los negocios y otras familias que se marquen (la tocineta es de Embutidos y sale en Burger y en Pizzería) sin repetirse. En
+        la web, la portada enseña primero los negocios y después las familias; cada una tiene su página.
       </p>
 
       <section className="tarjeta">
@@ -94,6 +99,7 @@ export default async function PaginaFamilias({ searchParams }: { searchParams: P
                     <strong>
                       {f.orden}. {f.nombre}
                     </strong>
+                    {f.coleccion === 1 && <span className="ayuda"> · colección por negocio</span>}
                   </span>
                   <span className={`${estilos.estado} ${f.activa ? estilos["estado--pagada"] : estilos["estado--por_pagar"]}`}>{f.activa ? "En la web" : "Escondida"}</span>
                 </div>

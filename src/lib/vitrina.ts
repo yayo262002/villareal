@@ -1,7 +1,7 @@
 import "server-only";
 import { categoriasDeTodos, direccionDeFotoDeProducto, listarProductos, seccionesDeTodos, type Producto } from "./productos";
 import { agruparPorProducto, fotoDeAlgunaVariante, listarVariantes, type Variante } from "./variantes";
-import { listarFamilias, type Familia } from "./familias";
+import { colecciones, familiasDeProductos, listarFamilias, type Familia } from "./familias";
 import { claveDe, precioPublicado, type PrecioPublicado } from "./catalogo";
 import { leerTasa, type Tasa } from "./ajustes";
 import { textoCoincide } from "./buscar";
@@ -40,10 +40,14 @@ export type ProductoDeVitrina = {
 
 export type Vitrina = {
   productos: ProductoDeVitrina[];
-  /** Las familias activas con algún producto publicado, en su orden. */
+  /** Las familias activas con algún producto publicado, en su orden (también las colecciones). */
   familias: Familia[];
   /** Todas las activas, aunque no tengan productos todavía. */
   todasLasFamilias: Familia[];
+  /** Las colecciones activas por tipo de negocio (Burger, Pizzería). */
+  colecciones: Familia[];
+  /** Las familias activas de productos (Quesos, Embutidos…), sin las colecciones. */
+  familiasDeProductos: Familia[];
   tasa: Tasa | null;
 };
 
@@ -64,6 +68,8 @@ export async function vitrina(): Promise<Vitrina> {
     productos: lista,
     familias: familias.filter((f) => lista.some((p) => p.familias.includes(f.id))),
     todasLasFamilias: familias,
+    colecciones: colecciones(familias),
+    familiasDeProductos: familiasDeProductos(familias),
     tasa,
   };
 }

@@ -23,6 +23,8 @@ export type Familia = {
   icono: string;
   orden: number;
   activa: number;
+  /** 1: una colección por tipo de negocio (Burger, Pizzería), que junta productos de varias familias. 0: una familia de productos. */
+  coleccion: number;
   creado_en: string;
   /** Cuándo se subió su portada, o null si no tiene. */
   foto_version: string | null;
@@ -37,7 +39,17 @@ export type FamiliaConCuentas = Familia & {
   publicados: number;
 };
 
-export type DatosFamilia = { nombre: string; descripcion: string; icono: string; orden: number; activa: boolean };
+export type DatosFamilia = { nombre: string; descripcion: string; icono: string; orden: number; activa: boolean; coleccion: boolean };
+
+/** Las familias de productos (Quesos, Embutidos…), sin las colecciones. */
+export function familiasDeProductos<F extends { coleccion: number }>(familias: F[]): F[] {
+  return familias.filter((f) => f.coleccion !== 1);
+}
+
+/** Las colecciones por tipo de negocio (Burger, Pizzería). */
+export function colecciones<F extends { coleccion: number }>(familias: F[]): F[] {
+  return familias.filter((f) => f.coleccion === 1);
+}
 
 const CONSULTA = `
   select f.*, ff.actualizado_en as foto_version
@@ -46,7 +58,7 @@ const CONSULTA = `
 `;
 
 function completar(f: Familia): Familia {
-  return { ...f, orden: Number(f.orden), activa: Number(f.activa), foto_version: f.foto_version ?? null };
+  return { ...f, orden: Number(f.orden), activa: Number(f.activa), coleccion: Number(f.coleccion ?? 0), foto_version: f.foto_version ?? null };
 }
 
 /** En el orden que eligió el dueño. */
@@ -99,25 +111,27 @@ async function slugLibre(nombre: string): Promise<string> {
 }
 
 export async function crearFamilia(datos: DatosFamilia): Promise<number> {
-  const r = await ejecutar("insert into familias (nombre, slug, descripcion, icono, orden, activa) values (?, ?, ?, ?, ?, ?)", [
+  const r = await ejecutar("insert into familias (nombre, slug, descripcion, icono, orden, activa, coleccion) values (?, ?, ?, ?, ?, ?, ?)", [
     datos.nombre,
     await slugLibre(datos.nombre),
     datos.descripcion,
     datos.icono,
     datos.orden,
     datos.activa ? 1 : 0,
+    datos.coleccion ? 1 : 0,
   ]);
   return r.ultimoId;
 }
 
 /** El slug no cambia: los enlaces que ya se compartieron siguen llegando. */
 export async function actualizarFamilia(id: number, datos: DatosFamilia): Promise<void> {
-  await ejecutar("update familias set nombre = ?, descripcion = ?, icono = ?, orden = ?, activa = ? where id = ?", [
+  await ejecutar("update familias set nombre = ?, descripcion = ?, icono = ?, orden = ?, activa = ?, coleccion = ? where id = ?", [
     datos.nombre,
     datos.descripcion,
     datos.icono,
     datos.orden,
     datos.activa ? 1 : 0,
+    datos.coleccion ? 1 : 0,
     id,
   ]);
 }

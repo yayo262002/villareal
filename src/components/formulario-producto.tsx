@@ -1,11 +1,10 @@
 import type { Producto } from "@/lib/productos";
-import type { Familia } from "@/lib/familias";
+import { colecciones, familiasDeProductos, type Familia } from "@/lib/familias";
 import type { Marca } from "@/lib/marcas";
-import { ListasDeMarcas } from "@/components/marcas-producto";
-import { estadoDeProducto } from "@/lib/catalogo";
+import { NOMBRE_ESTADO_PRODUCTO, estadoDeProducto } from "@/lib/catalogo";
 import { ICONOS } from "@/lib/iconos";
 import { UNIDADES, aBolivares, bs, cantidad, usd } from "@/lib/dinero";
-import { editarProducto, guardarProducto } from "@/lib/acciones";
+import { agregarProducto, editarProducto, guardarProducto } from "@/lib/acciones";
 import { EntradaFoto } from "@/components/entrada-foto";
 import estilos from "@/app/admin/(panel)/panel.module.css";
 
@@ -27,8 +26,14 @@ type Props = {
   existencia: number | null;
   /** La sección en que sale en cada otra familia, como está guardada. */
   secciones?: Map<number, string>;
-  /** Las marcas y presentaciones para proponer al escribir, si la página no las trae ya. */
+  /** Las marcas y presentaciones para elegir. */
   listas?: { marcas: Marca[]; presentaciones: string[] };
+  /**
+   * «Agregar producto»: arriba, el tipo de producto (uno que ya está, o
+   * «nuevo»), y lo demás vale para el artículo que se le añade o para el
+   * tipo nuevo, según lo elegido. `tipo` es «nuevo» o el número del tipo.
+   */
+  agregar?: { productos: Producto[]; tipo: string };
 };
 
 function primero(valor: string | string[] | undefined): string {
@@ -36,16 +41,19 @@ function primero(valor: string | string[] | undefined): string {
 }
 
 /**
- * El formulario entero de un tipo de producto: lo que es (Mozzarella,
- * Suero), a qué familia pertenece y en qué otras sale (y en qué sección de
- * cada una), si se vende de una sola forma su marca, su presentación y sus
- * precios, si está en borrador, en la web u oculto, si se destaca o sale
- * en ofertas, su foto y lo que hay. Con varias marcas, el precio, la marca
- * y la presentación van en cada artículo: aquí solo queda el margen. Sin
- * JavaScript: dentro trae «Crear nueva familia», que la crea y vuelve aquí
- * con todo lo escrito y la familia ya elegida.
+ * El formulario de un tipo de producto: lo que es (Mozzarella, Suero), a
+ * qué familia pertenece, en qué negocios (Burger, Pizzería) y otras
+ * familias sale (y en qué sección de cada una), su marca y su presentación
+ * si se vende de una sola forma, sus precios, si está en borrador, en la
+ * web u oculto, si se destaca o sale en ofertas, su foto y lo que hay. Con
+ * varias marcas, el precio, la marca y la presentación van en cada
+ * artículo: aquí solo queda el margen. La marca y la presentación se
+ * eligen de una lista o se escriben nuevas (se crean al guardar), y la
+ * familia nueva se crea desde aquí mismo. Sin JavaScript. En «Agregar
+ * producto» lleva arriba el selector de tipo y lo escrito va al artículo
+ * del tipo elegido, o al tipo nuevo.
  */
-export function FormularioProducto({ producto, categorias, familias, parametros, tasa, conMarcas, existencia, secciones, listas }: Props) {
+export function FormularioProducto({ producto, categorias, familias, parametros, tasa, conMarcas, existencia, secciones, listas, agregar }: Props) {
   const relleno = primero(parametros.relleno) === "1";
   // Lo que vuelve escrito manda sobre lo guardado; una familia recién creada llega también así.
   const valor = (campo: string, guardado: string | number | null | undefined) =>
@@ -56,35 +64,96 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
   );
   const familiaElegida = valor("familia_id", producto?.familia_id);
   const elegibles = familias.filter((f) => f.activa || String(f.id) === familiaElegida);
+  const negocios = colecciones(familias).filter((f) => f.activa || otras.has(f.id));
+  const otrasFamilias = familiasDeProductos(familias).filter((f) => f.activa || otras.has(f.id));
   const estado = valor("estado", producto ? estadoDeProducto(producto) : "activo");
   const precioEnBs = producto?.precio_usd !== null && producto?.precio_usd !== undefined ? aBolivares(producto.precio_usd, tasa) : null;
   const detalEnBs = producto?.precio_detal_usd !== null && producto?.precio_detal_usd !== undefined ? aBolivares(producto.precio_detal_usd, tasa) : null;
-  const id = producto ? String(producto.id) : "nuevo";
+  const tipoElegido = agregar ? (relleno && primero(parametros.tipo) ? primero(parametros.tipo) : agregar.tipo) : null;
+  const aUnTipoQueEsta = Boolean(tipoElegido && tipoElegido !== "nuevo");
+  const id = producto ? String(producto.id) : aUnTipoQueEsta ? `articulo-${tipoElegido}` : "nuevo";
+  // La marca y la presentación: la de la lista si está en ella; si no, escrita.
+  const marcas = listas?.marcas ?? [];
+  const presentaciones = listas?.presentaciones ?? [];
+  const marcaGuardada = valor("marca", producto?.marca);
+  const marcaEnLista = marcas.find((m) => m.nombre.toLowerCase() === marcaGuardada.toLowerCase());
+  const presentacionGuardada = valor("presentacion", producto?.presentacion);
+  const presentacionEnLista = presentaciones.find((p) => p.toLowerCase() === presentacionGuardada.toLowerCase());
+  const accion = agregar ? agregarProducto : producto ? editarProducto : guardarProducto;
 
   return (
-    <form action={producto ? editarProducto : guardarProducto} className="formulario" encType="multipart/form-data">
+    <form action={accion} className="formulario" encType="multipart/form-data">
       {producto && <input type="hidden" name="id" value={producto.id} />}
       <input type="hidden" name="formulario" value="completo" />
-      {listas && <ListasDeMarcas marcas={listas.marcas} presentaciones={listas.presentaciones} />}
+
+      {agregar && (
+        <div className="campo">
+          <label htmlFor="tipo">Tipo de producto</label>
+          <select id="tipo" name="tipo" defaultValue={tipoElegido ?? "nuevo"}>
+            <option value="nuevo">＋ Un tipo nuevo (escribe su nombre abajo)</option>
+            {familias.map((f) => {
+              const suyos = agregar.productos.filter((p) => p.familia_id === f.id);
+              if (suyos.length === 0) return null;
+              return (
+                <optgroup key={f.id} label={f.nombre}>
+                  {suyos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}
+                      {estadoDeProducto(p) === "activo" ? "" : ` (${NOMBRE_ESTADO_PRODUCTO[estadoDeProducto(p)].toLowerCase()})`}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
+            {agregar.productos.some((p) => !familias.some((f) => f.id === p.familia_id)) && (
+              <optgroup label="Sin familia">
+                {agregar.productos
+                  .filter((p) => !familias.some((f) => f.id === p.familia_id))
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}
+                    </option>
+                  ))}
+              </optgroup>
+            )}
+          </select>
+          <span className="ayuda">
+            Si el tipo ya está (Mozzarella, Jamón), lo de abajo es el artículo que le añades: su marca, su presentación, su precio y su foto. Si es
+            nuevo, lo de abajo es el tipo entero.
+          </span>
+        </div>
+      )}
 
       <div className="campo">
-        <label htmlFor={`${id}-nombre`}>Tipo de producto</label>
-        <input id={`${id}-nombre`} name="nombre" type="text" required defaultValue={valor("nombre", producto?.nombre)} placeholder="Mozzarella · Suero · Tocineta" />
+        <label htmlFor={`${id}-nombre`}>{agregar ? "Nombre del tipo nuevo" : "Tipo de producto"}</label>
+        <input id={`${id}-nombre`} name="nombre" type="text" required={!agregar} defaultValue={valor("nombre", producto?.nombre)} placeholder="Mozzarella · Suero · Tocineta" />
         <span className="ayuda">Lo que el cliente busca, sin la marca: «Mozzarella», no «Mozzarella Guaralact». Las marcas van en sus artículos.</span>
       </div>
 
       <div className="campo">
         <label htmlFor={`${id}-familia`}>¿A qué familia pertenece este producto?</label>
-        <select id={`${id}-familia`} name="familia_id" required defaultValue={familiaElegida}>
+        <select id={`${id}-familia`} name="familia_id" required={!agregar} defaultValue={familiaElegida}>
           <option value="" disabled>
             Elige una familia
           </option>
-          {elegibles.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.nombre}
-              {f.activa ? "" : " (escondida)"}
-            </option>
-          ))}
+          <optgroup label="Familias de productos">
+            {familiasDeProductos(elegibles).map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nombre}
+                {f.activa ? "" : " (escondida)"}
+              </option>
+            ))}
+          </optgroup>
+          {colecciones(elegibles).length > 0 && (
+            <optgroup label="Colecciones por negocio (solo si es un producto propio de ese negocio)">
+              {colecciones(elegibles).map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.nombre}
+                  {f.activa ? "" : " (escondida)"}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
         <details className={estilos.masDatos}>
           <summary>＋ Crear nueva familia</summary>
@@ -123,6 +192,10 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
               <input type="checkbox" name="nueva_familia_activa" value="1" defaultChecked />
               <span>Activa: sale en la web</span>
             </label>
+            <label className={estilos.casilla}>
+              <input type="checkbox" name="nueva_familia_coleccion" value="1" defaultChecked={valor("nueva_familia_coleccion", "") === "1"} />
+              <span>Es una colección por tipo de negocio (como Burger o Pizzería): junta productos de varias familias</span>
+            </label>
             <div>
               {/* Sin validar el resto: se puede crear la familia antes de escribir el producto. */}
               <button type="submit" name="crear_familia" value="1" formNoValidate className="boton boton--secundario">
@@ -135,21 +208,35 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
 
       <fieldset className={estilos.categoriasProducto}>
         <legend>¿En qué otras categorías quieres mostrarlo?</legend>
-        {familias
-          .filter((f) => f.activa || otras.has(f.id))
-          .map((f) => (
-            <label key={f.id} className={estilos.casilla}>
-              <input type="checkbox" name="categoria" value={f.id} defaultChecked={otras.has(f.id)} />
-              <span>{f.nombre}</span>
-            </label>
-          ))}
-        <span className="ayuda">Sale en su familia y en estas, sin repetirse: una sola ficha y un solo precio. Si marcas la suya, no pasa nada.</span>
+        {negocios.length > 0 && (
+          <>
+            <span className="ayuda">Negocios en que sale (colecciones): una sola ficha y un solo precio, sin repetirse.</span>
+            {negocios.map((f) => (
+              <label key={f.id} className={estilos.casilla}>
+                <input type="checkbox" name="categoria" value={f.id} defaultChecked={otras.has(f.id)} />
+                <span>{f.nombre}</span>
+              </label>
+            ))}
+          </>
+        )}
+        <details className={estilos.masDatos} open={otrasFamilias.some((f) => otras.has(f.id))}>
+          <summary>También en otras familias de productos</summary>
+          <div style={{ marginTop: "var(--espacio-2)" }}>
+            {otrasFamilias.map((f) => (
+              <label key={f.id} className={estilos.casilla}>
+                <input type="checkbox" name="categoria" value={f.id} defaultChecked={otras.has(f.id)} />
+                <span>{f.nombre}</span>
+              </label>
+            ))}
+            <span className="ayuda">Si marcas la suya, no pasa nada.</span>
+          </div>
+        </details>
         <details className={estilos.masDatos}>
           <summary>Secciones dentro de cada categoría (opcional)</summary>
           <div className="formulario" style={{ marginTop: "var(--espacio-3)" }}>
             <span className="ayuda">
-              En cada categoría sale agrupado con los de su familia («Embutidos», «Quesos»). Si quieres otro grupo, escríbelo: la tocineta, en Burger,
-              en «Proteínas».
+              En cada colección sale agrupado con los de su familia («Quesos», «Embutidos»). Si quieres otro grupo, escríbelo: la tocineta, en
+              Burger, en «Embutidos / Proteínas».
             </span>
             <div className="campo">
               <label htmlFor={`${id}-seccion`}>En su familia principal</label>
@@ -173,22 +260,37 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
         </details>
       </fieldset>
 
-      <div className="formulario__fila">
-        {!conMarcas && (
-          <div className="campo">
-            <label htmlFor={`${id}-marca`}>Marca, si lo vendes de una sola (opcional)</label>
-            <input id={`${id}-marca`} name="marca" type="text" list="lista-marcas" autoComplete="off" defaultValue={valor("marca", producto?.marca)} placeholder="Elige o escribe una nueva" />
-            <span className="ayuda">De varias marcas: déjala vacía y añádelas en «Marcas y presentaciones».</span>
+      {!conMarcas && (
+        <>
+          <div className="formulario__fila">
+            <div className="campo">
+              <label htmlFor={`${id}-marca-lista`}>{agregar ? "Marca" : "Marca, si lo vendes de una sola (opcional)"}</label>
+              <select id={`${id}-marca-lista`} name="marca_lista" defaultValue={marcaEnLista ? marcaEnLista.nombre : marcaGuardada ? "nueva" : ""}>
+                <option value="">Sin marca</option>
+                {marcas.map((m) => (
+                  <option key={m.id} value={m.nombre}>
+                    {m.nombre}
+                  </option>
+                ))}
+                <option value="nueva">＋ Nueva marca (escríbela al lado)</option>
+              </select>
+            </div>
+            <div className="campo">
+              <label htmlFor={`${id}-marca`}>Marca nueva</label>
+              <input id={`${id}-marca`} name="marca" type="text" autoComplete="off" defaultValue={marcaEnLista ? "" : marcaGuardada} placeholder="Se crea al guardar" />
+            </div>
           </div>
-        )}
-        <div className="campo">
-          <label htmlFor={`${id}-estado`}>Estado</label>
-          <select id={`${id}-estado`} name="estado" defaultValue={estado}>
-            <option value="borrador">Borrador: no sale en la web</option>
-            <option value="activo">Activo: sale en la web</option>
-            <option value="inactivo">Inactivo: oculto</option>
-          </select>
-        </div>
+          <span className="ayuda">{agregar ? "Elige una de la lista o escribe una nueva. Vacía si no tiene marca." : "De varias marcas: déjala vacía y añádelas en «Marcas y presentaciones»."}</span>
+        </>
+      )}
+
+      <div className="campo">
+        <label htmlFor={`${id}-estado`}>Estado</label>
+        <select id={`${id}-estado`} name="estado" defaultValue={estado}>
+          <option value="borrador">Borrador: no sale en la web</option>
+          <option value="activo">Activo: sale en la web</option>
+          <option value="inactivo">Inactivo: oculto</option>
+        </select>
       </div>
 
       <div className={estilos.filaTres}>
@@ -205,20 +307,30 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
         {!conMarcas && (
           <>
             <div className="campo">
-              <label htmlFor={`${id}-presentacion`}>Presentación</label>
-              <input id={`${id}-presentacion`} name="presentacion" type="text" list="lista-presentaciones" autoComplete="off" defaultValue={valor("presentacion", producto?.presentacion)} placeholder="Bloque · Bolsa · Caja" />
+              <label htmlFor={`${id}-presentacion-lista`}>Presentación</label>
+              <select id={`${id}-presentacion-lista`} name="presentacion_lista" defaultValue={presentacionEnLista ?? (presentacionGuardada ? "nueva" : "")}>
+                <option value="">Sin presentación</option>
+                {presentaciones.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+                <option value="nueva">＋ Otra (escríbela al lado)</option>
+              </select>
             </div>
             <div className="campo">
-              <label htmlFor={`${id}-contenido`}>Peso o contenido</label>
-              <input id={`${id}-contenido`} name="contenido" type="text" defaultValue={valor("contenido", producto?.contenido)} placeholder="2,5 kg · 12 unidades" />
+              <label htmlFor={`${id}-presentacion`}>Presentación nueva</label>
+              <input id={`${id}-presentacion`} name="presentacion" type="text" autoComplete="off" defaultValue={presentacionEnLista ? "" : presentacionGuardada} placeholder="Bloque · Bolsa · Caja" />
             </div>
           </>
         )}
       </div>
       {!conMarcas && (
-        <span className="ayuda">
-          Lo que no es por kilo se cobra por su presentación: «bolsa de 2,5 kg», «caja de 12». Sin presentación, por unidad o por cartón.
-        </span>
+        <div className="campo">
+          <label htmlFor={`${id}-contenido`}>Peso o contenido</label>
+          <input id={`${id}-contenido`} name="contenido" type="text" defaultValue={valor("contenido", producto?.contenido)} placeholder="2,5 kg · 500 g · 12 unidades" />
+          <span className="ayuda">Lo que no es por kilo se cobra por su presentación: «bolsa de 2,5 kg», «caja de 12». Sin presentación, por unidad o por cartón.</span>
+        </div>
       )}
 
       {conMarcas ? (
@@ -273,7 +385,7 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
         </>
       )}
 
-      {!conMarcas && (
+      {!conMarcas && !aUnTipoQueEsta && (
         <div className="campo">
           <label htmlFor={`${id}-existencia`}>Existencia (opcional): conté y hay</label>
           <input id={`${id}-existencia`} name="existencia" type="number" inputMode="decimal" step="0.001" min="0" defaultValue={valor("existencia", "")} placeholder={existencia !== null ? String(existencia) : "Kilos, cartones o unidades"} />
@@ -290,14 +402,14 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
       </div>
 
       <div className="campo">
-        <label htmlFor={`${id}-foto`}>{producto?.foto_version ? "Cambiar la foto del tipo" : "Foto del tipo de producto (opcional)"}</label>
+        <label htmlFor={`${id}-foto`}>{producto?.foto_version ? "Cambiar la foto" : "Foto (opcional)"}</label>
         <EntradaFoto nombre="foto" id={`${id}-foto`} opcional soloFoto ladoMaximo={1200} />
-        <span className="ayuda">Mejor sobre fondo blanco o claro: el fondo se funde con la página. Sin foto, la web enseña una foto de referencia, que dice «Foto referencial».</span>
+        <span className="ayuda">El producto centrado sobre fondo blanco o muy claro, como en una tienda. Sin foto, la web enseña una de referencia, que dice «Foto referencial».</span>
       </div>
 
       <label className={estilos.casilla}>
         <input type="checkbox" name="destacado" value="1" defaultChecked={marcado("destacado", producto?.destacado)} />
-        <span>Destacarlo en la portada (Productos destacados)</span>
+        <span>Destacarlo en la portada (Productos destacados: salen los cuatro primeros)</span>
       </label>
       <label className={estilos.casilla}>
         <input type="checkbox" name="en_oferta" value="1" defaultChecked={marcado("en_oferta", producto?.en_oferta)} />
@@ -306,7 +418,7 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
 
       <div>
         <button type="submit" className="boton">
-          {producto ? `Guardar ${producto.nombre}` : "Crear el tipo de producto"}
+          {producto ? `Guardar ${producto.nombre}` : agregar ? "Guardar producto" : "Crear el tipo de producto"}
         </button>
       </div>
     </form>

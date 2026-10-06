@@ -1,44 +1,49 @@
 /*
- * La portada. En el teléfono, la foto (hamburguesa con papas y la pizza
- * saliendo del horno) va arriba y se funde en el verde, y el título entra
- * por encima de su borde de abajo; en la pantalla ancha, la foto llena el
- * fondo y el texto va a la izquierda, sobre el verde. Debajo, las
- * secciones de la vitrina (`components/vitrina.module.css`).
+ * La portada, compacta: el texto a la izquierda y la foto (hamburguesa con
+ * papas y pizza saliendo del horno) a la derecha, en una pantalla ancha sin
+ * ocupar más de lo que se ve; en el teléfono, la foto arriba, no muy alta,
+ * y el texto debajo. Debajo, las secciones de la vitrina
+ * (`components/vitrina.module.css`).
  */
 
 .heroe {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
   background: var(--color-verde-noche);
   color: var(--color-crema);
+}
+.heroeDentro {
+  display: grid;
+  gap: var(--espacio-5);
+  max-width: var(--ancho-web);
+  margin: 0 auto;
+  padding: var(--espacio-4) var(--espacio-4) var(--espacio-6);
 }
 .heroeFoto {
   position: relative;
   display: block;
-  z-index: -2;
-  aspect-ratio: 900 / 760;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radio-grande);
+  background: var(--color-verde-profundo);
 }
 .heroeFoto::after {
   content: "";
   position: absolute;
   inset: 0;
   background: var(--velo-foto-arriba);
+  opacity: 0.35;
 }
 .heroeFoto img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: 60% 50%;
 }
 .heroeTexto {
-  position: relative;
   display: grid;
   justify-items: start;
   gap: var(--espacio-4);
-  max-width: var(--ancho-web);
-  margin: -16vw auto 0;
-  padding: 0 var(--espacio-4) var(--espacio-6);
+  min-width: 0;
 }
 .heroeTexto > * {
   max-width: 640px;
@@ -53,7 +58,7 @@
 .titulo {
   font-family: var(--fuente-titulos);
   font-weight: 400;
-  font-size: clamp(46px, 13.5vw, 100px);
+  font-size: clamp(42px, 12vw, 84px);
   line-height: 0.92;
   letter-spacing: 0.005em;
   text-transform: uppercase;
@@ -64,13 +69,9 @@
   color: var(--color-dorado);
 }
 .subtitulo {
-  font-size: clamp(18px, 4.8vw, 23px);
-  font-weight: 700;
-  line-height: 1.3;
-}
-.texto {
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: clamp(17px, 4.6vw, 21px);
+  font-weight: 600;
+  line-height: 1.35;
 }
 .botones {
   display: grid;
@@ -105,25 +106,32 @@
   }
 }
 @media (min-width: 900px) {
+  /* Dos columnas: el texto a la izquierda, la foto a la derecha; todo a la vista sin bajar. */
+  .heroeDentro {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    align-items: center;
+    gap: var(--espacio-7);
+    padding: var(--espacio-6) var(--espacio-4);
+  }
   .heroeFoto {
-    position: absolute;
-    inset: 0;
-    aspect-ratio: auto;
+    order: 2;
+    aspect-ratio: 4 / 3;
+    max-height: 440px;
   }
   .heroeFoto::after {
-    background: var(--velo-foto);
+    opacity: 0.2;
   }
-  /* La foto se pega a la derecha: la hamburguesa y la pizza quedan siempre a la vista, y el texto, sobre el verde. */
   .heroeFoto img {
-    object-position: 100% 50%;
+    object-position: 70% 50%;
   }
   .heroeTexto {
-    margin-top: 0;
-    padding: 104px var(--espacio-4) 112px;
+    order: 1;
   }
-  /* El texto se queda sobre el verde, sin pisar la hamburguesa. */
   .heroeTexto > * {
-    max-width: 560px;
+    max-width: 580px;
+  }
+  .titulo {
+    font-size: clamp(48px, 5.4vw, 72px);
   }
 }
 
