@@ -82,7 +82,7 @@ export const BORRADORES: BorradorInicial[] = [
   b("Queso de año", "quesos", ["pizzeria"], "kg"),
   b("Queso parmesano", "quesos", ["pizzeria"], "kg"),
   // Lácteos
-  b("Crema de leche", "lacteos", []),
+  { ...b("Crema de leche", "lacteos", []), seccion: "Cremas de leche" },
   // Embutidos
   b("Tocineta", "embutidos", ["burger", "pizzeria"], "kg", { secciones: { burger: "Proteínas" } }),
   b("Jamón", "embutidos", ["pizzeria"], "kg"),

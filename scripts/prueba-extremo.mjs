@@ -388,8 +388,9 @@ async function probarPrecios() {
   await enviar("/admin/productos/4", `name="variante_id" value="${bolsaGrande.id}"`, { variante_id: String(bolsaGrande.id) }, cookie, {}, "Sí, eliminar");
   const portadaMarcas = (await portadaCon("Bs 127,75")).html;
   comprobar(
-    "portada: el pecorino dice «desde» con la más barata (3,50) y cuántas marcas hay, sin nombrar ninguna",
+    "portada: el pecorino dice «desde» con la más barata (3,50) y cuántas marcas hay, sin nombrar ninguna, y lleva la foto de la primera marca (mercancía de verdad, no la de referencia)",
     /Al mayor, desde<\/p><p[^>]*>Bs 127,75/.test(portadaMarcas) && portadaMarcas.includes("2 marcas para elegir") && !portadaMarcas.includes("Sortilegio") &&
+      portadaMarcas.includes(`/foto-variante/${varianteSortilegio}?v=`) && !portadaMarcas.includes("/productos/queso-rallado.webp") &&
       portadaMarcas.includes('href="/producto/4-queso-pecorino-rallado#marcas"') && portadaMarcas.includes(">Ver opciones<") && portadaMarcas.includes("Ver las 2 opciones de Queso pecorino rallado"),
     portadaMarcas.slice(Math.max(0, portadaMarcas.indexOf("pecorino rallado</a>") - 100), portadaMarcas.indexOf("pecorino rallado</a>") + 900).replace(/\s+/g, " "),
   );
@@ -815,6 +816,11 @@ async function probarNegocio() {
   comprobar("el cierre de hoy abre sin fecha", (await pagina("/admin/caja")).html.includes("Cierre del día"));
   const cuentasVencidas = legible((await pagina("/admin/cuentas")).html);
   comprobar("cuentas: columna «Vence» y total con el plazo vencido", cuentasVencidas.includes(">Vence<") && /Vencida hace \d+ días/.test(cuentasVencidas) && cuentasVencidas.includes("Con el plazo vencido"));
+  comprobar(
+    "cuentas: empieza por quién te debe, con lo que debe, lo vencido y su plazo más cercano",
+    cuentasVencidas.indexOf("Quién te debe") < cuentasVencidas.indexOf("Notas que te deben") && cuentasVencidas.includes(">Plazo más cercano<") && cuentasVencidas.includes("Bodega Prueba, C.A."),
+  );
+  comprobar("la cartera ordena a los que deben por lo que vence antes", legible((await pagina("/admin/clientes?orden=deuda")).html).includes("Los que deben, por lo que vence antes"));
 
   // La nota de entrega de la primera venta.
   const notaId = Math.min(...[...ficha.matchAll(/\/admin\/ventas\/(\d+)\/nota/g)].map((m) => Number(m[1])));

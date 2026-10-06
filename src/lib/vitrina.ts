@@ -1,6 +1,6 @@
 import "server-only";
 import { categoriasDeTodos, direccionDeFotoDeProducto, listarProductos, seccionesDeTodos, type Producto } from "./productos";
-import { agruparPorProducto, direccionDeFotoDeVariante, listarVariantes, type Variante } from "./variantes";
+import { agruparPorProducto, fotoDeAlgunaVariante, listarVariantes, type Variante } from "./variantes";
 import { listarFamilias, type Familia } from "./familias";
 import { claveDe, precioPublicado, type PrecioPublicado } from "./catalogo";
 import { leerTasa, type Tasa } from "./ajustes";
@@ -82,7 +82,7 @@ function armar(p: Producto, suyas: Variante[], familias: number[], secciones: Ma
     producto: p,
     publicado: precioPublicado(p, suyas),
     variantes: suyas,
-    imagen: imagenDeProducto(direccionDeFotoDeProducto(p), p.nombre, suyas.length === 1 ? direccionDeFotoDeVariante(suyas[0]) : null),
+    imagen: imagenDeProducto(direccionDeFotoDeProducto(p), p.nombre, fotoDeAlgunaVariante(suyas)),
     familias,
     clave: suyas.length === 0 ? claveDe(p.id, null) : suyas.length === 1 ? claveDe(p.id, suyas[0].id) : null,
     marcas: marcasDe(p, suyas),

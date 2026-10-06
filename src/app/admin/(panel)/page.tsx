@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { listarClientes, resumenDeudas } from "@/lib/clientes";
 import { clientesConVencimiento, proveedoresConVencimiento } from "@/lib/vencimientos";
-import { describirVencimiento } from "@/lib/credito";
+import { describirUrgencia, describirVencimiento, porUrgencia } from "@/lib/credito";
 import { cierreDelDia } from "@/lib/caja";
 import { listarPagos, totalCobradoUsd } from "@/lib/pagos";
 import { conLineas, contarVentasPorEntregar, listarVentas, listarVentasPorEntregar, totalVendidoUsd, vendidoDesde } from "@/lib/ventas";
@@ -42,12 +42,10 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
   const atrasoDe = (e: (typeof entregas)[number]) => (e.entrega_prevista ? diasEntre(e.entrega_prevista, fecha) : null);
   const atrasadas = entregas.filter((e) => (atrasoDe(e) ?? -1) > 0).length;
   const paraHoy = entregas.filter((e) => atrasoDe(e) === 0).length;
-  // Quien debe: primero los que ya pasaron su plazo, con el más atrasado arriba.
-  const deudores = conVencimiento
-    .filter((c) => c.saldo_usd > 0)
-    .sort((a, b) => b.vencido_usd - a.vencido_usd || b.mayor_atraso - a.mayor_atraso || b.saldo_usd - a.saldo_usd);
+  // Quien debe, por lo que vence antes: el más atrasado arriba, después el que vence hoy, mañana…
+  const deudores = conVencimiento.filter((c) => c.saldo_usd > 0).sort(porUrgencia);
   const vencido = redondear(deudores.reduce((s, c) => s + c.vencido_usd, 0));
-  const acreedores = proveedores.filter((p) => p.saldo_usd > 0).sort((a, b) => b.vencido_usd - a.vencido_usd || b.saldo_usd - a.saldo_usd);
+  const acreedores = proveedores.filter((p) => p.saldo_usd > 0).sort(porUrgencia);
   const debo = redondear(acreedores.reduce((s, p) => s + p.saldo_usd, 0));
   // «Recordar» va por /admin/recordar/[id], que arma el mensaje con las notas y deja anotado el día. Solo con teléfono.
   const puedeRecordar = (c: (typeof deudores)[number]) => enlaceWhatsappA(c.telefono, "") !== null;
@@ -253,13 +251,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                       </td>
                       <td data-label="Debe" className={`numero ${c.vencido_usd > 0 ? estilos.vencida : estilos.deuda}`}>{usd(c.saldo_usd)}</td>
                       <td data-label="Plazo">
-                        {c.vencido_usd > 0 ? (
-                          <span className={estilos.vencida}>{describirVencimiento(c.mayor_atraso)}</span>
-                        ) : c.proximo_vencimiento ? (
-                          <span className="ayuda">Vence el {fechaCorta(c.proximo_vencimiento)}</span>
-                        ) : (
-                          ""
-                        )}
+                        <span className={c.vencido_usd > 0 ? estilos.vencida : "ayuda"}>{describirUrgencia(c.urgencia)}</span>
                       </td>
                       <td>
                         {puedeRecordar(c) && (
@@ -307,9 +299,9 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                       <td data-label="Le debo" className={`numero ${p.vencido_usd > 0 ? estilos.vencida : estilos.deuda}`}>{usd(p.saldo_usd)}</td>
                       <td data-label="Plazo">
                         {p.vencido_usd > 0 ? (
-                          <span className={estilos.vencida}>{describirVencimiento(p.mayor_atraso)}</span>
+                          <span className={estilos.vencida}>{describirUrgencia(p.urgencia)}</span>
                         ) : p.proximo_vencimiento ? (
-                          <span className="ayuda">Vence el {fechaCorta(p.proximo_vencimiento)}</span>
+                          <span className="ayuda">{describirUrgencia(p.urgencia)}</span>
                         ) : (
                           ""
                         )}

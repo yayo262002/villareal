@@ -1,8 +1,8 @@
 /*
  * La foto de un producto ocupa toda su caja. La de referencia es una foto
  * de comida y se recorta para llenarla; la que sube el dueño (el paquete
- * sobre fondo blanco, ya centrado en su cuadrado) se enseña entera y su
- * blanco se funde con el fondo.
+ * sobre fondo blanco, ya centrado en su cuadrado) se enseña entera, sobre
+ * blanco, como la foto de un producto en una tienda.
  */
 .marco {
   position: relative;
@@ -20,7 +20,7 @@
 }
 .propia {
   object-fit: contain;
-  mix-blend-mode: multiply;
+  background: var(--color-superficie);
 }
 .aviso {
   position: absolute;

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { negocio } from "@/config/negocio";
 import { clientesConVencimiento, type ClienteConVencimiento } from "@/lib/vencimientos";
-import { DIAS_DE_CREDITO_POR_DEFECTO, describirVencimiento } from "@/lib/credito";
+import { DIAS_DE_CREDITO_POR_DEFECTO, describirUrgencia, describirVencimiento, porUrgencia } from "@/lib/credito";
 import { guardarCliente, situarClientesQueFaltan } from "@/lib/acciones";
 import { necesitaElMapa } from "@/lib/mapa";
 import { enlaceAlMapa, planDeDespacho, situar } from "@/lib/despacho";
@@ -20,7 +20,7 @@ const CIUDAD = `${negocio.localidad}, ${negocio.estado}, Venezuela`;
 const ORDENES = {
   nombre: "Por nombre",
   ruta: "Por ruta desde la tienda",
-  deuda: "Los que más deben",
+  deuda: "Los que deben, por lo que vence antes",
 } as const;
 type Orden = keyof typeof ORDENES;
 
@@ -62,8 +62,8 @@ export default async function PaginaClientes({
   const motivo = new Map(plan.sinUbicar.map((s) => [s.cliente.id, s.motivo]));
   let clientes: ClienteConVencimiento[];
   if (orden === "ruta") clientes = [...plan.ruta.paradas.map((p) => p.dato), ...plan.sinUbicar.map((s) => s.cliente)];
-  // Los que más deben: primero lo vencido, después el saldo.
-  else if (orden === "deuda") clientes = [...filtrados].sort((a, b) => b.vencido_usd - a.vencido_usd || b.saldo_usd - a.saldo_usd);
+  // Los que deben, por lo que vence antes: el más atrasado arriba, después el que vence hoy, mañana…; los que no deben, al final.
+  else if (orden === "deuda") clientes = [...filtrados].sort(porUrgencia);
   else clientes = filtrados;
 
   // Direcciones sin calle y carrera que el mapa aún no ha buscado: las de antes de tener mapa.
@@ -292,10 +292,12 @@ export default async function PaginaClientes({
                           {c.saldo_usd > 0 ? `Debe ${usd(c.saldo_usd)}` : c.saldo_usd < 0 ? `A favor ${usd(-c.saldo_usd)}` : "Al día"}
                         </span>
                       </div>
-                      {c.vencido_usd > 0 && (
+                      {c.vencido_usd > 0 ? (
                         <p className={`${estilos.carteraDato} ${estilos.vencida}`}>
                           {describirVencimiento(c.mayor_atraso)}: {usd(c.vencido_usd)}
                         </p>
+                      ) : (
+                        c.urgencia !== null && <p className={`${estilos.carteraDato} ayuda`}>{describirUrgencia(c.urgencia)}</p>
                       )}
                       <p className={estilos.carteraDato}>
                         {c.direccion || <span className="ayuda">Sin dirección</span>}

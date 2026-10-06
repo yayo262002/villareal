@@ -65,6 +65,12 @@ export type ResumenDeVencimiento = {
   mayor_atraso: number;
   /** El próximo vencimiento de lo que está en plazo, o null si no hay nada en plazo. */
   proximo_vencimiento: string | null;
+  /**
+   * Cuánto apremia cobrarle: el atraso de la nota pendiente que vence antes.
+   * Positivo, los días que lleva vencida; 0, vence hoy; negativo, los días
+   * que faltan. Null si no debe nada. A más urgencia, más arriba en las listas.
+   */
+  urgencia: number | null;
 };
 
 /** Cuánto está vencido y cuánto en plazo de lo que debe un cliente (o el negocio a un proveedor). */
@@ -81,7 +87,23 @@ export function resumenDeVencimiento(
     en_plazo_usd: redondear(enPlazo.reduce((s, c) => s + c.pendiente_usd, 0)),
     mayor_atraso: vencidas.reduce((m, c) => Math.max(m, c.atraso), 0),
     proximo_vencimiento: enPlazo.map((c) => c.vence).sort()[0] ?? null,
+    urgencia: pendientes.length > 0 ? Math.max(...pendientes.map((c) => c.atraso)) : null,
   };
+}
+
+/**
+ * El orden de quien debe: mientras menos tiempo le quede para pagar, más
+ * arriba. Primero el más atrasado, después el que vence hoy, mañana, en
+ * dos días…; a igual plazo, el que más debe. Quien no debe nada, al final.
+ */
+export function porUrgencia<V extends { urgencia: number | null; saldo_usd: number }>(a: V, b: V): number {
+  if (a.urgencia === null || b.urgencia === null) return Number(a.urgencia === null) - Number(b.urgencia === null);
+  return b.urgencia - a.urgencia || b.saldo_usd - a.saldo_usd;
+}
+
+/** El vencimiento más cercano, dicho en palabras, de quien debe; nada si no debe. */
+export function describirUrgencia(urgencia: number | null): string {
+  return urgencia === null ? "" : describirVencimiento(urgencia);
 }
 
 /** «Vencida hace 3 días», «Vence hoy», «Vence mañana», «Vence en 5 días». */

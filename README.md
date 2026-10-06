@@ -293,9 +293,11 @@ datos/                    La base de datos (fuera de Git)
     más no lleva «Agregar» (sería pedir a ciegas) sino «Ver opciones», y
     en la página del tipo cada artículo tiene su «Agregar» y su «Pedir por
     WhatsApp», con su precio, para que el pedido diga cuál es. Con un solo
-    artículo (el suero, de Guaralact) se pide directo desde arriba, como
-    sin marcas. Mientras haya alguno publicado, los precios del tipo no se
-    usan (`src/lib/catalogo.ts`).
+    artículo (el suero, de Guaralact) no hay nada que elegir: se pide
+    directo desde arriba, como sin marcas, y su descripción y sus reseñas
+    van en la misma página (su ficha sigue existiendo: «Ver su ficha»).
+    Mientras haya alguno publicado, los precios del tipo no se usan
+    (`src/lib/catalogo.ts`).
   - **Filtrar por marca.** En cada categoría, en Productos y en la página
     de un tipo con tres marcas o más, «Filtrar por marca» (casillas, sin
     JavaScript: `?marca=guaralact`) deja los tipos que se venden de esas
@@ -308,8 +310,8 @@ datos/                    La base de datos (fuera de Git)
   estén publicados. Al guardarla se recorta el fondo liso que sobre, se
   centra el producto en un cuadrado de 800 px con un poco de aire y se
   guarda como JPEG (`src/lib/foto-producto.ts`): así todas las marcas se
-  ven del mismo tamaño y el producto llena su foto. En la web se enseña sin
-  su fondo blanco (se funde con el fondo de la página): conviene
+  ven del mismo tamaño y el producto llena su foto. En la web se enseña
+  sobre blanco, como la foto de un producto en una tienda: conviene
   fotografiar los paquetes sobre fondo blanco o muy claro.
 - **Cada marca tiene su página** (`/producto/1-queso-amarillo-cheddar/2-kemmental`):
   se llega pinchando su foto, su nombre o «Ver detalles» en la página del
@@ -355,7 +357,8 @@ datos/                    La base de datos (fuera de Git)
     que un negocio recoge sobre sí mismo.
 - **Fotos reales, nunca dibujos.** Cada producto se enseña con una foto:
   la que el dueño sube en su ficha del panel; si no la hay y se vende de
-  una sola marca con foto (el suero Guaralact), la de esa marca; si no,
+  alguna de sus marcas tiene foto (el suero Guaralact, el queso amarillo
+  Kemmental), la de la primera, que es mercancía de verdad; si no,
   una **foto de referencia** de lo que es, elegida por su nombre, de lo más
   concreto a lo más general (la salsa cheddar no es un queso, lo rallado
   lleva la del queso rallado; `src/lib/fotos-referenciales.ts`), que la
@@ -372,10 +375,16 @@ datos/                    La base de datos (fuera de Git)
 - **Días de crédito.** Cada cliente tiene los suyos (7 si no se dice otra
   cosa; se cambian en su ficha). Una nota vence a esos días de su fecha:
   si pasado el plazo queda algo por pagar de ella, está **vencida**. El
-  Resumen, Clientes y Cuentas dicen cuánto está vencido y desde cuándo
-  («Vencida hace 3 días»), y quien tiene el plazo vencido va primero.
-  Lo mismo vale para lo que el negocio le debe a cada proveedor, con los
-  días que da el proveedor (`src/lib/credito.ts`).
+  Resumen, Clientes y Lo que te deben dicen cuánto está vencido y desde
+  cuándo («Vencida hace 3 días»). **Quien debe va por lo que vence
+  antes**: mientras menos tiempo le quede para pagar, más arriba (primero
+  el más atrasado, después el que vence hoy, mañana, en dos días…; a igual
+  plazo, el que más debe; `porUrgencia` en `src/lib/credito.ts`). Así
+  salen «Quién debe» en el Resumen, «Los que deben, por lo que vence
+  antes» en Clientes y «Quién te debe» en Lo que te deben (cada cliente
+  con lo que debe, lo vencido y su plazo más cercano), y debajo las notas,
+  en el mismo orden. Lo mismo vale para lo que el negocio le debe a cada
+  proveedor, con los días que da el proveedor.
 - **Recordatorios de cobro.** Quien pasó su plazo y no ha recibido un
   recordatorio en la última semana sale arriba en el Resumen, en «Cobros
   para recordar». «Recordar» (ahí, en «Quién debe», en la ficha y en el

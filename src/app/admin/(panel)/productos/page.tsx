@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listarProductos, categoriasDeTodos, direccionDeFotoDeProducto } from "@/lib/productos";
-import { agruparPorProducto, direccionDeFotoDeVariante, listarVariantes } from "@/lib/variantes";
+import { agruparPorProducto, fotoDeAlgunaVariante, listarVariantes } from "@/lib/variantes";
 import { listarFamilias } from "@/lib/familias";
 import { NOMBRE_ESTADO_PRODUCTO, estadoDeProducto, precioPublicado, presentacionDe, type EstadoProducto } from "@/lib/catalogo";
 import { hayPreciosDeEjemplo, leerAvisoTasa, leerTasa, tasaAutomatica } from "@/lib/ajustes";
@@ -225,9 +225,8 @@ export default async function PaginaProductos({ searchParams }: { searchParams: 
                   const publicado = publicadoDe(p);
                   const precioBs = publicado.precio_usd !== null ? aBolivares(publicado.precio_usd, tasaValor) : null;
                   const foto = direccionDeFotoDeProducto(p);
-                  // Como en la web: sin foto propia, la de su única marca publicada, o la de referencia.
-                  const suyas = (variantesDe.get(p.id) ?? []).filter((v) => v.activo);
-                  const fotoDeSuMarca = suyas.length === 1 ? direccionDeFotoDeVariante(suyas[0]) : null;
+                  // Como en la web: sin foto propia, la de la primera marca publicada con foto, o la de referencia.
+                  const fotoDeSuMarca = fotoDeAlgunaVariante(variantesDe.get(p.id) ?? []);
                   const otras = (categorias.get(p.id) ?? []).map((id) => familiaDe.get(id)?.nombre).filter(Boolean);
                   const presentacion = presentacionDe(p);
                   return (

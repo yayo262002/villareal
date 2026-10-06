@@ -6,9 +6,9 @@ import { normalizar } from "./buscar.ts";
  * web enseña mientras el dueño no sube la foto de su producto. Se eligen
  * por el nombre, de lo más concreto a lo más general: «Salsa cheddar»
  * antes que «cheddar», «Mozzarella rallada» antes que «mozzarella». La
- * foto que sube el dueño va siempre primero; si no la hay y el producto se
- * vende de una sola marca con foto (el suero Guaralact), va la de la marca,
- * que es el producto de verdad; y sin ninguna, un fondo neutro con el
+ * foto que sube el dueño va siempre primero; si no la hay y alguna de sus
+ * marcas tiene foto (el suero Guaralact, el queso amarillo Kemmental), va
+ * la de la marca, que es el producto de verdad; y sin ninguna, un fondo neutro con el
  * león: nunca un dibujo. Una foto de referencia enseña lo que es el
  * producto como se vende aquí: la mozzarella, en bloque cuadrado, no en
  * bola. Cálculo puro, con pruebas.
@@ -93,12 +93,14 @@ export function fotoDeCombo(nombre: string): string {
 }
 
 /**
- * Lo que enseña la web de un producto: la foto que subió el dueño; si no,
- * la de su única marca; si no, la de referencia; si no, nada (fondo neutro).
+ * Lo que enseña la web de un tipo de producto: la foto que subió el dueño;
+ * si no, la de una de sus marcas (la primera que tenga foto: es mercancía
+ * de verdad, mejor que una foto de referencia); si no, la de referencia;
+ * si no, nada (fondo neutro).
  */
-export function imagenDeProducto(fotoPropia: string | null, nombre: string, fotoDeSuUnicaMarca: string | null = null): ImagenDeProducto {
+export function imagenDeProducto(fotoPropia: string | null, nombre: string, fotoDeUnaMarca: string | null = null): ImagenDeProducto {
   if (fotoPropia) return { src: fotoPropia, referencial: false };
-  if (fotoDeSuUnicaMarca) return { src: fotoDeSuUnicaMarca, referencial: false };
+  if (fotoDeUnaMarca) return { src: fotoDeUnaMarca, referencial: false };
   const referencia = fotoReferencialDe(nombre);
   return referencia ? { src: referencia, referencial: true } : null;
 }

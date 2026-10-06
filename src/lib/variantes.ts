@@ -222,3 +222,9 @@ export function direccionDeFotoDeVariante(variante: Pick<Variante, "id" | "foto_
   if (!variante.foto_version) return null;
   return `/foto-variante/${variante.id}?v=${encodeURIComponent(variante.foto_version.replace(/\D/g, ""))}`;
 }
+
+/** La foto de la primera marca publicada que tenga una: la cara del tipo de producto mientras no suba la suya. */
+export function fotoDeAlgunaVariante(variantes: Pick<Variante, "id" | "foto_version" | "activo">[]): string | null {
+  const con = variantes.find((v) => v.activo === 1 && v.foto_version);
+  return con ? direccionDeFotoDeVariante(con) : null;
+}

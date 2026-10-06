@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buscarProducto, categoriasDeProducto, direccionDeFotoDeProducto, seccionesDeProducto } from "@/lib/productos";
 import { listarMarcas, presentacionesUsadas } from "@/lib/marcas";
-import { direccionDeFotoDeVariante, variantesDeProducto } from "@/lib/variantes";
+import { fotoDeAlgunaVariante, variantesDeProducto } from "@/lib/variantes";
 import { listarFamilias } from "@/lib/familias";
 import { existenciaSinMarca } from "@/lib/inventario";
 import { NOMBRE_ESTADO_PRODUCTO, estadoDeProducto, type EstadoProducto } from "@/lib/catalogo";
@@ -45,8 +45,7 @@ export default async function PaginaProducto({ params, searchParams }: { params:
   const estado = estadoDeProducto(producto);
   const conMarcas = variantes.some((v) => v.activo);
   const foto = direccionDeFotoDeProducto(producto);
-  const publicadas = variantes.filter((v) => v.activo);
-  const fotoDeSuMarca = publicadas.length === 1 ? direccionDeFotoDeVariante(publicadas[0]) : null;
+  const fotoDeSuMarca = fotoDeAlgunaVariante(variantes);
 
   return (
     <>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { proveedoresConVencimiento } from "@/lib/vencimientos";
 import { guardarProveedor } from "@/lib/acciones";
-import { DIAS_DE_CREDITO_POR_DEFECTO, describirVencimiento, diasEntre } from "@/lib/credito";
+import { DIAS_DE_CREDITO_POR_DEFECTO, describirVencimiento, diasEntre, porUrgencia } from "@/lib/credito";
 import { fechaCorta, hoy, redondear, usd } from "@/lib/dinero";
 import { enlaceWhatsappA } from "@/lib/whatsapp";
 import { negocio } from "@/config/negocio";
@@ -21,8 +21,8 @@ export default async function PaginaProveedores({ searchParams }: { searchParams
   const proveedores = await proveedoresConVencimiento();
   const debo = redondear(proveedores.reduce((s, p) => s + Math.max(0, p.saldo_usd), 0));
   const vencido = redondear(proveedores.reduce((s, p) => s + p.vencido_usd, 0));
-  // Primero a quien más se le debe con plazo vencido; después el resto por nombre.
-  const ordenados = [...proveedores].sort((a, b) => b.vencido_usd - a.vencido_usd || b.saldo_usd - a.saldo_usd);
+  // Por lo que vence antes: el más atrasado arriba, después el que vence hoy, mañana…; a quien no se le debe, al final (por nombre).
+  const ordenados = [...proveedores].sort(porUrgencia);
   const fecha = hoy();
 
   return (

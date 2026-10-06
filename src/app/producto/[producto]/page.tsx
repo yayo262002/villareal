@@ -4,9 +4,9 @@ import type { Metadata } from "next";
 import { direccionCompleta, enlaceCompartir, enlaceWhatsapp, negocio } from "@/config/negocio";
 import { buscarProducto, direccionDeFotoDeProducto, type Producto } from "@/lib/productos";
 import { imagenDeProducto } from "@/lib/fotos-referenciales";
-import { direccionDeFotoDeVariante, variantesDeProducto, type Variante } from "@/lib/variantes";
+import { direccionDeFotoDeVariante, fotoDeAlgunaVariante, variantesDeProducto, type Variante } from "@/lib/variantes";
 import { claveDe, nombreDeVenta, porQueSeCobra, precioPublicado, type PrecioPublicado } from "@/lib/catalogo";
-import { contarResenasPorVariante, resenasDeProducto } from "@/lib/resenas";
+import { contarResenasPorVariante, resenasDeProducto, resenasDeVariante } from "@/lib/resenas";
 import { haySesion } from "@/lib/sesion";
 import { idDeRuta, rutaProducto, rutaVariante } from "@/lib/enlaces";
 import { vitrina } from "@/lib/vitrina";
@@ -122,7 +122,7 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
   if (!producto) notFound();
 
   const esElDueno = await haySesion();
-  const [v, resenas, variantes, resenasPorMarca] = await Promise.all([
+  const [v, resenasDelTipo, variantes, resenasPorMarca] = await Promise.all([
     vitrina(),
     resenasDeProducto(producto.id, esElDueno),
     variantesDeProducto(producto.id, true),
@@ -130,8 +130,11 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
   ]);
   const tasa = v.tasa;
   const publicado = precioPublicado(producto, variantes);
-  const ventajas = ventajasDe(producto.descripcion);
-  const imagen = imagenDeProducto(direccionDeFotoDeProducto(producto), producto.nombre, variantes.length === 1 ? direccionDeFotoDeVariante(variantes[0]) : null);
+  // Con un solo artículo (el suero, de Guaralact) se pide directo, como sin marcas, y su descripción y sus reseñas van aquí mismo.
+  const unico = variantes.length === 1 ? variantes[0] : null;
+  const resenas = unico ? [...resenasDelTipo, ...(await resenasDeVariante(unico.id, esElDueno))] : resenasDelTipo;
+  const ventajas = [...new Set([...ventajasDe(producto.descripcion), ...(unico ? ventajasDe(unico.descripcion) : [])])];
+  const imagen = imagenDeProducto(direccionDeFotoDeProducto(producto), producto.nombre, fotoDeAlgunaVariante(variantes));
   const familia = v.todasLasFamilias.find((f) => f.id === producto.familia_id) ?? null;
   // Debajo, otros de sus familias; si no hay, otros cualquiera.
   const suyas = v.productos.find((p) => p.producto.id === producto.id)?.familias ?? [];
@@ -139,8 +142,6 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
   const deSuFamilia = demas.filter((p) => p.familias.some((f) => suyas.includes(f)));
   const relacionados = (deSuFamilia.length > 0 ? deSuFamilia : demas).slice(0, RELACIONADOS);
   const nombre = producto.nombre.toLowerCase();
-  // Con un solo artículo (el suero, de Guaralact) se pide directo, como sin marcas: no hay nada que elegir.
-  const unico = variantes.length === 1 ? variantes[0] : null;
   const pedir = enlaceWhatsapp(unico ? `Hola, quiero pedir ${nombre} ${unico.nombre.toLowerCase()}.` : `Hola, quiero pedir ${nombre}.`);
   const mayor = enlaceWhatsapp(`Hola, quiero comprar ${nombre} al mayor.`);
   const compartir = enlaceCompartir(`${producto.nombre} en ${negocio.nombre}: ${direccionCompleta(rutaProducto(producto))}`);
@@ -175,6 +176,12 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
               {sinMarcas && producto.marca && ` · Marca ${producto.marca}`}
               {unico && [unico.marca && `Marca ${unico.marca}`, presentacionYContenido(unico)].filter(Boolean).map((t) => ` · ${t}`).join("")}
               {marcas.length >= 2 ? ` · ${marcas.length} marcas` : variantes.length >= 2 ? ` · ${variantes.length} presentaciones` : ""}
+              {unico && (
+                <>
+                  {" · "}
+                  <Link href={rutaVariante(producto, unico)}>Ver su ficha</Link>
+                </>
+              )}
             </p>
 
             <div className={estilos.bloque}>
@@ -216,17 +223,11 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
             </div>
           </div>
 
-          {/* Las marcas o presentaciones en que se vende, cada una con su foto, su precio y su propia página. */}
-          {variantes.length > 0 && (
+          {/* Las marcas o presentaciones en que se vende, cada una con su foto, su precio y su propia página. Con una sola, no hay nada que elegir: va arriba. */}
+          {variantes.length > 1 && (
             <section className={`${estilos.bloque} ${estilos.fichaAncha}`} id="marcas" aria-labelledby="titulo-marcas">
               <h2 id="titulo-marcas" className={estilos.bloqueTitulo}>
-                {marcas.length >= 2
-                  ? `Elige la marca de ${producto.nombre.toLowerCase()}`
-                  : variantes.length >= 2
-                    ? "Elige la presentación"
-                    : unico?.marca
-                      ? "La marca"
-                      : "La presentación"}
+                {marcas.length >= 2 ? `Elige la marca de ${producto.nombre.toLowerCase()}` : "Elige la presentación"}
               </h2>
               {/* Con dos marcas se ven las dos de un vistazo: el filtro, desde tres. */}
               <FiltroDeMarcas marcas={marcas} elegidas={elegidas} accion={`${rutaProducto(producto)}#marcas`} desde={3} />
@@ -258,9 +259,8 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
                         {cuantas > 0 && <p className={estilos.varianteDetalle}>{cuantas === 1 ? "1 reseña" : `${cuantas} reseñas`}</p>}
                         <PreciosEnLinea precios={m} unidad={producto.unidad} tasa={tasa?.valor ?? null} />
                         <div className={estilos.varianteAcciones}>
-                          {/* Si es el único, ya se pide arriba. */}
-                          {!unico && <BotonAgregar clave={claveDe(producto.id, m.id)} nombre={nombreDeVenta(producto.nombre, m.nombre)} unidad={producto.unidad} />}
-                          {pedirEsta && !unico && (
+                          <BotonAgregar clave={claveDe(producto.id, m.id)} nombre={nombreDeVenta(producto.nombre, m.nombre)} unidad={producto.unidad} />
+                          {pedirEsta && (
                             <a className={estilos.varianteEnlaceTexto} href={pedirEsta} target="_blank" rel="noopener" aria-label={`Pedir ${m.nombre} por WhatsApp`}>
                               Pedir por WhatsApp
                             </a>
