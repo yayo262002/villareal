@@ -1230,3 +1230,98 @@
 .lineaOferta input[type="text"] {
   width: 8rem;
 }
+
+/* ---------- La galería de fotos: cada tipo con su foto, sus marcas y el formulario para cambiarla ---------- */
+
+.galeria {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--espacio-3);
+}
+@media (min-width: 900px) {
+  .galeria {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.galeriaFicha {
+  display: grid;
+  gap: var(--espacio-3);
+  min-width: 0;
+  padding: var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  scroll-margin-top: 96px;
+}
+.galeriaCabecera {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  min-width: 0;
+}
+.galeriaCabecera > div {
+  min-width: 0;
+}
+.galeriaFoto {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+}
+.galeriaFotoPequena {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+}
+.galeriaPortada {
+  flex: none;
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+}
+.galeriaSinPortada {
+  display: block;
+  background: var(--color-crema);
+}
+.galeriaFormulario {
+  display: grid;
+  gap: var(--espacio-2);
+}
+@media (min-width: 560px) {
+  .galeriaFormulario {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}
+.galeriaFormulario input[type="file"] {
+  min-width: 0;
+  max-width: 100%;
+}
+.galeriaMarcas {
+  list-style: none;
+  margin: 0;
+  padding: var(--espacio-3) 0 0;
+  border-top: 1px dashed var(--color-borde);
+  display: grid;
+  gap: var(--espacio-3);
+}
+.galeriaMarca {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-3);
+  min-width: 0;
+}
+.galeriaMarcaTexto {
+  display: grid;
+  gap: var(--espacio-2);
+  min-width: 0;
+  flex: 1;
+}

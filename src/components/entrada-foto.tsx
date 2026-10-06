@@ -69,6 +69,9 @@ async function reducirImagen(archivo: File, ladoMaximo: number): Promise<File> {
   lienzo.height = Math.round(imagen.height * escala);
   const contexto = lienzo.getContext("2d");
   if (!contexto) throw new Error("Sin canvas");
+  // Una foto sin fondo (PNG transparente, de una app que lo quita) iría a negro al pasarla a JPEG: primero, blanco.
+  contexto.fillStyle = "#ffffff";
+  contexto.fillRect(0, 0, lienzo.width, lienzo.height);
   contexto.drawImage(imagen, 0, 0, lienzo.width, lienzo.height);
   imagen.close();
 

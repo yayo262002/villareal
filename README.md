@@ -365,7 +365,17 @@ datos/                    La base de datos (fuera de Git)
   ficha marca «Foto referencial»; y si ninguna le va, un fondo crema con
   el león. Las de referencia son fotos de comida CC0 o de dominio público
   (`public/productos/`, con sus créditos); en cuanto el dueño sube la suya,
-  la sustituye sola. Los 44 productos del catálogo inicial tienen la suya.
+  la sustituye sola. Los productos del catálogo inicial tienen la suya.
+  - **Fotos** (`/admin/fotos`): todas las fotos de la web en una pantalla,
+    para cambiar las que no gusten: la de cada tipo (y de dónde sale: la
+    suya, la de su marca o la de referencia), la de cada marca y la portada
+    de cada familia, cada una con «Cambiar» y «Quitar». Lo que se sube se
+    guarda como todas: el teléfono la reduce, y el servidor le quita el
+    fondo liso que sobra, la centra sobre blanco en un cuadrado de 800 px y
+    la guarda como JPEG (`src/lib/foto-producto.ts`). Una foto sin fondo
+    (PNG transparente, de una app que lo quita) queda sobre blanco, no
+    sobre negro, también cuando el teléfono la reduce. Las portadas se
+    recortan en 4:3.
 - **Precios de ejemplo.** Si en `ajustes` está la clave
   `precios_de_ejemplo`, el panel avisa en rojo arriba de Productos de que
   los precios publicados no son los del dueño. Se quita con el botón «Ya

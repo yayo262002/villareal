@@ -1077,7 +1077,44 @@ export async function retirarFotoDeProducto(datos: FormData): Promise<void> {
   const producto = id ? await buscarProducto(id) : null;
   if (!id || !producto) volverConError("/admin/productos", "No se encontró el producto.");
   await quitarFotoDeProducto(id);
-  volverConExito(`/admin/productos/${id}`, `Foto quitada de «${producto.nombre}»: la web vuelve a enseñar la foto de referencia.`);
+  volverConExito(volverA(datos, `/admin/productos/${id}`), `Foto quitada de «${producto.nombre}»: la web vuelve a enseñar la foto de referencia.`);
+}
+
+/**
+ * Solo la foto de un tipo de producto, desde la galería de Fotos: se
+ * guarda centrada, sobre blanco y del tamaño de todas (800 × 800); una sin
+ * fondo (PNG transparente) queda sobre blanco, no sobre negro.
+ */
+export async function cambiarFotoDeProducto(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const producto = id ? await buscarProducto(id) : null;
+  if (!id || !producto) volverConError("/admin/fotos", "No se encontró el producto.");
+  const vuelta = volverA(datos, `/admin/productos/${id}`);
+  const foto = archivoDe(datos, "foto");
+  if (!foto) volverConError(vuelta, `Elige la foto de ${producto.nombre}.`);
+  try {
+    await guardarFotoDeProducto(id, foto.type, new Uint8Array(await foto.arrayBuffer()));
+  } catch (error) {
+    volverConError(vuelta, `La foto no se guardó: ${mensajeDe(error)}`);
+  }
+  volverConExito(vuelta, `Foto de «${producto.nombre}» cambiada: la web ya la enseña, centrada y sobre blanco.`);
+}
+
+export async function cambiarFotoDeVariante(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "variante_id");
+  const variante = id ? await buscarVariante(id) : null;
+  if (!id || !variante) volverConError("/admin/fotos", "No se encontró la marca o presentación.");
+  const vuelta = volverA(datos, `/admin/productos/${variante.producto_id}`);
+  const foto = archivoDe(datos, "foto");
+  if (!foto) volverConError(vuelta, `Elige la foto de ${variante.nombre}.`);
+  try {
+    await guardarFotoDeVariante(id, foto.type, new Uint8Array(await foto.arrayBuffer()));
+  } catch (error) {
+    volverConError(vuelta, `La foto no se guardó: ${mensajeDe(error)}`);
+  }
+  volverConExito(vuelta, `Foto de «${variante.nombre}» cambiada: la web ya la enseña, centrada y sobre blanco.`);
 }
 
 /** La confirmación está en `/admin/productos/[id]/eliminar`. Uno ya vendido, comprado o contado no se borra: se esconde. */
@@ -1272,7 +1309,7 @@ export async function retirarFotoDeVariante(datos: FormData): Promise<void> {
   const variante = id ? await buscarVariante(id) : null;
   if (!id || !variante) volverConError("/admin/productos", "No se encontró la marca o presentación.");
   await quitarFotoDeVariante(id);
-  volverConExito(`/admin/productos/${variante.producto_id}`, `Foto quitada de «${variante.nombre}».`);
+  volverConExito(volverA(datos, `/admin/productos/${variante.producto_id}`), `Foto quitada de «${variante.nombre}».`);
 }
 
 /** Solo se borra la que no se vendió nunca: las notas nombran a las demás. */
@@ -1830,7 +1867,24 @@ export async function retirarPortadaDeFamilia(datos: FormData): Promise<void> {
   const familia = id ? await buscarFamilia(id) : null;
   if (!id || !familia) volverConError("/admin/familias", "No se encontró la familia.");
   await quitarFotoDeFamilia(id);
-  volverConExito("/admin/familias", `Portada quitada de «${familia.nombre}».`);
+  volverConExito(volverA(datos, "/admin/familias"), `Portada quitada de «${familia.nombre}».`);
+}
+
+/** Solo la portada de una familia, desde la galería de Fotos: se recorta en 4:3 como todas. */
+export async function cambiarPortadaDeFamilia(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const familia = id ? await buscarFamilia(id) : null;
+  if (!id || !familia) volverConError("/admin/fotos", "No se encontró la familia.");
+  const vuelta = volverA(datos, "/admin/familias");
+  const portada = archivoDe(datos, "portada");
+  if (!portada) volverConError(vuelta, `Elige la portada de ${familia.nombre}.`);
+  try {
+    await guardarFotoDeFamilia(id, portada.type, new Uint8Array(await portada.arrayBuffer()));
+  } catch (error) {
+    volverConError(vuelta, `La portada no se guardó: ${mensajeDe(error)}`);
+  }
+  volverConExito(vuelta, `Portada de «${familia.nombre}» cambiada.`);
 }
 
 /** La confirmación está en `/admin/familias/[id]/eliminar`: si tiene productos, ahí se elige a qué familia pasan. */

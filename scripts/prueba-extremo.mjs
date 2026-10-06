@@ -1781,6 +1781,33 @@ async function probarCatalogo() {
     fichaTocineta.includes(`/foto-producto/${idTocineta}?v=`) && !fichaTocineta.includes("/productos/tocineta.webp") && !legible(fichaTocineta).includes("Foto referencial"),
   );
 
+  // La galería de Fotos: todas las fotos de la web, para cambiar las que no gusten. Una sin fondo (PNG transparente) queda sobre blanco.
+  const galeria = legible((await pagina("/admin/fotos")).html);
+  comprobar(
+    "la galería de fotos enseña cada tipo con de dónde sale su foto, sus marcas y las portadas",
+    galeria.includes("Tipos de producto y sus marcas") && galeria.includes("Foto de referencia: no es tu mercancía") && galeria.includes("Tu foto") &&
+      galeria.includes("Sortilegio 500 g") && galeria.includes("Portadas de las familias") && galeria.includes('id="producto-3"'),
+  );
+  const cuadradoRojo = await sharp({ create: { width: 150, height: 150, channels: 4, background: { r: 220, g: 30, b: 30, alpha: 1 } } }).png().toBuffer();
+  const sinFondo = await sharp({ create: { width: 300, height: 300, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: cuadradoRojo, left: 75, top: 75 }])
+    .png()
+    .toBuffer();
+  r = await enviar("/admin/fotos", 'name="id" value="3"', { id: "3", volver_a: "/admin/fotos#producto-3", foto: new File([sinFondo], "huevos.png", { type: "image/png" }) }, cookie, {}, 'name="foto"');
+  const fotoHuevos = await fetch(base + "/foto-producto/3");
+  const bufferHuevos = Buffer.from(await fotoHuevos.arrayBuffer());
+  const metaHuevos = await sharp(bufferHuevos).metadata();
+  const pixelesHuevos = await sharp(bufferHuevos).raw().toBuffer();
+  const pixelHuevos = (x, y) => [pixelesHuevos[(y * 800 + x) * 3], pixelesHuevos[(y * 800 + x) * 3 + 1], pixelesHuevos[(y * 800 + x) * 3 + 2]];
+  comprobar(
+    "desde la galería se cambia la foto de un producto; una sin fondo queda sobre blanco, centrada y de 800 × 800",
+    r.destino.includes("ok=Foto de «Huevos» cambiada") && r.destino.endsWith("#producto-3") && metaHuevos.width === 800 && metaHuevos.height === 800 &&
+      pixelHuevos(12, 12).every((c) => c > 240) && pixelHuevos(400, 400)[0] > 180 && pixelHuevos(400, 400)[1] < 80,
+    `${r.destino} ${metaHuevos.width}x${metaHuevos.height} esquina=${pixelHuevos(12, 12)} centro=${pixelHuevos(400, 400)}`,
+  );
+  r = await enviar("/admin/fotos", 'name="id" value="3"', { id: "3", volver_a: "/admin/fotos#producto-3" }, cookie, {}, "Quitar la foto");
+  comprobar("y se quita, para volver a la de referencia", r.destino.includes("Foto quitada de «Huevos»") && (await pagina("/producto/3", "")).html.includes("/productos/huevos.webp"), r.destino);
+
   // Borrar: uno sin ventas se borra con lo suyo; uno vendido, no.
   const confirmar = legible((await pagina(`/admin/productos/${idBorrador}/eliminar`)).html);
   comprobar("antes de borrar un producto, se confirma", confirmar.includes("No tiene vuelta atrás") && confirmar.includes("Sí, eliminar"));
@@ -1997,6 +2024,7 @@ async function probarSinEscribir() {
     ["/admin/productos/nuevo", "Agregar producto", "¿Qué vas a agregar?"],
     ["/admin/productos/nuevo?tipo=nuevo", "Un tipo de producto nuevo", "¿A qué familia pertenece este producto?"],
     ["/admin/marcas", "Marcas", "La marca es de cada artículo"],
+    ["/admin/fotos", "Fotos", "Tipos de producto y sus marcas"],
     ["/admin/familias", "Familias", "Familias y categorías"],
     ["/admin/ofertas", "Ofertas", "Ofertas y combos"],
     ["/admin/resenas", "Reseñas", "Reseña nueva"],
