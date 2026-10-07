@@ -91,6 +91,7 @@ export default async function PaginaCliente({
         saldo_usd: cliente.saldo_usd,
         tasa,
         vence: v.pendiente_usd > 0 ? v.vence : undefined,
+        enlace: cliente.enlace ? direccionDeCuenta(cliente.enlace) : null,
       }),
     );
 
@@ -139,6 +140,7 @@ export default async function PaginaCliente({
         referencia: p.referencia,
         saldo_usd: cliente.saldo_usd,
         tasaDelDia: tasaDelDia?.valor,
+        enlace: cliente.enlace ? direccionDeCuenta(cliente.enlace) : null,
       }),
     );
 
@@ -571,6 +573,8 @@ export default async function PaginaCliente({
                     <span>
                       {fechaCorta(fechaDeLaBase(a.creado_en))}
                       {venta ? ` · venta del ${fechaCorta(venta.fecha)} (${usd(venta.total_usd)})` : ""}
+                      {/* La foto de una nota que después se borró: se queda con el cliente, y se dice. */}
+                      {!venta && !a.pago_id && /^Nota N\.º/.test(a.descripcion) ? " · esa nota ya se borró; la foto se queda aquí" : ""}
                     </span>
                     <Link href={`/admin/adjuntos/${a.id}/eliminar`} className="enlace-fila">
                       Eliminar

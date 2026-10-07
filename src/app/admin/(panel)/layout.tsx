@@ -6,6 +6,8 @@ import { negocio } from "@/config/negocio";
 import { haySesion } from "@/lib/sesion";
 import { salir } from "@/lib/acciones";
 import { NavPanel } from "@/components/nav-panel";
+import { UnSoloEnvio } from "@/components/un-solo-envio";
+import { AvisoDeCarga } from "@/components/aviso-de-carga";
 import estilos from "./panel.module.css";
 
 /** El panel se instala en el teléfono como app propia, con su manifiesto. */
@@ -55,6 +57,8 @@ export default async function LayoutPanel({ children }: { children: ReactNode })
         <NavPanel secciones={SECCIONES} className={estilos.nav} />
       </header>
       <main className={estilos.contenido}>{children}</main>
+      <UnSoloEnvio />
+      <AvisoDeCarga />
     </div>
   );
 }

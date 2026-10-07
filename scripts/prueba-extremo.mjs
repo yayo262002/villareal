@@ -950,6 +950,15 @@ async function probarNegocio() {
   comprobar("crear el enlace de cuenta", r.destino.includes("Enlace creado") && /^[a-hj-km-np-z2-9]{14}$/.test(String(enlace)), `${r.destino} ${enlace}`);
   const cuenta = await pagina(`/cuenta/${enlace}`, "");
   const textoCuenta = legible(cuenta.html);
+  // Con el enlace creado, la nota y el recibo que se mandan por WhatsApp lo llevan, para que el cliente vea su cuenta al día.
+  const mensajesDeLaFicha = [...(await pagina(`/admin/clientes/${clienteId}`)).html.matchAll(/wa\.me\/584120000000\?text=([^"]+)"/g)].map((m) => decodeURIComponent(m[1].replaceAll("+", " ")));
+  const llevaElEnlace = (m) => m.includes("Puede ver su cuenta al día aquí: ") && m.includes(`/cuenta/${enlace}`);
+  const mensajeDeLaNota = decodeURIComponent(((await pagina(`/admin/ventas/${pedidoId}/nota`)).html.match(/wa\.me\/584120000000\?text=([^"]+)"/)?.[1] ?? "").replaceAll("+", " "));
+  comprobar(
+    "la nota y el recibo por WhatsApp llevan el enlace de la cuenta del cliente",
+    mensajesDeLaFicha.some((m) => m.includes("Nota N.º") && llevaElEnlace(m)) && mensajesDeLaFicha.some((m) => m.includes("Recibimos su abono") && llevaElEnlace(m)) && llevaElEnlace(mensajeDeLaNota),
+    `${mensajesDeLaFicha.length} mensajes`,
+  );
   comprobar(
     "el cliente abre su cuenta con el enlace, sin clave: su nombre, lo pendiente, sus notas por pagar y su último abono, y nada de otros",
     cuenta.status === 200 && textoCuenta.includes(nombre) && textoCuenta.includes("Tienes pendiente") && textoCuenta.includes(usd("20,96")) &&

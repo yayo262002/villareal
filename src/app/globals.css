@@ -320,3 +320,35 @@ textarea {
     padding: 0;
   }
 }
+
+/* La raya dorada arriba del todo mientras llega la pantalla que se tocó en el panel (src/components/aviso-de-carga.tsx). */
+.cargando-raya {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 1000;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, var(--color-acento) 50%, transparent 100%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  animation: cargando-raya 1s linear infinite;
+}
+.cargando-raya[hidden] {
+  display: none;
+}
+@keyframes cargando-raya {
+  from {
+    background-position: -50% 0;
+  }
+  to {
+    background-position: 150% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cargando-raya {
+    animation: none;
+    background: var(--color-acento);
+  }
+}

@@ -6,7 +6,7 @@ import { buscarProducto, direccionDeFotoDeProducto, type Producto } from "@/lib/
 import { imagenDeProducto } from "@/lib/fotos-referenciales";
 import { direccionDeFotoDeVariante, fotoDeAlgunaVariante, variantesDeProducto, type Variante } from "@/lib/variantes";
 import { claveDe, nombreDeVenta, porQueSeCobra, precioPublicado, type PrecioPublicado } from "@/lib/catalogo";
-import { contarResenasPorVariante, resenasDeProducto, resenasDeVariante } from "@/lib/resenas";
+import { contarResenasPorVariante, resenasDeLasMarcas, resenasDeProducto } from "@/lib/resenas";
 import { haySesion } from "@/lib/sesion";
 import { idDeRuta, rutaProducto, rutaVariante } from "@/lib/enlaces";
 import { vitrina } from "@/lib/vitrina";
@@ -133,7 +133,7 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
   // Con un solo artículo (el suero, de Guaralact) se pide directo, como sin marcas, y su descripción va aquí mismo.
   const unico = variantes.length === 1 ? variantes[0] : null;
   // Las reseñas del tipo y las de cada una de sus marcas, diciendo de cuál hablan: cada comentario de un cliente sale en los detalles del producto.
-  const deLasMarcas = (await Promise.all(variantes.map((m) => resenasDeVariante(m.id, esElDueno)))).flat();
+  const deLasMarcas = variantes.length > 0 ? await resenasDeLasMarcas(producto.id, esElDueno) : [];
   // Primero las de verdad y después las de ejemplo (que solo ve el dueño); dentro de cada grupo, la más nueva primero.
   const resenas = [...resenasDelTipo, ...deLasMarcas]
     .sort((a, b) => a.de_ejemplo - b.de_ejemplo || b.creado_en.localeCompare(a.creado_en) || b.id - a.id)

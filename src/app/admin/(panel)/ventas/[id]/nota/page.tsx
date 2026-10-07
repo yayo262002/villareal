@@ -11,6 +11,7 @@ import { adjuntosDeVenta } from "@/lib/adjuntos";
 import { numeroDeNota, piezasDe } from "@/lib/entregas";
 import { aBolivares, bs, cantidad, fechaCorta, fechaDeLaBase, usd } from "@/lib/dinero";
 import { enlaceWhatsappA, mensajeNota } from "@/lib/whatsapp";
+import { direccionDeCuenta } from "@/lib/enlace-cuenta";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { BotonImprimir } from "@/components/boton-imprimir";
 import { EntradaFoto } from "@/components/entrada-foto";
@@ -62,6 +63,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
       saldo_usd: cliente.saldo_usd,
       tasa: venta.tasa ?? tasaDeHoy?.valor,
       vence: cuenta && cuenta.pendiente_usd > 0 ? sumarDias(venta.fecha, cliente.dias_credito) : undefined,
+      enlace: cliente.enlace ? direccionDeCuenta(cliente.enlace) : null,
     }),
   );
 

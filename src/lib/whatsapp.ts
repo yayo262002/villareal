@@ -154,6 +154,8 @@ export function mensajeNota(datos: {
   tasa?: number | null;
   /** El día límite para pagarla; se dice solo si queda algo por pagar. */
   vence?: string;
+  /** La dirección de su cuenta, si el cliente tiene enlace: así ve la nota y lo que debe al día. */
+  enlace?: string | null;
 }): string {
   const titulo = datos.numero ? `Nota N.º ${datos.numero} del ${fechaCorta(datos.fecha)}` : `Nota del ${fechaCorta(datos.fecha)}`;
   const lineas = [`${datos.negocio} · ${titulo}`, `Cliente: ${datos.cliente}`, ""];
@@ -166,6 +168,7 @@ export function mensajeNota(datos: {
     if (datos.vence) lineas.push(`Fecha límite de pago de esta nota: ${fechaCorta(datos.vence)}`);
   } else if (datos.saldo_usd < 0) lineas.push(`Saldo a su favor: ${usd(-datos.saldo_usd)}`);
   else lineas.push("Cuenta al día. ¡Gracias!");
+  if (datos.enlace) lineas.push(`Puede ver su cuenta al día aquí: ${datos.enlace}`);
   return lineas.join("\n");
 }
 
@@ -185,6 +188,8 @@ export function mensajeAbono(datos: {
   /** El saldo del cliente hoy, con este abono ya contado. */
   saldo_usd: number;
   tasaDelDia?: number | null;
+  /** La dirección de su cuenta, si el cliente tiene enlace. */
+  enlace?: string | null;
 }): string {
   const lineas = [`${saludo(datos.cliente)}, le saluda ${datos.negocio}.`, `Recibimos su abono del ${fechaCorta(datos.fecha)}.`];
   lineas.push(
@@ -197,6 +202,7 @@ export function mensajeAbono(datos: {
   if (datos.saldo_usd > 0) lineas.push(`Saldo pendiente a hoy: ${dolaresYBolivares(datos.saldo_usd, datos.tasaDelDia)}`);
   else if (datos.saldo_usd < 0) lineas.push(`Queda a su favor: ${usd(-datos.saldo_usd)}`);
   else lineas.push("Su cuenta queda al día.");
+  if (datos.enlace) lineas.push(`Puede ver su cuenta al día aquí: ${datos.enlace}`);
   lineas.push("¡Gracias!");
   return lineas.join("\n");
 }

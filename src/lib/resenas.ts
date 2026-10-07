@@ -105,6 +105,23 @@ export async function resenasDeVariante(varianteId: number, conLasDeEjemplo: boo
   );
 }
 
+/**
+ * Las de todas las marcas publicadas de un producto, de una vez, para los
+ * detalles del producto: con las mismas reglas, y en el orden de la página
+ * (las de verdad antes que las de ejemplo; dentro, la más nueva primero).
+ */
+export async function resenasDeLasMarcas(productoId: number, conLasDeEjemplo: boolean): Promise<Resena[]> {
+  const deEjemplo = conLasDeEjemplo ? "or r.de_ejemplo = 1" : "";
+  return filas<Resena>(
+    `${CONSULTA_RESENAS}
+     join variantes vp on vp.id = r.variante_id and vp.activo = 1
+     where r.producto_id = ? and r.variante_id is not null and r.publicada = 1
+       and ((r.de_ejemplo = 0 and r.con_permiso = 1) ${deEjemplo})
+     order by r.de_ejemplo, r.id desc`,
+    [productoId],
+  );
+}
+
 /** Cuántas reseñas se ven de cada marca de un producto: id de la marca → cuántas. */
 export async function contarResenasPorVariante(productoId: number, conLasDeEjemplo: boolean): Promise<Map<number, number>> {
   const deEjemplo = conLasDeEjemplo ? "or de_ejemplo = 1" : "";

@@ -221,6 +221,9 @@ src/components/resenas.tsx  Las reseñas, como se ven en la página del producto
 src/app/foto-resena/      Sirve la foto de una reseña a la web
 src/components/entrada-foto.tsx  Reduce la foto en el teléfono antes de subirla
 src/components/nav-panel.tsx     El menú del panel, con la sección abierta marcada
+src/components/aviso-de-carga.tsx  La raya dorada mientras llega la pantalla que se tocó en el panel
+src/components/un-solo-envio.tsx   Que un toque doble no registre dos veces una venta o un abono
+src/components/fotos-de-nota.tsx   Las fotos de la nota firmada de una venta, en la nota, en Ventas y en el despacho
 src/app/admin/            El panel (productos/nuevo y productos/[id], marcas, familias, ofertas…)
 datos/                    La base de datos (fuera de Git)
 ```
@@ -407,6 +410,9 @@ datos/                    La base de datos (fuera de Git)
   pendientes y su enlace de cuenta) y deja anotado el día
   (`src/lib/recordatorios.ts`): el Resumen y la ficha dicen «Recordado el
   2/10» y no se insiste a quien se le acaba de escribir.
+- La nota y el recibo que se mandan por WhatsApp llevan el enlace de la
+  cuenta del cliente si lo tiene («Puede ver su cuenta al día aquí»), igual
+  que el recordatorio.
 - Los mensajes de WhatsApp (recordatorio y nota) dicen el monto en dólares y,
   si hay tasa del día, también en bolívares. El recordatorio dice de cada
   nota si venció y desde cuándo, o cuándo vence; la nota va con su número
@@ -926,6 +932,14 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - **No inventar.** Si el precio no está, la web dice «consulta el precio del
   día». Si el teléfono no está, la web no muestra ninguno.
 - **Escribir en castellano.** Código, comentarios, mensajes y commits.
+- **El panel responde al toque.** Al tocar un enlace del panel sale una raya
+  dorada arriba mientras llega la pantalla (`src/components/aviso-de-carga.tsx`;
+  la web dormida tras un rato sin uso tarda unos segundos en la primera), y al
+  enviar un formulario el botón se apaga y dice «Guardando…» hasta que la
+  página cambia: un toque doble no registra dos veces una venta ni un abono
+  (`src/components/un-solo-envio.tsx`). Sin JavaScript todo sigue
+  funcionando igual. No hay `loading.tsx`: con él la respuesta sale antes de
+  saber si la página existe y los 404 y las redirecciones dejan de serlo.
 - **Móvil primero.** El dueño usa el panel desde el teléfono en el local.
   Ninguna página se desborda a los lados. Las tablas del panel llevan la
   clase `tabla--fichas` y cada celda su `data-label`: en el teléfono cada

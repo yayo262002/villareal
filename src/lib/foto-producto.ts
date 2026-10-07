@@ -1,4 +1,7 @@
-import sharp from "sharp";
+/** `sharp` se carga al usarse: pesa, y así las pantallas del panel que no tocan fotos arrancan antes. */
+async function cargarSharp() {
+  return (await import("sharp")).default;
+}
 
 /**
  * Deja la foto de un producto lista para la web: le quita el fondo liso que
@@ -22,6 +25,7 @@ const TOLERANCIA_DEL_FONDO = 15;
 
 export async function normalizarFotoDeProducto(datos: Uint8Array, tipo: string): Promise<{ datos: Uint8Array; tipo: string }> {
   try {
+    const sharp = await cargarSharp();
     // Primero sin transparencia y bien orientada; después se recorta el fondo que sobra.
     const plana = await sharp(datos).rotate().flatten({ background: "#ffffff" }).toBuffer();
     const recortada = await sharp(plana).trim({ threshold: TOLERANCIA_DEL_FONDO }).toBuffer();
@@ -45,6 +49,7 @@ export const PORTADA = { ancho: 960, alto: 720 };
  */
 export async function normalizarPortada(datos: Uint8Array, tipo: string): Promise<{ datos: Uint8Array; tipo: string }> {
   try {
+    const sharp = await cargarSharp();
     const salida = await sharp(datos).rotate().resize(PORTADA.ancho, PORTADA.alto, { fit: "cover", position: "attention" }).jpeg({ quality: 82 }).toBuffer();
     return { datos: new Uint8Array(salida), tipo: "image/jpeg" };
   } catch {

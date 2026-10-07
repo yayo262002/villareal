@@ -250,3 +250,14 @@ test("el mensaje con el enlace de la cuenta lo lleva en su propia línea y dice 
   assert.ok(texto.split("\n").includes("https://villareal.test/cuenta/abcdefghjkmnpq"));
   assert.match(texto, /no lo comparta/);
 });
+
+test("la nota y el recibo llevan el enlace de la cuenta del cliente si lo tiene, y no dicen nada si no", () => {
+  const base = { negocio: "X", cliente: "Y", fecha: "2026-09-15", numero: "000012", lineas: [], total_usd: 23, saldo_usd: 23, vence: "2026-09-22" };
+  assert.ok(mensajeNota({ ...base, enlace: "https://villareal.test/cuenta/abcdefghjkmnpq" }).endsWith("Puede ver su cuenta al día aquí: https://villareal.test/cuenta/abcdefghjkmnpq"));
+  assert.ok(!mensajeNota({ ...base, enlace: null }).includes("Puede ver su cuenta"));
+  const abono = { negocio: "X", cliente: "Y", fecha: "2026-09-21", metodo: "Zelle", monto: 10, moneda: "USD" as const, tasa: null, monto_usd: 10, referencia: "", saldo_usd: 13 };
+  const recibo = mensajeAbono({ ...abono, enlace: "https://villareal.test/cuenta/abcdefghjkmnpq" }).split("\n");
+  assert.equal(recibo[recibo.length - 2], "Puede ver su cuenta al día aquí: https://villareal.test/cuenta/abcdefghjkmnpq");
+  assert.equal(recibo[recibo.length - 1], "¡Gracias!");
+  assert.ok(!mensajeAbono(abono).includes("Puede ver su cuenta"));
+});
