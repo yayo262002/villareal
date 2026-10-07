@@ -904,6 +904,25 @@ async function probarNegocio() {
   );
   const notaEntregada = await pagina(`/admin/ventas/${pedidoId}/nota`);
   comprobar("la nota dice que ya se entregó", notaEntregada.html.includes(">Entregada<") && notaEntregada.html.includes("Mandar al despacho"));
+  // La foto de la nota firmada se ve donde se busca: en la nota, en el despacho (entregadas hoy), en Ventas y en la ficha del cliente.
+  const [fotoDelPedido] = await consultar("select id, descripcion from adjuntos where venta_id = ? order by id desc", [pedidoId]);
+  comprobar(
+    "la nota enseña la foto de la nota firmada, con su enlace para verla entera",
+    Boolean(fotoDelPedido) && fotoDelPedido.descripcion === `Nota N.º ${numeroDelPedido} firmada` &&
+      notaEntregada.html.includes(`src="/admin/adjuntos/${fotoDelPedido?.id}"`) && notaEntregada.html.includes("Foto de la nota firmada"),
+    JSON.stringify(fotoDelPedido ?? null),
+  );
+  const respuestaDespacho = await pagina("/admin/despacho?solo=entregas");
+  const despachoConEntrega = legible(respuestaDespacho.html);
+  comprobar(
+    "el despacho enseña las entregadas hoy, cada una con la foto de su nota",
+    /Entregadas hoy \(\d+\)/.test(despachoConEntrega) && despachoConEntrega.includes(`Nota ${numeroDelPedido}`) && despachoConEntrega.includes(`src="/admin/adjuntos/${fotoDelPedido?.id}"`),
+    `estado ${respuestaDespacho.status}; ${despachoConEntrega.includes("Entregadas hoy") ? "con la sección" : "sin la sección"}`,
+  );
+  comprobar(
+    "en Ventas y en la ficha del cliente, la fila de la nota entregada enlaza su foto",
+    (await pagina("/admin/ventas")).html.includes(`href="/admin/adjuntos/${fotoDelPedido?.id}"`) && (await pagina(`/admin/clientes/${clienteId}`)).html.includes(`href="/admin/adjuntos/${fotoDelPedido?.id}"`),
+  );
   r = await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "0", volver_a: "https://example.com/admin" });
   [entrega] = await consultar("select por_entregar, entregada_en from ventas where id = ?", [pedidoId]);
   comprobar(

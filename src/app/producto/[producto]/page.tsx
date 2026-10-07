@@ -134,8 +134,9 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
   const unico = variantes.length === 1 ? variantes[0] : null;
   // Las reseñas del tipo y las de cada una de sus marcas, diciendo de cuál hablan: cada comentario de un cliente sale en los detalles del producto.
   const deLasMarcas = (await Promise.all(variantes.map((m) => resenasDeVariante(m.id, esElDueno)))).flat();
+  // Primero las de verdad y después las de ejemplo (que solo ve el dueño); dentro de cada grupo, la más nueva primero.
   const resenas = [...resenasDelTipo, ...deLasMarcas]
-    .sort((a, b) => b.creado_en.localeCompare(a.creado_en))
+    .sort((a, b) => a.de_ejemplo - b.de_ejemplo || b.creado_en.localeCompare(a.creado_en) || b.id - a.id)
     .map((r) => ({ ...r, etiqueta: variantes.length > 1 && r.variante_id ? (variantes.find((m) => m.id === r.variante_id)?.marca || r.variante_nombre) : null }));
   const ventajas = [...new Set([...ventajasDe(producto.descripcion), ...(unico ? ventajasDe(unico.descripcion) : [])])];
   const imagen = imagenDeProducto(direccionDeFotoDeProducto(producto), producto.nombre, fotoDeAlgunaVariante(variantes));

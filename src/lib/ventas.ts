@@ -66,6 +66,11 @@ export async function listarVentasPorEntregar(): Promise<Venta[]> {
   return filas<Venta>(`${CONSULTA_VENTAS} where v.por_entregar = 1 order by coalesce(v.entrega_prevista, v.fecha), v.id`);
 }
 
+/** Las que se marcaron entregadas desde un momento (en UTC, como `entregada_en`), la última primero: lo despachado hoy. */
+export async function listarVentasEntregadasDesde(momentoUtc: string): Promise<Venta[]> {
+  return filas<Venta>(`${CONSULTA_VENTAS} where v.por_entregar = 0 and v.entregada_en >= ? order by v.entregada_en desc, v.id desc`, [momentoUtc]);
+}
+
 export async function contarVentasPorEntregar(): Promise<number> {
   const f = await fila<{ n: number }>("select count(*) as n from ventas where por_entregar = 1");
   return Number(f?.n ?? 0);

@@ -549,7 +549,12 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   o «No, queda por entregar». No hay opción por defecto.
   - **Entregada** exige la **foto de la nota firmada** por el cliente (la
     hoja de papel). Se guarda como foto del cliente unida a esa venta,
-    «Nota N.º 000012 firmada». Sin foto no se guarda la venta.
+    «Nota N.º 000012 firmada». Sin foto no se guarda la venta. **La foto
+    se ve** después en la nota (`/admin/ventas/12/nota`, debajo de
+    «Entregada», con su «Eliminar»; una nota entregada sin foto deja
+    ponerla ahí mismo), en Ventas y en la ficha del cliente («Foto» en la
+    fila de la nota) y en Despacho, en «Entregadas hoy», con cada nota que
+    se entregó en el día (`src/components/fotos-de-nota.tsx`).
   - **La foto se lee y se coteja con el pedido.** Con la clave
     `ANTHROPIC_API_KEY` puesta, al guardar se le enseña la foto a Claude
     junto con la lista de productos y marcas (`src/lib/lector-de-notas.ts`)

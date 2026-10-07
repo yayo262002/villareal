@@ -54,6 +54,9 @@ export default async function PaginaCliente({
   const ventaDeAdjunto = new Map(ventas.map((v) => [v.id, v]));
   // La captura de cada abono, para enlazarla desde su fila.
   const capturaDe = new Map(adjuntos.filter((a) => a.pago_id).map((a) => [a.pago_id, a.id]));
+  // La foto de la nota firmada de cada venta (la más reciente, si hay varias), para enlazarla desde su fila.
+  const fotoDeVenta = new Map<number, number>();
+  for (const a of [...adjuntos].reverse()) if (a.venta_id && !a.pago_id) fotoDeVenta.set(a.venta_id, a.id);
 
   // Enlaces de WhatsApp: recordar la deuda y mandar cada nota. Solo si hay teléfono.
   const pendientes = cuentas.filter((c) => c.pendiente_usd > 0).sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -379,6 +382,11 @@ export default async function PaginaCliente({
                     <td data-label="Observación" data-vacio={v.nota ? undefined : ""}>{v.nota || "—"}</td>
                     <td className={estilos.accionesFila}>
                       <Link href={`/admin/ventas/${v.id}/nota`}>Ver nota</Link>
+                      {fotoDeVenta.has(v.id) && (
+                        <a href={`/admin/adjuntos/${fotoDeVenta.get(v.id)}`} target="_blank" rel="noopener" title="La foto de la nota firmada">
+                          Foto
+                        </a>
+                      )}
                       {enlaceNota(v) && (
                         <a href={enlaceNota(v)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
                           Enviar nota

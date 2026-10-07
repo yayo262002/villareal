@@ -4,6 +4,7 @@ import { listarProductos } from "@/lib/productos";
 import { listarVariantes } from "@/lib/variantes";
 import { vendiblesDe } from "@/lib/catalogo";
 import { conLineas, listarVentas } from "@/lib/ventas";
+import { adjuntosDeVentas } from "@/lib/adjuntos";
 import { guardarVenta } from "@/lib/acciones";
 import { leerTasa } from "@/lib/ajustes";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
@@ -57,6 +58,8 @@ export default async function PaginaVentas({
     ).then(conLineas),
   ]);
   const vendibles = vendiblesDe(productos, variantes);
+  // La foto de la nota firmada de cada venta, para enlazarla desde su fila.
+  const fotos = await adjuntosDeVentas(ventas.map((v) => v.id));
 
   return (
     <>
@@ -204,28 +207,41 @@ export default async function PaginaVentas({
                 </tr>
               </thead>
               <tbody>
-                {ventas.map((v) => (
-                  <tr key={v.id}>
-                    <td data-label="Nota">
-                      <Link href={`/admin/ventas/${v.id}/nota`}>{numeroDeNota(v.id)}</Link>
-                    </td>
-                    <td data-label="Fecha">{fechaCorta(v.fecha)}</td>
-                    <td data-label="Cliente">
-                      <Link href={`/admin/clientes/${v.cliente_id}`}>{v.cliente_nombre}</Link>
-                    </td>
-                    <td data-label="Productos">{resumenDeLineas(v.lineas)}</td>
-                    <td data-label="Total" className="numero">{usd(v.total_usd)}</td>
-                    <td data-label="Entrega">
-                      {v.por_entregar ? (
-                        <Link href="/admin/despacho" className={`${estilos.estado} ${estilos["estado--parcial"]}`}>
-                          Por entregar{v.entrega_prevista ? ` el ${fechaCorta(v.entrega_prevista)}` : ""}
-                        </Link>
-                      ) : (
-                        <span className={`${estilos.estado} ${estilos["estado--pagada"]}`}>Entregada</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {ventas.map((v) => {
+                  const foto = fotos.get(v.id)?.[0];
+                  return (
+                    <tr key={v.id}>
+                      <td data-label="Nota">
+                        <Link href={`/admin/ventas/${v.id}/nota`}>{numeroDeNota(v.id)}</Link>
+                      </td>
+                      <td data-label="Fecha">{fechaCorta(v.fecha)}</td>
+                      <td data-label="Cliente">
+                        <Link href={`/admin/clientes/${v.cliente_id}`}>{v.cliente_nombre}</Link>
+                      </td>
+                      <td data-label="Productos">{resumenDeLineas(v.lineas)}</td>
+                      <td data-label="Total" className="numero">{usd(v.total_usd)}</td>
+                      <td data-label="Entrega">
+                        {v.por_entregar ? (
+                          <Link href="/admin/despacho" className={`${estilos.estado} ${estilos["estado--parcial"]}`}>
+                            Por entregar{v.entrega_prevista ? ` el ${fechaCorta(v.entrega_prevista)}` : ""}
+                          </Link>
+                        ) : (
+                          <>
+                            <span className={`${estilos.estado} ${estilos["estado--pagada"]}`}>Entregada</span>
+                            {foto && (
+                              <>
+                                {" "}
+                                <a href={`/admin/adjuntos/${foto.id}`} target="_blank" rel="noopener" title="La foto de la nota firmada">
+                                  Foto
+                                </a>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

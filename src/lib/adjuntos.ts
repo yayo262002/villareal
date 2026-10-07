@@ -66,6 +66,24 @@ export async function eliminarAdjunto(id: number): Promise<boolean> {
   return r.cambios > 0;
 }
 
+/** Las fotos unidas a una venta (la nota firmada), la más reciente primero. */
+export async function adjuntosDeVenta(ventaId: number): Promise<Adjunto[]> {
+  return filas<Adjunto>(`select ${SIN_DATOS} from adjuntos where venta_id = ? order by id desc`, [ventaId]);
+}
+
+/** Las fotos de varias ventas de una vez, para las listas: cada venta con las suyas, la más reciente primero. */
+export async function adjuntosDeVentas(ventaIds: number[]): Promise<Map<number, Adjunto[]>> {
+  const porVenta = new Map<number, Adjunto[]>();
+  if (ventaIds.length === 0) return porVenta;
+  const huecos = ventaIds.map(() => "?").join(", ");
+  const lista = await filas<Adjunto>(`select ${SIN_DATOS} from adjuntos where venta_id in (${huecos}) order by id desc`, ventaIds);
+  for (const a of lista) {
+    if (a.venta_id === null) continue;
+    porVenta.set(a.venta_id, [...(porVenta.get(a.venta_id) ?? []), a]);
+  }
+  return porVenta;
+}
+
 // ---------- Capturas de los pagos a proveedores ----------
 
 /** La captura de un pago a un proveedor: como `Adjunto`, pero unida al proveedor y a su pago. */

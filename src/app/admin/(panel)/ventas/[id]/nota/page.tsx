@@ -6,13 +6,15 @@ import { buscarVenta, listarVentasDeCliente } from "@/lib/ventas";
 import { leerTasa } from "@/lib/ajustes";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { sumarDias } from "@/lib/credito";
-import { cambiarEntrega } from "@/lib/acciones";
+import { cambiarEntrega, subirAdjunto } from "@/lib/acciones";
+import { adjuntosDeVenta } from "@/lib/adjuntos";
 import { numeroDeNota, piezasDe } from "@/lib/entregas";
 import { aBolivares, bs, cantidad, fechaCorta, fechaDeLaBase, usd } from "@/lib/dinero";
 import { enlaceWhatsappA, mensajeNota } from "@/lib/whatsapp";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { BotonImprimir } from "@/components/boton-imprimir";
 import { EntradaFoto } from "@/components/entrada-foto";
+import { FotosDeLaNota } from "@/components/fotos-de-nota";
 import { DatosDelCliente, Membrete } from "../../../membrete";
 import estilos from "../../../panel.module.css";
 
@@ -44,7 +46,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
   const pideConfirmarNota = parametros.confirmar_nota === "1";
   const volverA = typeof parametros.volver_a === "string" && parametros.volver_a.startsWith("/admin") ? parametros.volver_a : `/admin/ventas/${venta.id}/nota`;
 
-  const [ventas, tasaDeHoy] = await Promise.all([listarVentasDeCliente(cliente.id), leerTasa()]);
+  const [ventas, tasaDeHoy, fotos] = await Promise.all([listarVentasDeCliente(cliente.id), leerTasa(), adjuntosDeVenta(venta.id)]);
   const cuenta = aplicarPagos(ventas, cliente.total_pagado_usd).find((c) => c.id === venta.id);
   // Los bolívares son los del día de la venta. Las ventas viejas no la guardaron.
   const totalBs = aBolivares(venta.total_usd, venta.tasa);
@@ -122,6 +124,35 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
             </>
           )}
         </form>
+
+        {/* La foto de la nota firmada que se guardó al entregar: aquí, donde se busca. Si no la hay, se pone aquí mismo. */}
+        {!venta.por_entregar && (
+          <section id="nota-firmada" aria-labelledby="titulo-nota-firmada" style={{ marginTop: "var(--espacio-4)" }}>
+            <h2 id="titulo-nota-firmada" className={estilos.subtituloPequeno}>
+              {fotos.length === 1 ? "Foto de la nota firmada" : fotos.length > 1 ? `Fotos de la nota firmada (${fotos.length})` : "Foto de la nota firmada"}
+            </h2>
+            {fotos.length > 0 ? (
+              <>
+                <p className="ayuda">Toca la foto para verla entera. Está también en la ficha del cliente.</p>
+                <FotosDeLaNota adjuntos={fotos} conEliminar />
+              </>
+            ) : (
+              <>
+                <p className="ayuda">Esta venta no tiene guardada la foto de la nota firmada (es de antes de que se pidiera, o se borró). Puedes ponerla aquí:</p>
+                <form action={subirAdjunto} encType="multipart/form-data" className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
+                  <input type="hidden" name="cliente_id" value={cliente.id} />
+                  <input type="hidden" name="venta_id" value={venta.id} />
+                  <input type="hidden" name="descripcion" value={`Nota N.º ${numeroDeNota(venta.id)} firmada`} />
+                  <input type="hidden" name="volver_a" value={`/admin/ventas/${venta.id}/nota#nota-firmada`} />
+                  <EntradaFoto nombre="archivo" id="foto-nota-firmada" soloFoto />
+                  <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                    Guardar la foto
+                  </button>
+                </form>
+              </>
+            )}
+          </section>
+        )}
       </div>
 
       <article className={estilos.nota}>

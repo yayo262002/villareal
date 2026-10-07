@@ -1325,3 +1325,43 @@
   min-width: 0;
   flex: 1;
 }
+
+/* Las fotos de la nota firmada en una lista: chicas y en fila. */
+.fotosChicas {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+}
+.fotosChicas .miniatura img,
+.fotosChicas .miniaturaPdf {
+  width: 64px;
+  aspect-ratio: 3 / 4;
+}
+
+/* Las entregas de hoy en el despacho: la foto de la nota junto a lo que se llevó. */
+.entregadas {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--espacio-2);
+}
+.entregadas li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-2) var(--espacio-3);
+  padding: var(--espacio-2) var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+  font-size: 15px;
+}
+.entregadas p {
+  min-width: 0;
+  flex: 1 1 200px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}

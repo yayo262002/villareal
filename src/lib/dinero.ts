@@ -156,6 +156,15 @@ export function hoy(): string {
   return fechaEnVenezuela(new Date());
 }
 
+/**
+ * El instante en que empieza un día de Venezuela, escrito como lo guarda
+ * la base (`datetime('now')`, en UTC): las 4 de la madrugada UTC, porque
+ * Venezuela va a UTC−4 todo el año.
+ */
+export function inicioDelDiaEnUtc(fecha: string): string {
+  return `${fecha.slice(0, 10)} 04:00:00`;
+}
+
 const DIAS_DE_LA_SEMANA = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"] as const;
 
 /** «lunes», para una fecha «2026-10-05». */

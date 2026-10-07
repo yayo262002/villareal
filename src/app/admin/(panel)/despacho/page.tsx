@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { negocio } from "@/config/negocio";
 import { listarClientes } from "@/lib/clientes";
-import { conLineas, listarVentasPorEntregar, type VentaConLineas } from "@/lib/ventas";
+import { conLineas, listarVentasEntregadasDesde, listarVentasPorEntregar, type VentaConLineas } from "@/lib/ventas";
+import { adjuntosDeVentas } from "@/lib/adjuntos";
 import { leerTasa } from "@/lib/ajustes";
 import { cambiarEntrega } from "@/lib/acciones";
 import { enlaceAlMapa, planDeDespacho } from "@/lib/despacho";
 import { describirUbicacion, explicarMotivo } from "@/lib/direcciones";
 import { cargaDe, numeroDeNota, pedidosPorCliente, resumenDeLineas } from "@/lib/entregas";
 import { distanciaLegible } from "@/lib/ruta";
-import { cantidad, fechaCorta, hoy, redondear, usd } from "@/lib/dinero";
+import { cantidad, fechaCorta, hoy, inicioDelDiaEnUtc, redondear, usd } from "@/lib/dinero";
 import { enlaceWhatsappA, mensajeEnCamino } from "@/lib/whatsapp";
 import { BotonImprimir } from "@/components/boton-imprimir";
 import { EntradaFoto } from "@/components/entrada-foto";
+import { FotosDeLaNota } from "@/components/fotos-de-nota";
 import { diasEntre } from "@/lib/credito";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
@@ -91,11 +93,14 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
     (Array.isArray(parametros.c) ? parametros.c : parametros.c ? [parametros.c] : []).map(Number).filter((n) => n > 0),
   );
 
-  const [todos, porEntregar, tasa] = await Promise.all([
+  const [todos, porEntregar, tasa, entregadasHoy] = await Promise.all([
     listarClientes(),
     listarVentasPorEntregar().then(conLineas),
     leerTasa(),
+    // Lo que ya se entregó hoy, con la foto de su nota: para verla nada más guardarla.
+    listarVentasEntregadasDesde(inicioDelDiaEnUtc(hoy())).then(conLineas),
   ]);
+  const fotosDeHoy = await adjuntosDeVentas(entregadasHoy.map((v) => v.id));
   const pedidos = pedidosPorCliente(porEntregar);
 
   const solo = typeof parametros.solo === "string" ? parametros.solo : "";
@@ -190,6 +195,35 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
               </Link>
             )}
           </nav>
+
+          {entregadasHoy.length > 0 && (
+            <section className={`tarjeta ${estilos.noImprimir}`} id="entregadas">
+              <h2 className={estilos.subtitulo}>Entregadas hoy ({entregadasHoy.length})</h2>
+              <p className={estilos.ayuda}>
+                Cada una con la foto de su nota firmada: tócala para verla entera. La foto queda también en la nota y en la ficha del cliente.
+              </p>
+              <ul className={estilos.entregadas}>
+                {entregadasHoy.map((v) => {
+                  const suyas = fotosDeHoy.get(v.id) ?? [];
+                  return (
+                    <li key={v.id}>
+                      <FotosDeLaNota adjuntos={suyas} pequenas />
+                      <p>
+                        <Link href={`/admin/ventas/${v.id}/nota`}>Nota {numeroDeNota(v.id)}</Link>
+                        {" · "}
+                        <Link href={`/admin/clientes/${v.cliente_id}`}>{v.cliente_nombre}</Link>
+                        {" · "}
+                        {resumenDeLineas(v.lineas)}
+                        {" · "}
+                        <strong>{usd(v.total_usd)}</strong>
+                        {suyas.length === 0 && <span className="ayuda"> · sin foto de la nota</span>}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
 
           {carga.length > 0 && (
             <section className="tarjeta">

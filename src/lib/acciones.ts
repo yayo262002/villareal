@@ -1763,7 +1763,8 @@ export async function subirAdjunto(datos: FormData): Promise<void> {
   const clienteId = numero(datos, "cliente_id");
   const cliente = clienteId ? await buscarCliente(clienteId) : null;
   if (!clienteId || !cliente) volverConError("/admin/clientes", "No se encontró el cliente.");
-  const ficha = `/admin/clientes/${clienteId}`;
+  // Se sube desde la ficha del cliente o desde la nota de una venta: se vuelve a donde se subió.
+  const ficha = volverA(datos, `/admin/clientes/${clienteId}`);
 
   const archivo = datos.get("archivo");
   if (!(archivo instanceof File) || archivo.size === 0) volverConError(ficha, "Elige una foto de la nota.");
