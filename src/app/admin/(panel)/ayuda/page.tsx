@@ -130,6 +130,7 @@ export default function PaginaAyuda() {
           <li>Nunca borra nada sin una pantalla de confirmación; borrar un cliente o un proveedor pide la clave.</li>
           <li>
             Los mensajes de WhatsApp (nota, recibo, recordatorio, en camino, ofrecer) salen escritos; tú los revisas y los mandas desde tu teléfono.
+            Y hay <Link href="/admin/stickers">stickers de Villa Real</Link> para responder.
           </li>
           <li>
             Todo esto funciona también como app en el teléfono: <Link href="/admin/app">cómo ponerla</Link>, con los avisos.

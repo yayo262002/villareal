@@ -243,6 +243,9 @@ src/lib/estudio-de-clientes.ts  El estudio desde la base, para el Resumen, su pa
 src/lib/contactos.ts      «Lo llamé», «Lo visité»: los tratos anotados con cada cliente
 src/app/admin/(panel)/clientes/seguimiento/  La pantalla del estudio de clientes
 src/app/admin/(panel)/ayuda/  «Cómo se usa el panel»: la guía rápida, en el orden del día
+src/lib/stickers.ts       La lista de stickers de WhatsApp (texto, forma, color, icono)
+scripts/stickers.ts       Los dibuja con Chrome en public/stickers/ (PNG y WebP, 512 × 512, y un ZIP)
+src/app/admin/(panel)/stickers/  La pantalla para guardarlos en el teléfono
 src/app/admin/            El panel (productos/nuevo y productos/[id], marcas, familias, ofertas…)
 datos/                    La base de datos (fuera de Git)
 ```
@@ -995,6 +998,18 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     prueba de extremo a extremo lo cubre con un teléfono de mentira
     (claves P-256 de verdad y un destino que no responde); contra la web
     publicada no se toca nada de esto.
+
+- **Stickers para WhatsApp** (`/admin/stickers`). Cincuenta y un stickers con
+  el león (512 × 512, fondo transparente, PNG y WebP, todos de menos de
+  100 KB) para responder a los clientes: cuando pagan («¡Pago recibido!»,
+  «Cuenta al día»), pedidos y entregas («¡Vamos en camino!»), cobrar con
+  buena cara («Recordatorio de pago», «¿Me confirma el pago?»), saludos,
+  productos y horario. La lista está en `src/lib/stickers.ts` y los dibuja
+  `node scripts/stickers.ts` (Chrome, Archivo Black, el león) en
+  `public/stickers/`, con un ZIP. Desde la pantalla se guardan en el
+  teléfono y en WhatsApp se convierten en sticker con la foto (en iPhone:
+  «+» → Sticker; en Android: stickers → crear). Para cambiar uno o añadir
+  otro, se edita la lista y se vuelve a correr el guion.
 
 ## Seguridad
 

@@ -2088,6 +2088,7 @@ async function probarSinEscribir() {
     ["/admin/resenas", "Reseñas", "Reseña nueva"],
     ["/admin/clientes/seguimiento", "Estudio de clientes", "Por llamar"],
     ["/admin/ayuda", "Cómo se usa el panel", "Al empezar el día"],
+    ["/admin/stickers", "Stickers para WhatsApp", "Cuando pagan"],
     ["/admin/proveedores", "Proveedores", "Proveedor nuevo"],
     ["/admin/caja", "Cierre del día", "Descargar para Excel"],
     ["/admin/app", "Cómo ponerlo como app", "Añadir a pantalla de inicio"],
@@ -2150,6 +2151,10 @@ async function probarSinEscribir() {
     comprobar(`sin su clave no corre ${ruta}`, respuesta.status === 401, String(respuesta.status));
   }
   comprobar("la foto de una reseña que no existe da 404", (await fetch(base + "/foto-resena/99999999")).status === 404);
+  const sticker = await fetch(base + "/stickers/pago-recibido.png");
+  comprobar("los stickers para WhatsApp se sirven como PNG", sticker.status === 200 && (sticker.headers.get("content-type") ?? "").includes("image/png"));
+  const zipDeStickers = await fetch(base + "/stickers/stickers-villa-real.zip");
+  comprobar("y el ZIP con todos", zipDeStickers.status === 200 && Buffer.from(await zipDeStickers.arrayBuffer()).subarray(0, 2).toString() === "PK");
 
   // El público no ve las reseñas de ejemplo en ningún producto ni en la portada.
   const portada = (await pagina("/", "")).html;
