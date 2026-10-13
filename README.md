@@ -242,6 +242,7 @@ src/lib/seguimiento.ts    El estudio de clientes: el último trato, qué compra 
 src/lib/estudio-de-clientes.ts  El estudio desde la base, para el Resumen, su pantalla y los avisos
 src/lib/contactos.ts      «Lo llamé», «Lo visité»: los tratos anotados con cada cliente
 src/app/admin/(panel)/clientes/seguimiento/  La pantalla del estudio de clientes
+src/app/admin/(panel)/ayuda/  «Cómo se usa el panel»: la guía rápida, en el orden del día
 src/app/admin/            El panel (productos/nuevo y productos/[id], marcas, familias, ofertas…)
 datos/                    La base de datos (fuera de Git)
 ```

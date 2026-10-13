@@ -2087,6 +2087,7 @@ async function probarSinEscribir() {
     ["/admin/ofertas", "Ofertas", "Ofertas y combos"],
     ["/admin/resenas", "Reseñas", "Reseña nueva"],
     ["/admin/clientes/seguimiento", "Estudio de clientes", "Por llamar"],
+    ["/admin/ayuda", "Cómo se usa el panel", "Al empezar el día"],
     ["/admin/proveedores", "Proveedores", "Proveedor nuevo"],
     ["/admin/caja", "Cierre del día", "Descargar para Excel"],
     ["/admin/app", "Cómo ponerlo como app", "Añadir a pantalla de inicio"],

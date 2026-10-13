@@ -449,7 +449,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
         <p className={estilos.ayuda} style={{ marginBottom: 0 }}>
           Ponlo en la pantalla de inicio del teléfono: abre de un toque, a pantalla completa y con el león de icono.{" "}
           <Link href="/admin/app">Cómo hacerlo</Link>. Y en la campanita de arriba, <Link href="/admin/avisos">los avisos</Link>: actívalos en el
-          teléfono y cada mañana llega el resumen del día.
+          teléfono y cada mañana llega el resumen del día. Si algo no se entiende, <Link href="/admin/ayuda">cómo se usa el panel</Link>.
         </p>
       </section>
 
