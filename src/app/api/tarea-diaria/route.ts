@@ -6,6 +6,8 @@ import { hace } from "@/lib/dinero";
 import { actualizarTasaOficial } from "@/lib/tasa-oficial";
 import { haySesion } from "@/lib/sesion";
 import { vieneDelCron } from "@/lib/cron";
+import { crearAviso } from "@/lib/avisos";
+import { bs, hoy } from "@/lib/dinero";
 
 /**
  * Lo que Vercel hace solo cada mañana, antes de que abra la tienda (cron en
@@ -41,6 +43,24 @@ export async function GET(request: Request): Promise<Response> {
       return e.dias > 0 ? { estado: "guardada" as const, ...e } : { estado: "sin_movimientos" as const, desde, hasta };
     })
     .catch((error) => ({ estado: "error" as const, motivo: mensajeDe(error) }));
+
+  // La campanita: la tasa de hoy si cambió, y la copia si falló. Un fallo aquí no frena la tarea.
+  try {
+    if (tasa.estado === "actualizada") {
+      await crearAviso({
+        clave: `tasa:${hoy()}`,
+        tipo: "tasa",
+        titulo: `Tasa BCV de hoy: ${bs(tasa.valor)} por dólar`,
+        cuerpo: tasa.anterior ? `Ayer: ${bs(tasa.anterior)}.` : "",
+        url: "/admin/productos",
+      });
+    }
+    if (copia.estado === "error") {
+      await crearAviso({ clave: `copia-fallida:${hoy()}`, tipo: "copia", titulo: "La copia automática de hoy falló", cuerpo: copia.motivo, url: "/admin" });
+    }
+  } catch {
+    // La campanita no es lo importante de la mañana.
+  }
 
   // La portada y las páginas de producto enseñan la tasa: se rehacen.
   revalidatePath("/", "layout");

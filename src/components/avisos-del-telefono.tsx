@@ -42,6 +42,14 @@ export function AvisosDelTelefono() {
         const registro = await navigator.serviceWorker.getRegistration("/admin/");
         const suscripcion = await registro?.pushManager.getSubscription();
         setEstado(suscripcion ? "encendido" : "apagado");
+        // Se vuelve a dar a la web, por si la había perdido (un envío que falló varias veces, una copia restaurada).
+        if (suscripcion) {
+          fetch("/admin/telefonos", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ suscripcion: suscripcion.toJSON(), aparato: navigator.userAgent.slice(0, 120) }),
+          }).catch(() => {});
+        }
       } catch {
         setEstado("apagado");
       }

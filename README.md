@@ -970,11 +970,13 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   está la campanita (`/admin/avisos`) con cuántos avisos hay sin leer: lo
   que el sistema sabe antes que el dueño. Cada día se crean los del día
   (`generarAvisosDelDia` en `src/lib/avisos.ts`, con una clave por cosa y
-  día o semana para no repetirlos): el resumen de la mañana, cada entrega
+  día o semana para no repetirlos): el resumen de la mañana (con lo de
+  ayer: notas, vendido y entrado), cada entrega
   para hoy y cada atrasada, cada cliente que pasó su plazo (una vez por
   semana), lo que se acaba del inventario (una vez por semana) y cuántos
-  clientes llevan una semana sin trato. Abrir la campanita los da por
-  leídos. Los crea la tarea de las 7 (`/api/aviso-diario`, cron en
+  clientes llevan una semana sin trato; la tarea de las 6 añade la tasa
+  BCV del día si cambió y avisa si la copia automática falló. Abrir la
+  campanita los da por leídos. Los crea la tarea de las 7 (`/api/aviso-diario`, cron en
   `vercel.json` a las 11:00 UTC) y, por si no corrió, el Resumen al
   abrirse (solo escribe si faltan). Se conservan 90 días.
   - **Al teléfono.** En la campanita, «Activar avisos en este teléfono»
@@ -1047,6 +1049,8 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   enseña todos.
 - Si quiere, subir en Familias fotos propias para cada categoría: las que
   trae la web son fotos de comida de licencia libre, no de su mercancía.
+- Activar los avisos en el teléfono del dueño (campanita → «Activar avisos
+  en este teléfono», con el panel puesto en la pantalla de inicio).
 - Poner `ANTHROPIC_API_KEY` en Vercel y en `.env.local` para que las
   fotos de las notas se lean solas. Sin ella, la foto se guarda sin más.
 - Un dominio propio.

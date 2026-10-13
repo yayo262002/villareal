@@ -4,9 +4,10 @@ import { listarVentasPorEntregar } from "./ventas";
 import { clientesConVencimiento } from "./vencimientos";
 import { existencias } from "./inventario";
 import { leerTasa } from "./ajustes";
+import { cierreDelDia } from "./caja";
 import { estudioDeClientes } from "./estudio-de-clientes";
 import { diasEntre } from "./credito";
-import { cantidad, fechaCorta, hoy, usd } from "./dinero";
+import { cantidad, fechaCorta, hace, hoy, usd } from "./dinero";
 import { numeroDeNota } from "./entregas";
 import { textoDelAvisoDeLaManana, type Aviso, type DatosDeLaManana } from "./aviso-manana";
 import { empujarAviso, type ResultadoDelEnvio } from "./push";
@@ -85,12 +86,13 @@ type Candidatos = { datos: DatosDeLaManana; avisos: AvisoNuevo[] };
 
 /** Junta lo del día: lo que va en el aviso de la mañana y los avisos sueltos de la campanita. */
 async function candidatosDelDia(fecha: string): Promise<Candidatos> {
-  const [entregas, clientes, inventario, tasa, estudio] = await Promise.all([
+  const [entregas, clientes, inventario, tasa, estudio, ayer] = await Promise.all([
     listarVentasPorEntregar(),
     clientesConVencimiento(fecha),
     existencias(),
     leerTasa(),
     estudioDeClientes(fecha, false),
+    cierreDelDia(hace(1)),
   ]);
   const semana = semanaDe(fecha);
   const avisos: AvisoNuevo[] = [];
@@ -154,6 +156,7 @@ async function candidatosDelDia(fecha: string): Promise<Candidatos> {
     inventarioBajo: bajo.map((e) => (e.estado === "sin" ? `${e.nombre} sin existencia` : `${e.nombre} (${e.diasQueDura} días)`)),
     tasa: tasa?.valor ?? null,
     clientesPorLlamar: porLlamar.length,
+    ayer: { notas: ayer.ventas.cantidad, vendidoUsd: ayer.ventas.total_usd, cobradoUsd: ayer.cobrado.total_usd },
   };
   return { datos, avisos };
 }

@@ -43,6 +43,24 @@ export default function PaginaApp() {
           <li>Toca «Añadir». El icono del león aparece en la pantalla de inicio.</li>
         </ol>
 
+        <h2 className={estilos.subtitulo}>Avisos en el teléfono</h2>
+        <p className={estilos.ayuda}>
+          Con el panel puesto así, puede recibir avisos como cualquier otra app: cada mañana a las 7, el resumen del día (entregas, cobros con el
+          plazo vencido, inventario que se acaba, clientes por llamar y la tasa BCV), aunque el panel esté cerrado.
+        </p>
+        <ol className={estilos.pasos}>
+          <li>Abre el panel desde su icono (en iPhone tiene que ser desde el icono, no desde Safari).</li>
+          <li>
+            Toca la campanita de arriba (<Link href="/admin/avisos">Avisos</Link>) y pulsa «Activar avisos en este teléfono».
+          </li>
+          <li>Permite las notificaciones cuando el teléfono lo pregunte.</li>
+          <li>Pulsa «Mandar un aviso de prueba»: tiene que llegar en el momento.</li>
+        </ol>
+        <p className={estilos.ayuda}>
+          Cada teléfono se activa por separado. En iPhone hace falta iOS 16.4 o más nuevo. Si un día no quieres más avisos en un teléfono, en la
+          misma pantalla está «Desactivar en este teléfono».
+        </p>
+
         <h2 className={estilos.subtitulo}>Atajos</h2>
         <p className={estilos.ayuda} style={{ marginBottom: 0 }}>
           En Android, manteniendo pulsado el icono salen atajos a Anotar una venta, Registrar un abono, la Ruta de

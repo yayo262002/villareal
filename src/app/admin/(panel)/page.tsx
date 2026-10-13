@@ -42,7 +42,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
       proveedoresConVencimiento(),
       ultimosRecordatorios(),
       existencias(),
-      estudioDeClientes(hoy(), false),
+      estudioDeClientes(hoy()),
     ]);
   const [hoyCierre, entregas] = await Promise.all([cierreDelDia(hoy()), listarVentasPorEntregar().then(conLineas)]);
   const fecha = hoy();

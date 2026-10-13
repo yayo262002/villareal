@@ -7,7 +7,9 @@ import { necesitaElMapa } from "@/lib/mapa";
 import { enlaceAlMapa, planDeDespacho, situar } from "@/lib/despacho";
 import { explicarMotivo } from "@/lib/direcciones";
 import { esSoloUnTelefono } from "@/lib/whatsapp";
-import { fechaCorta, redondear, usd } from "@/lib/dinero";
+import { fechaCorta, hoy, redondear, usd } from "@/lib/dinero";
+import { estudioDeClientes } from "@/lib/estudio-de-clientes";
+import { describirTrato } from "@/lib/seguimiento";
 import { enlaceWhatsappA } from "@/lib/whatsapp";
 import { normalizar } from "@/lib/buscar";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
@@ -45,7 +47,9 @@ export default async function PaginaClientes({
   const orden: Orden = typeof parametros.orden === "string" && parametros.orden in ORDENES ? (parametros.orden as Orden) : "nombre";
   const nuevoId = typeof parametros.nuevo === "string" ? Number(parametros.nuevo) : 0;
 
-  const todos = await clientesConVencimiento();
+  const [todos, estudio] = await Promise.all([clientesConVencimiento(), estudioDeClientes(hoy(), false)]);
+  // Quién lleva una semana o más sin trato, para decirlo en su ficha de la cartera.
+  const tratoDe = new Map(estudio.map((e) => [e.cliente.id, e.trato]));
   const nuevo = todos.find((c) => c.id === nuevoId);
   // Recién guardado: si su dirección no se entiende, se avisa aquí mismo, sin deshacer nada.
   const situacionDelNuevo = nuevo ? situar(nuevo, CIUDAD) : null;
@@ -85,6 +89,9 @@ export default async function PaginaClientes({
         <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
           <Link href="/admin/despacho" className="boton">
             Ruta de despacho
+          </Link>
+          <Link href="/admin/clientes/seguimiento" className="boton boton--secundario">
+            Estudio de clientes
           </Link>
           {todos.length > 0 && (
             <a href="/admin/clientes/exportar" download className="boton boton--secundario">
@@ -298,6 +305,11 @@ export default async function PaginaClientes({
                         </p>
                       ) : (
                         c.urgencia !== null && <p className={`${estilos.carteraDato} ayuda`}>{describirUrgencia(c.urgencia)}</p>
+                      )}
+                      {tratoDe.get(c.id)?.porLlamar && (
+                        <p className={`${estilos.carteraDato} ayuda`}>
+                          {describirTrato(tratoDe.get(c.id)!)} · <Link href="/admin/clientes/seguimiento">por llamar</Link>
+                        </p>
                       )}
                       <p className={estilos.carteraDato}>
                         {c.direccion || <span className="ayuda">Sin dirección</span>}

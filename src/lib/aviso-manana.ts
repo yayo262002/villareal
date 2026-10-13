@@ -17,6 +17,8 @@ export type DatosDeLaManana = {
   tasa: number | null;
   /** Cuántos llevan una semana o más sin trato (el estudio de clientes). */
   clientesPorLlamar: number;
+  /** Lo de ayer: cuántas notas y por cuánto, y lo que entró. */
+  ayer?: { notas: number; vendidoUsd: number; cobradoUsd: number };
 };
 
 export type Aviso = {
@@ -43,7 +45,7 @@ export function textoDelAvisoDeLaManana(d: DatosDeLaManana): Aviso {
   const lineas: string[] = [];
   if (d.entregasHoy > 0 || d.entregasAtrasadas > 0) {
     const partes: string[] = [];
-    if (d.entregasHoy > 0) partes.push(`${plural(d.entregasHoy, "entrega", "entregas")} para hoy`);
+    if (d.entregasHoy > 0) partes.push(`${d.entregasHoy} para hoy`);
     if (d.entregasAtrasadas > 0) partes.push(plural(d.entregasAtrasadas, "atrasada", "atrasadas"));
     lineas.push(`Entregas: ${partes.join(" y ")}.`);
   } else lineas.push("Sin entregas pendientes.");
@@ -51,6 +53,9 @@ export function textoDelAvisoDeLaManana(d: DatosDeLaManana): Aviso {
   else lineas.push("Nadie con el plazo vencido.");
   if (d.inventarioBajo.length > 0) lineas.push(`Queda poco: ${d.inventarioBajo.join(", ")}.`);
   if (d.clientesPorLlamar > 0) lineas.push(`${plural(d.clientesPorLlamar, "cliente", "clientes")} por llamar: una semana o más sin trato.`);
+  if (d.ayer && (d.ayer.notas > 0 || d.ayer.cobradoUsd > 0)) {
+    lineas.push(`Ayer: ${d.ayer.notas > 0 ? `${plural(d.ayer.notas, "nota", "notas")} por ${usd(d.ayer.vendidoUsd)}` : "sin ventas"}; entraron ${usd(d.ayer.cobradoUsd)}.`);
+  }
   if (d.tasa) lineas.push(`Tasa BCV: ${bs(d.tasa)} por dólar.`);
   const urgente = d.entregasAtrasadas > 0 || d.clientesVencidos > 0;
   return {
