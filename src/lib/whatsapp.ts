@@ -253,3 +253,16 @@ export function mensajeEnCamino(datos: {
 function formatearCantidad(n: number): string {
   return new Intl.NumberFormat("es-VE", { maximumFractionDigits: 3 }).format(n);
 }
+
+/**
+ * Ofrecerle mercancía a un cliente con el que hace tiempo que no hay
+ * trato: pregunta cómo va todo y le recuerda lo que suele comprar (o lo
+ * que hay, si nunca compró) con la dirección de la web para ver precios.
+ */
+export function mensajeOfrecer(datos: { negocio: string; cliente: string; productos: string[]; web?: string }): string {
+  const lineas = [`${saludo(datos.cliente)}, le saluda ${datos.negocio}. ¿Cómo va todo por su negocio?`];
+  if (datos.productos.length > 0) lineas.push(`Tenemos ${datos.productos.join(", ")} al mayor, con el precio del día. ¿Le mandamos algo esta semana?`);
+  else lineas.push("Tenemos queso, mozzarella, huevos y más al mayor, con el precio del día. ¿Le mandamos algo esta semana?");
+  if (datos.web) lineas.push(`Precios de hoy: ${datos.web}/productos`);
+  return lineas.join("\n");
+}

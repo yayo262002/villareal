@@ -12,7 +12,7 @@
 // La clave sale de `.env.local`; aquí no hay secretos.
 
 import { spawn } from "node:child_process";
-import { createHmac } from "node:crypto";
+import { createHmac, generateKeyPairSync, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -298,7 +298,8 @@ async function probarTareaDiaria() {
     JSON.stringify(resultado.tasa),
   );
   const panel = (await pagina("/admin/productos")).html;
-  comprobar("la tasa sigue siendo la que había y el panel lo avisa", panel.includes('value="36.5"') && /No se (cambió|pudo traer) la tasa/.test(panel));
+  // Un lunes temprano la tasa del fin de semana (la del lunes) se queda sin aviso: la fuente aún da la del viernes.
+  comprobar("la tasa sigue siendo la que había y el panel lo avisa", panel.includes('value="36.5"') && (resultado.tasa?.estado === "se_queda" || /No se (cambió|pudo traer) la tasa/.test(panel)));
 
   let cambio = await enviar("/admin/productos", 'name="encender"', { encender: "0" });
   comprobar("la actualización automática se puede apagar", cambio.destino.includes("ya no se actualiza sola"));
@@ -642,7 +643,8 @@ async function probarNegocio() {
 
   // La foto de la nota se lee: si no es una nota, o su fecha o su suma no cuadran, avisa y pide revisar.
   const cuadra = { es_nota: true, fecha: "2026-09-16", lineas: [{ descripcion: "Mozzarella", clave: "2", cantidad: 0.5, precio: 7, importe: 3.5 }], total: 3.5, firmada: true };
-  const mediaMozzarella = { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_2: "0.5", precio_2: "7", entrega: "local" };
+  // Con «confirmar», porque aquí se registra la misma venta varias veces seguidas a propósito (y lo repetido, si no, se frena).
+  const mediaMozzarella = { cliente_id: String(detalId), fecha: "2026-09-16", cantidad_2: "0.5", precio_2: "7", entrega: "local", confirmar: "1" };
   r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida(cuadra) });
   comprobar("la foto se lee y, si cuadra, se guarda diciéndolo", r.destino.includes("se leyó y cuadra con lo anotado"), r.destino);
   const leidaId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
@@ -921,7 +923,7 @@ async function probarNegocio() {
   );
   comprobar(
     "en Ventas y en la ficha del cliente, la fila de la nota entregada enlaza su foto",
-    (await pagina("/admin/ventas")).html.includes(`href="/admin/adjuntos/${fotoDelPedido?.id}"`) && (await pagina(`/admin/clientes/${clienteId}`)).html.includes(`href="/admin/adjuntos/${fotoDelPedido?.id}"`),
+    (await pagina("/admin/ventas")).html.includes(`href="/admin/adjuntos/${fotoDelPedido?.id}/ver`) && (await pagina(`/admin/clientes/${clienteId}`)).html.includes(`href="/admin/adjuntos/${fotoDelPedido?.id}/ver`),
   );
   r = await enviar(`/admin/ventas/${pedidoId}/nota`, marca, { id: String(pedidoId), entregada: "0", volver_a: "https://example.com/admin" });
   [entrega] = await consultar("select por_entregar, entregada_en from ventas where id = ?", [pedidoId]);
@@ -2084,6 +2086,7 @@ async function probarSinEscribir() {
     ["/admin/familias", "Familias", "Familias y categorías"],
     ["/admin/ofertas", "Ofertas", "Ofertas y combos"],
     ["/admin/resenas", "Reseñas", "Reseña nueva"],
+    ["/admin/clientes/seguimiento", "Estudio de clientes", "Por llamar"],
     ["/admin/proveedores", "Proveedores", "Proveedor nuevo"],
     ["/admin/caja", "Cierre del día", "Descargar para Excel"],
     ["/admin/app", "Cómo ponerlo como app", "Añadir a pantalla de inicio"],
@@ -2155,6 +2158,109 @@ async function probarSinEscribir() {
   comprobar(`ninguna reseña de ejemplo a la vista del público (${productos.length} productos)`, productos.length > 0 && conEjemplo.length === 0 && !legible(portada).includes("de ejemplo"), conEjemplo.join(", "));
 }
 
+
+/**
+ * La campanita y los avisos al teléfono, el aviso de cada mañana, los
+ * abonos y ventas repetidos, el visor de fotos y el estudio de clientes.
+ */
+async function probarAvisos() {
+  // El avisador y la clave de los avisos.
+  const sw = await fetch(base + "/admin/sw.js");
+  comprobar("el avisador del panel se sirve sin sesión", sw.status === 200 && (sw.headers.get("content-type") ?? "").includes("javascript") && (await sw.text()).includes("showNotification"));
+  comprobar("sin sesión no se da la clave de los avisos", (await fetch(base + "/admin/telefonos", { redirect: "manual" })).status !== 200);
+  const clave = await (await fetch(base + "/admin/telefonos", { headers: { cookie } })).json();
+  const claveOtraVez = await (await fetch(base + "/admin/telefonos", { headers: { cookie } })).json();
+  comprobar("la clave pública de los avisos existe y es siempre la misma", typeof clave.clavePublica === "string" && clave.clavePublica.length >= 80 && claveOtraVez.clavePublica === clave.clavePublica);
+
+  // La campanita ya tiene los avisos del día (los creó el Resumen) y la cabecera los cuenta.
+  comprobar("la cabecera del panel cuenta los avisos sin leer", /Avisos: \d+ sin leer/.test((await pagina("/admin")).html));
+  const campanita = legible((await pagina("/admin/avisos")).html);
+  comprobar(
+    "la campanita enseña el aviso de la mañana como nuevo y ofrece activar el teléfono",
+    campanita.includes("Buenos días") && campanita.includes("nuevo") && campanita.includes("Ningún teléfono tiene los avisos activados") && campanita.includes("Mandar un aviso de prueba"),
+  );
+  comprobar("abrir la campanita los da por leídos", !/Avisos: \d+ sin leer/.test((await pagina("/admin")).html));
+  comprobar("sin ningún teléfono, el aviso de prueba lo dice", (await enviar("/admin/avisos", "Mandar un aviso de prueba", {})).destino.includes("Ningún teléfono tiene los avisos activados"));
+
+  // Un teléfono de mentira: claves de verdad (P-256) y un destino que no responde.
+  const { publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const jwk = publicKey.export({ format: "jwk" });
+  const p256dh = Buffer.concat([Buffer.from([4]), Buffer.from(jwk.x, "base64url"), Buffer.from(jwk.y, "base64url")]).toString("base64url");
+  const suscripcion = { endpoint: "https://127.0.0.1:9/aviso-de-prueba", keys: { p256dh, auth: randomBytes(16).toString("base64url") } };
+  const telefonoJson = (metodo, cuerpo) => fetch(base + "/admin/telefonos", { method: metodo, headers: { cookie, "content-type": "application/json" }, body: JSON.stringify(cuerpo) });
+  let respuesta = await telefonoJson("POST", { suscripcion, aparato: "teléfono de prueba" });
+  const telefonos = async () => (await consultar("select count(*) as n, coalesce(max(fallos), 0) as fallos from avisos_telefonos"))[0];
+  comprobar("activar los avisos en un teléfono guarda su suscripción", respuesta.status === 200 && (await telefonos()).n == 1);
+  comprobar("activarlo otra vez no lo duplica", (await telefonoJson("POST", { suscripcion })).status === 200 && (await telefonos()).n == 1);
+  comprobar("una suscripción incompleta se rechaza", (await telefonoJson("POST", { suscripcion: { endpoint: "http://x" } })).status === 400);
+  comprobar("la campanita dice que hay un teléfono", (await pagina("/admin/avisos")).html.includes("1 teléfono con los avisos activados"));
+  let r = await enviar("/admin/avisos", "Mandar un aviso de prueba", {});
+  comprobar("el aviso de prueba a un teléfono que no responde lo dice, y el teléfono se queda", r.destino.includes("No se pudo mandar") && (await telefonos()).n == 1 && (await telefonos()).fallos == 1, r.destino);
+
+  // El aviso de cada mañana.
+  comprobar("el aviso diario sin clave se niega", (await fetch(base + "/api/aviso-diario")).status === 401);
+  const diario = await (await fetch(base + "/api/aviso-diario", { headers: { cookie } })).json();
+  comprobar(
+    "el aviso diario arma el resumen de la mañana y lo manda a los teléfonos",
+    diario.ok === true && String(diario.aviso.titulo).startsWith("Buenos días") && diario.envio.telefonos === 1 && diario.envio.fallidos === 1 && diario.envio.enviados === 0,
+    JSON.stringify(diario),
+  );
+  comprobar("pedirlo otra vez no repite los avisos de la campanita", (await (await fetch(base + "/api/aviso-diario", { headers: { cookie } })).json()).nuevos === 0);
+  respuesta = await telefonoJson("DELETE", { endpoint: suscripcion.endpoint });
+  comprobar("desactivar los avisos quita el teléfono", (await respuesta.json()).ok === true && (await telefonos()).n == 0 && (await pagina("/admin/avisos")).html.includes("Ningún teléfono"));
+
+  // Un abono repetido (el botón pulsado dos veces) se frena; confirmado, se guarda.
+  const [cliente] = await consultar("select id, nombre from clientes where telefono <> '' order by id limit 1");
+  const ficha = `/admin/clientes/${cliente.id}`;
+  const hoyIso = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  const abono = { cliente_id: String(cliente.id), fecha: hoyIso, metodo: "efectivo_usd", monto: "7", tasa: "", volver_a: ficha };
+  const abonosDe7 = async () => Number((await consultar("select count(*) as n from pagos where cliente_id = ? and monto = 7", [cliente.id]))[0].n);
+  r = await enviar(ficha, 'name="monto"', abono);
+  comprobar("un abono en efectivo se registra", r.destino.includes("Abono registrado") && (await abonosDe7()) === 1, r.destino);
+  r = await enviar(ficha, 'name="monto"', abono);
+  comprobar("el mismo abono un momento después no se guarda: se pregunta", r.destino.includes("registraste un abono igual") && r.destino.includes("confirmar_repetido=1") && (await abonosDe7()) === 1, r.destino);
+  comprobar("la ficha vuelve con la casilla «Sí, es otro abono»", (await pagina(r.destino)).html.includes('name="confirmar_repetido"'));
+  r = await enviar(ficha, 'name="monto"', { ...abono, confirmar_repetido: "1" });
+  comprobar("confirmado que es otro abono, se guarda", r.destino.includes("Abono registrado") && (await abonosDe7()) === 2, r.destino);
+  // La ficha numera los abonos y dice lo que debía y lo que quedó; la captura lleva el mismo número.
+  const fichaConAbonos = legible((await pagina(ficha)).html);
+  comprobar("la ficha numera los abonos y dice el saldo de ese momento", /N\.º<\/th>/.test(fichaConAbonos) && fichaConAbonos.includes("Debía") && fichaConAbonos.includes("quedó"));
+  for (const p of await consultar("select id from pagos where cliente_id = ? and monto = 7", [cliente.id])) await enviar(`/admin/pagos/${p.id}/eliminar`, 'name="id"', { id: String(p.id) });
+  comprobar("los dos abonos de la prueba se borran", (await abonosDe7()) === 0);
+
+  // Una venta repetida, igual.
+  const venta = { cliente_id: String(cliente.id), fecha: hoyIso, cantidad_3: "1", precio_3: "6.25", entrega: "local" };
+  const ventasDeHoy = async () => Number((await consultar("select count(*) as n from ventas where cliente_id = ? and fecha = ? and total_usd = 6.25", [cliente.id, hoyIso]))[0].n);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...venta, foto: fotoFirmada() });
+  if (r.destino.includes("confirmar=1") && !r.destino.includes("venta igual")) r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...venta, confirmar: "1", foto: fotoFirmada() });
+  comprobar("una venta de un cartón de huevos se registra", r.destino.includes("Venta registrada") && (await ventasDeHoy()) === 1, r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...venta, foto: fotoFirmada() });
+  comprobar("la misma venta un momento después no se guarda: se pregunta", r.destino.includes("registraste una venta igual") && r.destino.includes("confirmar=1") && (await ventasDeHoy()) === 1, r.destino);
+  r = await enviar("/admin/ventas", 'name="cantidad_1"', { ...venta, confirmar: "1", foto: fotoFirmada() });
+  comprobar("confirmado que es otra venta, se guarda", r.destino.includes("Venta registrada") && (await ventasDeHoy()) === 2, r.destino);
+  for (const v of await consultar("select id from ventas where cliente_id = ? and fecha = ? and total_usd = 6.25", [cliente.id, hoyIso])) await enviar(`/admin/ventas/${v.id}/eliminar`, 'name="id"', { id: String(v.id) });
+
+  // El visor de fotos: la foto entera con su fecha y la vuelta.
+  const [foto] = await consultar("select id, cliente_id from adjuntos where venta_id is not null order by id desc limit 1");
+  const visor = foto ? await pagina(`/admin/adjuntos/${foto.id}/ver?volver_a=/admin/ventas`) : null;
+  comprobar(
+    "la foto de una nota se abre entera, con su fecha, su nota y la vuelta a donde se estaba",
+    Boolean(visor) && visor.status === 200 && visor.html.includes(`src="/admin/adjuntos/${foto.id}"`) && legible(visor.html).includes("guardada el") && visor.html.includes('href="/admin/ventas"') && visor.html.includes("nota N.º"),
+    String(foto?.id),
+  );
+  comprobar("una foto que no existe da 404 en el visor", (await pagina("/admin/adjuntos/999999/ver")).status === 404);
+
+  // El estudio de clientes: quién lleva una semana sin trato, y anotar una llamada.
+  const estudio = legible((await pagina("/admin/clientes/seguimiento")).html);
+  comprobar("el estudio de clientes abre, con los clientes y lo que suele comprar cada uno", estudio.includes("Estudio de clientes") && estudio.includes("Por llamar") && estudio.includes(cliente.nombre) && estudio.includes("Suele comprar"));
+  r = await enviar("/admin/clientes/seguimiento", `name="cliente_id" value="${cliente.id}"`, { cliente_id: String(cliente.id), tipo: "llamada", volver_a: "/admin/clientes/seguimiento" });
+  comprobar("«Lo llamé hoy» deja anotado el trato", r.destino.includes("Anotado: lo llamé") && (await consultar("select count(*) as n from contactos where cliente_id = ?", [cliente.id]))[0].n == 1, r.destino);
+  const fichaConTrato = legible((await pagina(ficha)).html);
+  comprobar("la ficha dice que hoy hubo trato y lista la llamada", fichaConTrato.includes("Hoy hubo trato") && fichaConTrato.includes("Lo llamé"));
+  r = await enviar(ficha, 'id="contacto-nota"', { cliente_id: String(cliente.id), tipo: "visita", fecha: "2030-01-01", nota: "", volver_a: `${ficha}#seguimiento` });
+  comprobar("un trato con fecha de mañana no se guarda", !r.destino.includes("Anotado") && (await consultar("select count(*) as n from contactos where cliente_id = ?", [cliente.id]))[0].n == 1, r.destino);
+}
+
 // ---------- Principal ----------
 
 try {
@@ -2222,6 +2328,7 @@ try {
     await probarCartera();
     await probarInventario();
     await probarCatalogo();
+    await probarAvisos();
     await probarVitrina();
     await probarTareaDiaria();
     await probarFreno();

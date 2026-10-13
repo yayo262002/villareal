@@ -393,6 +393,45 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- Los teléfonos con los avisos activados: cada uno es una suscripción del
+  -- navegador a los avisos del sistema (Web Push). Se registran desde la
+  -- campanita del panel; un teléfono que deja de responder se quita solo.
+  create table if not exists avisos_telefonos (
+    id integer primary key autoincrement,
+    endpoint text not null unique,
+    p256dh text not null,
+    auth text not null,
+    aparato text not null default '',
+    creado_en text not null default (datetime('now')),
+    ultimo_envio text,
+    fallos integer not null default 0
+  );
+
+  -- Los avisos de la campanita del panel: lo que el sistema sabe antes que el
+  -- dueño (entregas, plazos vencidos, inventario, clientes por llamar…). La
+  -- clave evita repetir el mismo aviso el mismo día.
+  create table if not exists avisos (
+    id integer primary key autoincrement,
+    clave text not null unique,
+    tipo text not null default '',
+    titulo text not null,
+    cuerpo text not null default '',
+    url text not null default '/admin',
+    creado_en text not null default (datetime('now')),
+    leido_en text
+  );
+
+  -- Cada vez que el dueño habla con un cliente (lo llamó, lo visitó, le
+  -- escribió): el estudio de clientes cuenta el tiempo sin trato desde ahí.
+  create table if not exists contactos (
+    id integer primary key autoincrement,
+    cliente_id integer not null references clientes(id),
+    fecha text not null,
+    tipo text not null default 'llamada',
+    nota text not null default '',
+    creado_en text not null default (datetime('now'))
+  );
+
   -- La captura del pago a un proveedor, unida a ese pago. Es el espejo de
   -- adjuntos, que va unida al cliente.
   create table if not exists adjuntos_proveedores (
@@ -457,6 +496,9 @@ export const TABLAS = [
   "recordatorios",
   "ofertas",
   "oferta_productos",
+  "avisos_telefonos",
+  "avisos",
+  "contactos",
 ] as const;
 
 /**

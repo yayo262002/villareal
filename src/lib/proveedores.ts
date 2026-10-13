@@ -298,3 +298,16 @@ export async function eliminarPagoProveedor(id: number): Promise<boolean> {
     return r.rowsAffected > 0;
   });
 }
+
+/** Como `pagoRepetidoReciente` de los abonos: el mismo pago al proveedor anotado hace un momento. */
+export async function pagoProveedorRepetidoReciente(
+  datos: { proveedor_id: number; fecha: string; metodo: string; moneda: string; monto: number },
+  minutos = 10,
+): Promise<{ id: number } | null> {
+  return fila<{ id: number }>(
+    `select id from pagos_proveedores
+     where proveedor_id = ? and fecha = ? and metodo = ? and moneda = ? and abs(monto - ?) < 0.005 and creado_en >= datetime('now', ?)
+     order by id desc limit 1`,
+    [datos.proveedor_id, datos.fecha, datos.metodo, datos.moneda, datos.monto, `-${minutos} minutes`],
+  );
+}

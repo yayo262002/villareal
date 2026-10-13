@@ -8,6 +8,7 @@ import { salir } from "@/lib/acciones";
 import { NavPanel } from "@/components/nav-panel";
 import { UnSoloEnvio } from "@/components/un-solo-envio";
 import { AvisoDeCarga } from "@/components/aviso-de-carga";
+import { contarAvisosSinLeer } from "@/lib/avisos";
 import estilos from "./panel.module.css";
 
 /** El panel se instala en el teléfono como app propia, con su manifiesto. */
@@ -40,6 +41,8 @@ const SECCIONES = [
  */
 export default async function LayoutPanel({ children }: { children: ReactNode }) {
   if (!(await haySesion())) redirect("/admin/entrar");
+  // La campanita dice cuántos avisos hay sin leer.
+  const sinLeer = await contarAvisosSinLeer();
 
   return (
     <div className={estilos.panel}>
@@ -48,11 +51,20 @@ export default async function LayoutPanel({ children }: { children: ReactNode })
           <Link href="/admin" className={estilos.marca}>
             {negocio.nombre}
           </Link>
-          <form action={salir}>
-            <button type="submit" className={estilos.salir}>
-              Salir
-            </button>
-          </form>
+          <div className={estilos.cabeceraDerecha}>
+            <Link href="/admin/avisos" className={estilos.campana} aria-label={sinLeer > 0 ? `Avisos: ${sinLeer} sin leer` : "Avisos"} title="Avisos">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+              </svg>
+              {sinLeer > 0 && <span className={estilos.campanaCuenta}>{sinLeer > 99 ? "99+" : sinLeer}</span>}
+            </Link>
+            <form action={salir}>
+              <button type="submit" className={estilos.salir}>
+                Salir
+              </button>
+            </form>
+          </div>
         </div>
         <NavPanel secciones={SECCIONES} className={estilos.nav} />
       </header>

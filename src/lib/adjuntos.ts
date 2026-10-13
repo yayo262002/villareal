@@ -109,3 +109,12 @@ export async function listarAdjuntosDeProveedor(proveedorId: number): Promise<Ad
 export async function buscarAdjuntoDeProveedor(id: number): Promise<AdjuntoDeProveedorConDatos | null> {
   return fila<AdjuntoDeProveedorConDatos>("select * from adjuntos_proveedores where id = ?", [id]);
 }
+
+/** Un adjunto sin su archivo, para la pantalla que lo enseña con su fecha y de quién es. */
+export async function datosDelAdjunto(id: number): Promise<Adjunto | null> {
+  return fila<Adjunto>(`select ${SIN_DATOS} from adjuntos where id = ?`, [id]);
+}
+
+export async function datosDelAdjuntoDeProveedor(id: number): Promise<AdjuntoDeProveedor | null> {
+  return fila<AdjuntoDeProveedor>("select id, proveedor_id, pago_proveedor_id, descripcion, tipo, tamano, creado_en from adjuntos_proveedores where id = ?", [id]);
+}

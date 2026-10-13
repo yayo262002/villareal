@@ -265,3 +265,24 @@ export async function ventasPorCliente(limite = 10, desde?: string): Promise<Ven
     desde ? [desde, limite] : [limite],
   );
 }
+
+/**
+ * Una venta igual (mismo cliente, misma fecha y las mismas líneas) anotada
+ * hace un momento: casi siempre es el botón pulsado dos veces, no dos
+ * ventas. Se compara producto, marca, cantidad y precio, sin orden.
+ */
+export async function ventaRepetidaReciente(clienteId: number, fecha: string, lineas: LineaVenta[], minutos = 10): Promise<Venta | null> {
+  const recientes = await filas<Venta>(`${CONSULTA_VENTAS} where v.cliente_id = ? and v.fecha = ? and v.creado_en >= datetime('now', ?) order by v.id desc limit 5`, [
+    clienteId,
+    fecha,
+    `-${minutos} minutes`,
+  ]);
+  const firma = (l: { producto_id: number; variante_id?: number | null; cantidad: number; precio_unitario_usd: number }) =>
+    `${l.producto_id}:${l.variante_id ?? 0}:${Number(l.cantidad)}:${Number(l.precio_unitario_usd)}`;
+  const buscada = lineas.map(firma).sort().join("|");
+  for (const v of recientes) {
+    const suyas = await lineasDeVenta(v.id);
+    if (suyas.map(firma).sort().join("|") === buscada) return v;
+  }
+  return null;
+}

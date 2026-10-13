@@ -152,6 +152,13 @@ export function fechaDeLaBase(momentoUtc: string): string {
 }
 
 /** Fecha de hoy en Venezuela, para rellenar los formularios. */
+/** La hora de Venezuela («14:05») de un momento guardado en UTC. */
+export function horaDeLaBase(momentoUtc: string): string {
+  const instante = new Date(momentoUtc.replace(" ", "T") + (momentoUtc.endsWith("Z") ? "" : "Z"));
+  if (Number.isNaN(instante.getTime())) return "";
+  return new Intl.DateTimeFormat("es-VE", { timeZone: "America/Caracas", hour: "2-digit", minute: "2-digit", hour12: false }).format(instante);
+}
+
 export function hoy(): string {
   return fechaEnVenezuela(new Date());
 }

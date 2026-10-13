@@ -231,9 +231,9 @@ export default async function PaginaVentas({
                             {foto && (
                               <>
                                 {" "}
-                                <a href={`/admin/adjuntos/${foto.id}`} target="_blank" rel="noopener" title="La foto de la nota firmada">
+                                <Link href={`/admin/adjuntos/${foto.id}/ver?volver_a=/admin/ventas`} title="La foto de la nota firmada">
                                   Foto
-                                </a>
+                                </Link>
                               </>
                             )}
                           </>

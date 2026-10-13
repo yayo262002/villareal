@@ -23,7 +23,8 @@ export default function PaginaApp() {
         <p className={estilos.ayuda}>
           Esta misma página se puede poner en la pantalla de inicio del teléfono. Queda con el león de icono, se llama
           «Panel», abre de un toque directamente aquí y sin la barra del navegador, como cualquier otra app. No hay
-          que instalar nada de una tienda ni pagar nada. Hazlo desde el teléfono, con la sesión ya iniciada.
+          que instalar nada de una tienda ni pagar nada. Hazlo desde el teléfono, con la sesión ya iniciada. Puesto así, además,
+          puede recibir <Link href="/admin/avisos">avisos</Link> como cualquier otra app: el resumen de cada mañana y lo importante.
         </p>
 
         <h2 className={estilos.subtitulo}>En Android (Chrome)</h2>

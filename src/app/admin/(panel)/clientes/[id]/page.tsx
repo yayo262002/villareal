@@ -4,14 +4,14 @@ import { buscarCliente } from "@/lib/clientes";
 import { conLineas, listarVentasDeCliente } from "@/lib/ventas";
 import { listarPagosDeCliente, ultimaTasa } from "@/lib/pagos";
 import { listarAdjuntosDeCliente } from "@/lib/adjuntos";
-import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
+import { listarContactosDe, TIPOS_DE_CONTACTO } from "@/lib/contactos";
+import { describirTrato, estudiarCliente } from "@/lib/seguimiento";
+import { NOMBRE_ESTADO, aplicarPagos, movimientosDeCuenta } from "@/lib/cuentas";
 import { conVencimiento, describirVencimiento } from "@/lib/credito";
-import { editarCliente, situarClienteEnElMapa, subirAdjunto,
-  cambiarEnlaceDeCuenta,
-} from "@/lib/acciones";
+import { anotarContactoAccion, cambiarEnlaceDeCuenta, editarCliente, situarClienteEnElMapa, subirAdjunto } from "@/lib/acciones";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { leerTasa } from "@/lib/ajustes";
-import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, hoy, usd, tasaLegible } from "@/lib/dinero";
+import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, hoy, redondear, usd, tasaLegible } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { ultimoRecordatorioDe } from "@/lib/recordatorios";
 import { FormularioPago } from "@/components/formulario-pago";
@@ -38,13 +38,14 @@ export default async function PaginaCliente({
   const cliente = await buscarCliente(Number(id));
   if (!cliente) notFound();
 
-  const [ventas, pagos, adjuntos, tasa, tasaDelDia, recordadoEl] = await Promise.all([
+  const [ventas, pagos, adjuntos, tasa, tasaDelDia, recordadoEl, contactos] = await Promise.all([
     listarVentasDeCliente(cliente.id).then(conLineas),
     listarPagosDeCliente(cliente.id),
     listarAdjuntosDeCliente(cliente.id),
     ultimaTasa(),
     leerTasa(),
     ultimoRecordatorioDe(cliente.id),
+    listarContactosDe(cliente.id),
   ]);
   const cuentas = conVencimiento(aplicarPagos(ventas, cliente.total_pagado_usd), cliente.dias_credito, hoy());
   const vencido = cuentas.filter((c) => c.vencida).reduce((s, c) => s + c.pendiente_usd, 0);
@@ -57,6 +58,17 @@ export default async function PaginaCliente({
   // La foto de la nota firmada de cada venta (la más reciente, si hay varias), para enlazarla desde su fila.
   const fotoDeVenta = new Map<number, number>();
   for (const a of [...adjuntos].reverse()) if (a.venta_id && !a.pago_id) fotoDeVenta.set(a.venta_id, a.id);
+  const aqui = (ancla: string) => encodeURIComponent(`/admin/clientes/${cliente.id}#${ancla}`);
+  // Cada abono con su número (del más antiguo al más nuevo) y lo que debía el cliente antes y lo que quedó después.
+  const abonosEnOrden = [...pagos].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.id - b.id);
+  const numeroDeAbono = new Map(abonosEnOrden.map((p, i) => [p.id, i + 1]));
+  const saldoTrasAbono = new Map(movimientosDeCuenta(ventas, pagos).filter((m) => m.tipo === "abono").map((m) => [m.id, m.saldo_usd]));
+  const saldoDelAbono = (p: { id: number; monto_usd: number }) => {
+    const despues = saldoTrasAbono.get(p.id);
+    return despues === undefined ? "—" : `Debía ${usd(redondear(despues + Number(p.monto_usd)))} → quedó ${usd(despues)}`;
+  };
+  // El seguimiento: cuándo fue el último trato con este cliente, sea el que sea.
+  const trato = estudiarCliente({ alta: cliente.creado_en, ventas, abonos: pagos, ultimoRecordatorio: recordadoEl, ultimoContacto: contactos[0]?.fecha ?? null }, hoy());
 
   // Enlaces de WhatsApp: recordar la deuda y mandar cada nota. Solo si hay teléfono.
   const pendientes = cuentas.filter((c) => c.pendiente_usd > 0).sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -329,7 +341,63 @@ export default async function PaginaCliente({
         </section>
       </div>
 
-      <section className="tarjeta">
+      <section className="tarjeta" id="seguimiento">
+        <h2 className={estilos.subtitulo}>Seguimiento</h2>
+        <p className={estilos.ayuda}>
+          <strong className={trato.porLlamar ? estilos.vencida : undefined}>{describirTrato(trato)}</strong>
+          {trato.ultimaCompra ? ` · última compra el ${fechaCorta(trato.ultimaCompra)}` : " · nunca ha comprado"}
+          {trato.ultimoAbono ? ` · último abono el ${fechaCorta(trato.ultimoAbono)}` : ""}
+          {recordadoEl ? ` · recordatorio el ${fechaCorta(recordadoEl)}` : ""}
+          {contactos[0] ? ` · ${TIPOS_DE_CONTACTO[contactos[0].tipo].toLowerCase()} el ${fechaCorta(contactos[0].fecha)}` : ""}
+          {trato.cadaCuantosDias ? ` · suele comprar cada ${trato.cadaCuantosDias} días` : ""}
+          {trato.proximaCompra ? ` · le tocaría el ${fechaCorta(trato.proximaCompra)}` : ""}
+          {trato.porLlamar ? " · toca llamarlo para ofrecerle mercancía." : "."}{" "}
+          <Link href="/admin/clientes/seguimiento">Estudio de clientes</Link>
+        </p>
+        <form action={anotarContactoAccion} className="formulario">
+          <input type="hidden" name="cliente_id" value={cliente.id} />
+          <input type="hidden" name="volver_a" value={`/admin/clientes/${cliente.id}#seguimiento`} />
+          <div className="formulario__fila">
+            <div className="campo">
+              <label htmlFor="contacto-tipo">Qué trato hubo</label>
+              <select id="contacto-tipo" name="tipo" defaultValue="llamada">
+                {Object.entries(TIPOS_DE_CONTACTO).map(([valor, nombre]) => (
+                  <option key={valor} value={valor}>
+                    {nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="campo">
+              <label htmlFor="contacto-fecha">Cuándo</label>
+              <input id="contacto-fecha" name="fecha" type="date" max={hoy()} defaultValue={hoy()} />
+            </div>
+          </div>
+          <div className="campo">
+            <label htmlFor="contacto-nota">Qué quedó (opcional)</label>
+            <input id="contacto-nota" name="nota" type="text" maxLength={300} placeholder="Va a pedir el viernes" />
+          </div>
+          <div>
+            <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+              Anotar el trato
+            </button>
+          </div>
+        </form>
+        {contactos.length > 0 && (
+          <ul className={estilos.pedidos} style={{ marginTop: "var(--espacio-3)" }}>
+            {contactos.map((c) => (
+              <li key={c.id}>
+                <p>
+                  <strong>{fechaCorta(c.fecha)}</strong> · {TIPOS_DE_CONTACTO[c.tipo]}
+                  {c.nota ? ` · ${c.nota}` : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="tarjeta" id="cuentas">
         <h2 className={estilos.subtitulo}>Cuentas</h2>
         {cuentas.length === 0 ? (
           <p className="vacio">Sin ventas todavía.</p>
@@ -385,9 +453,9 @@ export default async function PaginaCliente({
                     <td className={estilos.accionesFila}>
                       <Link href={`/admin/ventas/${v.id}/nota`}>Ver nota</Link>
                       {fotoDeVenta.has(v.id) && (
-                        <a href={`/admin/adjuntos/${fotoDeVenta.get(v.id)}`} target="_blank" rel="noopener" title="La foto de la nota firmada">
+                        <Link href={`/admin/adjuntos/${fotoDeVenta.get(v.id)}/ver?volver_a=${aqui("cuentas")}`} title="La foto de la nota firmada">
                           Foto
-                        </a>
+                        </Link>
                       )}
                       {enlaceNota(v) && (
                         <a href={enlaceNota(v)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
@@ -423,8 +491,9 @@ export default async function PaginaCliente({
         </section>
       )}
 
-      <section className="tarjeta">
+      <section className="tarjeta" id="abonos">
         <h2 className={estilos.subtitulo}>Abonos</h2>
+        <p className={estilos.ayuda}>Cada abono con su número, lo que debía el cliente en ese momento y lo que quedó; su captura lleva el mismo número.</p>
         {pagos.length === 0 ? (
           <p className="vacio">Sin abonos todavía.</p>
         ) : (
@@ -432,11 +501,13 @@ export default async function PaginaCliente({
             <table className="tabla tabla--fichas">
               <thead>
                 <tr>
+                  <th>N.º</th>
                   <th>Fecha</th>
                   <th>Método</th>
                   <th className="numero">Monto</th>
                   <th className="numero">Tasa</th>
                   <th className="numero">En USD</th>
+                  <th>Saldo</th>
                   <th>Referencia</th>
                   <th>
                     <span className="visualmente-oculto">Acciones</span>
@@ -446,11 +517,13 @@ export default async function PaginaCliente({
               <tbody>
                 {pagos.map((p) => (
                   <tr key={p.id}>
+                    <td data-label="N.º">{numeroDeAbono.get(p.id)}</td>
                     <td data-label="Fecha">{fechaCorta(p.fecha)}</td>
                     <td data-label="Método">{METODOS_PAGO[p.metodo]}</td>
                     <td data-label="Monto" className="numero">{formatearMonto(p.monto, p.moneda)}</td>
                     <td data-label="Tasa" className="numero" data-vacio={p.tasa ? undefined : ""}>{p.tasa ? tasaLegible(p.tasa) : "—"}</td>
                     <td data-label="En USD" className="numero">{usd(p.monto_usd)}</td>
+                    <td data-label="Saldo">{saldoDelAbono(p)}</td>
                     <td data-label="Referencia" data-vacio={p.referencia ? undefined : ""}>{p.referencia || "—"}</td>
                     <td className={estilos.accionesFila}>
                       {enlaceRecibo(p) && (
@@ -459,9 +532,9 @@ export default async function PaginaCliente({
                         </a>
                       )}
                       {capturaDe.has(p.id) && (
-                        <a href={`/admin/adjuntos/${capturaDe.get(p.id)}`} target="_blank" rel="noopener" className="enlace-fila">
-                          Captura
-                        </a>
+                        <Link href={`/admin/adjuntos/${capturaDe.get(p.id)}/ver?volver_a=${aqui("abonos")}`} className="enlace-fila">
+                          Captura N.º {numeroDeAbono.get(p.id)}
+                        </Link>
                       )}
                       <Link href={`/admin/pagos/${p.id}/eliminar`} className="enlace-fila">
                         Eliminar
@@ -518,7 +591,7 @@ export default async function PaginaCliente({
         )}
       </section>
 
-      <section className="tarjeta">
+      <section className="tarjeta" id="fotos">
         <h2 className={estilos.subtitulo}>Notas de entrega</h2>
         <p className={estilos.ayuda}>
           Haz una foto a la nota en papel y guárdala aquí. Queda unida al cliente y, si la eliges, a
@@ -560,14 +633,14 @@ export default async function PaginaCliente({
               const venta = a.venta_id ? ventaDeAdjunto.get(a.venta_id) : undefined;
               return (
                 <li key={a.id} className={estilos.miniatura}>
-                  <a href={`/admin/adjuntos/${a.id}`} target="_blank" rel="noopener">
+                  <Link href={`/admin/adjuntos/${a.id}/ver?volver_a=${aqui("fotos")}`}>
                     {a.tipo === "application/pdf" ? (
                       <span className={estilos.miniaturaPdf}>PDF</span>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={`/admin/adjuntos/${a.id}`} alt={a.descripcion || "Nota de entrega"} loading="lazy" />
                     )}
-                  </a>
+                  </Link>
                   <div className={estilos.miniaturaTexto}>
                     <strong>{a.descripcion || "Nota"}</strong>
                     <span>
@@ -575,6 +648,7 @@ export default async function PaginaCliente({
                       {venta ? ` · venta del ${fechaCorta(venta.fecha)} (${usd(venta.total_usd)})` : ""}
                       {/* La foto de una nota que después se borró: se queda con el cliente, y se dice. */}
                       {!venta && !a.pago_id && /^Nota N\.º/.test(a.descripcion) ? " · esa nota ya se borró; la foto se queda aquí" : ""}
+                      {a.pago_id && numeroDeAbono.has(a.pago_id) ? ` · abono N.º ${numeroDeAbono.get(a.pago_id)}` : ""}
                     </span>
                     <Link href={`/admin/adjuntos/${a.id}/eliminar`} className="enlace-fila">
                       Eliminar

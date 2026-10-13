@@ -341,9 +341,18 @@ export function db(): Promise<Client> {
   return global.__dbVillareal;
 }
 
+/**
+ * Un número que no es un número (`Number("abc")` en una dirección mal
+ * escrita) no se puede mandar a la base: va como null, y así la consulta
+ * no encuentra nada y la página da 404 en vez de caerse.
+ */
+function limpiar(args: InValue[]): InValue[] {
+  return args.map((v) => (typeof v === "number" && !Number.isFinite(v) ? null : v));
+}
+
 /** Todas las filas de una consulta, como objetos con el nombre de cada columna. */
 export async function filas<T>(sql: string, args: InValue[] = []): Promise<T[]> {
-  const resultado = await (await db()).execute({ sql, args });
+  const resultado = await (await db()).execute({ sql, args: limpiar(args) });
   return resultado.rows as unknown as T[];
 }
 
@@ -355,7 +364,7 @@ export async function fila<T>(sql: string, args: InValue[] = []): Promise<T | nu
 
 /** Un insert, update o delete. Devuelve cuántas filas tocó y el último id insertado. */
 export async function ejecutar(sql: string, args: InValue[] = []): Promise<{ cambios: number; ultimoId: number }> {
-  const resultado = await (await db()).execute({ sql, args });
+  const resultado = await (await db()).execute({ sql, args: limpiar(args) });
   return { cambios: resultado.rowsAffected, ultimoId: Number(resultado.lastInsertRowid ?? 0) };
 }
 

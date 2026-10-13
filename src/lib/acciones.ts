@@ -29,6 +29,7 @@ import {
   ponerEnlaceDeProveedor,
   registrarPagoProveedor,
   type LineaDeCompraNueva,
+  pagoProveedorRepetidoReciente,
 } from "./proveedores";
 import { leerDiasDeCredito, sumarDias } from "./credito";
 import { explicarMotivo, leerDireccion } from "./direcciones";
@@ -74,7 +75,7 @@ import {
   entradaBloqueada,
   olvidarEntradasFallidas,
 } from "./intentos";
-import { buscarVenta, crearVenta, eliminarVenta, marcarEntrega, ultimoPrecioAlCliente, type LineaVenta } from "./ventas";
+import { buscarVenta, crearVenta, eliminarVenta, marcarEntrega, ultimoPrecioAlCliente, ventaRepetidaReciente, type LineaVenta } from "./ventas";
 import { KILOS_MAXIMOS, PRECIO_MAXIMO, lineaRellena, revisarFecha, revisarVenta, type LineaEscrita } from "./venta-sensata";
 import { existenciaSinMarca, existenciasPorClave, registrarAjuste } from "./inventario";
 import { ajustePorRecuento } from "./stock";
@@ -95,7 +96,11 @@ import { buscarMarca, eliminarMarca, marcaPorNombre, renombrarMarca, unirMarcas 
 import { NOMBRE_ESTADO_PRODUCTO, claveDe, esEstadoDeProducto, estadoDeProducto, nombreDeVenta, vendiblesDe, type EstadoProducto } from "./catalogo";
 import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
-import { buscarPago, eliminarPago, registrarPago } from "./pagos";
+import { buscarPago, eliminarPago, pagoRepetidoReciente, registrarPago } from "./pagos";
+import { anotarContacto, esTipoDeContacto, TIPOS_DE_CONTACTO } from "./contactos";
+import { empujarAviso } from "./push";
+import { avisoDePrueba } from "./avisos";
+import { negocio } from "@/config/negocio";
 import { TAMANO_MAXIMO_ADJUNTO, buscarAdjunto, eliminarAdjunto, esTipoAdjunto, guardarAdjunto } from "./adjuntos";
 import { anotarLecturaDeFoto, aparcarFoto, buscarFotoEnEspera, olvidarFotoEnEspera, pasarFotoAAdjuntos, pasarFotoAAdjuntosDeProveedor } from "./fotos-en-espera";
 import { lectorDisponible, leerCaptura, leerNota, type ProductoDelCatalogo } from "./lector-de-notas";
@@ -279,7 +284,7 @@ async function guardarFotoDeLaNota(foto: FotoDeLaNota, clienteId: number, ventaI
   await pasarFotoAAdjuntos(foto.id, clienteId, ventaId, `Nota N.º ${numeroDeNota(ventaId)} firmada`);
 }
 
-type Volver = (mensaje: string, como?: "error" | "ok", casilla?: "confirmar_captura" | "confirmar_monto") => never;
+type Volver = (mensaje: string, como?: "error" | "ok", casilla?: "confirmar_captura" | "confirmar_monto" | "confirmar_repetido") => never;
 
 type PagoRevisado = {
   /** El cliente o el proveedor. */
@@ -745,6 +750,10 @@ export async function guardarPagoProveedor(datos: FormData): Promise<void> {
   const origen = volverA(datos, proveedorId ? `/admin/proveedores/${proveedorId}` : "/admin/proveedores");
   const p = await revisarPago(datos, origen, { campoId: "proveedor_id", sinId: "Elige un proveedor.", comprobanteObligatorio: false, nombre: "pago", boton: "Registrar pago" });
   if (!(await buscarProveedor(p.id))) volverConError("/admin/proveedores", "No se encontró el proveedor.");
+  // Igual que con los abonos: el mismo pago anotado hace un momento se pregunta antes de guardar.
+  if (texto(datos, "confirmar_repetido") !== "1" && (await pagoProveedorRepetidoReciente({ proveedor_id: p.id, fecha: p.fecha, metodo: p.metodo, moneda: p.moneda, monto: p.monto }))) {
+    p.volver("Hace un momento registraste un pago igual a este, y ya está guardado. Si de verdad son dos pagos, marca «Sí, es otro pago» y guarda otra vez.", "error", "confirmar_repetido");
+  }
 
   let pagoId = 0;
   try {
@@ -1451,10 +1460,6 @@ export async function guardarVenta(datos: FormData): Promise<void> {
 
   const revision = revisarVenta(escritas);
   if (revision.errores.length > 0) volver(revision.errores.join(" "));
-  if (revision.avisos.length > 0 && texto(datos, "confirmar") !== "1") {
-    volver(`${revision.avisos.join(" ")} Si es así, marca «Lo escrito es correcto» y guarda otra vez.`, "confirmar");
-  }
-
   const lineas: LineaVenta[] = escritas.map((l) => ({
     producto_id: l.producto_id,
     variante_id: l.variante_id,
@@ -1462,6 +1467,19 @@ export async function guardarVenta(datos: FormData): Promise<void> {
     precio_unitario_usd: l.precio!,
     piezas: l.piezas,
   }));
+  // La misma venta anotada hace un momento es casi siempre el botón pulsado dos veces: se pregunta antes de guardar.
+  if (texto(datos, "confirmar") !== "1") {
+    const igual = await ventaRepetidaReciente(clienteId, fecha, lineas);
+    if (igual) {
+      volver(
+        `Hace un momento registraste una venta igual a esta: la nota ${numeroDeNota(igual.id)}, con los mismos productos, cantidades y precios, y ya está guardada. Si de verdad son dos ventas, marca «Lo escrito es correcto» y guarda otra vez.`,
+        "confirmar",
+      );
+    }
+  }
+  if (revision.avisos.length > 0 && texto(datos, "confirmar") !== "1") {
+    volver(`${revision.avisos.join(" ")} Si es así, marca «Lo escrito es correcto» y guarda otra vez.`, "confirmar");
+  }
   // El mismo total que calcula `crearVenta`, para compararlo con el de la nota.
   const total = redondear(lineas.reduce((s, l) => s + l.cantidad * l.precio_unitario_usd, 0));
 
@@ -1601,6 +1619,17 @@ export async function guardarPago(datos: FormData): Promise<void> {
   const origen = volverA(datos, "/admin/pagos");
   const p = await revisarPago(datos, origen, { campoId: "cliente_id", sinId: "Elige un cliente.", comprobanteObligatorio: true, nombre: "abono", boton: "Registrar abono" });
   const clienteId = p.id;
+  // El mismo abono anotado hace un momento es casi siempre el botón pulsado dos veces: se pregunta antes de guardar.
+  if (texto(datos, "confirmar_repetido") !== "1") {
+    const igual = await pagoRepetidoReciente({ cliente_id: clienteId, fecha: p.fecha, metodo: p.metodo, moneda: p.moneda, monto: p.monto });
+    if (igual) {
+      p.volver(
+        `Hace un momento registraste un abono igual a este (${usd(igual.monto_usd)} el ${fechaCorta(igual.fecha)}): casi siempre es el botón pulsado dos veces, y ya está guardado. Si de verdad son dos abonos, marca «Sí, es otro abono» y guarda otra vez.`,
+        "error",
+        "confirmar_repetido",
+      );
+    }
+  }
 
   let pagoId = 0;
   try {
@@ -1968,4 +1997,39 @@ export async function borrarOferta(datos: FormData): Promise<void> {
   if (!id || !oferta) volverConError("/admin/ofertas", "No se encontró la oferta.");
   await eliminarOferta(id);
   volverConExito("/admin/ofertas", `Oferta «${oferta.nombre}» borrada.`);
+}
+
+// ---------- Avisos y seguimiento de clientes ----------
+
+/** Un aviso de prueba a los teléfonos con los avisos activados, desde la campanita. */
+export async function probarAviso(): Promise<void> {
+  await exigirSesion();
+  const r = await empujarAviso(avisoDePrueba(negocio.nombreCorto));
+  if (r.telefonos === 0) volverConError("/admin/avisos", "Ningún teléfono tiene los avisos activados todavía: actívalos arriba, en este teléfono.");
+  if (r.enviados === 0) {
+    volverConError(
+      "/admin/avisos",
+      `No se pudo mandar el aviso a ${r.fallidos === 1 ? "este teléfono" : `${r.fallidos} teléfonos`}. Si el teléfono quitó el permiso, desactiva los avisos y vuelve a activarlos.`,
+    );
+  }
+  volverConExito(
+    "/admin/avisos",
+    `Aviso de prueba mandado a ${r.enviados === 1 ? "1 teléfono" : `${r.enviados} teléfonos`}${r.fallidos ? `; ${r.fallidos} no respondió` : ""}. Tiene que haber llegado como una notificación.`,
+  );
+}
+
+/** «Lo llamé hoy», «Lo visité»: deja anotado el trato con el cliente, para el estudio de clientes. */
+export async function anotarContactoAccion(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const clienteId = numero(datos, "cliente_id");
+  const cliente = clienteId ? await buscarCliente(clienteId) : null;
+  if (!clienteId || !cliente) volverConError("/admin/clientes/seguimiento", "No se encontró el cliente.");
+  const vuelta = volverA(datos, `/admin/clientes/${clienteId}#seguimiento`);
+  const tipo = texto(datos, "tipo") || "llamada";
+  if (!esTipoDeContacto(tipo)) volverConError(vuelta, "Elige qué trato fue.");
+  const fecha = texto(datos, "fecha") || hoy();
+  const malaFecha = revisarFecha(fecha, hoy());
+  if (malaFecha) volverConError(vuelta, malaFecha);
+  await anotarContacto(clienteId, fecha, tipo, texto(datos, "nota"));
+  volverConExito(vuelta, `Anotado: ${TIPOS_DE_CONTACTO[tipo].toLowerCase()} a ${cliente.rotulo} el ${fechaCorta(fecha)}.`);
 }

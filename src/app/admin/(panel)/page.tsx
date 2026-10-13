@@ -9,10 +9,14 @@ import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { diasEntre } from "@/lib/credito";
 import { METODOS_PAGO, cantidad, fechaCorta, formatearMonto, hoy, mesLegible, redondear, usd } from "@/lib/dinero";
 import { listarCopiasNube } from "@/lib/copias-nube";
-import { enlaceWhatsappA } from "@/lib/whatsapp";
+import { enlaceWhatsappA, mensajeOfrecer } from "@/lib/whatsapp";
 import { ultimosRecordatorios } from "@/lib/recordatorios";
 import { existencias } from "@/lib/inventario";
-import { copiarAhora } from "@/lib/acciones";
+import { anotarContactoAccion, copiarAhora } from "@/lib/acciones";
+import { estudioDeClientes } from "@/lib/estudio-de-clientes";
+import { describirTrato } from "@/lib/seguimiento";
+import { generarAvisosSiFaltan } from "@/lib/avisos";
+import { negocio } from "@/config/negocio";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "./panel.module.css";
 
@@ -21,7 +25,9 @@ export const metadata = { title: "Resumen" };
 export default async function PaginaResumen({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
   const mes = hoy().slice(0, 7);
-  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, porEntregar, vendidoEsteMes, conVencimiento, proveedores, recordados, inventario] =
+  // Los avisos del día en la campanita, por si la tarea de la mañana no corrió todavía (solo escribe si faltan).
+  await generarAvisosSiFaltan();
+  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, porEntregar, vendidoEsteMes, conVencimiento, proveedores, recordados, inventario, estudio] =
     await Promise.all([
       listarClientes(),
       resumenDeudas(),
@@ -36,6 +42,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
       proveedoresConVencimiento(),
       ultimosRecordatorios(),
       existencias(),
+      estudioDeClientes(hoy(), false),
     ]);
   const [hoyCierre, entregas] = await Promise.all([cierreDelDia(hoy()), listarVentasPorEntregar().then(conLineas)]);
   const fecha = hoy();
@@ -54,6 +61,10 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
   const porRecordar = deudores.filter((c) => c.vencido_usd > 0 && puedeRecordar(c) && (!recordadoEl(c.id) || diasEntre(recordadoEl(c.id)!, fecha) >= 7));
   // El inventario que anda bajo, para avisarlo arriba.
   const inventarioBajo = inventario.filter((e) => e.seguido && (e.estado === "sin" || e.estado === "poco"));
+  // El estudio de clientes: a quién toca llamar porque lleva una semana o más sin trato.
+  const porLlamar = estudio.filter((e) => e.trato.porLlamar);
+  const ofrecer = (e: (typeof estudio)[number]) =>
+    enlaceWhatsappA(e.cliente.telefono, mensajeOfrecer({ negocio: negocio.nombre, cliente: e.cliente.nombre, productos: e.trato.loQueCompra, web: negocio.web }));
 
   return (
     <>
@@ -170,6 +181,54 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
           </ul>
           <p className={estilos.ayuda} style={{ marginTop: "var(--espacio-3)", marginBottom: 0 }}>
             Pasaron su plazo y no se les ha escrito en la última semana. «Recordar» abre WhatsApp con el mensaje y deja anotado el día.
+          </p>
+        </section>
+      )}
+
+      {porLlamar.length > 0 && (
+        <section className="tarjeta">
+          <div className={estilos.encabezado} style={{ marginBottom: "var(--espacio-3)" }}>
+            <h2 className={estilos.subtitulo} style={{ marginBottom: 0 }}>
+              Clientes por llamar ({porLlamar.length})
+            </h2>
+            <Link href="/admin/clientes/seguimiento">Estudio de clientes</Link>
+          </div>
+          <ul className={estilos.pedidos}>
+            {porLlamar.slice(0, 6).map((e) => {
+              const whatsapp = ofrecer(e);
+              return (
+                <li key={e.cliente.id}>
+                  <p>
+                    <Link href={`/admin/clientes/${e.cliente.id}`}>
+                      <strong>{e.cliente.rotulo}</strong>
+                    </Link>
+                    {" · "}
+                    <span className="ayuda">{describirTrato(e.trato).toLowerCase()}</span>
+                    {e.trato.loQueCompra.length > 0 ? <span className="ayuda"> · suele comprar {e.trato.loQueCompra.join(", ")}</span> : null}
+                    {" · "}
+                    {whatsapp && (
+                      <>
+                        <a href={whatsapp} target="_blank" rel="noopener" className={estilos.whatsapp}>
+                          Ofrecer
+                        </a>
+                        {" · "}
+                      </>
+                    )}
+                    <form action={anotarContactoAccion} style={{ display: "inline" }}>
+                      <input type="hidden" name="cliente_id" value={e.cliente.id} />
+                      <input type="hidden" name="tipo" value="llamada" />
+                      <input type="hidden" name="volver_a" value="/admin" />
+                      <button type="submit" className={`${estilos.botonEnlace} ${estilos.enLinea}`}>
+                        Lo llamé hoy
+                      </button>
+                    </form>
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+          <p className={estilos.ayuda} style={{ marginTop: "var(--espacio-3)", marginBottom: 0 }}>
+            Llevan una semana o más sin compra, abono, recordatorio ni llamada anotada: para ofrecerles mercancía y ver cómo va todo.
           </p>
         </section>
       )}
@@ -389,7 +448,8 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
         <h2 className={estilos.subtitulo}>El panel como app</h2>
         <p className={estilos.ayuda} style={{ marginBottom: 0 }}>
           Ponlo en la pantalla de inicio del teléfono: abre de un toque, a pantalla completa y con el león de icono.{" "}
-          <Link href="/admin/app">Cómo hacerlo</Link>.
+          <Link href="/admin/app">Cómo hacerlo</Link>. Y en la campanita de arriba, <Link href="/admin/avisos">los avisos</Link>: actívalos en el
+          teléfono y cada mañana llega el resumen del día.
         </p>
       </section>
 

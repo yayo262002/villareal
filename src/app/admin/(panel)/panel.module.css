@@ -149,7 +149,6 @@
 }
 .cifra {
   min-width: 0;
-  overflow-wrap: anywhere;
   background: var(--color-superficie);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-grande);
@@ -161,7 +160,7 @@
 }
 .cifra dd {
   margin: var(--espacio-1) 0 0;
-  font-size: 22px;
+  font-size: clamp(16px, 5vw, 22px);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -1003,6 +1002,12 @@
   text-decoration: underline;
   cursor: pointer;
 }
+/* El mismo botón, dentro de una línea de texto. */
+.botonEnlace.enLinea {
+  min-height: 0;
+  font-size: inherit;
+  vertical-align: baseline;
+}
 .botonEnlace:focus-visible {
   outline: 3px solid var(--color-acento);
   outline-offset: 2px;
@@ -1368,3 +1373,87 @@
   overflow-wrap: anywhere;
 }
 
+
+/* La campanita de la cabecera, con cuántos avisos hay sin leer. */
+.cabeceraDerecha {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+}
+.campana {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: inherit;
+  text-decoration: none;
+}
+.campana:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.campana svg {
+  width: 24px;
+  height: 24px;
+}
+.campanaCuenta {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-acento);
+  color: var(--color-marca-oscuro);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* La lista de avisos: los que no se habían leído van marcados. */
+.avisos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--espacio-2);
+}
+.aviso {
+  display: grid;
+  gap: 2px;
+  padding: var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+  border-left: 4px solid transparent;
+}
+.aviso--nuevo {
+  border-left-color: var(--color-acento);
+}
+.avisoTitulo {
+  font-weight: 700;
+}
+.avisoTitulo a {
+  color: inherit;
+}
+.avisoCuerpo {
+  white-space: pre-line;
+  font-size: 15px;
+}
+.avisoFecha {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+
+/* La foto de una nota o de una captura, vista entera, con su fecha y de quién es. */
+.adjuntoEntero {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radio);
+  border: 1px solid var(--color-borde);
+  background: var(--color-superficie-suave);
+}

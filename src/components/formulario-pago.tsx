@@ -58,6 +58,7 @@ export function FormularioPago({
   const leida = escrito(parametros, "leida") === "1";
   const pideConfirmarCaptura = escrito(parametros, "confirmar_captura") === "1";
   const pideConfirmarMonto = escrito(parametros, "confirmar_monto") === "1";
+  const pideConfirmarRepetido = escrito(parametros, "confirmar_repetido") === "1";
   const seLee = conCaptura && lectorDisponible();
   const fijo = clienteFijo ? clientes.find((c) => c.id === clienteFijo) : undefined;
 
@@ -137,6 +138,12 @@ export function FormularioPago({
         <label className={estilos.casilla}>
           <input type="checkbox" name="confirmar_monto" value="1" />
           <span>El monto es correcto: guardar igual</span>
+        </label>
+      )}
+      {pideConfirmarRepetido && (
+        <label className={estilos.casilla}>
+          <input type="checkbox" name="confirmar_repetido" value="1" />
+          <span>Sí, es otro {quien === "cliente" ? "abono" : "pago"} distinto del que ya está guardado</span>
         </label>
       )}
 

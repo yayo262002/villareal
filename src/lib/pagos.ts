@@ -104,3 +104,19 @@ export async function ultimaTasa(): Promise<number | null> {
   );
   return f?.tasa ?? null;
 }
+
+/**
+ * Un abono igual (mismo cliente, fecha, método, moneda y monto) anotado hace
+ * un momento: casi siempre es el botón pulsado dos veces, no dos abonos.
+ */
+export async function pagoRepetidoReciente(
+  datos: { cliente_id: number; fecha: string; metodo: string; moneda: string; monto: number },
+  minutos = 10,
+): Promise<{ id: number; fecha: string; monto_usd: number } | null> {
+  return fila<{ id: number; fecha: string; monto_usd: number }>(
+    `select id, fecha, monto_usd from pagos
+     where cliente_id = ? and fecha = ? and metodo = ? and moneda = ? and abs(monto - ?) < 0.005 and creado_en >= datetime('now', ?)
+     order by id desc limit 1`,
+    [datos.cliente_id, datos.fecha, datos.metodo, datos.moneda, datos.monto, `-${minutos} minutes`],
+  );
+}

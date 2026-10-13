@@ -106,7 +106,11 @@ tiene plan gratuito. Solo hay que poner dos variables; el código no cambia.
    - `ADMIN_CLAVE`: la clave del panel.
    - `TURSO_DATABASE_URL`: la URL de Turso.
    - `TURSO_AUTH_TOKEN`: el token de Turso.
-   - `CRON_SECRET`: un texto largo al azar, para la copia automática.
+   - `CRON_SECRET`: un texto largo al azar, para la copia automática y el
+     aviso de cada mañana.
+   - `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (opcionales): las claves con
+     las que se firman los avisos al teléfono. Si no están, se crean solas
+     la primera vez y quedan en la tabla `ajustes`.
    - `ANTHROPIC_API_KEY` (opcional): para que la foto de cada nota se lea
      sola. Se crea en https://console.anthropic.com y se paga por uso.
 4. Despliega. La primera visita crea las tablas y los productos iniciales
@@ -224,6 +228,20 @@ src/components/nav-panel.tsx     El menú del panel, con la sección abierta mar
 src/components/aviso-de-carga.tsx  La raya dorada mientras llega la pantalla que se tocó en el panel
 src/components/un-solo-envio.tsx   Que un toque doble no registre dos veces una venta o un abono
 src/components/fotos-de-nota.tsx   Las fotos de la nota firmada de una venta, en la nota, en Ventas y en el despacho
+src/app/admin/(panel)/adjuntos/[id]/ver/  Una foto vista entera, con su fecha, de quién es y la vuelta a donde se estaba
+src/lib/avisos.ts         La campanita: los avisos de lo que el sistema sabe antes que el dueño, y los del día
+src/lib/aviso-manana.ts   El texto del aviso de cada mañana (puro, con pruebas)
+src/lib/push.ts           Los avisos al teléfono (Web Push): los teléfonos activados y el envío
+public/admin/sw.js        El avisador del panel: enseña los avisos como notificaciones del teléfono
+src/components/avisos-del-telefono.tsx  «Activar avisos en este teléfono»
+src/app/admin/(panel)/avisos/  La pantalla de la campanita
+src/app/admin/telefonos/  Guarda y quita los teléfonos con avisos (lo usa el botón de activar)
+src/app/api/aviso-diario/ Lo que Vercel hace cada mañana a las 7: los avisos del día y el resumen al teléfono
+src/lib/cron.ts           Si una llamada viene del cron de Vercel
+src/lib/seguimiento.ts    El estudio de clientes: el último trato, qué compra cada uno y cada cuánto (puro, con pruebas)
+src/lib/estudio-de-clientes.ts  El estudio desde la base, para el Resumen, su pantalla y los avisos
+src/lib/contactos.ts      «Lo llamé», «Lo visité»: los tratos anotados con cada cliente
+src/app/admin/(panel)/clientes/seguimiento/  La pantalla del estudio de clientes
 src/app/admin/            El panel (productos/nuevo y productos/[id], marcas, familias, ofertas…)
 datos/                    La base de datos (fuera de Git)
 ```
@@ -403,6 +421,18 @@ datos/                    La base de datos (fuera de Git)
   con lo que debe, lo vencido y su plazo más cercano), y debajo las notas,
   en el mismo orden. Lo mismo vale para lo que el negocio le debe a cada
   proveedor, con los días que da el proveedor.
+- **Estudio de clientes** (`/admin/clientes/seguimiento`, y «Clientes por
+  llamar» en el Resumen). De cada cliente, cuándo fue el **último trato**:
+  una compra, un abono, un recordatorio, el día en que se registró o un
+  trato anotado a mano («Lo llamé», «Lo visité», «Le escribí»; tabla
+  `contactos`). Quien lleva **una semana o más sin trato** sale «por
+  llamar», el que más tiempo lleva primero, para ofrecerle mercancía y
+  ver cómo va todo: «Ofrecer por WhatsApp» abre el mensaje con lo que
+  suele comprar, y «Lo llamé hoy» deja anotado el trato y lo baja de la
+  lista. De cada uno dice también qué suele comprar, cada cuántos días y
+  cuándo le tocaría la siguiente compra (`src/lib/seguimiento.ts`). En la
+  ficha, «Seguimiento» lo resume y deja anotar cualquier trato con fecha y
+  nota.
 - **Recordatorios de cobro.** Quien pasó su plazo y no ha recibido un
   recordatorio en la última semana sale arriba en el Resumen, en «Cobros
   para recordar». «Recordar» (ahí, en «Quién debe», en la ficha y en el
@@ -468,6 +498,14 @@ datos/                    La base de datos (fuera de Git)
   de dólar (Bs 1, por ejemplo) se rechaza: casi siempre es un error al
   teclear.
 - El saldo del cliente es lo comprado menos lo pagado, en dólares.
+- **Lo repetido se frena.** El mismo abono (cliente, fecha, método, moneda
+  y monto) o el mismo pago a un proveedor anotado hace menos de diez
+  minutos, o la misma venta (cliente, fecha y las mismas líneas), casi
+  siempre es el botón pulsado dos veces: no se guarda y el formulario
+  vuelve con la casilla «Sí, es otro abono» (o «Lo escrito es correcto» en
+  la venta) para guardarlo si de verdad son dos (`pagoRepetidoReciente`,
+  `ventaRepetidaReciente`). Con JavaScript, además, el botón se apaga al
+  enviar.
 - Una venta o un pago mal anotado se **borra** desde la ficha del cliente
   (enlace «Eliminar», con pantalla de confirmación) y se registra de nuevo.
   No hay edición: es más fácil de entender y más difícil de equivocarse.
@@ -505,7 +543,11 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   la **clave del panel** otra vez, porque no tiene vuelta atrás. Las
   claves malas cuentan como las de la entrada: cinco seguidas y hay que
   esperar. Lo mismo para borrar un proveedor.
-- **Abonos.** Lo que el cliente paga, sea todo o una parte. Se anotan desde
+- **Abonos.** Lo que el cliente paga, sea todo o una parte. En la ficha
+  cada abono lleva su **número** (del más antiguo al más nuevo), lo que
+  **debía el cliente en ese momento y lo que quedó** («Debía USD 135,50 →
+  quedó USD 101,75», con `movimientosDeCuenta`) y su captura con el mismo
+  número («Captura N.º 3»). Se anotan desde
   su ficha o desde Abonos y se aplican a sus notas más antiguas primero.
   En la ficha, cada abono tiene «Enviar recibo»: abre WhatsApp con lo que
   se recibió (en bolívares, con su tasa) y cómo queda la cuenta hoy.
@@ -560,7 +602,12 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     «Entregada», con su «Eliminar»; una nota entregada sin foto deja
     ponerla ahí mismo), en Ventas y en la ficha del cliente («Foto» en la
     fila de la nota) y en Despacho, en «Entregadas hoy», con cada nota que
-    se entregó en el día (`src/components/fotos-de-nota.tsx`).
+    se entregó en el día (`src/components/fotos-de-nota.tsx`). Toda foto
+    se abre en su **visor** (`/admin/adjuntos/12/ver`): entera, con la
+    fecha y la hora en que se guardó, de qué cliente y de qué nota o abono
+    es, «← Volver» a donde se estaba (`?volver_a=`), «Abrir la foto sola»
+    y «Eliminar». Las capturas de los proveedores tienen el suyo
+    (`/admin/adjuntos-proveedor/[id]/ver`).
   - **La foto se lee y se coteja con el pedido.** Con la clave
     `ANTHROPIC_API_KEY` puesta, al guardar se le enseña la foto a Claude
     junto con la lista de productos y marcas (`src/lib/lector-de-notas.ts`)
@@ -918,6 +965,33 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
 - **Fechas.** En Vercel el servidor va en hora UTC. Las fechas que propone
   el panel y las que se enseñan son las de Venezuela (UTC−4), esté donde
   esté el servidor.
+
+- **La campanita y los avisos al teléfono.** Arriba a la derecha del panel
+  está la campanita (`/admin/avisos`) con cuántos avisos hay sin leer: lo
+  que el sistema sabe antes que el dueño. Cada día se crean los del día
+  (`generarAvisosDelDia` en `src/lib/avisos.ts`, con una clave por cosa y
+  día o semana para no repetirlos): el resumen de la mañana, cada entrega
+  para hoy y cada atrasada, cada cliente que pasó su plazo (una vez por
+  semana), lo que se acaba del inventario (una vez por semana) y cuántos
+  clientes llevan una semana sin trato. Abrir la campanita los da por
+  leídos. Los crea la tarea de las 7 (`/api/aviso-diario`, cron en
+  `vercel.json` a las 11:00 UTC) y, por si no corrió, el Resumen al
+  abrirse (solo escribe si faltan). Se conservan 90 días.
+  - **Al teléfono.** En la campanita, «Activar avisos en este teléfono»
+    pide permiso, registra el avisador (`public/admin/sw.js`, con alcance
+    `/admin/`; el proxy lo deja pasar sin sesión) y guarda la suscripción
+    (tabla `avisos_telefonos`, por `/admin/telefonos`). Cada mañana a las
+    7 la tarea manda el resumen a todos los teléfonos con la librería
+    `web-push` (`src/lib/push.ts`), como una notificación de cualquier
+    app, aunque el panel esté cerrado; tocarla abre el panel. Un teléfono
+    que ya no existe (404 o 410) o que falla cinco veces seguidas se quita
+    solo. «Mandar un aviso de prueba» comprueba que llegan. En iPhone solo
+    funciona con el panel puesto en la pantalla de inicio (desde iOS
+    16.4); en Android, desde Chrome. Las claves VAPID se crean solas y
+    quedan en `ajustes` si no están en las variables de entorno. La
+    prueba de extremo a extremo lo cubre con un teléfono de mentira
+    (claves P-256 de verdad y un destino que no responde); contra la web
+    publicada no se toca nada de esto.
 
 ## Seguridad
 

@@ -136,7 +136,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
             {fotos.length > 0 ? (
               <>
                 <p className="ayuda">Toca la foto para verla entera. Está también en la ficha del cliente.</p>
-                <FotosDeLaNota adjuntos={fotos} conEliminar />
+                <FotosDeLaNota adjuntos={fotos} conEliminar volverA={`/admin/ventas/${venta.id}/nota`} />
               </>
             ) : (
               <>

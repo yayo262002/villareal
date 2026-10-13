@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { guardarCopiaNube } from "@/lib/copias-nube";
 import { guardarExportacionesEntre, podarExportaciones } from "@/lib/exportaciones";
@@ -6,6 +5,7 @@ import { leerFecha } from "@/lib/exportar";
 import { hace } from "@/lib/dinero";
 import { actualizarTasaOficial } from "@/lib/tasa-oficial";
 import { haySesion } from "@/lib/sesion";
+import { vieneDelCron } from "@/lib/cron";
 
 /**
  * Lo que Vercel hace solo cada mañana, antes de que abra la tienda (cron en
@@ -18,15 +18,6 @@ import { haySesion } from "@/lib/sesion";
  * Son tres tareas en una sola llamada porque el plan gratuito de Vercel da
  * pocas tareas programadas. Si una falla, las otras se hacen igual.
  */
-function vieneDelCron(request: Request): boolean {
-  const secreto = process.env.CRON_SECRET ?? "";
-  const cabecera = request.headers.get("authorization") ?? "";
-  if (!secreto || !cabecera.startsWith("Bearer ")) return false;
-  const a = Buffer.from(cabecera.slice(7));
-  const b = Buffer.from(secreto);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 function mensajeDe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

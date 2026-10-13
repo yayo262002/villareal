@@ -207,7 +207,7 @@ export default async function PaginaDespacho({ searchParams }: { searchParams: P
                   const suyas = fotosDeHoy.get(v.id) ?? [];
                   return (
                     <li key={v.id}>
-                      <FotosDeLaNota adjuntos={suyas} pequenas />
+                      <FotosDeLaNota adjuntos={suyas} pequenas volverA={estaPagina} />
                       <p>
                         <Link href={`/admin/ventas/${v.id}/nota`}>Nota {numeroDeNota(v.id)}</Link>
                         {" · "}

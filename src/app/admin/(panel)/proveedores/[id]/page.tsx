@@ -281,9 +281,9 @@ export default async function PaginaProveedor({
                     <td data-label="Referencia" data-vacio={p.referencia ? undefined : ""}>{p.referencia || "—"}</td>
                     <td className={estilos.accionesFila}>
                       {capturaDe.has(p.id) && (
-                        <a href={`/admin/adjuntos-proveedor/${capturaDe.get(p.id)}`} target="_blank" rel="noopener" className="enlace-fila">
+                        <Link href={`/admin/adjuntos-proveedor/${capturaDe.get(p.id)}/ver`} className="enlace-fila">
                           Captura
-                        </a>
+                        </Link>
                       )}
                       <Link href={`/admin/pagos-proveedor/${p.id}/eliminar`} className="enlace-fila">
                         Eliminar
