@@ -1006,11 +1006,15 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   captura»), pedidos y entregas («¡Vamos en camino!»), cobrar con
   buena cara («Recordatorio de pago», «¿Me confirma el pago?»), saludos,
   productos y horario. La lista está en `src/lib/stickers.ts` y los dibuja
-  `node scripts/stickers.ts` (Chrome, Archivo Black, el león) en
+  `npm run stickers` (Chrome, Archivo Black, el león grande arriba) en
   `public/stickers/`, con un ZIP. Desde la pantalla se guardan en el
   teléfono y en WhatsApp se convierten en sticker con la foto (en iPhone:
   «+» → Sticker; en Android: stickers → crear). Para cambiar uno o añadir
-  otro, se edita la lista y se vuelve a correr el guion.
+  otro, se edita la lista y se vuelve a correr el guion. El sticker con los
+  **datos del pago móvil del dueño** (banco, cédula y teléfono) los toma de
+  `PAGO_MOVIL_BANCO`, `PAGO_MOVIL_CEDULA` y `PAGO_MOVIL_TELEFONO` en
+  `.env.local`: no van en el código, que es público (en la imagen sí, que es
+  para mandársela a los clientes).
 
 ## Seguridad
 

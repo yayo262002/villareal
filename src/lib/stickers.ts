@@ -48,8 +48,10 @@ export type Sticker = {
   grupo: GrupoDeSticker;
   forma: FormaDeSticker;
   color: ColorDeSticker;
-  /** Arriba va este icono; sin icono, va el león. */
+  /** El icono pequeño de abajo, como acento; arriba siempre va el león. */
   icono?: IconoDeSticker;
+  /** Líneas más pequeñas debajo del texto: los datos del pago móvil. */
+  detalle?: string[];
 };
 
 export const STICKERS: Sticker[] = [
@@ -66,6 +68,9 @@ export const STICKERS: Sticker[] = [
 
   // Formas de pago
   { slug: "pago-movil", lineas: ["Pago", "móvil"], grupo: "formas", forma: "circulo", color: "verde", icono: "telefono" },
+  // Los datos del dueño para el pago móvil (banco, cédula y teléfono) no van en el código, que es público: los pone
+  // el guion desde PAGO_MOVIL_BANCO, PAGO_MOVIL_CEDULA y PAGO_MOVIL_TELEFONO de .env.local al dibujar.
+  { slug: "mis-datos-de-pago-movil", lineas: ["Pago móvil"], detalle: [], grupo: "formas", forma: "cuadrado", color: "verde", icono: "telefono" },
   { slug: "transferencia", lineas: ["Transferencia"], grupo: "formas", forma: "cuadrado", color: "verde", icono: "banco" },
   { slug: "zelle", lineas: ["Zelle"], grupo: "formas", forma: "circulo", color: "dorado", icono: "dolar" },
   { slug: "binance", lineas: ["Binance"], grupo: "formas", forma: "cuadrado", color: "negro", icono: "dolar" },

@@ -74,42 +74,52 @@ const ICONOS: Record<IconoDeSticker, string> = {
 };
 
 /** El tamaño de letra para que la línea más larga quepa en la forma. */
-function tamanoDeLetra(lineas: string[], tipo: FormaDeSticker): number {
-  const ancho = tipo === "circulo" || tipo === "sello" ? 340 : 390;
+function tamanoDeLetra(lineas: string[], tipo: FormaDeSticker, altoDisponible: number): number {
+  const ancho = tipo === "circulo" || tipo === "sello" ? 330 : 390;
   const masLarga = Math.max(...lineas.map((l) => l.length));
   const porAncho = ancho / (masLarga * 0.6);
-  const porAlto = lineas.length >= 3 ? 58 : 76;
-  return Math.max(34, Math.min(porAncho, porAlto));
+  const porAlto = altoDisponible / (lineas.length * 1.08);
+  return Math.max(30, Math.min(porAncho, porAlto, 76));
 }
+
+const PROPORCION_DEL_LEON = 1668 / 2400;
 
 function svgDe(s: Sticker, leon: string): string {
   const c = COLORES[s.color];
-  const letra = tamanoDeLetra(s.lineas, s.forma);
+  const esLogo = s.slug === "villa-real";
+  const conDetalle = Boolean(s.detalle?.length);
+  // Arriba, el león, grande: es la marca. Abajo, el icono pequeño, de acento.
+  const leonAlto = esLogo ? 230 : conDetalle ? 112 : 150;
+  const leonY = s.forma === "burbuja" ? 44 : 58;
+  const pieAlto = s.icono ? 60 : 0;
+  const pieY = s.forma === "burbuja" ? 372 : 404;
+  const zonaTexto = { desde: leonY + leonAlto + 6, hasta: s.icono ? pieY - 6 : s.forma === "burbuja" ? 404 : 440 };
+  const altoDisponible = zonaTexto.hasta - zonaTexto.desde - (conDetalle ? (s.detalle!.length * 44 + 8) : 0);
+  const letra = tamanoDeLetra(s.lineas, s.forma, altoDisponible);
   const interlineado = letra * 1.08;
-  // Arriba el icono (o el león); el texto debajo, centrado en lo que queda.
-  const conIcono = Boolean(s.icono);
-  const arribaAlto = conIcono ? 112 : 150;
-  const arribaY = s.forma === "burbuja" ? 54 : 70;
-  const zonaTexto = { desde: arribaY + arribaAlto + 6, hasta: s.forma === "burbuja" ? 404 : 430 };
-  const altoTexto = s.lineas.length * interlineado;
+  const altoTexto = s.lineas.length * interlineado + (conDetalle ? s.detalle!.length * 44 + 8 : 0);
   const primeraLinea = zonaTexto.desde + (zonaTexto.hasta - zonaTexto.desde - altoTexto) / 2 + letra * 0.85;
   const texto = s.lineas
     .map((l, i) => `<text x="256" y="${(primeraLinea + i * interlineado).toFixed(1)}" text-anchor="middle" font-family="Archivo Black" font-size="${letra.toFixed(1)}" fill="${c.texto}">${escapar(l)}</text>`)
     .join("");
-  const arriba = conIcono
-    ? `<g transform="translate(${256 - arribaAlto / 2} ${arribaY}) scale(${arribaAlto / 24})" fill="none" stroke="${c.acento}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${ICONOS[s.icono!]}</g>`
-    : `<image href="${leon}" x="${256 - (arribaAlto * 1668) / 2400 / 2}" y="${arribaY}" height="${arribaAlto}" width="${(arribaAlto * 1668) / 2400}"/>`;
-  // El león pequeño abajo, de firma, cuando arriba va un icono; si arriba va el león, abajo va el nombre.
-  const pieY = s.forma === "burbuja" ? 392 : 418;
-  const pie = conIcono
-    ? `<image href="${leon}" x="${256 - (54 * 1668) / 2400 / 2}" y="${pieY}" height="54" width="${(54 * 1668) / 2400}" opacity="0.95"/>`
-    : s.slug === "villa-real"
-      ? `<text x="256" y="${pieY + 36}" text-anchor="middle" font-family="Archivo" font-size="22" fill="${c.acento}">Tu proveedor para burger &amp; pizza</text>`
-      : `<text x="256" y="${pieY + 36}" text-anchor="middle" font-family="Archivo" font-size="24" fill="${c.acento}" letter-spacing="2">VILLA REAL</text>`;
+  const detalleY = primeraLinea + (s.lineas.length - 1) * interlineado + 8;
+  // Los datos, más pequeños y en el color de acento; la línea más larga tiene que caber.
+  const letraDetalle = Math.min(36, 380 / (Math.max(1, ...(s.detalle ?? []).map((l) => l.length)) * 0.6));
+  const detalle = (s.detalle ?? [])
+    .map((l, i) => `<text x="256" y="${(detalleY + (i + 1) * 44).toFixed(1)}" text-anchor="middle" font-family="Archivo Black" font-size="${letraDetalle.toFixed(1)}" fill="${c.acento}">${escapar(l)}</text>`)
+    .join("");
+  const leonAncho = leonAlto * PROPORCION_DEL_LEON;
+  const arriba = `<image href="${leon}" x="${(256 - leonAncho / 2).toFixed(1)}" y="${leonY}" height="${leonAlto}" width="${leonAncho.toFixed(1)}"/>`;
+  const pie = s.icono
+    ? `<g transform="translate(${256 - pieAlto / 2} ${pieY}) scale(${pieAlto / 24})" fill="none" stroke="${c.acento}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[s.icono]}</g>`
+    : esLogo
+      ? `<text x="256" y="${(s.forma === "burbuja" ? 392 : 428)}" text-anchor="middle" font-family="Archivo" font-size="22" fill="${c.acento}">Tu proveedor para burger &amp; pizza</text>`
+      : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <g fill="${c.fondo}" stroke="${c.borde}" stroke-width="14">${forma(s.forma)}</g>
   ${arriba}
   ${texto}
+  ${detalle}
   ${pie}
 </svg>`;
 }
@@ -232,6 +242,11 @@ fs.mkdirSync(salida, { recursive: true });
 const leon = pathToFileURL(path.join(raiz, "public", "marca", "leon-transparente.png")).href;
 const fuenteNegra = pathToFileURL(path.join(raiz, "src", "assets", "fuentes", "ArchivoBlack-Regular.ttf")).href;
 const fuenteMedia = pathToFileURL(path.join(raiz, "src", "assets", "fuentes", "Archivo-Medium.ttf")).href;
+// Los datos del pago móvil del dueño vienen de .env.local (no van en el código, que es público).
+const datosDePagoMovil = [process.env.PAGO_MOVIL_BANCO, process.env.PAGO_MOVIL_CEDULA ? `Cédula ${process.env.PAGO_MOVIL_CEDULA}` : "", process.env.PAGO_MOVIL_TELEFONO].filter((d): d is string => Boolean(d));
+for (const s of STICKERS) if (s.slug === "mis-datos-de-pago-movil") s.detalle = datosDePagoMovil.length ? datosDePagoMovil : ["(pon tus datos en", ".env.local)"];
+if (!datosDePagoMovil.length) console.log("OJO: sin PAGO_MOVIL_BANCO, PAGO_MOVIL_CEDULA y PAGO_MOVIL_TELEFONO en .env.local, el sticker de los datos sale sin ellos.");
+
 const filas = Math.ceil(STICKERS.length / COLUMNAS);
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face { font-family: "Archivo Black"; src: url("${fuenteNegra}"); }
