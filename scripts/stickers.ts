@@ -67,6 +67,10 @@ const ICONOS: Record<IconoDeSticker, string> = {
   nota: `<path d="M6 2.5h8.5l4.5 4.5v14.5H6z"/><path d="M14.5 2.5V7H19M9 12.5h6M9 16.5h6"/>`,
   queso: `<path d="M3 15.5L14 5l7 3.5v8H3z"/><path d="M3 15.5l11-10.5"/><circle cx="9" cy="13" r="1.2"/><circle cx="15" cy="11.5" r="1.2"/><circle cx="12" cy="9" r="0.9"/>`,
   huevo: `<path d="M12 2.5c-3.6 0-7 5.2-7 10.3a7 7 0 0 0 14 0C19 7.7 15.6 2.5 12 2.5z"/>`,
+  banco: `<path d="M3 9.5l9-5.5 9 5.5z"/><path d="M4.5 9.5v8M9.5 9.5v8M14.5 9.5v8M19.5 9.5v8M3 17.5h18M2 21h20"/>`,
+  billete: `<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/>`,
+  captura: `<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-8 8"/>`,
+  cruz: `<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>`,
 };
 
 /** El tamaño de letra para que la línea más larga quepa en la forma. */

@@ -999,10 +999,11 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
     (claves P-256 de verdad y un destino que no responde); contra la web
     publicada no se toca nada de esto.
 
-- **Stickers para WhatsApp** (`/admin/stickers`). Cincuenta y un stickers con
+- **Stickers para WhatsApp** (`/admin/stickers`). Un juego de stickers con
   el león (512 × 512, fondo transparente, PNG y WebP, todos de menos de
   100 KB) para responder a los clientes: cuando pagan («¡Pago recibido!»,
-  «Cuenta al día»), pedidos y entregas («¡Vamos en camino!»), cobrar con
+  «Cuenta al día»), formas de pago («Pago móvil», «Zelle», «Mándeme la
+  captura»), pedidos y entregas («¡Vamos en camino!»), cobrar con
   buena cara («Recordatorio de pago», «¿Me confirma el pago?»), saludos,
   productos y horario. La lista está en `src/lib/stickers.ts` y los dibuja
   `node scripts/stickers.ts` (Chrome, Archivo Black, el león) en

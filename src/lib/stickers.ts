@@ -8,6 +8,7 @@
 
 export const GRUPOS_DE_STICKERS = {
   pagos: "Cuando pagan",
+  formas: "Formas de pago",
   pedidos: "Pedidos y entregas",
   cobros: "Para cobrar con buena cara",
   saludos: "Saludos y cortesía",
@@ -20,7 +21,25 @@ export type GrupoDeSticker = keyof typeof GRUPOS_DE_STICKERS;
 /** La forma del sticker y sus colores. */
 export type FormaDeSticker = "circulo" | "cuadrado" | "burbuja" | "sello";
 export type ColorDeSticker = "verde" | "dorado" | "negro" | "crema";
-export type IconoDeSticker = "check" | "camion" | "reloj" | "campana" | "telefono" | "corazon" | "estrella" | "sol" | "luna" | "paquete" | "dolar" | "nota" | "queso" | "huevo";
+export type IconoDeSticker =
+  | "check"
+  | "camion"
+  | "reloj"
+  | "campana"
+  | "telefono"
+  | "corazon"
+  | "estrella"
+  | "sol"
+  | "luna"
+  | "paquete"
+  | "dolar"
+  | "nota"
+  | "queso"
+  | "huevo"
+  | "banco"
+  | "billete"
+  | "captura"
+  | "cruz";
 
 export type Sticker = {
   slug: string;
@@ -44,6 +63,25 @@ export const STICKERS: Sticker[] = [
   { slug: "captura-recibida", lineas: ["Captura", "recibida"], grupo: "pagos", forma: "cuadrado", color: "verde", icono: "telefono" },
   { slug: "queda-saldo", lineas: ["Queda un", "saldo", "pendiente"], grupo: "pagos", forma: "burbuja", color: "crema", icono: "reloj" },
   { slug: "a-su-favor", lineas: ["Le queda", "saldo a favor"], grupo: "pagos", forma: "circulo", color: "dorado", icono: "estrella" },
+
+  // Formas de pago
+  { slug: "pago-movil", lineas: ["Pago", "móvil"], grupo: "formas", forma: "circulo", color: "verde", icono: "telefono" },
+  { slug: "transferencia", lineas: ["Transferencia"], grupo: "formas", forma: "cuadrado", color: "verde", icono: "banco" },
+  { slug: "zelle", lineas: ["Zelle"], grupo: "formas", forma: "circulo", color: "dorado", icono: "dolar" },
+  { slug: "binance", lineas: ["Binance"], grupo: "formas", forma: "cuadrado", color: "negro", icono: "dolar" },
+  { slug: "efectivo-en-dolares", lineas: ["Efectivo", "en dólares"], grupo: "formas", forma: "circulo", color: "verde", icono: "billete" },
+  { slug: "efectivo-en-bolivares", lineas: ["Efectivo", "en bolívares"], grupo: "formas", forma: "cuadrado", color: "dorado", icono: "billete" },
+  { slug: "aceptamos-pago-movil-zelle-binance", lineas: ["Pago móvil,", "Zelle o", "Binance"], grupo: "formas", forma: "sello", color: "verde", icono: "telefono" },
+  { slug: "como-va-a-pagar", lineas: ["¿Cómo va", "a pagar?"], grupo: "formas", forma: "burbuja", color: "crema", icono: "billete" },
+  { slug: "mandeme-la-captura", lineas: ["Mándeme la", "captura,", "por favor"], grupo: "formas", forma: "burbuja", color: "verde", icono: "captura" },
+  { slug: "le-paso-los-datos", lineas: ["Le paso", "los datos del", "pago móvil"], grupo: "formas", forma: "burbuja", color: "dorado", icono: "telefono" },
+  { slug: "me-llego-gracias", lineas: ["¡Me llegó,", "gracias!"], grupo: "formas", forma: "circulo", color: "verde", icono: "check" },
+  { slug: "aun-no-me-llega", lineas: ["Aún no", "me llega"], grupo: "formas", forma: "burbuja", color: "negro", icono: "reloj" },
+  { slug: "revise-el-numero", lineas: ["Revise el", "número,", "por favor"], grupo: "formas", forma: "cuadrado", color: "crema", icono: "cruz" },
+  { slug: "en-bolivares-a-tasa-bcv", lineas: ["En bolívares", "a tasa BCV"], grupo: "formas", forma: "cuadrado", color: "verde", icono: "dolar" },
+  { slug: "pago-movil-recibido", lineas: ["Pago móvil", "recibido"], grupo: "formas", forma: "sello", color: "dorado", icono: "check" },
+  { slug: "zelle-recibido", lineas: ["Zelle", "recibido"], grupo: "formas", forma: "circulo", color: "negro", icono: "check" },
+  { slug: "referencia-por-favor", lineas: ["¿La referencia,", "por favor?"], grupo: "formas", forma: "burbuja", color: "dorado", icono: "nota" },
 
   // Pedidos y entregas
   { slug: "pedido-recibido", lineas: ["¡Pedido", "recibido!"], grupo: "pedidos", forma: "burbuja", color: "verde", icono: "paquete" },
