@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import { ajustePorRecuento, existenciasDe } from "./stock.ts";
 import type { Vendible } from "./catalogo.ts";
 
-const mozzarella: Vendible = { clave: "2", producto_id: 2, variante_id: null, nombre: "Queso mozzarella", unidad: "kg", precio_usd: 7.7 };
-const kemmental: Vendible = { clave: "1-10", producto_id: 1, variante_id: 10, nombre: "Queso amarillo Kemmental", unidad: "kg", precio_usd: 8.5 };
-const huevos: Vendible = { clave: "3", producto_id: 3, variante_id: null, nombre: "Huevos", unidad: "carton", precio_usd: 3.4 };
+const sinCodigo = { codigo_barras: "", sku: "", marca: "", presentacion: "", contenido: "" };
+const mozzarella: Vendible = { ...sinCodigo, clave: "2", producto_id: 2, variante_id: null, nombre: "Queso mozzarella", unidad: "kg", precio_usd: 7.7 };
+const kemmental: Vendible = { ...sinCodigo, clave: "1-10", producto_id: 1, variante_id: 10, nombre: "Queso amarillo Kemmental", unidad: "kg", precio_usd: 8.5 };
+const huevos: Vendible = { ...sinCodigo, clave: "3", producto_id: 3, variante_id: null, nombre: "Huevos", unidad: "carton", precio_usd: 3.4 };
 
 test("la existencia es lo comprado menos lo vendido más los ajustes, con piezas y días que dura", () => {
   const [m] = existenciasDe(

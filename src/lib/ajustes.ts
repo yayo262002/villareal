@@ -172,3 +172,12 @@ export async function hayPreciosDeEjemplo(): Promise<boolean> {
 export async function quitarPreciosDeEjemplo(): Promise<void> {
   await quitar("precios_de_ejemplo");
 }
+
+/** Si la caja puede vender más de lo que hay en inventario (el inventario puede ir atrasado). Apagado si no se dijo. */
+export async function permitirStockNegativo(): Promise<boolean> {
+  return (await leer("permitir_stock_negativo")).get("permitir_stock_negativo")?.valor === "1";
+}
+
+export async function ponerPermitirStockNegativo(permitir: boolean): Promise<void> {
+  await guardar("permitir_stock_negativo", permitir ? "1" : "0");
+}

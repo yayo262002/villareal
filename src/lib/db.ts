@@ -2,7 +2,7 @@ import "server-only";
 import { createClient, type Client, type InValue, type Transaction } from "@libsql/client";
 import path from "node:path";
 import fs from "node:fs";
-import { ESQUEMA, PRODUCTOS_INICIALES, RECONSTRUIR_PRODUCTOS, RENOMBRES } from "./esquema";
+import { ESQUEMA, PRODUCTOS_INICIALES, RECONSTRUIR_PAGOS, RECONSTRUIR_PAGOS_PROVEEDORES, RECONSTRUIR_PRODUCTOS, RENOMBRES } from "./esquema";
 import { BORRADORES, FAMILIAS_INICIALES, familiasPorNombre, mismoNombre } from "./catalogo-inicial";
 import { limpiarTexto, separarMarcaYContenido } from "./marcas-texto";
 
@@ -69,6 +69,13 @@ async function definicionDe(cliente: Client, tabla: string): Promise<string> {
 }
 
 /** Añade una columna a una tabla que ya existe. Si otro proceso se adelantó, no es un error. */
+/** Cuántos pagos hay y cuántas capturas siguen unidas a uno: para comprobar una reconstrucción. */
+async function contarPagosYCapturas(cliente: Client, tabla: string, fotos: string, columna: string): Promise<{ pagos: number; capturas: number }> {
+  const p = await cliente.execute(`select count(*) as n from ${tabla}`);
+  const c = await cliente.execute(`select count(*) as n from ${fotos} where ${columna} is not null`);
+  return { pagos: Number(p.rows[0].n), capturas: Number(c.rows[0].n) };
+}
+
 async function añadirColumna(cliente: Client, tabla: string, columna: string): Promise<void> {
   try {
     await cliente.execute(`alter table ${tabla} add column ${columna}`);
@@ -158,6 +165,40 @@ async function migrar(cliente: Client): Promise<void> {
     if (!new RegExp(`\\b${columna}\\b`).test(deProductos)) await añadirColumna(cliente, "productos", definicion);
   }
   await cliente.execute("create index if not exists productos_familia on productos(familia_id)");
+  // La caja: códigos de barras y SKU en tipos y artículos; origen, descuento, cajero y clave de cada venta; el método
+  // «tarjeta» y la venta de cada pago (los pagos se reconstruyen una vez, comprobando que no se pierde nada).
+  for (const tabla of ["productos", "variantes"]) {
+    if (!/\bcodigo_barras\b/.test(await definicionDe(cliente, tabla))) {
+      await añadirColumna(cliente, tabla, "codigo_barras text not null default ''");
+      await añadirColumna(cliente, tabla, "sku text not null default ''");
+    }
+  }
+  if (!/\bclave_pos\b/.test(await definicionDe(cliente, "ventas"))) {
+    await añadirColumna(cliente, "ventas", "origen text not null default ''");
+    await añadirColumna(cliente, "ventas", "descuento_usd real not null default 0");
+    await añadirColumna(cliente, "ventas", "cajero text not null default ''");
+    await añadirColumna(cliente, "ventas", "clave_pos text");
+  }
+  for (const [tabla, sql, fotos, columna] of [
+    ["pagos", RECONSTRUIR_PAGOS, "adjuntos", "pago_id"],
+    ["pagos_proveedores", RECONSTRUIR_PAGOS_PROVEEDORES, "adjuntos_proveedores", "pago_proveedor_id"],
+  ] as const) {
+    if (!(await definicionDe(cliente, tabla)).includes("'tarjeta'")) {
+      const antes = await contarPagosYCapturas(cliente, tabla, fotos, columna);
+      await cliente.executeMultiple(sql);
+      const despues = await contarPagosYCapturas(cliente, tabla, fotos, columna);
+      if (antes.pagos !== despues.pagos || antes.capturas !== despues.capturas) {
+        throw new Error(`Al reconstruir ${tabla} se perdieron datos (${JSON.stringify(antes)} → ${JSON.stringify(despues)}): restaura la última copia.`);
+      }
+    }
+  }
+  if (!/\bventa_id\b/.test(await definicionDe(cliente, "pagos"))) {
+    await añadirColumna(cliente, "pagos", "venta_id integer references ventas(id) on delete set null");
+  }
+  await cliente.execute("create unique index if not exists variantes_codigo_unico on variantes(codigo_barras) where codigo_barras <> ''");
+  await cliente.execute("create unique index if not exists productos_codigo_unico on productos(codigo_barras) where codigo_barras <> ''");
+  await cliente.execute("create unique index if not exists ventas_clave_pos_unica on ventas(clave_pos) where clave_pos is not null");
+  await cliente.execute("create index if not exists pagos_venta on pagos(venta_id)");
   if (!/\bseccion\b/.test(await definicionDe(cliente, "producto_categorias"))) {
     await añadirColumna(cliente, "producto_categorias", "seccion text not null default ''");
   }

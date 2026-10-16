@@ -332,6 +332,19 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
           <span className="ayuda">Lo que no es por kilo se cobra por su presentación: «bolsa de 2,5 kg», «caja de 12». Sin presentación, por unidad o por cartón.</span>
         </div>
       )}
+      {!conMarcas && (
+        <div className="formulario__fila">
+          <div className="campo">
+            <label htmlFor={`${id}-codigo-barras`}>Código de barras (opcional)</label>
+            <input id={`${id}-codigo-barras`} name="codigo_barras" type="text" inputMode="numeric" autoComplete="off" defaultValue={valor("codigo_barras", producto?.codigo_barras)} placeholder="Pasa el lector o escríbelo" />
+            <span className="ayuda">El que lee el lector en la caja. Con marcas, va en cada marca.</span>
+          </div>
+          <div className="campo">
+            <label htmlFor={`${id}-sku`}>SKU (opcional)</label>
+            <input id={`${id}-sku`} name="sku" type="text" autoComplete="off" defaultValue={valor("sku", producto?.sku)} placeholder="MOZ-25KG" />
+          </div>
+        </div>
+      )}
 
       {conMarcas ? (
         <>

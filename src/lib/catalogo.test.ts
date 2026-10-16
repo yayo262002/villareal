@@ -55,7 +55,20 @@ test("las filas de la venta: los productos sin variantes y, de los que las tiene
       ["3-13", "Queso pecorino rallado Guaralac 500 g", 3.5],
     ],
   );
-  assert.deepEqual(filas[2], { clave: "3-12", producto_id: 3, variante_id: 12, nombre: "Queso pecorino rallado Sortilegio 500 g", unidad: "unidad", precio_usd: 4 });
+  // Y cada fila lleva lo que la caja necesita para buscar: la marca, la presentación, el código y el SKU (vacíos si no los hay).
+  assert.deepEqual(filas[2], {
+    clave: "3-12",
+    producto_id: 3,
+    variante_id: 12,
+    nombre: "Queso pecorino rallado Sortilegio 500 g",
+    unidad: "unidad",
+    precio_usd: 4,
+    codigo_barras: "",
+    sku: "",
+    marca: "",
+    presentacion: "",
+    contenido: "",
+  });
 });
 
 test("la clave y el nombre de venta", () => {

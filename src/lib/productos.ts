@@ -45,6 +45,9 @@ export type Producto = {
   en_oferta: number;
   /** La sección en que sale dentro de su familia principal («Proteínas» en Burger); vacía, sin sección. */
   seccion: string;
+  /** El código de barras que lee el lector y el SKU, cuando el tipo se vende de una sola forma. Vacíos si no tiene. */
+  codigo_barras: string;
+  sku: string;
   creado_en: string;
   /** Cuándo se puso la foto principal, o null si no tiene (entonces va la de referencia). */
   foto_version: string | null;
@@ -65,6 +68,8 @@ export type DatosProducto = PreciosProducto & {
   destacado: boolean;
   en_oferta: boolean;
   seccion: string;
+  codigo_barras: string;
+  sku: string;
 };
 
 const CONSULTA = `
@@ -98,6 +103,8 @@ function completar(p: Producto): Producto {
     destacado: Number(p.destacado ?? 0),
     en_oferta: Number(p.en_oferta ?? 0),
     seccion: p.seccion ?? "",
+    codigo_barras: p.codigo_barras ?? "",
+    sku: p.sku ?? "",
     creado_en: p.creado_en,
     foto_version: p.foto_version ?? null,
   };
@@ -130,8 +137,8 @@ export async function crearProducto(datos: DatosProducto, estado: EstadoProducto
   const { activo, borrador } = columnasDeEstado(estado);
   const r = await ejecutar(
     `insert into productos (nombre, unidad, costo_usd, margen_pct, precio_usd, descripcion, familia_id, marca, presentacion, contenido,
-                            precio_detal_usd, destacado, en_oferta, activo, borrador, marca_id, seccion)
-     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            precio_detal_usd, destacado, en_oferta, activo, borrador, marca_id, seccion, codigo_barras, sku)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       datos.nombre,
       datos.unidad,
@@ -150,6 +157,8 @@ export async function crearProducto(datos: DatosProducto, estado: EstadoProducto
       borrador,
       datos.marca_id,
       limpiarTexto(datos.seccion),
+      datos.codigo_barras,
+      datos.sku,
     ],
   );
   return r.ultimoId;
@@ -159,7 +168,8 @@ export async function actualizarProducto(id: number, datos: DatosProducto): Prom
   await ejecutar(
     `update productos
      set nombre = ?, unidad = ?, costo_usd = ?, margen_pct = ?, precio_usd = ?, descripcion = ?, familia_id = ?, marca = ?,
-         presentacion = ?, contenido = ?, precio_detal_usd = ?, destacado = ?, en_oferta = ?, marca_id = ?, seccion = ?
+         presentacion = ?, contenido = ?, precio_detal_usd = ?, destacado = ?, en_oferta = ?, marca_id = ?, seccion = ?,
+         codigo_barras = ?, sku = ?
      where id = ?`,
     [
       datos.nombre,
@@ -177,6 +187,8 @@ export async function actualizarProducto(id: number, datos: DatosProducto): Prom
       datos.en_oferta ? 1 : 0,
       datos.marca_id,
       limpiarTexto(datos.seccion),
+      datos.codigo_barras,
+      datos.sku,
       id,
     ],
   );

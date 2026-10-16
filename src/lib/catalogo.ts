@@ -8,9 +8,12 @@
 /** El precio al mayor en dólares, o null si todavía no está. */
 export type Precios = { precio_usd: number | null };
 
-export type VarianteDeCatalogo = Precios & { id: number; producto_id: number; nombre: string; activo: number };
+/** Lo que un artículo o un tipo pueden traer además para la caja: el código, el SKU y cómo se presenta. */
+type ParaLaCaja = { codigo_barras?: string; sku?: string; marca?: string; presentacion?: string; contenido?: string };
 
-export type ProductoDeCatalogo = Precios & { id: number; nombre: string; unidad: string; activo: number };
+export type VarianteDeCatalogo = Precios & ParaLaCaja & { id: number; producto_id: number; nombre: string; activo: number };
+
+export type ProductoDeCatalogo = Precios & ParaLaCaja & { id: number; nombre: string; unidad: string; activo: number; familia_id?: number | null };
 
 export type PrecioPublicado = Precios & {
   /** Si el precio es «desde»: hay varias variantes con precio y este es el más barato. */
@@ -46,6 +49,12 @@ export type Vendible = Precios & {
   /** «Queso pecorino rallado Sortilegio 500 g». */
   nombre: string;
   unidad: string;
+  /** Para la caja: el código de barras, el SKU, la marca y la presentación de esta fila. Vacíos si no tiene. */
+  codigo_barras: string;
+  sku: string;
+  marca: string;
+  presentacion: string;
+  contenido: string;
 };
 
 export function claveDe(productoId: number, varianteId: number | null): string {
@@ -67,7 +76,19 @@ export function vendiblesDe(productos: ProductoDeCatalogo[], variantes: Variante
     if (p.activo !== 1) continue;
     const suyas = variantes.filter((v) => v.producto_id === p.id && v.activo === 1);
     if (suyas.length === 0) {
-      lista.push({ clave: claveDe(p.id, null), producto_id: p.id, variante_id: null, nombre: p.nombre, unidad: p.unidad, precio_usd: p.precio_usd });
+      lista.push({
+        clave: claveDe(p.id, null),
+        producto_id: p.id,
+        variante_id: null,
+        nombre: p.nombre,
+        unidad: p.unidad,
+        precio_usd: p.precio_usd,
+        codigo_barras: p.codigo_barras ?? "",
+        sku: p.sku ?? "",
+        marca: p.marca ?? "",
+        presentacion: p.presentacion ?? "",
+        contenido: p.contenido ?? "",
+      });
       continue;
     }
     for (const v of suyas) {
@@ -78,6 +99,11 @@ export function vendiblesDe(productos: ProductoDeCatalogo[], variantes: Variante
         nombre: nombreDeVenta(p.nombre, v.nombre),
         unidad: p.unidad,
         precio_usd: v.precio_usd,
+        codigo_barras: v.codigo_barras ?? "",
+        sku: v.sku ?? "",
+        marca: v.marca ?? "",
+        presentacion: v.presentacion ?? "",
+        contenido: v.contenido ?? "",
       });
     }
   }

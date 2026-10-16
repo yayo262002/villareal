@@ -95,6 +95,17 @@ export function CamposVariante({ id, variante, producto }: { id: string; variant
           <input id={`${id}-contenido`} name="contenido" type="text" defaultValue={variante?.contenido ?? ""} placeholder="1 kg · 500 g · 30 unidades" />
         </div>
       </div>
+      <div className="formulario__fila">
+        <div className="campo">
+          <label htmlFor={`${id}-codigo-barras`}>Código de barras (opcional)</label>
+          <input id={`${id}-codigo-barras`} name="codigo_barras" type="text" inputMode="numeric" autoComplete="off" defaultValue={variante?.codigo_barras ?? ""} placeholder="Pasa el lector o escríbelo" />
+          <span className="ayuda">El que lee el lector en la caja; único en todo el catálogo.</span>
+        </div>
+        <div className="campo">
+          <label htmlFor={`${id}-sku`}>SKU (opcional)</label>
+          <input id={`${id}-sku`} name="sku" type="text" autoComplete="off" defaultValue={variante?.sku ?? ""} placeholder="MOZ-KEM-25KG" />
+        </div>
+      </div>
       <div className="campo">
         <label htmlFor={`${id}-descripcion`}>Descripción (una ventaja por línea)</label>
         <textarea

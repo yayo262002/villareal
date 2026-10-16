@@ -213,6 +213,7 @@ export default async function PaginaVentas({
                     <tr key={v.id}>
                       <td data-label="Nota">
                         <Link href={`/admin/ventas/${v.id}/nota`}>{numeroDeNota(v.id)}</Link>
+                        {v.origen === "pos" && <span className="ayuda"> · caja</span>}
                       </td>
                       <td data-label="Fecha">{fechaCorta(v.fecha)}</td>
                       <td data-label="Cliente">

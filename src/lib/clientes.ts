@@ -155,7 +155,7 @@ export async function loQueTieneElCliente(id: number): Promise<{ ventas: number;
 export async function eliminarCliente(id: number): Promise<boolean> {
   return transaccion(async (tx) => {
     await tx.execute({ sql: "delete from venta_lineas where venta_id in (select id from ventas where cliente_id = ?)", args: [id] });
-    for (const tabla of ["adjuntos", "ventas", "pagos", "recordatorios"]) {
+    for (const tabla of ["adjuntos", "ventas", "pagos", "recordatorios", "contactos", "precios_especiales"]) {
       await tx.execute({ sql: `delete from ${tabla} where cliente_id = ?`, args: [id] });
     }
     const r = await tx.execute({ sql: "delete from clientes where id = ?", args: [id] });

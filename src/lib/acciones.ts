@@ -98,6 +98,10 @@ import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, pagoRepetidoReciente, registrarPago } from "./pagos";
 import { anotarContacto, esTipoDeContacto, TIPOS_DE_CONTACTO } from "./contactos";
+import { duenoDelCodigo, limpiarCodigo, limpiarSku, ponerCodigoAProducto, ponerCodigoAVariante } from "./codigos";
+import { guardarPrecioEspecial, quitarPrecioEspecial } from "./precios-especiales";
+import { cobrarVentaDelPos, type VentaDelPos } from "./pos";
+import { ponerPermitirStockNegativo } from "./ajustes";
 import { empujarAviso } from "./push";
 import { avisoDePrueba } from "./avisos";
 import { negocio } from "@/config/negocio";
@@ -866,6 +870,8 @@ const CAMPOS_DEL_PRODUCTO = [
   "presentacion",
   "presentacion_lista",
   "contenido",
+  "codigo_barras",
+  "sku",
   "familia_id",
   "estado",
   "destacado",
@@ -990,10 +996,18 @@ async function leerFormularioDeProducto(datos: FormData, actual: Producto | null
     marca = { nombre: elegida.marca?.nombre ?? "", id: elegida.marca?.id ?? null };
     if (elegida.nueva && elegida.marca) marcaNueva = elegida.marca.nombre;
   }
+  // El código de barras es del lector y no puede estar en dos sitios; el SKU es un nombre corto, opcional.
+  const codigoBarras = viene("codigo_barras") ? limpiarCodigo(texto(datos, "codigo_barras")) : (actual?.codigo_barras ?? "");
+  if (codigoBarras) {
+    const dueno = await duenoDelCodigo(codigoBarras);
+    if (dueno && !(dueno.tipo === "producto" && dueno.id === actual?.id)) volver(`El código de barras ${codigoBarras} ya es de «${dueno.nombre}»: un código no puede estar en dos artículos.`);
+  }
   return {
     datos: {
       nombre,
       unidad: viene("unidad") ? leerUnidad(datos) : (actual?.unidad ?? "kg"),
+      codigo_barras: codigoBarras,
+      sku: viene("sku") ? limpiarSku(texto(datos, "sku")) : (actual?.sku ?? ""),
       descripcion: viene("descripcion") ? texto(datos, "descripcion") : (actual?.descripcion ?? ""),
       costo_usd: precios.costo_usd,
       margen_pct: precios.margen_pct,
@@ -1170,6 +1184,13 @@ async function leerVariante(datos: FormData, origen: string): Promise<{ variante
     if (valor !== null && valor < 0) volverConError(origen, "Costo y precios no pueden ser negativos.");
   }
   const { marca, nueva } = await marcaPorNombre(escrita);
+  // El código de barras no puede estar en dos artículos; al editar, el propio artículo no cuenta.
+  const codigoBarras = limpiarCodigo(texto(datos, "codigo_barras"));
+  if (codigoBarras) {
+    const dueno = await duenoDelCodigo(codigoBarras);
+    const propio = numero(datos, "variante_id");
+    if (dueno && !(dueno.tipo === "variante" && dueno.id === propio)) volverConError(origen, `El código de barras ${codigoBarras} ya es de «${dueno.nombre}»: un código no puede estar en dos artículos.`);
+  }
   return {
     variante: {
       marca_id: marca?.id ?? null,
@@ -1179,6 +1200,8 @@ async function leerVariante(datos: FormData, origen: string): Promise<{ variante
       descripcion: texto(datos, "descripcion"),
       costo_usd: costo,
       precio_usd: precio,
+      codigo_barras: codigoBarras,
+      sku: limpiarSku(texto(datos, "sku")),
     },
     marcaNueva: nueva && marca ? marca.nombre : null,
   };
@@ -2032,4 +2055,99 @@ export async function anotarContactoAccion(datos: FormData): Promise<void> {
   if (malaFecha) volverConError(vuelta, malaFecha);
   await anotarContacto(clienteId, fecha, tipo, texto(datos, "nota"));
   volverConExito(vuelta, `Anotado: ${TIPOS_DE_CONTACTO[tipo].toLowerCase()} a ${cliente.rotulo} el ${fechaCorta(fecha)}.`);
+}
+
+// ---------- La caja (punto de venta), los códigos de barras y los precios especiales ----------
+
+/**
+ * El cobro de la caja: la venta llega entera en un JSON que arma la pantalla
+ * del POS (líneas, cliente, cajero, descuento y pagos). Lo que llega se
+ * limpia antes de revisarlo; si algo no cuadra se vuelve a la caja con el
+ * motivo (el carrito sigue en el teléfono o el computador), y si todo está
+ * bien sale el ticket.
+ */
+export async function cobrarEnPos(datos: FormData): Promise<void> {
+  await exigirSesion();
+  let cruda: Partial<VentaDelPos> = {};
+  try {
+    cruda = JSON.parse(texto(datos, "venta") || "{}") as Partial<VentaDelPos>;
+  } catch {
+    volverConError("/admin/pos", "La venta llegó mal armada: inténtalo otra vez.");
+  }
+  const venta: VentaDelPos = {
+    clave_pos: String(cruda.clave_pos ?? "").slice(0, 60),
+    cliente_id: Number(cruda.cliente_id) || 0,
+    cajero: String(cruda.cajero ?? "").slice(0, 60),
+    descuento_usd: Number(cruda.descuento_usd) || 0,
+    nota: String(cruda.nota ?? "").slice(0, 300),
+    lineas: (Array.isArray(cruda.lineas) ? cruda.lineas : []).map((l) => ({
+      clave: String(l.clave ?? ""),
+      producto_id: Number(l.producto_id) || 0,
+      variante_id: l.variante_id ? Number(l.variante_id) : null,
+      nombre: String(l.nombre ?? "").slice(0, 120),
+      unidad: l.unidad === "kg" || l.unidad === "carton" ? l.unidad : "unidad",
+      cantidad: Number(l.cantidad),
+      precio_usd: Number(l.precio_usd),
+    })),
+    pagos: (Array.isArray(cruda.pagos) ? cruda.pagos : []).map((p) => ({ metodo: p.metodo, monto_usd: Number(p.monto_usd), referencia: String(p.referencia ?? "").slice(0, 60) })),
+  };
+  const vuelta = `/admin/pos${venta.clave_pos ? `?clave=${encodeURIComponent(venta.clave_pos)}` : ""}`;
+  for (const p of venta.pagos) if (!esMetodoPago(String(p.metodo))) volverConError(vuelta, "Elige cómo pagó el cliente.");
+  const resultado = await cobrarVentaDelPos(venta);
+  if ("motivos" in resultado) volverConError(vuelta, resultado.motivos.join(" "));
+  volverConExito(
+    `/admin/ventas/${resultado.ventaId}/nota?formato=ticket&pos=${encodeURIComponent(venta.clave_pos)}`,
+    resultado.repetida ? "Esa venta ya estaba cobrada: este es su ticket." : `Venta cobrada: nota ${numeroDeNota(resultado.ventaId)}.`,
+  );
+}
+
+/** El código de barras y el SKU de un artículo («3-7») o de un tipo («3»), desde la pantalla de códigos o desde la caja. */
+export async function asignarCodigo(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const vuelta = volverA(datos, "/admin/codigos");
+  const [productoId, varianteId] = texto(datos, "clave").split("-").map((n) => Number(n) || 0);
+  if (!productoId || !(await buscarProducto(productoId))) volverConError(vuelta, "No se encontró el producto.");
+  if (varianteId && (await buscarVariante(varianteId))?.producto_id !== productoId) volverConError(vuelta, "No se encontró la marca o presentación.");
+  const codigo = limpiarCodigo(texto(datos, "codigo_barras"));
+  const sku = limpiarSku(texto(datos, "sku"));
+  if (codigo) {
+    const dueno = await duenoDelCodigo(codigo);
+    const esElMismo = dueno && (varianteId ? dueno.tipo === "variante" && dueno.id === varianteId : dueno.tipo === "producto" && dueno.id === productoId);
+    if (dueno && !esElMismo) volverConError(vuelta, `El código ${codigo} ya es de «${dueno.nombre}»: un código no puede estar en dos artículos.`);
+  }
+  if (varianteId) await ponerCodigoAVariante(varianteId, codigo, sku);
+  else await ponerCodigoAProducto(productoId, codigo, sku);
+  volverConExito(vuelta, codigo ? `Código ${codigo} guardado${sku ? ` (SKU ${sku})` : ""}.` : sku ? `SKU ${sku} guardado.` : "Código y SKU quitados.");
+}
+
+/** El precio especial de un cliente para un artículo, desde su ficha. */
+export async function guardarPrecioEspecialAccion(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const clienteId = numero(datos, "cliente_id");
+  if (!clienteId || !(await buscarCliente(clienteId))) volverConError("/admin/clientes", "No se encontró el cliente.");
+  const vuelta = `/admin/clientes/${clienteId}#precios`;
+  const [productoId, varianteId] = texto(datos, "clave").split("-").map((n) => Number(n) || 0);
+  const producto = productoId ? await buscarProducto(productoId) : null;
+  if (!producto) volverConError(vuelta, "Elige el producto.");
+  const precio = numero(datos, "precio_usd");
+  if (precio === null || !(precio >= 0)) volverConError(vuelta, "Escribe el precio especial en dólares.");
+  await guardarPrecioEspecial(clienteId, productoId, varianteId || null, precio);
+  volverConExito(vuelta, `Precio especial guardado: ${usd(precio)} para ${producto.nombre}.`);
+}
+
+export async function quitarPrecioEspecialAccion(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const clienteId = numero(datos, "cliente_id");
+  if (!id) volverConError("/admin/clientes", "No se encontró el precio.");
+  await quitarPrecioEspecial(id);
+  volverConExito(`/admin/clientes/${clienteId}#precios`, "Precio especial quitado: vuelve a cobrársele el precio al mayor.");
+}
+
+/** Si la caja puede vender más de lo que hay en inventario. */
+export async function ponerStockNegativo(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const permitir = texto(datos, "permitir") === "1";
+  await ponerPermitirStockNegativo(permitir);
+  volverConExito("/admin/inventario", permitir ? "La caja puede vender aunque el inventario diga que no hay." : "La caja ya no vende más de lo que hay en inventario.");
 }

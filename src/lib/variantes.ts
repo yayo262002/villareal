@@ -27,6 +27,9 @@ export type Variante = {
   presentacion: string;
   /** «500 g», «1 kg», «30 unidades». */
   contenido: string;
+  /** El código de barras que lee el lector (único en todo el catálogo) y el SKU. Vacíos si no tiene. */
+  codigo_barras: string;
+  sku: string;
   /** Una línea: «Tipo Emmental, semiduro, madurado». */
   descripcion: string;
   costo_usd: number | null;
@@ -38,7 +41,7 @@ export type Variante = {
   foto_version: string | null;
 };
 
-export type DatosVariante = Pick<Variante, "marca_id" | "marca" | "presentacion" | "contenido" | "descripcion" | "costo_usd" | "precio_usd">;
+export type DatosVariante = Pick<Variante, "marca_id" | "marca" | "presentacion" | "contenido" | "descripcion" | "costo_usd" | "precio_usd" | "codigo_barras" | "sku">;
 
 export type FotoDeVariante = { variante_id: number; tipo: string; tamano: number; datos: ArrayBuffer; actualizado_en: string };
 
@@ -48,7 +51,7 @@ export const TAMANO_MAXIMO_DE_FOTO = 2 * 1024 * 1024;
 
 const CONSULTA = `
   select v.id, v.producto_id, v.nombre, v.descripcion, v.costo_usd, v.precio_usd, v.activo, v.creado_en,
-         v.marca_id, coalesce(m.nombre, '') as marca, v.presentacion, v.contenido,
+         v.marca_id, coalesce(m.nombre, '') as marca, v.presentacion, v.contenido, v.codigo_barras, v.sku,
          f.actualizado_en as foto_version
   from variantes v
   left join marcas m on m.id = v.marca_id
@@ -56,7 +59,15 @@ const CONSULTA = `
 `;
 
 function completar(v: Variante): Variante {
-  return { ...v, marca_id: v.marca_id === null || v.marca_id === undefined ? null : Number(v.marca_id), marca: v.marca ?? "", presentacion: v.presentacion ?? "", contenido: v.contenido ?? "" };
+  return {
+    ...v,
+    marca_id: v.marca_id === null || v.marca_id === undefined ? null : Number(v.marca_id),
+    marca: v.marca ?? "",
+    presentacion: v.presentacion ?? "",
+    contenido: v.contenido ?? "",
+    codigo_barras: v.codigo_barras ?? "",
+    sku: v.sku ?? "",
+  };
 }
 
 /** Todas, en el orden del panel: por producto y, dentro, por antigüedad. */
@@ -99,7 +110,7 @@ export function etiquetaDe(datos: Pick<DatosVariante, "marca" | "presentacion" |
 
 export async function crearVariante(producto: Producto, datos: DatosVariante): Promise<number> {
   const r = await ejecutar(
-    "insert into variantes (producto_id, nombre, marca_id, presentacion, contenido, descripcion, costo_usd, precio_usd) values (?, ?, ?, ?, ?, ?, ?, ?)",
+    "insert into variantes (producto_id, nombre, marca_id, presentacion, contenido, descripcion, costo_usd, precio_usd, codigo_barras, sku) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       producto.id,
       etiquetaDe(datos),
@@ -109,22 +120,29 @@ export async function crearVariante(producto: Producto, datos: DatosVariante): P
       datos.descripcion,
       datos.costo_usd,
       resolver(datos, producto),
+      datos.codigo_barras,
+      datos.sku,
     ],
   );
   return r.ultimoId;
 }
 
 export async function actualizarVariante(id: number, producto: Producto, datos: DatosVariante): Promise<void> {
-  await ejecutar("update variantes set nombre = ?, marca_id = ?, presentacion = ?, contenido = ?, descripcion = ?, costo_usd = ?, precio_usd = ? where id = ?", [
-    etiquetaDe(datos),
-    datos.marca_id,
-    limpiarTexto(datos.presentacion),
-    limpiarTexto(datos.contenido),
-    datos.descripcion,
-    datos.costo_usd,
-    resolver(datos, producto),
-    id,
-  ]);
+  await ejecutar(
+    "update variantes set nombre = ?, marca_id = ?, presentacion = ?, contenido = ?, descripcion = ?, costo_usd = ?, precio_usd = ?, codigo_barras = ?, sku = ? where id = ?",
+    [
+      etiquetaDe(datos),
+      datos.marca_id,
+      limpiarTexto(datos.presentacion),
+      limpiarTexto(datos.contenido),
+      datos.descripcion,
+      datos.costo_usd,
+      resolver(datos, producto),
+      datos.codigo_barras,
+      datos.sku,
+      id,
+    ],
+  );
 }
 
 /**

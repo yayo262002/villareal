@@ -63,7 +63,7 @@ export const ESQUEMA = `
     fecha text not null,
     metodo text not null check (metodo in (
       'pago_movil', 'transferencia', 'efectivo_bs', 'efectivo_usd',
-      'zelle', 'binance', 'otro'
+      'zelle', 'binance', 'tarjeta', 'otro'
     )),
     moneda text not null check (moneda in ('USD', 'VES')),
     monto real not null,
@@ -106,7 +106,10 @@ export const ESQUEMA = `
     -- La marca, si se vende de una sola sin separarla (marca repite su nombre),
     -- y la sección en que sale dentro de su familia («Proteínas» en Burger).
     marca_id integer references marcas(id),
-    seccion text not null default ''
+    seccion text not null default '',
+    -- El código de barras que lee el lector (único en todo el catálogo) y el SKU, cuando el tipo se vende de una sola forma.
+    codigo_barras text not null default '',
+    sku text not null default ''
   );
 
   -- Las marcas: Guaralact, Kemmental, El Legado… Una marca puede vender
@@ -136,7 +139,10 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now')),
     marca_id integer references marcas(id),
     presentacion text not null default '',
-    contenido text not null default ''
+    contenido text not null default '',
+    -- El código de barras que lee el lector (único en todo el catálogo) y el SKU de este artículo.
+    codigo_barras text not null default '',
+    sku text not null default ''
   );
 
   create table if not exists fotos_variantes (
@@ -237,7 +243,15 @@ export const ESQUEMA = `
     entregada_en text,
     -- El día en que hay que llevarla, si quedó por entregar; el resumen lo recuerda.
     entrega_prevista text,
-    creado_en text not null default (datetime('now'))
+    creado_en text not null default (datetime('now')),
+    -- De dónde salió: 'pos' si se cobró en la caja; vacío, anotada en Ventas.
+    origen text not null default '',
+    -- El descuento que se hizo en la caja; el total ya lo tiene restado.
+    descuento_usd real not null default 0,
+    -- Quién estaba en la caja.
+    cajero text not null default '',
+    -- La clave que pone la caja a cada cobro: si llega dos veces, la venta es una sola.
+    clave_pos text
   );
 
   create table if not exists venta_lineas (
@@ -256,10 +270,12 @@ export const ESQUEMA = `
   create table if not exists pagos (
     id integer primary key autoincrement,
     cliente_id integer not null references clientes(id),
+    -- La venta que se cobró en la caja, si el pago salió de ahí.
+    venta_id integer references ventas(id) on delete set null,
     fecha text not null,
     metodo text not null check (metodo in (
       'pago_movil', 'transferencia', 'efectivo_bs', 'efectivo_usd',
-      'zelle', 'binance', 'otro'
+      'zelle', 'binance', 'tarjeta', 'otro'
     )),
     moneda text not null check (moneda in ('USD', 'VES')),
     monto real not null,
@@ -432,6 +448,17 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- El precio especial de un cliente para un producto (o una de sus marcas): la caja lo usa sola.
+  create table if not exists precios_especiales (
+    id integer primary key autoincrement,
+    cliente_id integer not null references clientes(id) on delete cascade,
+    producto_id integer not null references productos(id) on delete cascade,
+    variante_id integer references variantes(id) on delete cascade,
+    precio_usd real not null,
+    creado_en text not null default (datetime('now'))
+  );
+  create unique index if not exists precios_especiales_unicos on precios_especiales(cliente_id, producto_id, coalesce(variante_id, 0));
+
   -- La captura del pago a un proveedor, unida a ese pago. Es el espejo de
   -- adjuntos, que va unida al cliente.
   create table if not exists adjuntos_proveedores (
@@ -499,6 +526,7 @@ export const TABLAS = [
   "avisos_telefonos",
   "avisos",
   "contactos",
+  "precios_especiales",
 ] as const;
 
 /**
@@ -538,8 +566,10 @@ export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion:
   {
     nombre: "Queso amarillo",
     unidad: "kg",
-    descripcion: "Para sándwiches, arepas y hamburguesas\nFunde bien al calentar\nSe vende por kilo, al mayor",
-    descripcionAnterior: "Para sándwiches, arepas y hamburguesas\nFunde bien al calentar\nSe vende por kilo, al detal y al mayor",
+    descripcion:
+      "Para sándwiches, arepas y hamburguesas\nFunde bien al calentar\nSe vende por kilo, al mayor",
+    descripcionAnterior:
+      "Para sándwiches, arepas y hamburguesas\nFunde bien al calentar\nSe vende por kilo, al detal y al mayor",
   },
   {
     nombre: "Mozzarella",
@@ -550,13 +580,16 @@ export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion:
   {
     nombre: "Huevos",
     unidad: "carton",
-    descripcion: "Se venden por cartón\nPara panaderías, restaurantes y bodegas\nSolo al mayor",
-    descripcionAnterior: "Se venden por cartón\nPara negocios y para la casa\nAl detal y al mayor",
+    descripcion:
+      "Se venden por cartón\nPara panaderías, restaurantes y bodegas\nSolo al mayor",
+    descripcionAnterior:
+      "Se venden por cartón\nPara negocios y para la casa\nAl detal y al mayor",
   },
   {
     nombre: "Pecorino",
     unidad: "kg",
-    descripcion: "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
+    descripcion:
+      "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
   },
 ];
 
@@ -567,25 +600,111 @@ export const PRODUCTOS_INICIALES: { nombre: string; unidad: string; descripcion:
  * van sin la palabra «queso» delante (el dueño los pidió así, 05/10/2026):
  * «Mozzarella», «Pecorino», «Parmesano»; la familia ya dice que son quesos.
  */
-export const RENOMBRES: { de: string; a: string; descripcionVieja: string; descripcionNueva: string }[] = [
+export const RENOMBRES: {
+  de: string;
+  a: string;
+  descripcionVieja: string;
+  descripcionNueva: string;
+}[] = [
   {
     de: "Queso pecorino",
     a: "Pecorino",
     descripcionVieja:
       "Queso curado de sabor intenso\nPara rallar sobre pastas y ensaladas\nSe vende por kilo, al detal y al mayor",
-    descripcionNueva: "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
+    descripcionNueva:
+      "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
   },
   {
     de: "Queso pecorino rallado",
     a: "Pecorino",
-    descripcionVieja: "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
-    descripcionNueva: "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
+    descripcionVieja:
+      "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
+    descripcionNueva:
+      "Ya viene rallado, listo para usar\nPara pastas, pizzas y ensaladas\nSabor intenso",
   },
   {
     de: "Queso mozzarella",
     a: "Mozzarella",
-    descripcionVieja: "Perfecta para rallar\nGratina dorado y no se quema\nAl rebanar no se desborona\nPerfecta para pizza\nMuy buen gusto",
-    descripcionNueva: "Perfecta para rallar\nGratina dorado y no se quema\nAl rebanar no se desborona\nPerfecta para pizza\nMuy buen gusto",
+    descripcionVieja:
+      "Perfecta para rallar\nGratina dorado y no se quema\nAl rebanar no se desborona\nPerfecta para pizza\nMuy buen gusto",
+    descripcionNueva:
+      "Perfecta para rallar\nGratina dorado y no se quema\nAl rebanar no se desborona\nPerfecta para pizza\nMuy buen gusto",
   },
-  { de: "Queso parmesano", a: "Parmesano", descripcionVieja: "", descripcionNueva: "" },
+  {
+    de: "Queso parmesano",
+    a: "Parmesano",
+    descripcionVieja: "",
+    descripcionNueva: "",
+  },
 ];
+
+/**
+ * Los pagos se reconstruyen una vez para admitir el método «tarjeta» y la
+ * venta a la que pertenecen (SQLite no cambia un `check` de una tabla
+ * vieja). El cuidado está en las capturas: cada adjunto apunta a su pago
+ * con «on delete set null», y el `drop` de la tabla vieja, con las claves
+ * foráneas encendidas, dejaría en nada el pago de cada captura. En vez de
+ * fiarse de un `pragma` (Turso no lo garantiza), se apunta antes qué
+ * captura es de qué pago, se sueltan, se reconstruye la tabla y se vuelven
+ * a unir; los índices se vuelven a crear; `migrar` cuenta antes y después
+ * que no se perdió ni un pago ni una captura.
+ */
+function reconstruirPagos(
+  tabla: string,
+  dueno: string,
+  duenoTabla: string,
+  ventaOpcional: string,
+  fotos: string,
+  columna: string,
+  indice: string,
+): string {
+  return `
+  begin;
+  create table ${fotos}_enlaces_temporales as select id as adjunto_id, ${columna} as pago_id from ${fotos} where ${columna} is not null;
+  update ${fotos} set ${columna} = null;
+  create table ${tabla}_nueva (
+    id integer primary key autoincrement,
+    ${dueno} integer not null references ${duenoTabla}(id),${ventaOpcional}
+    fecha text not null,
+    metodo text not null check (metodo in (
+      'pago_movil', 'transferencia', 'efectivo_bs', 'efectivo_usd',
+      'zelle', 'binance', 'tarjeta', 'otro'
+    )),
+    moneda text not null check (moneda in ('USD', 'VES')),
+    monto real not null,
+    tasa real,
+    monto_usd real not null,
+    referencia text not null default '',
+    nota text not null default '',
+    creado_en text not null default (datetime('now'))
+  );
+  insert into ${tabla}_nueva (id, ${dueno}, fecha, metodo, moneda, monto, tasa, monto_usd, referencia, nota, creado_en)
+    select id, ${dueno}, fecha, metodo, moneda, monto, tasa, monto_usd, referencia, nota, creado_en from ${tabla};
+  drop table ${tabla};
+  alter table ${tabla}_nueva rename to ${tabla};
+  create index if not exists ${indice} on ${tabla}(${dueno});
+  update ${fotos} set ${columna} = (select e.pago_id from ${fotos}_enlaces_temporales e where e.adjunto_id = ${fotos}.id)
+    where id in (select adjunto_id from ${fotos}_enlaces_temporales);
+  drop table ${fotos}_enlaces_temporales;
+  commit;
+`;
+}
+
+export const RECONSTRUIR_PAGOS = reconstruirPagos(
+  "pagos",
+  "cliente_id",
+  "clientes",
+  "\n    venta_id integer references ventas(id) on delete set null,",
+  "adjuntos",
+  "pago_id",
+  "pagos_cliente",
+);
+export const RECONSTRUIR_PAGOS_PROVEEDORES = reconstruirPagos(
+  "pagos_proveedores",
+  "proveedor_id",
+  "proveedores",
+  "",
+  "adjuntos_proveedores",
+  "pago_proveedor_id",
+  "pagos_proveedores_proveedor",
+);

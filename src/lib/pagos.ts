@@ -18,6 +18,8 @@ export type Pago = {
   nota: string;
   /** Cuántas capturas (comprobantes) tiene guardadas: 0 o 1 normalmente. */
   con_comprobante: number;
+  /** La venta que se cobró en la caja, si el pago salió de ahí. */
+  venta_id: number | null;
   creado_en: string;
 };
 
@@ -30,6 +32,8 @@ export type DatosPago = {
   tasa: number | null;
   referencia: string;
   nota: string;
+  /** La venta que se cobró en la caja, si el pago salió de ahí. */
+  venta_id?: number | null;
 };
 
 const CONSULTA_PAGOS = `
@@ -41,6 +45,11 @@ const CONSULTA_PAGOS = `
 
 export async function listarPagos(limite = 100): Promise<Pago[]> {
   return filas<Pago>(`${CONSULTA_PAGOS} order by p.fecha desc, p.id desc limit ?`, [limite]);
+}
+
+/** Los pagos con los que se cobró una venta en la caja, en orden. */
+export async function pagosDeVenta(ventaId: number): Promise<Pago[]> {
+  return filas<Pago>(`${CONSULTA_PAGOS} where p.venta_id = ? order by p.id`, [ventaId]);
 }
 
 export async function listarPagosDeCliente(clienteId: number): Promise<Pago[]> {
@@ -70,8 +79,8 @@ export async function registrarPago(datos: DatosPago): Promise<number> {
   if (!(montoUsd > 0)) throw new Error("Ese monto no llega a un centavo de dólar. Revisa el monto y la tasa.");
 
   const r = await ejecutar(
-    `insert into pagos (cliente_id, fecha, metodo, moneda, monto, tasa, monto_usd, referencia, nota)
-     values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `insert into pagos (cliente_id, fecha, metodo, moneda, monto, tasa, monto_usd, referencia, nota, venta_id)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       datos.cliente_id,
       datos.fecha,
@@ -82,6 +91,7 @@ export async function registrarPago(datos: DatosPago): Promise<number> {
       montoUsd,
       datos.referencia,
       datos.nota,
+      datos.venta_id ?? null,
     ],
   );
   return r.ultimoId;

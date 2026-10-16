@@ -43,6 +43,12 @@ export type Venta = {
   /** El día en que hay que llevarla, si quedó por entregar. */
   entrega_prevista: string | null;
   creado_en: string;
+  /** De dónde salió: pos si se cobró en la caja; vacío, anotada en Ventas. */
+  origen: string;
+  /** El descuento hecho en la caja; el total ya lo tiene restado. */
+  descuento_usd: number;
+  cajero: string;
+  clave_pos: string | null;
 };
 
 export type VentaConLineas = Venta & { lineas: LineaVentaGuardada[] };
@@ -110,6 +116,11 @@ export async function conLineas(ventas: Venta[]): Promise<VentaConLineas[]> {
   return ventas.map((v) => ({ ...v, lineas: lineas.get(v.id) ?? [] }));
 }
 
+/** La venta que la caja cobró con esa clave, si ya llegó una vez. */
+export async function buscarVentaPorClavePos(clave: string): Promise<Venta | null> {
+  return fila<Venta>(`${CONSULTA_VENTAS} where v.clave_pos = ?`, [clave]);
+}
+
 export async function buscarVenta(id: number): Promise<VentaConLineas | null> {
   const venta = await fila<Venta>(`${CONSULTA_VENTAS} where v.id = ?`, [id]);
   if (!venta) return null;
@@ -129,6 +140,8 @@ export async function crearVenta(
   tasa: number | null = null,
   porEntregar = false,
   entregaPrevista: string | null = null,
+  /** Lo que añade la caja: de dónde salió, el descuento, quién cobró y la clave del cobro. */
+  caja: { origen?: string; descuento_usd?: number; cajero?: string; clave_pos?: string | null } = {},
 ): Promise<number> {
   if (lineas.length === 0) throw new Error("Una venta necesita al menos un producto.");
   for (const l of lineas) {
@@ -140,9 +153,21 @@ export async function crearVenta(
 
   return transaccion(async (tx) => {
     const venta = await tx.execute({
-      sql: `insert into ventas (cliente_id, fecha, total_usd, nota, tasa, por_entregar, entrega_prevista)
-            values (?, ?, ?, ?, ?, ?, ?) returning id`,
-      args: [clienteId, fecha, total, nota, tasa && tasa > 0 ? tasa : null, porEntregar ? 1 : 0, porEntregar ? entregaPrevista : null],
+      sql: `insert into ventas (cliente_id, fecha, total_usd, nota, tasa, por_entregar, entrega_prevista, origen, descuento_usd, cajero, clave_pos)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id`,
+      args: [
+        clienteId,
+        fecha,
+        total,
+        nota,
+        tasa && tasa > 0 ? tasa : null,
+        porEntregar ? 1 : 0,
+        porEntregar ? entregaPrevista : null,
+        caja.origen ?? "",
+        caja.descuento_usd ?? 0,
+        caja.cajero ?? "",
+        caja.clave_pos ?? null,
+      ],
     });
     const ventaId = Number(venta.rows[0].id);
     for (const l of lineas) {

@@ -103,6 +103,7 @@ const cerca = (a, b) => Math.abs(a - b) < 0.005;
 
 /** React parte los textos con comentarios vacíos; sin ellos se lee como lo ve la gente. */
 const legible = (html) => html.replaceAll("<!-- -->", "");
+const numeroDeNota = (id) => `N.º ${String(id).padStart(6, "0")}`;
 
 // ---------- La web ----------
 
@@ -2088,6 +2089,8 @@ async function probarSinEscribir() {
     ["/admin/resenas", "Reseñas", "Reseña nueva"],
     ["/admin/clientes/seguimiento", "Estudio de clientes", "Por llamar"],
     ["/admin/ayuda", "Cómo se usa el panel", "Al empezar el día"],
+    ["/admin/pos", "Caja", "Escanea el código"],
+    ["/admin/codigos", "Códigos de barras y SKU", "Escanea aquí"],
     ["/admin/stickers", "Stickers para WhatsApp", "Cuando pagan"],
     ["/admin/proveedores", "Proveedores", "Proveedor nuevo"],
     ["/admin/caja", "Cierre del día", "Descargar para Excel"],
@@ -2267,6 +2270,118 @@ async function probarAvisos() {
   comprobar("un trato con fecha de mañana no se guarda", !r.destino.includes("Anotado") && (await consultar("select count(*) as n from contactos where cliente_id = ?", [cliente.id]))[0].n == 1, r.destino);
 }
 
+
+/**
+ * La caja (punto de venta): los códigos de barras y SKU, el cliente de
+ * mostrador, el precio especial, el cobro con pago mixto y descuento, el
+ * ticket, el tope del inventario y el cobro repetido.
+ */
+async function probarCaja() {
+  const caja = await pagina("/admin/pos");
+  comprobar(
+    `la caja abre, con el escáner, el catálogo y el formulario de cobro (${caja.ms} ms)`,
+    caja.status === 200 && caja.html.includes('id="pos-buscar"') && caja.html.includes("Mozzarella") && caja.html.includes('name="venta"') && caja.html.includes("Códigos de barras"),
+  );
+  const [mostrador] = await consultar("select id from clientes where nombre = 'Mostrador' and telefono = ''");
+  comprobar("la caja crea el cliente de mostrador para las ventas sin cliente", Boolean(mostrador));
+
+  // Los códigos: se asignan con el lector en su pantalla; un código no puede estar en dos artículos.
+  const codigos = await pagina("/admin/codigos");
+  comprobar("la pantalla de códigos lista lo que se vende con su casilla para escanear", codigos.status === 200 && codigos.html.includes("Códigos de barras y SKU") && codigos.html.includes('name="clave" value="2"'));
+  let r = await enviar("/admin/codigos", 'name="clave" value="2"', { clave: "2", codigo_barras: "7591234567890", sku: "", volver_a: "/admin/codigos" });
+  comprobar("asignar un código a la mozzarella", r.destino.includes("Código 7591234567890 guardado") && (await consultar("select codigo_barras from productos where id = 2"))[0].codigo_barras === "7591234567890", r.destino);
+  r = await enviar("/admin/codigos", 'name="clave" value="3"', { clave: "3", codigo_barras: "7591234567890", sku: "", volver_a: "/admin/codigos" });
+  comprobar("el mismo código en otro artículo se rechaza", r.destino.includes("ya es de «Mozzarella»") && (await consultar("select codigo_barras from productos where id = 3"))[0].codigo_barras === "", r.destino);
+  r = await enviar("/admin/codigos", 'name="clave" value="2"', { clave: "2", codigo_barras: "7591234567890", sku: "moz 25kg", volver_a: "/admin/codigos" });
+  comprobar("el SKU se guarda limpio, en mayúsculas y con guiones", r.destino.includes("SKU MOZ-25KG") && (await consultar("select sku from productos where id = 2"))[0].sku === "MOZ-25KG", r.destino);
+  comprobar("la ficha del producto enseña su código y su SKU", (await pagina("/admin/productos/2")).html.includes('value="7591234567890"'));
+  comprobar("la caja lleva el código en su catálogo", (await pagina("/admin/pos")).html.includes("7591234567890"));
+
+  // El precio especial de un cliente.
+  const [cliente] = await consultar("select id, nombre from clientes where telefono <> '' order by id limit 1");
+  const ficha = `/admin/clientes/${cliente.id}`;
+  r = await enviar(ficha, 'name="precio_usd"', { cliente_id: String(cliente.id), clave: "2", precio_usd: "7" });
+  comprobar("un precio especial se guarda en la ficha del cliente", r.destino.includes("Precio especial guardado") && legible((await pagina(ficha)).html).includes("Mozzarella</strong> · " + usd("7,00")), r.destino);
+
+  // El cobro: dos artículos, descuento, pago mixto (efectivo y pago móvil a la tasa del día).
+  const [{ valor: tasa }] = await consultar("select valor from ajustes where clave = 'tasa_bs'");
+  const clave = `prueba-${Date.now()}`;
+  const ventaDeCaja = (cambios) =>
+    JSON.stringify({
+      clave_pos: clave,
+      cliente_id: cliente.id,
+      cajero: "Carlos (prueba)",
+      descuento_usd: 1.65,
+      nota: "",
+      lineas: [
+        { clave: "2", producto_id: 2, variante_id: null, nombre: "Mozzarella", unidad: "kg", cantidad: 2, precio_usd: 7.7 },
+        { clave: "3", producto_id: 3, variante_id: null, nombre: "Huevos", unidad: "carton", cantidad: 1, precio_usd: 6.25 },
+      ],
+      pagos: [
+        { metodo: "efectivo_usd", monto_usd: 10 },
+        { metodo: "pago_movil", monto_usd: 10, referencia: "1234" },
+      ],
+      ...cambios,
+    });
+  r = await enviar("/admin/pos", 'name="venta"', { venta: ventaDeCaja({ pagos: [{ metodo: "efectivo_usd", monto_usd: 5 }] }) });
+  comprobar("si los pagos no cubren el total, la caja no cobra y lo dice", r.destino.startsWith("/admin/pos?clave=") && r.destino.includes("no cubren el total"), r.destino);
+  r = await enviar("/admin/pos", 'name="venta"', { venta: ventaDeCaja({}) });
+  const ventaId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  const [vendida] = ventaId ? await consultar("select origen, descuento_usd, cajero, total_usd, tasa, por_entregar, clave_pos from ventas where id = ?", [ventaId]) : [null];
+  const pagosDeCaja = ventaId ? await consultar("select metodo, moneda, monto, tasa, monto_usd from pagos where venta_id = ? order by id", [ventaId]) : [];
+  comprobar(
+    `cobrar en la caja crea la venta entregada con su descuento, su cajero y la tasa (${r.ms} ms)`,
+    r.destino.includes("formato=ticket") && r.destino.includes("Venta cobrada") && vendida?.origen === "pos" && cerca(Number(vendida.descuento_usd), 1.65) && cerca(Number(vendida.total_usd), 20) &&
+      vendida.cajero === "Carlos (prueba)" && Number(vendida.por_entregar) === 0 && vendida.clave_pos === clave && cerca(Number(vendida.tasa), Number(tasa)),
+    `${r.destino} ${JSON.stringify(vendida)}`,
+  );
+  comprobar(
+    "y los dos pagos quedan unidos a la venta: el de bolívares a la tasa del día",
+    pagosDeCaja.length === 2 && pagosDeCaja[0].metodo === "efectivo_usd" && pagosDeCaja[0].moneda === "USD" && cerca(Number(pagosDeCaja[0].monto_usd), 10) &&
+      pagosDeCaja[1].metodo === "pago_movil" && pagosDeCaja[1].moneda === "VES" && cerca(Number(pagosDeCaja[1].monto), 10 * Number(tasa)) && cerca(Number(pagosDeCaja[1].monto_usd), 10),
+    JSON.stringify(pagosDeCaja),
+  );
+  const ticket = await pagina(r.destino);
+  const textoTicket = legible(ticket.html);
+  comprobar(
+    "el ticket dice fecha, número, cliente, cajero, líneas, descuento, total en USD y Bs, cómo pagó y que no es factura",
+    ticket.status === 200 && ticket.html.includes("size: 80mm") && textoTicket.includes("VILLA REAL") && textoTicket.includes(numeroDeNota(ventaId)) && textoTicket.includes(cliente.nombre) &&
+      textoTicket.includes("Carlos (prueba)") && textoTicket.includes("Descuento") && textoTicket.includes("TOTAL USD") && textoTicket.includes("TOTAL Bs") && textoTicket.includes("Efectivo en dólares") &&
+      textoTicket.includes("Pago móvil") && textoTicket.includes("Gracias por su compra") && textoTicket.includes("No es una factura fiscal") && ticket.html.includes("Nueva venta"),
+  );
+  const fichaDespues = legible((await pagina(ficha)).html);
+  comprobar("la venta y sus dos abonos salen en la ficha del cliente", fichaDespues.includes(`/admin/ventas/${ventaId}/nota`) && fichaDespues.includes("Pago móvil") && fichaDespues.includes("1234"), fichaDespues.length);
+  comprobar("Ventas la marca como de la caja", (await pagina("/admin/ventas")).html.includes("· caja"));
+  r = await enviar("/admin/pos", 'name="venta"', { venta: ventaDeCaja({}) });
+  comprobar("el mismo cobro dos veces es una sola venta", r.destino.includes("ya estaba cobrada") && r.destino.includes(`/admin/ventas/${ventaId}/nota`) && (await consultar("select count(*) as n from ventas where clave_pos = ?", [clave]))[0].n == 1, r.destino);
+
+  // Con tarjeta se cobra en bolívares a la tasa del día.
+  r = await enviar("/admin/pos", 'name="venta"', { venta: ventaDeCaja({ clave_pos: clave + "-tarjeta", descuento_usd: 0, pagos: [{ metodo: "tarjeta", monto_usd: 21.65 }] }) });
+  const conTarjeta = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  const [pagoTarjeta] = conTarjeta ? await consultar("select metodo, moneda, tasa from pagos where venta_id = ?", [conTarjeta]) : [null];
+  comprobar("cobrar con tarjeta (nuevo método) se guarda en bolívares a la tasa", Boolean(conTarjeta) && pagoTarjeta?.metodo === "tarjeta" && pagoTarjeta.moneda === "VES" && cerca(Number(pagoTarjeta.tasa), Number(tasa)), r.destino);
+
+  // El tope del inventario: no se vende más de lo que hay, salvo que se permita en Inventario.
+  r = await enviar("/admin/pos", 'name="venta"', { venta: ventaDeCaja({ clave_pos: clave + "-tope", descuento_usd: 0, lineas: [{ clave: "2", producto_id: 2, variante_id: null, nombre: "Mozzarella", unidad: "kg", cantidad: 100000, precio_usd: 1 }], pagos: [{ metodo: "efectivo_usd", monto_usd: 100000 }] }) });
+  comprobar("vender más de lo que hay no se cobra, y dice qué hacer", r.destino.includes("la venta lleva 100000") && r.destino.includes("permite vender sin existencia"), r.destino);
+  r = await enviar("/admin/inventario", 'name="permitir"', { permitir: "1" });
+  comprobar("en Inventario se puede permitir vender sin existencia", r.destino.includes("puede vender aunque el inventario diga que no hay"), r.destino);
+  r = await enviar("/admin/pos", 'name="venta"', { venta: ventaDeCaja({ clave_pos: clave + "-tope", descuento_usd: 0, lineas: [{ clave: "2", producto_id: 2, variante_id: null, nombre: "Mozzarella", unidad: "kg", cantidad: 100000, precio_usd: 1 }], pagos: [{ metodo: "efectivo_usd", monto_usd: 100000 }] }) });
+  const sinTope = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  comprobar("permitido, se cobra igual", Boolean(sinTope) && r.destino.includes("Venta cobrada"), r.destino);
+  await enviar("/admin/inventario", 'name="permitir"', { permitir: "0" });
+
+  // Se deja todo como estaba: las ventas de la prueba y sus pagos.
+  for (const id of [ventaId, conTarjeta, sinTope].filter(Boolean)) {
+    for (const p of await consultar("select id from pagos where venta_id = ?", [id])) await enviar(`/admin/pagos/${p.id}/eliminar`, 'name="id"', { id: String(p.id) });
+    await enviar(`/admin/ventas/${id}/eliminar`, 'name="id"', { id: String(id) });
+  }
+  const [precioEspecial] = await consultar("select id from precios_especiales where cliente_id = ? and producto_id = 2", [cliente.id]);
+  r = await enviar(ficha, `name="id" value="${precioEspecial.id}"`, { id: String(precioEspecial.id), cliente_id: String(cliente.id) }, cookie, {}, ">Quitar<");
+  comprobar("quitar el precio especial", r.destino.includes("Precio especial quitado") && (await consultar("select count(*) as n from precios_especiales where cliente_id = ?", [cliente.id]))[0].n == 0, r.destino);
+  await enviar("/admin/codigos", 'name="clave" value="2"', { clave: "2", codigo_barras: "", sku: "", volver_a: "/admin/codigos" });
+}
+
 // ---------- Principal ----------
 
 try {
@@ -2335,6 +2450,7 @@ try {
     await probarInventario();
     await probarCatalogo();
     await probarAvisos();
+    await probarCaja();
     await probarVitrina();
     await probarTareaDiaria();
     await probarFreno();

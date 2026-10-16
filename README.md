@@ -243,6 +243,12 @@ src/lib/estudio-de-clientes.ts  El estudio desde la base, para el Resumen, su pa
 src/lib/contactos.ts      «Lo llamé», «Lo visité»: los tratos anotados con cada cliente
 src/app/admin/(panel)/clientes/seguimiento/  La pantalla del estudio de clientes
 src/app/admin/(panel)/ayuda/  «Cómo se usa el panel»: la guía rápida, en el orden del día
+src/lib/pos-calculo.ts    Las cuentas de la caja: totales, descuento, pagos y el SKU propuesto (puro, con pruebas)
+src/lib/pos.ts            La caja desde la base: el catálogo con existencias, el cliente de mostrador y el cobro
+src/lib/codigos.ts        Los códigos de barras y los SKU: quién tiene un código, ponerlo y quitarlo
+src/lib/precios-especiales.ts  El precio especial de un cliente para un artículo
+src/components/pos.tsx    La pantalla de la caja (con JavaScript: lector, carrito, atajos, pitido)
+src/app/admin/(panel)/pos/  La caja; /admin/codigos, la pantalla para poner códigos con el lector
 src/lib/stickers.ts       La lista de stickers de WhatsApp (texto, forma, color, icono)
 scripts/stickers.ts       Los dibuja con Chrome en public/stickers/ (PNG y WebP, 512 × 512, y un ZIP)
 src/app/admin/(panel)/stickers/  La pantalla para guardarlos en el teléfono
@@ -533,7 +539,8 @@ datos/                    La base de datos (fuera de Git)
   compró por última vez.
 
 Métodos de pago que reconoce: pago móvil, transferencia, efectivo en
-bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
+bolívares y tarjeta (los cuatro piden tasa), efectivo en dólares, Zelle,
+Binance y otro.
 
 ## Cartera, notas y despacho
 
@@ -713,6 +720,61 @@ bolívares (los tres piden tasa), efectivo en dólares, Zelle, Binance y otro.
   las últimas 50 (`src/lib/buscar.ts`).
 - **Los números de nota** son los de la venta y no se repiten: si una nota
   se borra, su número no se vuelve a usar.
+
+## La caja (punto de venta)
+
+- **`/admin/pos`**, pensada para un computador del local con un **lector de
+  códigos de barras USB** (escribe el código como un teclado y pulsa Enter),
+  pero cabe en el teléfono. Es la única pantalla del panel con JavaScript de
+  verdad (`src/components/pos.tsx`): escanear o escribir un producto lo mete
+  al carrito (si ya estaba, suma), con un pitido y un aviso; si el código no
+  es de nadie, «Producto no encontrado. ¿Quieres registrarlo?» deja ponerle
+  ese código a un artículo o crear uno nuevo con el código puesto. Se busca
+  por **código, SKU, nombre o marca**; lo que no tiene código se vende igual
+  por su nombre. Cada línea dice la existencia (verde, amarillo, rojo) y se
+  cambian la cantidad y el precio. Atajos: **F2** buscar, **F4** cliente,
+  **F8** cobrar, **Esc** cancelar, **Enter** confirmar. El carrito se guarda
+  en el navegador: si la página se recarga o el cobro vuelve con un aviso,
+  no se pierde.
+- **El catálogo y el inventario son los de siempre**: la caja vende los
+  mismos tipos y artículos de Productos (`vendiblesDe`) y la existencia es
+  la de Inventario (compras − ventas + ajustes); una venta de la caja es una
+  `venta` normal con sus líneas, así que **descuenta el inventario sola**,
+  entra en la ficha del cliente, en Lo que te deben, en el Cierre del día y
+  en Estadísticas. No hay una segunda tabla de productos ni de stock.
+- **Códigos de barras y SKU** (`codigo_barras`, `sku` en `variantes` y, para
+  los tipos de una sola forma, en `productos`): se ponen en la ficha del
+  artículo o, más rápido, en **`/admin/codigos`**: el cursor en la casilla,
+  el lector escribe el código y guarda. El código es **único** en todo el
+  catálogo (índice único; «ya es de X»); el SKU es opcional y se propone uno
+  (`skuPropuesto`: «MOZ-KEM-25KG»). Muchos productos no tienen SKU ni
+  código: no pasa nada.
+- **Cliente**: uno registrado (su venta va a su historial) o **«Mostrador»**,
+  un cliente fijo que la caja crea la primera vez para las ventas sin
+  cliente. **Precio**: el al mayor del artículo o, si el cliente tiene
+  **precio especial** para él (en su ficha, «Precios especiales», tabla
+  `precios_especiales`), ese, solo; el precio se puede cambiar a mano en la
+  línea.
+- **Cobrar** (F8): resumen, descuento en dólares, **método de pago** (los de
+  siempre más **tarjeta**) o **pago mixto** (varias vías que suman el total),
+  referencia y observación; **Confirmar** crea la venta (entregada, con la
+  tasa del día, `origen = 'pos'`, `descuento_usd`, `cajero`) y un `pago`
+  por cada vía unido a la venta (`pagos.venta_id`; los de bolívares a la
+  tasa del día): la venta queda **pagada** con la lógica de siempre. Cada
+  cobro lleva una clave (`ventas.clave_pos`): si llega dos veces, es una
+  sola venta. Lo que no cuadra (pagos que no suman, cantidad sin sentido,
+  más de lo que hay) vuelve a la caja con el motivo y el carrito intacto.
+- **Inventario**: no se vende más de lo que hay, salvo que en Inventario se
+  pulse «Permitir vender sin existencia» (ajuste `permitir_stock_negativo`).
+- **Ticket** (`/admin/ventas/12/nota?formato=ticket`): el comprobante de la
+  caja para **impresora térmica de 80 mm** (`@page`) o normal: VILLA REAL,
+  fecha y hora, número, cliente, cajero, líneas, subtotal, descuento, total
+  en USD y en Bs con la tasa, cómo pagó y «Gracias por su compra». Es un
+  comprobante interno: **no es una factura fiscal** y lo dice. La nota de
+  entrega de siempre sigue ahí («Ver la nota completa»).
+- Pendiente de las fases siguientes: presentaciones con factor (caja = 10
+  unidades), devoluciones, anulación sin borrar, movimientos de inventario,
+  usuarios y roles, lotes y vencimientos, filtros de reportes por cajero.
 
 ## Proveedores
 

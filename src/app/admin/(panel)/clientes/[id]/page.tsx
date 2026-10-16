@@ -5,10 +5,14 @@ import { conLineas, listarVentasDeCliente } from "@/lib/ventas";
 import { listarPagosDeCliente, ultimaTasa } from "@/lib/pagos";
 import { listarAdjuntosDeCliente } from "@/lib/adjuntos";
 import { listarContactosDe, TIPOS_DE_CONTACTO } from "@/lib/contactos";
+import { listarPreciosEspecialesDe } from "@/lib/precios-especiales";
+import { listarProductos } from "@/lib/productos";
+import { listarVariantes } from "@/lib/variantes";
+import { vendiblesDe } from "@/lib/catalogo";
 import { describirTrato, estudiarCliente } from "@/lib/seguimiento";
 import { NOMBRE_ESTADO, aplicarPagos, movimientosDeCuenta } from "@/lib/cuentas";
 import { conVencimiento, describirVencimiento } from "@/lib/credito";
-import { anotarContactoAccion, cambiarEnlaceDeCuenta, editarCliente, situarClienteEnElMapa, subirAdjunto } from "@/lib/acciones";
+import { anotarContactoAccion, cambiarEnlaceDeCuenta, editarCliente, guardarPrecioEspecialAccion, quitarPrecioEspecialAccion, situarClienteEnElMapa, subirAdjunto } from "@/lib/acciones";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { leerTasa } from "@/lib/ajustes";
 import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, hoy, redondear, usd, tasaLegible } from "@/lib/dinero";
@@ -38,7 +42,7 @@ export default async function PaginaCliente({
   const cliente = await buscarCliente(Number(id));
   if (!cliente) notFound();
 
-  const [ventas, pagos, adjuntos, tasa, tasaDelDia, recordadoEl, contactos] = await Promise.all([
+  const [ventas, pagos, adjuntos, tasa, tasaDelDia, recordadoEl, contactos, preciosEspeciales, productos, variantes] = await Promise.all([
     listarVentasDeCliente(cliente.id).then(conLineas),
     listarPagosDeCliente(cliente.id),
     listarAdjuntosDeCliente(cliente.id),
@@ -46,7 +50,13 @@ export default async function PaginaCliente({
     leerTasa(),
     ultimoRecordatorioDe(cliente.id),
     listarContactosDe(cliente.id),
+    listarPreciosEspecialesDe(cliente.id),
+    listarProductos(true),
+    listarVariantes(),
   ]);
+  // Lo que se le puede poner a precio especial: todo lo que se vende, con su nombre de venta.
+  const vendibles = vendiblesDe(productos, variantes);
+  const nombreDeVendible = new Map(vendibles.map((v) => [v.clave, v.nombre]));
   const cuentas = conVencimiento(aplicarPagos(ventas, cliente.total_pagado_usd), cliente.dias_credito, hoy());
   const vencido = cuentas.filter((c) => c.vencida).reduce((s, c) => s + c.pendiente_usd, 0);
   const ciudad = `${negocio.localidad}, ${negocio.estado}, Venezuela`;
@@ -395,6 +405,63 @@ export default async function PaginaCliente({
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="tarjeta" id="precios">
+        <h2 className={estilos.subtitulo}>Precios especiales</h2>
+        <p className={estilos.ayuda}>
+          Lo que se le cobra a este cliente en vez del precio al mayor. La caja lo usa sola al elegirlo; en Ventas sigue escribiéndose el precio
+          de cada nota.
+        </p>
+        {preciosEspeciales.length > 0 && (
+          <ul className={estilos.pedidos} style={{ marginBottom: "var(--espacio-3)" }}>
+            {preciosEspeciales.map((p) => {
+              const clave = p.variante_id ? `${p.producto_id}-${p.variante_id}` : String(p.producto_id);
+              return (
+                <li key={p.id}>
+                  <p>
+                    <strong>{nombreDeVendible.get(clave) ?? "Artículo que ya no se vende"}</strong> · {usd(p.precio_usd)}
+                  </p>
+                  <form action={quitarPrecioEspecialAccion}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <input type="hidden" name="cliente_id" value={cliente.id} />
+                    <button type="submit" className={estilos.botonEnlace}>
+                      Quitar
+                    </button>
+                  </form>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <form action={guardarPrecioEspecialAccion} className="formulario">
+          <input type="hidden" name="cliente_id" value={cliente.id} />
+          <div className="formulario__fila">
+            <div className="campo">
+              <label htmlFor="precio-especial-clave">Producto</label>
+              <select id="precio-especial-clave" name="clave" required defaultValue="">
+                <option value="" disabled>
+                  Elige el producto
+                </option>
+                {vendibles.map((v) => (
+                  <option key={v.clave} value={v.clave}>
+                    {v.nombre}
+                    {v.precio_usd !== null ? ` (al mayor ${usd(v.precio_usd)})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="campo">
+              <label htmlFor="precio-especial-precio">Precio especial (USD)</label>
+              <input id="precio-especial-precio" name="precio_usd" type="number" inputMode="decimal" min="0" step="0.01" required />
+            </div>
+          </div>
+          <div>
+            <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+              Guardar precio especial
+            </button>
+          </div>
+        </form>
       </section>
 
       <section className="tarjeta" id="cuentas">

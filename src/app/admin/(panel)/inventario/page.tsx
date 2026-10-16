@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { existencias, listarAjustes } from "@/lib/inventario";
-import { guardarAjusteDeInventario } from "@/lib/acciones";
+import { guardarAjusteDeInventario, ponerStockNegativo } from "@/lib/acciones";
+import { permitirStockNegativo } from "@/lib/ajustes";
 import { cantidad, fechaCorta, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
@@ -17,7 +18,7 @@ const NOMBRE_DE_ESTADO = { sin_seguir: "Sin seguir", sin: "Sin existencia", poco
  */
 export default async function PaginaInventario({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
-  const [lista, ajustes] = await Promise.all([existencias(), listarAjustes(15)]);
+  const [lista, ajustes, sinTope] = await Promise.all([existencias(), listarAjustes(15), permitirStockNegativo()]);
   const seguidos = lista.filter((e) => e.seguido);
   const avisan = seguidos.filter((e) => e.estado === "sin" || e.estado === "poco");
 
@@ -30,6 +31,15 @@ export default async function PaginaInventario({ searchParams }: { searchParams:
         Entra con cada compra a un proveedor (sus kilos por producto), sale con cada venta y se corrige con un recuento o una merma. Un producto
         se empieza a seguir con su primera compra o su primer recuento.
       </p>
+      <form action={ponerStockNegativo} className={`${estilos.accionesFila} ${estilos.noImprimir}`} style={{ flexWrap: "wrap", alignItems: "center", marginBottom: "var(--espacio-4)" }}>
+        <input type="hidden" name="permitir" value={sinTope ? "0" : "1"} />
+        <span className="ayuda">
+          La caja {sinTope ? "puede vender aunque el inventario diga que no hay" : "no vende más de lo que hay en inventario"}.
+        </span>
+        <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+          {sinTope ? "No vender sin existencia" : "Permitir vender sin existencia"}
+        </button>
+      </form>
 
       {avisan.length > 0 && (
         <p className="aviso aviso--aviso">

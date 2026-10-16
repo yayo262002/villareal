@@ -151,7 +151,8 @@ async function conChrome<T>(cuerpo: (enviar: (metodo: string, params?: object) =
       if (dato.id && pendientes.has(dato.id)) {
         const { resolver, rechazar } = pendientes.get(dato.id)!;
         pendientes.delete(dato.id);
-        dato.error ? rechazar(new Error(dato.error.message)) : resolver(dato.result);
+        if (dato.error) rechazar(new Error(dato.error.message));
+        else resolver(dato.result);
       }
     };
     const enviar = (method: string, params: object = {}) =>
