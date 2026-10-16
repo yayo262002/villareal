@@ -1,21 +1,16 @@
 import Link from "next/link";
 import { listarClientes } from "@/lib/clientes";
-import { listarProductos } from "@/lib/productos";
-import { listarVariantes } from "@/lib/variantes";
-import { vendiblesDe } from "@/lib/catalogo";
 import { conLineas, listarVentas } from "@/lib/ventas";
 import { adjuntosDeVentas } from "@/lib/adjuntos";
-import { guardarVenta } from "@/lib/acciones";
-import { leerTasa } from "@/lib/ajustes";
+import { leerTasa, permitirStockNegativo } from "@/lib/ajustes";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { ventaCoincide } from "@/lib/buscar";
 import { fechaCorta, hoy, usd } from "@/lib/dinero";
-import { Avisos, type ParametrosAviso } from "@/components/avisos";
-import { TotalDeVenta } from "@/components/total-de-venta";
-import { FilaDeProducto } from "@/components/fila-de-producto";
-import { existenciasPorClave } from "@/lib/inventario";
-import { EntradaFoto } from "@/components/entrada-foto";
+import { catalogoDelPos, clienteDeMostrador, siguienteNumeroDeVenta } from "@/lib/pos";
+import { preciosEspecialesPorCliente } from "@/lib/precios-especiales";
 import { lectorDisponible } from "@/lib/lector-de-notas";
+import { Avisos, type ParametrosAviso } from "@/components/avisos";
+import { Pos, type ArticuloParaLaCaja, type ClienteParaLaCaja } from "@/components/pos";
 import estilos from "../panel.module.css";
 
 export const metadata = { title: "Ventas" };
@@ -24,150 +19,88 @@ export const maxDuration = 60;
 
 const MAXIMO_AL_BUSCAR = 100;
 
-/** Lo que el formulario trae ya escrito: al volver con un aviso, nada se pierde. */
-type Escrito = Record<string, string | string[] | undefined>;
-function escrito(datos: Escrito, campo: string): string {
-  const valor = datos[campo];
-  return typeof valor === "string" ? valor : "";
-}
-
-export default async function PaginaVentas({
-  searchParams,
-}: {
-  searchParams: Promise<ParametrosAviso>;
-}) {
+/**
+ * Ventas: arriba, registrar una venta como en una caja (cliente con su
+ * saldo, buscador de productos, carrito, pago y confirmar); debajo, las
+ * últimas ventas y el buscador. La pantalla de la caja trabaja sola con el
+ * catálogo, las existencias, los clientes y la tasa que se le dan aquí; el
+ * guardado vuelve al servidor con las reglas de siempre.
+ */
+export default async function PaginaVentas({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
-  const clientePreseleccionado = typeof parametros.cliente === "string" ? parametros.cliente : "";
-  const busqueda = typeof parametros.q === "string" ? parametros.q.trim() : "";
-  // Sin buscar, las últimas 50. Buscando, se mira entre todas y se enseñan hasta 100.
-  // Si la venta volvió con un aviso, el formulario trae lo que se había escrito.
-  const pideConfirmar = parametros.confirmar === "1";
-  const pideConfirmarNota = parametros.confirmar_nota === "1";
-  // La foto que se puso en el intento anterior sigue guardada: no hay que repetirla.
-  const fotoEnEspera = escrito(parametros, "foto_espera");
-  const seLee = lectorDisponible();
-  const [clientes, productos, variantes, tasa, existencias, ventas] = await Promise.all([
+  const texto = (campo: string) => (typeof parametros[campo] === "string" ? (parametros[campo] as string) : "");
+  const busqueda = texto("q").trim();
+  const [catalogo, clientes, tasa, precios, sinTope, mostrador, siguiente, ventas] = await Promise.all([
+    catalogoDelPos(),
     listarClientes(),
-    listarProductos(true),
-    listarVariantes(),
     leerTasa(),
-    existenciasPorClave(),
+    preciosEspecialesPorCliente(),
+    permitirStockNegativo(),
+    clienteDeMostrador(),
+    siguienteNumeroDeVenta(),
+    // Sin buscar, las últimas 50. Buscando, se mira entre todas y se enseñan hasta 100.
     (busqueda
       ? listarVentas(100000).then((todas) => todas.filter((v) => ventaCoincide(v, busqueda)).slice(0, MAXIMO_AL_BUSCAR))
       : listarVentas(50)
     ).then(conLineas),
   ]);
-  const vendibles = vendiblesDe(productos, variantes);
   // La foto de la nota firmada de cada venta, para enlazarla desde su fila.
   const fotos = await adjuntosDeVentas(ventas.map((v) => v.id));
 
+  const paraLaCaja: ArticuloParaLaCaja[] = catalogo.map((a) => ({
+    clave: a.clave,
+    producto_id: a.producto_id,
+    variante_id: a.variante_id,
+    nombre: a.nombre,
+    unidad: a.unidad as ArticuloParaLaCaja["unidad"],
+    precio_usd: a.precio_usd,
+    codigo_barras: a.codigo_barras,
+    sku: a.sku,
+    marca: a.marca,
+    presentacionTexto: a.presentacionTexto,
+    familia: a.familia,
+    existencia: a.existencia,
+    estado: a.estado,
+    pesoTipico: a.pesoTipico?.peso ?? null,
+  }));
+  const paraElegir = (c: (typeof clientes)[number]): ClienteParaLaCaja => ({ id: c.id, rotulo: c.rotulo, nombre: c.nombre, telefono: c.telefono, saldo_usd: c.saldo_usd });
+  const listaDeClientes = [paraElegir(mostrador), ...clientes.filter((c) => c.id !== mostrador.id).map(paraElegir)];
+  // Las ventas recientes ya guardadas desde la caja: un carrito con una de esas claves ya se vendió.
+  const clavesVendidas = [...ventas.map((v) => v.clave_pos), texto("vendida")].filter((c): c is string => Boolean(c));
+  const clienteInicial = Number(texto("cliente")) || undefined;
+
   return (
     <>
-      <h1 className={estilos.titulo}>Ventas</h1>
+      <div className={estilos.encabezado}>
+        <h1 className={estilos.titulo}>Ventas</h1>
+        <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
+          <Link href="#lista" className="boton boton--secundario">
+            Últimas ventas
+          </Link>
+        </div>
+      </div>
       <Avisos parametros={parametros} />
 
-      <section className="tarjeta">
-        <h2 className={estilos.subtitulo}>Registrar venta</h2>
-        {clientes.length === 0 ? (
-          <p className="aviso aviso--aviso">
-            Primero <Link href="/admin/clientes">registra un cliente</Link>.
-          </p>
-        ) : (
-          <form action={guardarVenta} className="formulario" encType="multipart/form-data">
-            <div className="formulario__fila">
-              <div className="campo">
-                <label htmlFor="venta-cliente">Cliente</label>
-                <select id="venta-cliente" name="cliente_id" required defaultValue={escrito(parametros, "cliente_id") || clientePreseleccionado}>
-                  <option value="" disabled>
-                    Elige un cliente
-                  </option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.rotulo}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="campo">
-                <label htmlFor="venta-fecha">Fecha de la nota</label>
-                <input id="venta-fecha" name="fecha" type="date" required max={hoy()} defaultValue={escrito(parametros, "fecha") || hoy()} />
-                <span className="ayuda">La que lleva la nota de papel, aunque sea de días atrás: los días de crédito cuentan desde ahí. No es el día de entrega.</span>
-              </div>
-            </div>
+      <h2 className={estilos.subtitulo}>Registrar venta</h2>
+      <Pos
+        catalogo={paraLaCaja}
+        clientes={listaDeClientes}
+        mostradorId={mostrador.id}
+        tasa={tasa?.valor ?? null}
+        preciosEspeciales={precios}
+        sinTope={sinTope}
+        hoy={hoy()}
+        siguienteNota={numeroDeNota(siguiente)}
+        seLee={lectorDisponible()}
+        clavesVendidas={clavesVendidas}
+        claveDevuelta={texto("clave") || undefined}
+        fotoEnEspera={texto("foto_espera") || undefined}
+        pideConfirmar={parametros.confirmar === "1"}
+        pideConfirmarNota={parametros.confirmar_nota === "1"}
+        clienteInicial={clienteInicial && clienteInicial !== mostrador.id ? clienteInicial : undefined}
+      />
 
-            {vendibles.map((v) => {
-              const inventario = existencias.get(v.clave);
-              return (
-                <FilaDeProducto
-                  key={v.clave}
-                  producto={v}
-                  datos={parametros}
-                  modo="venta"
-                  existencia={inventario?.seguido ? inventario.existencia : null}
-                  pesoTipico={inventario?.pesoPorPieza ?? null}
-                />
-              );
-            })}
-            <TotalDeVenta claves={vendibles.map((v) => v.clave)} tasa={tasa?.valor ?? null} />
-
-            {pideConfirmar && (
-              <label className={estilos.casilla}>
-                <input type="checkbox" name="confirmar" value="1" />
-                <span>Lo escrito es correcto: guardar igual</span>
-              </label>
-            )}
-
-            <fieldset className={estilos.entregaVenta}>
-              <legend>Entrega</legend>
-              <div className="campo">
-                <label htmlFor="venta-entrega">¿Ya se la entregaste?</label>
-                <select id="venta-entrega" name="entrega" required defaultValue={escrito(parametros, "entrega")}>
-                  <option value="" disabled>
-                    Elige una
-                  </option>
-                  <option value="local">Sí, ya la entregué</option>
-                  <option value="despacho">No, queda por entregar</option>
-                </select>
-              </div>
-              <div className="formulario__fila">
-                <div className="campo">
-                  <label htmlFor="venta-foto">Si ya la entregaste: foto de la nota firmada</label>
-                  {fotoEnEspera && <input type="hidden" name="foto_espera" value={fotoEnEspera} />}
-                  <EntradaFoto nombre="foto" id="venta-foto" opcional soloFoto />
-                  <span className="ayuda">
-                    {fotoEnEspera
-                      ? "La foto que pusiste ya está guardada; solo pon otra si quieres cambiarla."
-                      : "La hoja con la firma del cliente. Obligatoria si ya se entregó."}
-                    {seLee && " Se lee sola: si no es la nota, o su fecha o su suma no cuadran con lo anotado, avisa."}
-                  </span>
-                  {pideConfirmarNota && (
-                    <label className={estilos.casilla}>
-                      <input type="checkbox" name="confirmar_nota" value="1" />
-                      <span>Ya revisé la foto de la nota: guardar igual</span>
-                    </label>
-                  )}
-                </div>
-                <div className="campo">
-                  <label htmlFor="venta-entrega-prevista">Si queda por entregar: día previsto</label>
-                  <input id="venta-entrega-prevista" name="entrega_prevista" type="date" defaultValue={escrito(parametros, "entrega_prevista")} />
-                  <span className="ayuda">Solo si queda por entregar. Sale en el despacho y el resumen te lo recuerda.</span>
-                </div>
-              </div>
-            </fieldset>
-            <div className="campo">
-              <label htmlFor="venta-nota">Observación</label>
-              <input id="venta-nota" name="nota" type="text" defaultValue={escrito(parametros, "nota")} />
-            </div>
-            <div>
-              <button type="submit" className="boton">
-                Registrar venta
-              </button>
-            </div>
-          </form>
-        )}
-      </section>
-
-      <section className="tarjeta">
+      <section className="tarjeta" style={{ marginTop: "var(--espacio-4)" }}>
         <h2 className={estilos.subtitulo} id="lista">
           {busqueda ? `${ventas.length === MAXIMO_AL_BUSCAR ? "Más de " : ""}${ventas.length} ${ventas.length === 1 ? "venta" : "ventas"} con «${busqueda}»` : "Últimas ventas"}
         </h2>
@@ -175,13 +108,7 @@ export default async function PaginaVentas({
           <label htmlFor="buscar-venta" className="visualmente-oculto">
             Buscar una venta
           </label>
-          <input
-            id="buscar-venta"
-            name="q"
-            type="search"
-            placeholder="Cliente, n.º de nota o fecha (30/09)"
-            defaultValue={busqueda}
-          />
+          <input id="buscar-venta" name="q" type="search" placeholder="Cliente, n.º de nota o fecha (30/09)" defaultValue={busqueda} />
           <button type="submit" className="boton boton--secundario">
             Buscar
           </button>
@@ -220,7 +147,9 @@ export default async function PaginaVentas({
                         <Link href={`/admin/clientes/${v.cliente_id}`}>{v.cliente_nombre}</Link>
                       </td>
                       <td data-label="Productos">{resumenDeLineas(v.lineas)}</td>
-                      <td data-label="Total" className="numero">{usd(v.total_usd)}</td>
+                      <td data-label="Total" className="numero">
+                        {usd(v.total_usd)}
+                      </td>
                       <td data-label="Entrega">
                         {v.por_entregar ? (
                           <Link href="/admin/despacho" className={`${estilos.estado} ${estilos["estado--parcial"]}`}>

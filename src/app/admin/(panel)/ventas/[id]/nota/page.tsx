@@ -51,8 +51,10 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
   const [ventas, tasaDeHoy, fotos, pagosDeLaVenta] = await Promise.all([listarVentasDeCliente(cliente.id), leerTasa(), adjuntosDeVenta(venta.id), pagosDeVenta(venta.id)]);
   // El ticket: el comprobante corto de la caja, para impresora térmica (80 mm) o normal.
   const formatoTicket = parametros.formato === "ticket";
-  const claveVendida = typeof parametros.pos === "string" ? parametros.pos : "";
+  const claveVendida = typeof parametros.vendida === "string" ? parametros.vendida : typeof parametros.pos === "string" ? parametros.pos : "";
   const cuenta = aplicarPagos(ventas, cliente.total_pagado_usd).find((c) => c.id === venta.id);
+  // Lo que quedó de esta venta después de lo cobrado con ella en la caja (si no se cobró nada ahí, todo).
+  const quedaEnCaja = Math.round((Number(venta.total_usd) - pagosDeLaVenta.reduce((s, p) => s + Number(p.monto_usd), 0)) * 100) / 100;
   // Los bolívares son los del día de la venta. Las ventas viejas no la guardaron.
   const totalBs = aBolivares(venta.total_usd, venta.tasa);
   const enviar = enlaceWhatsappA(
@@ -81,7 +83,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
           <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginBottom: "var(--espacio-4)" }}>
             <BotonImprimir className="boton">Imprimir el ticket</BotonImprimir>
             {(claveVendida || venta.origen === "pos") && (
-              <Link href={claveVendida ? `/admin/pos?vendida=${encodeURIComponent(claveVendida)}` : "/admin/pos"} className="boton boton--acento">
+              <Link href={claveVendida ? `/admin/ventas?vendida=${encodeURIComponent(claveVendida)}` : "/admin/ventas"} className="boton boton--acento">
                 Nueva venta
               </Link>
             )}
@@ -176,7 +178,8 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
               {pagosDeLaVenta.map((p) => `${METODOS_PAGO[p.metodo]} ${p.moneda === "VES" ? `${bs(p.monto)} (${usd(p.monto_usd)})` : usd(p.monto_usd)}`).join(" · ")}
             </p>
           )}
-          {cuenta && cuenta.pendiente_usd > 0 && <p className={estilos.ticketPago}>Queda por pagar: {usd(cuenta.pendiente_usd)}</p>}
+          {/* En el ticket cuenta lo que se cobró con esta venta en la caja; la cuenta del cliente (los pagos a las notas más antiguas primero) va en la nota. */}
+          {quedaEnCaja > 0.009 && <p className={estilos.ticketPago}>Queda por pagar: {usd(quedaEnCaja)}</p>}
           <p className={estilos.ticketPie}>¡Gracias por su compra!</p>
           <p className={estilos.ticketPie}>Comprobante interno de caja. No es una factura fiscal.</p>
         </article>
@@ -193,6 +196,11 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
         <Avisos parametros={parametros} />
         <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginTop: "var(--espacio-3)" }}>
           <BotonImprimir className="boton">Imprimir o guardar PDF</BotonImprimir>
+          {claveVendida && (
+            <Link href={`/admin/ventas?vendida=${encodeURIComponent(claveVendida)}`} className="boton boton--acento">
+              Nueva venta
+            </Link>
+          )}
           {enviar && (
             <a href={enviar} target="_blank" rel="noopener" className="boton boton--acento">
               Enviar por WhatsApp

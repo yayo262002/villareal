@@ -75,7 +75,7 @@ import {
   entradaBloqueada,
   olvidarEntradasFallidas,
 } from "./intentos";
-import { buscarVenta, crearVenta, eliminarVenta, marcarEntrega, ultimoPrecioAlCliente, ventaRepetidaReciente, type LineaVenta } from "./ventas";
+import { buscarVenta, buscarVentaPorClavePos, crearVenta, eliminarVenta, marcarEntrega, ultimoPrecioAlCliente, ventaRepetidaReciente, type LineaVenta } from "./ventas";
 import { KILOS_MAXIMOS, PRECIO_MAXIMO, lineaRellena, revisarFecha, revisarVenta, type LineaEscrita } from "./venta-sensata";
 import { existenciaSinMarca, existenciasPorClave, registrarAjuste } from "./inventario";
 import { ajustePorRecuento } from "./stock";
@@ -96,12 +96,13 @@ import { buscarMarca, eliminarMarca, marcaPorNombre, renombrarMarca, unirMarcas 
 import { NOMBRE_ESTADO_PRODUCTO, claveDe, esEstadoDeProducto, estadoDeProducto, nombreDeVenta, vendiblesDe, type EstadoProducto } from "./catalogo";
 import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
-import { buscarPago, eliminarPago, pagoRepetidoReciente, registrarPago } from "./pagos";
+import { buscarPago, eliminarPago, pagoRepetidoReciente, pagosDeVenta, registrarPago } from "./pagos";
 import { anotarContacto, esTipoDeContacto, TIPOS_DE_CONTACTO } from "./contactos";
 import { duenoDelCodigo, limpiarCodigo, limpiarSku, ponerCodigoAProducto, ponerCodigoAVariante } from "./codigos";
-import { guardarPrecioEspecial, quitarPrecioEspecial } from "./precios-especiales";
-import { cobrarVentaDelPos, type VentaDelPos } from "./pos";
-import { ponerPermitirStockNegativo } from "./ajustes";
+import { guardarPrecioEspecial, listarPreciosEspecialesDe, quitarPrecioEspecial } from "./precios-especiales";
+import { catalogoDelPos, esMostrador, guardarVentaDelPos, type VentaDelPos } from "./pos";
+import { revisarVentaPos, totalesDe } from "./pos-calculo";
+import { permitirStockNegativo, ponerPermitirStockNegativo } from "./ajustes";
 import { empujarAviso } from "./push";
 import { avisoDePrueba } from "./avisos";
 import { negocio } from "@/config/negocio";
@@ -137,6 +138,7 @@ import {
   usd,
   type MetodoPago,
   type Moneda,
+  METODOS_EN_BOLIVARES,
 } from "./dinero";
 
 /**
@@ -1450,7 +1452,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
   // Con el tipo escrito aparte, TypeScript sabe que después de `volver` no se sigue.
   const volver: (mensaje: string, casilla?: "confirmar" | "confirmar_nota") => never = (mensaje, casilla) => {
     if (casilla) escrito.set(casilla, "1");
-    volverConError(`/admin/ventas?${escrito.toString()}`, mensaje);
+    volverConError(`/admin/ventas/clasica?${escrito.toString()}`, mensaje);
   };
 
   if (!clienteId) volver("Elige un cliente.");
@@ -1626,8 +1628,14 @@ export async function borrarVenta(datos: FormData): Promise<void> {
   const venta = id ? await buscarVenta(id) : null;
   if (!id || !venta) volverConError("/admin/ventas", "No se encontró la venta.");
 
+  // Los pagos que se cobraron con ella en la caja se van con ella: si no, el cliente quedaría con dinero a favor de una venta que no existe.
+  const pagosDeLaCaja = await pagosDeVenta(id);
+  for (const p of pagosDeLaCaja) await eliminarPago(p.id);
   await eliminarVenta(id);
-  volverConExito(`/admin/clientes/${venta.cliente_id}`, "Venta eliminada.");
+  volverConExito(
+    `/admin/clientes/${venta.cliente_id}`,
+    pagosDeLaCaja.length > 0 ? `Venta eliminada, con ${pagosDeLaCaja.length === 1 ? "el pago que se cobró" : `los ${pagosDeLaCaja.length} pagos que se cobraron`} con ella en la caja.` : "Venta eliminada.",
+  );
 }
 
 // ---------- Pagos ----------
@@ -2060,26 +2068,35 @@ export async function anotarContactoAccion(datos: FormData): Promise<void> {
 // ---------- La caja (punto de venta), los códigos de barras y los precios especiales ----------
 
 /**
- * El cobro de la caja: la venta llega entera en un JSON que arma la pantalla
- * del POS (líneas, cliente, cajero, descuento y pagos). Lo que llega se
- * limpia antes de revisarlo; si algo no cuadra se vuelve a la caja con el
- * motivo (el carrito sigue en el teléfono o el computador), y si todo está
- * bien sale el ticket.
+ * La venta desde la caja (Registrar venta): llega entera en un JSON que
+ * arma la pantalla (cliente, fecha, líneas, cómo paga, entrega) más la foto
+ * de la nota firmada si la hay. Se revisa con las mismas reglas del
+ * formulario de siempre (`revisarVenta`: cantidades, precios raros, piezas;
+ * la venta repetida; la foto leída y cotejada) y con las de la caja (los
+ * pagos y el tope del inventario). Lo que no cuadra vuelve a la caja con el
+ * motivo y el carrito intacto; si está bien, sale el ticket (si pagó algo)
+ * o la nota (si quedó pendiente).
  */
-export async function cobrarEnPos(datos: FormData): Promise<void> {
+export async function guardarVentaPos(datos: FormData): Promise<void> {
   await exigirSesion();
   let cruda: Partial<VentaDelPos> = {};
   try {
     cruda = JSON.parse(texto(datos, "venta") || "{}") as Partial<VentaDelPos>;
   } catch {
-    volverConError("/admin/pos", "La venta llegó mal armada: inténtalo otra vez.");
+    volverConError("/admin/ventas", "La venta llegó mal armada: inténtalo otra vez.");
   }
   const venta: VentaDelPos = {
     clave_pos: String(cruda.clave_pos ?? "").slice(0, 60),
     cliente_id: Number(cruda.cliente_id) || 0,
+    fecha: String(cruda.fecha ?? "").slice(0, 10),
     cajero: String(cruda.cajero ?? "").slice(0, 60),
     descuento_usd: Number(cruda.descuento_usd) || 0,
     nota: String(cruda.nota ?? "").slice(0, 300),
+    modo: cruda.modo === "parte" || cruda.modo === "credito" ? cruda.modo : "ahora",
+    entrega: cruda.entrega === "despacho" ? "despacho" : "ahora",
+    entrega_prevista: String(cruda.entrega_prevista ?? "").slice(0, 10),
+    confirmar: cruda.confirmar === true,
+    confirmar_nota: cruda.confirmar_nota === true,
     lineas: (Array.isArray(cruda.lineas) ? cruda.lineas : []).map((l) => ({
       clave: String(l.clave ?? ""),
       producto_id: Number(l.producto_id) || 0,
@@ -2088,17 +2105,143 @@ export async function cobrarEnPos(datos: FormData): Promise<void> {
       unidad: l.unidad === "kg" || l.unidad === "carton" ? l.unidad : "unidad",
       cantidad: Number(l.cantidad),
       precio_usd: Number(l.precio_usd),
+      piezas: l.piezas ? Number(l.piezas) : null,
     })),
     pagos: (Array.isArray(cruda.pagos) ? cruda.pagos : []).map((p) => ({ metodo: p.metodo, monto_usd: Number(p.monto_usd), referencia: String(p.referencia ?? "").slice(0, 60) })),
   };
-  const vuelta = `/admin/pos${venta.clave_pos ? `?clave=${encodeURIComponent(venta.clave_pos)}` : ""}`;
-  for (const p of venta.pagos) if (!esMetodoPago(String(p.metodo))) volverConError(vuelta, "Elige cómo pagó el cliente.");
-  const resultado = await cobrarVentaDelPos(venta);
-  if ("motivos" in resultado) volverConError(vuelta, resultado.motivos.join(" "));
-  volverConExito(
-    `/admin/ventas/${resultado.ventaId}/nota?formato=ticket&pos=${encodeURIComponent(venta.clave_pos)}`,
-    resultado.repetida ? "Esa venta ya estaba cobrada: este es su ticket." : `Venta cobrada: nota ${numeroDeNota(resultado.ventaId)}.`,
-  );
+
+  // Con lo que vuelve en la dirección, la caja conserva el carrito y enseña la casilla que toque.
+  const escrito = new URLSearchParams();
+  if (venta.clave_pos) escrito.set("clave", venta.clave_pos);
+  // La foto de la nota se aparca desde el principio: si la caja vuelve con un aviso, no hay que repetirla.
+  const { foto, mala: fotoMala } = await recogerFotoDeLaNota(datos);
+  if (foto) escrito.set("foto_espera", String(foto.id));
+  const volver: (mensaje: string, casilla?: "confirmar" | "confirmar_nota") => never = (mensaje, casilla) => {
+    if (casilla) escrito.set(casilla, "1");
+    volverConError(`/admin/ventas?${escrito.toString()}`, mensaje);
+  };
+  const vendida = `vendida=${encodeURIComponent(venta.clave_pos)}`;
+
+  // Si esta misma venta ya entró (el botón dos veces, la página recargada), es esa: a su nota.
+  const yaEntro = venta.clave_pos ? await buscarVentaPorClavePos(venta.clave_pos) : null;
+  if (yaEntro) {
+    if (foto) await olvidarFotoEnEspera(foto.id);
+    volverConExito(`/admin/ventas/${yaEntro.id}/nota?${vendida}`, "Esa venta ya estaba registrada: esta es su nota.");
+  }
+
+  for (const p of venta.pagos) if (!esMetodoPago(String(p.metodo))) volver("Elige cómo pagó el cliente.");
+  if (!venta.cliente_id) volver("Elige un cliente.");
+  const cliente = await buscarCliente(venta.cliente_id);
+  if (!cliente) volver("No se encontró el cliente.");
+  const malaFecha = revisarFecha(venta.fecha, hoy());
+  if (malaFecha) volver(malaFecha);
+  const mostrador = esMostrador(cliente);
+
+  // La nota va con la tasa del día de la nota, aunque se registre días después; sus pagos, con la misma.
+  const [catalogo, sinTope, tasa, especiales] = await Promise.all([catalogoDelPos(), permitirStockNegativo(), tasaEnFecha(venta.fecha), listarPreciosEspecialesDe(cliente.id)]);
+  const porClave = new Map(catalogo.map((a) => [a.clave, a]));
+  const precioEspecial = new Map(especiales.map((p) => [claveDe(p.producto_id, p.variante_id), p.precio_usd]));
+
+  // Las mismas revisiones que el formulario de siempre, línea a línea.
+  const escritas: LineaEscrita[] = [];
+  const sinExistencia: string[] = [];
+  for (const l of venta.lineas) {
+    const a = porClave.get(l.clave);
+    if (!a || a.producto_id !== l.producto_id || (a.variante_id ?? null) !== (l.variante_id ?? null)) {
+      volver(`${l.nombre || "Un producto"} ya no está en el catálogo: quítalo de la venta.`);
+    }
+    if (!sinTope && a.existencia !== null && l.cantidad > a.existencia) {
+      sinExistencia.push(`${a.nombre}: hay ${cantidad(a.existencia, a.unidad)} y la venta lleva ${cantidad(l.cantidad, a.unidad)}.`);
+    }
+    escritas.push({
+      producto: a.nombre,
+      unidad: a.unidad,
+      cantidad: l.cantidad,
+      piezas: l.piezas ?? null,
+      precio: l.precio_usd,
+      precioDeLista: precioEspecial.get(l.clave) ?? a.precio_usd,
+      ultimoPrecio: await ultimoPrecioAlCliente(cliente.id, a.producto_id, a.variante_id),
+      // El tope del inventario se mira aquí (se frena, no solo avisa), salvo que se permita vender sin existencia.
+      existencia: null,
+      pesoTipico: a.pesoTipico,
+    });
+  }
+  const motivos = revisarVentaPos({
+    lineas: venta.lineas,
+    descuento_usd: venta.descuento_usd,
+    pagos: venta.pagos,
+    modo: venta.modo,
+    esMostrador: mostrador,
+    tasa: tasa?.valor ?? null,
+    metodosEnBolivares: METODOS_EN_BOLIVARES,
+  });
+  if (motivos.length > 0) volver(motivos.join(" "));
+  const revision = revisarVenta(escritas);
+  if (revision.errores.length > 0) volver(revision.errores.join(" "));
+  if (sinExistencia.length > 0) {
+    volver(`${sinExistencia.join(" ")} Anota la compra que falta, haz un recuento, o marca «Permitir vender sin existencia» en Inventario.`);
+  }
+  const lineas: LineaVenta[] = venta.lineas.map((l) => ({ producto_id: l.producto_id, variante_id: l.variante_id, cantidad: l.cantidad, precio_unitario_usd: l.precio_usd, piezas: l.piezas ?? null }));
+  // La misma venta anotada hace un momento es casi siempre un error: se pregunta antes de guardar.
+  if (!venta.confirmar) {
+    const igual = await ventaRepetidaReciente(cliente.id, venta.fecha, lineas);
+    if (igual) {
+      volver(
+        `Hace un momento registraste una venta igual a esta: la nota ${numeroDeNota(igual.id)}, con los mismos productos, cantidades y precios, y ya está guardada. Si de verdad son dos ventas, marca «Lo escrito es correcto» y confirma otra vez.`,
+        "confirmar",
+      );
+    }
+  }
+  if (revision.avisos.length > 0 && !venta.confirmar) volver(`${revision.avisos.join(" ")} Si es así, marca «Lo escrito es correcto» y confirma otra vez.`, "confirmar");
+
+  // La entrega: ahora (con la foto de la nota firmada si la hay, que se lee y se coteja) o por entregar el día previsto.
+  const { total } = totalesDe(venta.lineas, venta.descuento_usd, null);
+  let lectura: Lectura = { nota: null, intentada: false };
+  let reparos: string[] = [];
+  if (venta.entrega === "despacho") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(venta.entrega_prevista) || Number.isNaN(new Date(venta.entrega_prevista + "T00:00:00Z").getTime())) {
+      volver("Escribe el día previsto de entrega, para que el resumen te lo recuerde.");
+    } else if (venta.entrega_prevista < venta.fecha) {
+      volver("El día previsto de entrega no puede ser antes de la fecha de la nota.");
+    } else if (venta.entrega_prevista > sumarDias(hoy(), 30) && !venta.confirmar) {
+      volver(`El día previsto de entrega (${fechaCorta(venta.entrega_prevista)}) está a más de un mes. Si es así, marca «Lo escrito es correcto» y confirma otra vez.`, "confirmar");
+    }
+  } else if (fotoMala) {
+    volver(fotoMala);
+  } else if (foto) {
+    lectura = await leerLaNota(foto, catalogo);
+    const anotadas = venta.lineas.map((l) => ({
+      clave: l.clave,
+      nombre: l.nombre,
+      unidad: l.unidad,
+      piezas: l.piezas ?? null,
+      cantidad: l.cantidad,
+      precio: l.precio_usd,
+      importe: redondear(l.cantidad * l.precio_usd),
+    }));
+    reparos = lectura.nota ? compararNota(lectura.nota, { fecha: venta.fecha, total, lineas: anotadas }) : [];
+    if (reparos.length > 0 && !venta.confirmar_nota) volver(avisoDeLaNota(reparos, "confirma otra vez"), "confirmar_nota");
+  }
+
+  let resultado: Awaited<ReturnType<typeof guardarVentaDelPos>> | null = null;
+  try {
+    resultado = await guardarVentaDelPos(venta, tasa?.valor ?? null);
+    if (foto && venta.entrega === "ahora") await guardarFotoDeLaNota(foto, cliente.id, resultado.ventaId);
+    else if (foto) await olvidarFotoEnEspera(foto.id);
+  } catch (error) {
+    // Si la venta ya entró y solo falló la foto, no se vuelve a la caja: se anotaría dos veces.
+    if (resultado) volverConExito(`/admin/ventas/${resultado.ventaId}/nota?${vendida}`, `Venta registrada, pero la foto de la nota no se guardó: ${mensajeDe(error)} Súbela desde la nota.`);
+    volver(mensajeDe(error));
+  }
+  const partes = [`Venta registrada: nota ${numeroDeNota(resultado.ventaId)}.`];
+  if (resultado.pagado > 0) partes.push(`Cobrados ${usd(resultado.pagado)}.`);
+  if (!mostrador && resultado.pendiente > 0) partes.push(`Quedan ${usd(resultado.pendiente)} pendientes en la cuenta de ${cliente.nombre}.`);
+  if (venta.entrega === "despacho") partes.push("Queda por entregar: ya está en el despacho y en el resumen.");
+  else if (!foto) partes.push("Sin la foto de la nota firmada: si la tienes, ponla aquí mismo.");
+  const comentario = comentarioDeLaLectura(lectura, reparos).trim();
+  if (comentario) partes.push(comentario);
+  // Con algo cobrado sale el ticket de caja; si quedó pendiente, la nota de entrega.
+  volverConExito(`/admin/ventas/${resultado.ventaId}/nota?${resultado.pagado > 0 ? "formato=ticket&" : ""}${vendida}`, partes.join(" "));
 }
 
 /** El código de barras y el SKU de un artículo («3-7») o de un tipo («3»), desde la pantalla de códigos o desde la caja. */

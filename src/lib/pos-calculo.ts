@@ -1,11 +1,11 @@
-import { redondear, type MetodoPago, type Unidad } from "./dinero.ts";
+import { redondear, usd, type MetodoPago, type Unidad } from "./dinero.ts";
 
 /**
- * Las cuentas de la caja (el punto de venta): el subtotal de las líneas, el
- * descuento, el total en dólares y en bolívares a la tasa del día, y la
- * revisión de un cobro antes de guardarlo (que las líneas tengan sentido y
- * que los pagos sumen el total). Cálculo puro, con pruebas; lo que toca la
- * base está en `pos.ts`.
+ * Las cuentas de la venta en la caja (el punto de venta): el subtotal de
+ * las líneas, el descuento, el total en dólares y en bolívares a la tasa
+ * del día, cómo queda la cuenta del cliente según lo que pague ahora, y la
+ * revisión de los pagos antes de guardar. Cálculo puro, con pruebas; lo que
+ * toca la base está en `pos.ts`.
  */
 
 export type LineaDelPos = {
@@ -17,6 +17,8 @@ export type LineaDelPos = {
   unidad: Unidad;
   cantidad: number;
   precio_usd: number;
+  /** Las piezas, si se anotan (solo lo que va por kilo). Solo informan. */
+  piezas?: number | null;
 };
 
 export type PagoDelPos = {
@@ -24,6 +26,15 @@ export type PagoDelPos = {
   /** Lo que paga por esta vía, en dólares; en bolívares se convierte a la tasa del día al guardar. */
   monto_usd: number;
   referencia?: string;
+};
+
+/** Cómo se cierra la venta: paga todo ahora, paga una parte (el resto queda en su cuenta) o queda pendiente entera. */
+export type ModoDePago = "ahora" | "parte" | "credito";
+
+export const NOMBRE_MODO: Record<ModoDePago, string> = {
+  ahora: "Paga todo ahora",
+  parte: "Paga una parte",
+  credito: "Queda pendiente",
 };
 
 export type TotalesDelPos = { subtotal: number; descuento: number; total: number; totalBs: number | null };
@@ -39,16 +50,57 @@ export function totalesDe(lineas: Pick<LineaDelPos, "cantidad" | "precio_usd">[]
   return { subtotal, descuento, total, totalBs: tasa ? redondear(total * tasa) : null };
 }
 
-/** Cuánto falta por cubrir con los pagos (negativo si se pasan). */
-export function faltaPorPagar(total: number, pagos: Pick<PagoDelPos, "monto_usd">[]): number {
-  return redondear(total - pagos.reduce((s, p) => s + (Number(p.monto_usd) || 0), 0));
+export function pagadoDe(pagos: Pick<PagoDelPos, "monto_usd">[]): number {
+  return redondear(pagos.reduce((s, p) => s + (Number(p.monto_usd) || 0), 0));
 }
 
-/** Lo que no deja cobrar: cada frase es un motivo. Vacío, el cobro está bien. */
-export function revisarCobro(datos: {
+/** Cuánto falta por cubrir con los pagos (negativo si se pasan). */
+export function faltaPorPagar(total: number, pagos: Pick<PagoDelPos, "monto_usd">[]): number {
+  return redondear(total - pagadoDe(pagos));
+}
+
+/** El cambio que se le devuelve al cliente cuando paga en efectivo con más de lo que es. */
+export function cambioDe(recibido: number, total: number): number {
+  return redondear(Math.max(0, (Number(recibido) || 0) - total));
+}
+
+export type CuentaDespues = {
+  /** Lo que debía antes de esta venta (positivo: debe; negativo: a favor). */
+  saldoAnterior: number;
+  pagado: number;
+  /** Lo que queda de esta venta en su cuenta. */
+  pendiente: number;
+  saldoNuevo: number;
+};
+
+/**
+ * Cómo queda la cuenta del cliente: con la convención de siempre (el saldo
+ * es lo comprado menos lo abonado; positivo, debe). La venta suma; lo que
+ * paga ahora resta.
+ */
+export function cuentaDespues(saldoAnterior: number, total: number, pagos: Pick<PagoDelPos, "monto_usd">[]): CuentaDespues {
+  const pagado = Math.min(pagadoDe(pagos), total);
+  const pendiente = redondear(total - pagado);
+  return { saldoAnterior, pagado, pendiente, saldoNuevo: redondear(saldoAnterior + pendiente) };
+}
+
+export type TonoDeSaldo = "debe" | "al_dia" | "a_favor";
+
+/** Cómo se dice un saldo: «Debe USD 235,40», «Al día» o «A favor USD 20,00». */
+export function describirSaldo(saldo: number): { texto: string; tono: TonoDeSaldo } {
+  if (saldo > 0.009) return { texto: `Debe ${usd(saldo)}`, tono: "debe" };
+  if (saldo < -0.009) return { texto: `A favor ${usd(-saldo)}`, tono: "a_favor" };
+  return { texto: "Al día", tono: "al_dia" };
+}
+
+/** Lo que no deja guardar la venta: cada frase es un motivo. Vacío, está bien. */
+export function revisarVentaPos(datos: {
   lineas: LineaDelPos[];
   descuento_usd: number;
   pagos: PagoDelPos[];
+  modo: ModoDePago;
+  /** El cliente de mostrador no tiene cuenta: con él se paga todo en el momento. */
+  esMostrador: boolean;
   tasa: number | null;
   metodosEnBolivares: MetodoPago[];
 }): string[] {
@@ -62,14 +114,23 @@ export function revisarCobro(datos: {
   const { subtotal, total } = totalesDe(datos.lineas, datos.descuento_usd, datos.tasa);
   if (Number(datos.descuento_usd) < 0) motivos.push("El descuento no puede ser negativo.");
   if (Number(datos.descuento_usd) > subtotal) motivos.push("El descuento no puede ser mayor que el subtotal.");
-  if (datos.pagos.length === 0) motivos.push("Falta decir cómo pagó.");
-  for (const p of datos.pagos) {
+
+  const pagos = datos.modo === "credito" ? [] : datos.pagos;
+  for (const p of pagos) {
     if (!(Number(p.monto_usd) > 0)) motivos.push("Cada pago tiene que ser mayor que cero.");
     if (datos.metodosEnBolivares.includes(p.metodo) && !datos.tasa) motivos.push("Para cobrar en bolívares hace falta la tasa del día: ponla en Productos.");
   }
-  const falta = faltaPorPagar(total, datos.pagos);
-  if (datos.pagos.length > 0 && Math.abs(falta) > 0.01) {
-    motivos.push(falta > 0 ? `Los pagos no cubren el total: faltan USD ${falta.toFixed(2)}.` : `Los pagos se pasan del total por USD ${(-falta).toFixed(2)}.`);
+  const falta = faltaPorPagar(total, pagos);
+  if (datos.modo === "ahora") {
+    if (pagos.length === 0) motivos.push("Falta decir cómo pagó.");
+    else if (falta > 0.01) motivos.push(`Los pagos no cubren el total: faltan ${usd(falta)}. Si paga solo una parte, elige «Paga una parte».`);
+    else if (falta < -0.01) motivos.push(`Los pagos se pasan del total por ${usd(-falta)}. Si es el efectivo que entregó, pon lo recibido aparte: el pago es por el total.`);
+  } else if (datos.modo === "parte") {
+    if (datos.esMostrador) motivos.push("Una venta de mostrador se paga en el momento: para dejar una parte pendiente, elige al cliente.");
+    if (pagos.length === 0 || pagadoDe(pagos) <= 0) motivos.push("Escribe lo que paga ahora; si no paga nada, elige «Queda pendiente».");
+    else if (falta <= 0.01) motivos.push("Lo que paga cubre el total: elige «Paga todo ahora».");
+  } else if (datos.esMostrador) {
+    motivos.push("Una venta de mostrador se paga en el momento: para dejarla pendiente, elige al cliente.");
   }
   return motivos;
 }

@@ -40,13 +40,18 @@ export default function PaginaAyuda() {
         <h2 className={estilos.subtitulo}>Vender</h2>
         <ol className={estilos.pasos}>
           <li>
-            En <Link href="/admin/ventas">Ventas</Link>, elige el cliente, pon la fecha de la nota de papel y, en cada producto, las piezas, los
-            kilos y el precio en dólares, como en la nota.
+            En <Link href="/admin/ventas">Ventas</Link>, busca al cliente (sale con lo que debe) o deja «Mostrador» si paga en el momento, y pon la
+            fecha de la nota de papel si no es la de hoy.
           </li>
           <li>
-            Di si ya la entregaste (hace falta la foto de la nota firmada) o si queda por entregar (hace falta el día previsto; entra en el
-            Despacho).
+            Escanea cada producto con el lector o escríbelo (nombre, marca o código) y pulsa Enter: entra al carrito. Ahí se cambian los kilos, las
+            piezas y el precio.
           </li>
+          <li>
+            Di cómo paga: todo ahora (efectivo, pago móvil, varias vías…), una parte, o queda pendiente en su cuenta. Si queda por entregar, ábrelo
+            en «Entrega» y pon el día previsto; si tienes la foto de la nota firmada, ponla ahí (o después, desde la nota).
+          </li>
+          <li>«Confirmar venta» enseña el resumen (y cómo queda la cuenta del cliente) y guarda. Con algo cobrado sale el ticket; si no, la nota.</li>
           <li>
             Sale la nota de entrega: se imprime, se guarda en PDF o se manda por WhatsApp. La foto de la nota firmada queda en la nota, en Ventas
             y en la ficha del cliente.

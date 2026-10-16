@@ -2,29 +2,33 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { METODOS_PAGO, METODOS_EN_BOLIVARES, bs, cantidad, fechaCorta, usd, type MetodoPago, type Unidad } from "@/lib/dinero";
 import {
-  METODOS_PAGO,
-  cantidad,
-  type MetodoPago,
-  type Unidad,
-} from "@/lib/dinero";
-import {
+  NOMBRE_MODO,
+  cambioDe,
+  cuentaDespues,
+  describirSaldo,
   faltaPorPagar,
+  revisarVentaPos,
   totalesDe,
   type LineaDelPos,
+  type ModoDePago,
   type PagoDelPos,
 } from "@/lib/pos-calculo";
-import { asignarCodigo, cobrarEnPos } from "@/lib/acciones";
+import { asignarCodigo, guardarVentaPos } from "@/lib/acciones";
+import { EntradaFoto } from "@/components/entrada-foto";
 import estilos from "./pos.module.css";
 import panel from "@/app/admin/(panel)/panel.module.css";
 
 /**
- * La caja: lo que se escanea o se busca entra al carrito, se elige el
- * cliente, se cobra y sale el ticket. Está hecha para un computador con
- * lector de códigos (el lector escribe el código y pulsa Enter, como un
- * teclado) y atajos: F2 buscar, F4 cliente, F8 cobrar, Esc cancelar,
- * Enter confirmar. El carrito se guarda en el navegador: si la página se
- * recarga o el cobro vuelve con un aviso, no se pierde nada.
+ * Registrar venta, como una caja: se busca el cliente y se ve su saldo, se
+ * escanea o se busca cada producto y entra al carrito, se elige cómo paga
+ * (todo ahora, una parte o queda pendiente) y se confirma. La entrega y la
+ * observación van plegadas abajo. Hecha para un computador con lector de
+ * códigos (el lector escribe el código y pulsa Enter) y atajos: F2 buscar
+ * producto, F4 cliente, F8 confirmar, Esc cancelar, Enter confirmar en la
+ * ventana. El carrito se guarda en el navegador: si la página se recarga o
+ * la venta vuelve con un aviso, no se pierde nada.
  */
 
 export type ArticuloParaLaCaja = {
@@ -41,11 +45,22 @@ export type ArticuloParaLaCaja = {
   familia: string;
   existencia: number | null;
   estado: "sin_seguir" | "sin" | "poco" | "bien";
+  /** Lo que suele pesar una pieza, si se sabe. */
+  pesoTipico: number | null;
 };
 
-export type ClienteParaLaCaja = { id: number; rotulo: string };
+export type ClienteParaLaCaja = {
+  id: number;
+  rotulo: string;
+  nombre: string;
+  telefono: string;
+  /** Lo comprado menos lo abonado: positivo, debe; negativo, a favor. La misma cifra que en Clientes. */
+  saldo_usd: number;
+};
 
-type Linea = LineaDelPos & { precioManual: boolean };
+type Linea = LineaDelPos & { precioManual: boolean; piezas: number | null };
+
+type Entrega = "ahora" | "despacho";
 
 type Props = {
   catalogo: ArticuloParaLaCaja[];
@@ -55,44 +70,43 @@ type Props = {
   /** Por cliente y por clave de artículo: el precio especial. */
   preciosEspeciales: Record<number, Record<string, number>>;
   sinTope: boolean;
-  /** La clave de un cobro que volvió con un aviso: ese carrito se conserva. */
+  /** La fecha de hoy en Venezuela: la de la nota, salvo que se cambie. */
+  hoy: string;
+  /** El número que llevará esta nota. */
+  siguienteNota: string;
+  /** Si hay lector de notas (la foto se lee y se coteja). */
+  seLee: boolean;
+  /** Las claves de las ventas ya guardadas: un carrito con una de ellas ya se vendió y no se vuelve a enseñar. */
+  clavesVendidas: string[];
+  /** La clave de una venta que volvió con un aviso: ese carrito se conserva. */
   claveDevuelta?: string;
-  /** La clave de una venta recién cobrada: su carrito se vacía. */
-  claveVendida?: string;
+  /** La foto de la nota que se puso en el intento anterior y sigue guardada. */
+  fotoEnEspera?: string;
+  pideConfirmar?: boolean;
+  pideConfirmarNota?: boolean;
+  /** El cliente con el que se abrió la caja (desde su ficha). */
+  clienteInicial?: number;
 };
 
-const GUARDADO = "pos-carrito";
+const GUARDADO = "venta-carrito";
 const CAJERO = "pos-cajero";
+const MAXIMO_DE_RESULTADOS = 8;
 
-const dinero = new Intl.NumberFormat("es-VE", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-const usd = (n: number) => `USD ${dinero.format(n)}`;
-const bs = (n: number) => `Bs ${dinero.format(n)}`;
+const numero = new Intl.NumberFormat("es-VE", { maximumFractionDigits: 3 });
 
 function normalizar(t: string): string {
   return t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
 
 function nuevaClave(): string {
-  return typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 /** Un pitido corto al añadir; dos graves si no se encontró. */
 function pitar(bien: boolean) {
   try {
-    const Contexto =
-      (
-        window as unknown as {
-          AudioContext?: typeof AudioContext;
-          webkitAudioContext?: typeof AudioContext;
-        }
-      ).AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
+    const ventana = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+    const Contexto = ventana.AudioContext ?? ventana.webkitAudioContext;
     if (!Contexto) return;
     const ctx = new Contexto();
     const tonos = bien
@@ -117,17 +131,21 @@ function pitar(bien: boolean) {
   }
 }
 
-const NOMBRE_UNIDAD: Record<Unidad, string> = {
-  kg: "kg",
-  unidad: "unid.",
-  carton: "cartón",
+const NOMBRE_UNIDAD: Record<Unidad, string> = { kg: "kg", unidad: "unid.", carton: "cartón" };
+const ESTADO_TEXTO = { bien: "Hay", poco: "Queda poco", sin: "Sin existencia", sin_seguir: "Sin seguir" } as const;
+const SIN_REFERENCIA: MetodoPago[] = ["efectivo_usd", "efectivo_bs", "otro"];
+
+type Guardado = {
+  clave: string;
+  clienteId: number;
+  lineas: Linea[];
+  descuento: string;
+  nota: string;
+  fecha: string;
+  modo: ModoDePago;
+  entrega: Entrega;
+  entregaPrevista: string;
 };
-const ESTADO_TEXTO = {
-  bien: "Hay",
-  poco: "Queda poco",
-  sin: "Sin existencia",
-  sin_seguir: "Sin seguir",
-} as const;
 
 export function Pos({
   catalogo,
@@ -136,11 +154,22 @@ export function Pos({
   tasa,
   preciosEspeciales,
   sinTope,
+  hoy,
+  siguienteNota,
+  seLee,
+  clavesVendidas,
   claveDevuelta,
-  claveVendida,
+  fotoEnEspera,
+  pideConfirmar = false,
+  pideConfirmarNota = false,
+  clienteInicial,
 }: Props) {
   const [lineas, setLineas] = useState<Linea[]>([]);
-  const [clienteId, setClienteId] = useState(mostradorId);
+  const [clienteId, setClienteId] = useState(clienteInicial ?? mostradorId);
+  const [busquedaCliente, setBusquedaCliente] = useState("");
+  const [listaClientes, setListaClientes] = useState(false);
+  const [clienteMarcado, setClienteMarcado] = useState(0);
+  const [fecha, setFecha] = useState(hoy);
   const [cajero, setCajero] = useState("");
   const [descuento, setDescuento] = useState("");
   const [nota, setNota] = useState("");
@@ -149,44 +178,47 @@ export function Pos({
   const [elegido, setElegido] = useState(0);
   const [noEncontrado, setNoEncontrado] = useState<string | null>(null);
   const [asignarA, setAsignarA] = useState("");
-  const [aviso, setAviso] = useState<{ texto: string; mal?: boolean } | null>(
-    null,
-  );
+  const [asignando, setAsignando] = useState(false);
+  const [aviso, setAviso] = useState<{ texto: string; mal?: boolean } | null>(null);
   const [recien, setRecien] = useState<string | null>(null);
-  const [cobrando, setCobrando] = useState(false);
-  const [pagos, setPagos] = useState<PagoDelPos[]>([]);
+  const [modo, setModo] = useState<ModoDePago>("ahora");
+  const [pagosEscritos, setPagos] = useState<PagoDelPos[]>([]);
+  const [pagosTocados, setPagosTocados] = useState(false);
+  const [recibido, setRecibido] = useState("");
+  const [entrega, setEntrega] = useState<Entrega>("ahora");
+  const [entregaPrevista, setEntregaPrevista] = useState("");
+  const [confirmar, setConfirmar] = useState(false);
+  const [confirmarNota, setConfirmarNota] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
   const [cargado, setCargado] = useState(false);
   const buscador = useRef<HTMLInputElement>(null);
-  const selectorCliente = useRef<HTMLSelectElement>(null);
+  const buscadorCliente = useRef<HTMLInputElement>(null);
+  const resumen = useRef<HTMLElement>(null);
   const formulario = useRef<HTMLFormElement>(null);
-  const enviando = useRef(false);
 
-  // El carrito guardado en el navegador, salvo que sea el de una venta ya cobrada.
+  // El carrito guardado en el navegador, salvo que sea el de una venta ya guardada.
   useEffect(() => {
     // Después de pintar (no en el mismo render), para no encadenar renders.
     const tarea = setTimeout(cargarGuardado, 0);
     return () => clearTimeout(tarea);
     function cargarGuardado() {
       try {
-        const guardado = JSON.parse(
-          localStorage.getItem(GUARDADO) ?? "null",
-        ) as {
-          clave: string;
-          clienteId: number;
-          lineas: Linea[];
-          descuento: string;
-          nota: string;
-        } | null;
-        if (guardado && guardado.clave && guardado.clave !== claveVendida) {
+        const guardado = JSON.parse(localStorage.getItem(GUARDADO) ?? "null") as Partial<Guardado> | null;
+        const yaVendido = Boolean(guardado?.clave && clavesVendidas.includes(guardado.clave));
+        if (guardado && guardado.clave && !yaVendido) {
           setClave(guardado.clave);
           setLineas(guardado.lineas ?? []);
           setClienteId(guardado.clienteId || mostradorId);
           setDescuento(guardado.descuento ?? "");
           setNota(guardado.nota ?? "");
+          setFecha(guardado.fecha && guardado.fecha <= hoy ? guardado.fecha : hoy);
+          setModo(guardado.modo ?? "ahora");
+          setEntrega(guardado.entrega ?? "ahora");
+          setEntregaPrevista(guardado.entregaPrevista ?? "");
         } else {
           setClave(nuevaClave());
-          if (guardado && guardado.clave === claveVendida)
-            localStorage.removeItem(GUARDADO);
+          if (yaVendido) localStorage.removeItem(GUARDADO);
         }
         setCajero(localStorage.getItem(CAJERO) ?? "");
       } catch {
@@ -194,45 +226,44 @@ export function Pos({
       }
       setCargado(true);
     }
-  }, [claveVendida, mostradorId, claveDevuelta]);
+  }, [clavesVendidas, mostradorId, claveDevuelta, hoy]);
 
   useEffect(() => {
     if (!cargado) return;
     try {
       if (lineas.length === 0) localStorage.removeItem(GUARDADO);
-      else
-        localStorage.setItem(
-          GUARDADO,
-          JSON.stringify({ clave, clienteId, lineas, descuento, nota }),
-        );
+      else {
+        const guardado: Guardado = { clave, clienteId, lineas, descuento, nota, fecha, modo, entrega, entregaPrevista };
+        localStorage.setItem(GUARDADO, JSON.stringify(guardado));
+      }
       localStorage.setItem(CAJERO, cajero);
     } catch {
       // Sin sitio para guardar no pasa nada.
     }
-  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero]);
+  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista]);
 
-  const porClave = useMemo(
-    () => new Map(catalogo.map((a) => [a.clave, a])),
-    [catalogo],
-  );
+  const porClave = useMemo(() => new Map(catalogo.map((a) => [a.clave, a])), [catalogo]);
   const precioDe = useCallback(
-    (articulo: ArticuloParaLaCaja, cliente: number) =>
-      preciosEspeciales[cliente]?.[articulo.clave] ?? articulo.precio_usd ?? 0,
+    (articulo: ArticuloParaLaCaja, cliente: number) => preciosEspeciales[cliente]?.[articulo.clave] ?? articulo.precio_usd ?? 0,
     [preciosEspeciales],
   );
 
-  const totales = useMemo(
-    () => totalesDe(lineas, Number(descuento.replace(",", ".")) || 0, tasa),
-    [lineas, descuento, tasa],
-  );
-  const falta = faltaPorPagar(totales.total, pagos);
+  const totales = useMemo(() => totalesDe(lineas, Number(descuento.replace(",", ".")) || 0, tasa), [lineas, descuento, tasa]);
+  // Mientras no se toquen los pagos, el único pago es por el total: lo normal es cobrar todo en efectivo.
+  const pagos = useMemo<PagoDelPos[]>(() => (pagosTocados ? pagosEscritos : [{ metodo: "efectivo_usd", monto_usd: totales.total }]), [pagosTocados, pagosEscritos, totales.total]);
+  const clienteElegido = clientes.find((c) => c.id === clienteId) ?? clientes.find((c) => c.id === mostradorId);
+  const esMostrador = !clienteElegido || clienteElegido.id === mostradorId;
+  const pagosQueValen = modo === "credito" ? [] : pagos;
+  const falta = faltaPorPagar(totales.total, pagosQueValen);
+  const cuenta = cuentaDespues(clienteElegido?.saldo_usd ?? 0, totales.total, pagosQueValen);
+  const soloEfectivo = modo === "ahora" && pagos.length === 1 && pagos[0].metodo === "efectivo_usd";
+  const cambio = cambioDe(Number(recibido.replace(",", ".")) || 0, totales.total);
+  // La referencia va con el pago que la tiene: el primero que no sea efectivo (un pago móvil, una transferencia…).
+  const conReferencia = pagosQueValen.findIndex((p) => !SIN_REFERENCIA.includes(p.metodo));
 
   const avisar = (texto: string, mal = false) => {
     setAviso({ texto, mal });
-    setTimeout(
-      () => setAviso((actual) => (actual?.texto === texto ? null : actual)),
-      1800,
-    );
+    setTimeout(() => setAviso((actual) => (actual?.texto === texto ? null : actual)), mal ? 3200 : 1800);
   };
 
   const enfocarBuscador = () => {
@@ -241,18 +272,11 @@ export function Pos({
   };
 
   const agregar = useCallback(
-    (articulo: ArticuloParaLaCaja, cantidad = 1) => {
+    (articulo: ArticuloParaLaCaja, cuanto = 1) => {
       setLineas((actuales) => {
         const existente = actuales.find((l) => l.clave === articulo.clave);
         if (existente)
-          return actuales.map((l) =>
-            l.clave === articulo.clave
-              ? {
-                  ...l,
-                  cantidad: Math.round((l.cantidad + cantidad) * 1000) / 1000,
-                }
-              : l,
-          );
+          return actuales.map((l) => (l.clave === articulo.clave ? { ...l, cantidad: Math.round((l.cantidad + cuanto) * 1000) / 1000 } : l));
         return [
           ...actuales,
           {
@@ -261,17 +285,15 @@ export function Pos({
             variante_id: articulo.variante_id,
             nombre: articulo.nombre,
             unidad: articulo.unidad,
-            cantidad,
+            cantidad: cuanto,
             precio_usd: precioDe(articulo, clienteId),
             precioManual: false,
+            piezas: null,
           },
         ];
       });
       setRecien(articulo.clave);
-      setTimeout(
-        () => setRecien((r) => (r === articulo.clave ? null : r)),
-        1000,
-      );
+      setTimeout(() => setRecien((r) => (r === articulo.clave ? null : r)), 1000);
       pitar(true);
       avisar(`Añadido: ${articulo.nombre}`);
       setBusqueda("");
@@ -281,24 +303,19 @@ export function Pos({
     [clienteId, precioDe],
   );
 
-  // Lo escrito: primero un código o SKU exacto; si no, lo que coincida en el nombre, la marca o el SKU.
+  // Lo escrito: primero un código o SKU exacto; si no, lo que coincida en el nombre, la marca, el SKU, la presentación o la familia.
   const resultados = useMemo(() => {
     const texto = normalizar(busqueda);
     if (!texto) return [];
-    const exacto = catalogo.filter(
-      (a) =>
-        normalizar(a.codigo_barras) === texto || normalizar(a.sku) === texto,
-    );
+    const exacto = catalogo.filter((a) => normalizar(a.codigo_barras) === texto || normalizar(a.sku) === texto);
     if (exacto.length) return exacto;
     const palabras = texto.split(/\s+/);
     return catalogo
       .filter((a) => {
-        const en = normalizar(
-          `${a.nombre} ${a.marca} ${a.sku} ${a.presentacionTexto} ${a.familia}`,
-        );
+        const en = normalizar(`${a.nombre} ${a.marca} ${a.sku} ${a.presentacionTexto} ${a.familia}`);
         return palabras.every((p) => en.includes(p));
       })
-      .slice(0, 8);
+      .slice(0, MAXIMO_DE_RESULTADOS);
   }, [busqueda, catalogo]);
 
   /** Lo que hace Enter en el buscador: el lector lo pulsa solo después del código. */
@@ -306,37 +323,53 @@ export function Pos({
     const texto = busqueda.trim();
     if (!texto) return;
     const exacto =
-      catalogo.find(
-        (a) =>
-          a.codigo_barras && normalizar(a.codigo_barras) === normalizar(texto),
-      ) ??
+      catalogo.find((a) => a.codigo_barras && normalizar(a.codigo_barras) === normalizar(texto)) ??
       catalogo.find((a) => a.sku && normalizar(a.sku) === normalizar(texto));
     if (exacto) return agregar(exacto);
     if (resultados.length === 1) return agregar(resultados[0]);
-    if (resultados.length > 1)
-      return agregar(resultados[Math.min(elegido, resultados.length - 1)]);
+    if (resultados.length > 1) return agregar(resultados[Math.min(elegido, resultados.length - 1)]);
     pitar(false);
     setNoEncontrado(texto);
     avisar("Producto no encontrado", true);
   };
 
-  const cambiarLinea = (claveLinea: string, cambios: Partial<Linea>) =>
-    setLineas((actuales) =>
-      actuales.map((l) => (l.clave === claveLinea ? { ...l, ...cambios } : l)),
-    );
-  const quitarLinea = (claveLinea: string) =>
-    setLineas((actuales) => actuales.filter((l) => l.clave !== claveLinea));
+  /** Ponerle el código leído a un artículo, sin salir de la caja (la acción vuelve con el aviso). */
+  const asignarElCodigo = async () => {
+    if (!noEncontrado || !asignarA || asignando) return;
+    setAsignando(true);
+    const datos = new FormData();
+    datos.set("codigo_barras", noEncontrado);
+    datos.set("clave", asignarA);
+    datos.set("volver_a", "/admin/ventas");
+    try {
+      await asignarCodigo(datos);
+    } finally {
+      setAsignando(false);
+    }
+  };
 
-  const cambiarCliente = (nuevo: number) => {
+  // Los clientes que coinciden con lo escrito (nombre, razón social o teléfono); sin escribir, los primeros.
+  const clientesQueCoinciden = useMemo(() => {
+    const texto = normalizar(busquedaCliente);
+    const lista = texto
+      ? clientes.filter((c) => normalizar(`${c.rotulo} ${c.nombre} ${c.telefono} ${c.telefono.replace(/\D/g, "")}`).includes(texto))
+      : clientes;
+    return lista.slice(0, MAXIMO_DE_RESULTADOS);
+  }, [busquedaCliente, clientes]);
+
+  const cambiarLinea = (claveLinea: string, cambios: Partial<Linea>) =>
+    setLineas((actuales) => actuales.map((l) => (l.clave === claveLinea ? { ...l, ...cambios } : l)));
+  const quitarLinea = (claveLinea: string) => setLineas((actuales) => actuales.filter((l) => l.clave !== claveLinea));
+
+  const elegirCliente = (nuevo: number) => {
     setClienteId(nuevo);
+    setBusquedaCliente("");
+    setListaClientes(false);
+    setClienteMarcado(0);
+    if (nuevo === mostradorId && modo !== "ahora") setModo("ahora");
     // Los precios que no se tocaron a mano siguen al cliente (su precio especial, o el de la lista).
-    setLineas((actuales) =>
-      actuales.map((l) =>
-        l.precioManual
-          ? l
-          : { ...l, precio_usd: precioDe(porClave.get(l.clave)!, nuevo) },
-      ),
-    );
+    setLineas((actuales) => actuales.map((l) => (l.precioManual ? l : { ...l, precio_usd: precioDe(porClave.get(l.clave)!, nuevo) })));
+    enfocarBuscador();
   };
 
   const cancelar = () => {
@@ -347,30 +380,45 @@ export function Pos({
     setNota("");
     setBusqueda("");
     setNoEncontrado(null);
+    setRecibido("");
+    setPagosTocados(false);
+    setModo("ahora");
+    setEntrega("ahora");
+    setEntregaPrevista("");
     setClave(nuevaClave());
     avisar("Venta cancelada");
     enfocarBuscador();
   };
 
-  const abrirCobro = () => {
-    if (lineas.length === 0)
-      return avisar("No hay productos en la venta", true);
-    setPagos([{ metodo: "efectivo_usd", monto_usd: totales.total }]);
-    setCobrando(true);
+  /** Antes de abrir la confirmación se revisa aquí lo mismo que revisará el servidor: así el aviso es inmediato. */
+  const abrirConfirmacion = () => {
+    if (guardando) return;
+    if (lineas.length === 0) return avisar("No hay productos en la venta", true);
+    const motivos = revisarVentaPos({
+      lineas,
+      descuento_usd: totales.descuento,
+      pagos,
+      modo,
+      esMostrador,
+      tasa,
+      metodosEnBolivares: METODOS_EN_BOLIVARES,
+    });
+    if (entrega === "despacho" && !entregaPrevista) motivos.push("Escribe el día previsto de entrega.");
+    if (motivos.length > 0) {
+      avisar(motivos[0], true);
+      resumen.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    setConfirmando(true);
   };
 
-  const confirmarCobro = () => {
-    if (enviando.current) return;
-    if (Math.abs(falta) > 0.01)
-      return avisar(
-        falta > 0 ? `Faltan ${usd(falta)}` : `Se pasa por ${usd(-falta)}`,
-        true,
-      );
-    enviando.current = true;
+  const confirmarVenta = () => {
+    if (guardando) return;
+    setGuardando(true);
     formulario.current?.requestSubmit();
   };
 
-  // Los atajos: F2 buscar, F4 cliente, F8 cobrar, Esc cancelar o cerrar, Enter confirmar en la ventana.
+  // Los atajos: F2 buscar producto, F4 cliente, F8 confirmar, Esc cancelar o cerrar, Enter confirmar en la ventana.
   useEffect(() => {
     const alTeclear = (e: KeyboardEvent) => {
       if (e.key === "F2") {
@@ -378,21 +426,19 @@ export function Pos({
         enfocarBuscador();
       } else if (e.key === "F4") {
         e.preventDefault();
-        selectorCliente.current?.focus();
+        buscadorCliente.current?.focus();
+        setListaClientes(true);
       } else if (e.key === "F8") {
         e.preventDefault();
-        if (!cobrando) abrirCobro();
+        if (!confirmando) abrirConfirmacion();
       } else if (e.key === "Escape") {
-        if (cobrando) setCobrando(false);
+        if (confirmando) setConfirmando(false);
+        else if (listaClientes) setListaClientes(false);
         else if (noEncontrado) setNoEncontrado(null);
         else cancelar();
-      } else if (
-        e.key === "Enter" &&
-        cobrando &&
-        !(e.target instanceof HTMLTextAreaElement)
-      ) {
+      } else if (e.key === "Enter" && confirmando && !(e.target instanceof HTMLTextAreaElement)) {
         e.preventDefault();
-        confirmarCobro();
+        confirmarVenta();
       }
     };
     window.addEventListener("keydown", alTeclear);
@@ -402,9 +448,15 @@ export function Pos({
   const venta = {
     clave_pos: clave,
     cliente_id: clienteId,
+    fecha,
     cajero,
     descuento_usd: totales.descuento,
     nota,
+    modo,
+    entrega,
+    entrega_prevista: entrega === "despacho" ? entregaPrevista : "",
+    confirmar,
+    confirmar_nota: confirmarNota,
     lineas: lineas.map((l) => ({
       clave: l.clave,
       producto_id: l.producto_id,
@@ -413,311 +465,378 @@ export function Pos({
       unidad: l.unidad,
       cantidad: l.cantidad,
       precio_usd: l.precio_usd,
+      piezas: l.piezas,
     })),
-    pagos,
+    pagos: pagosQueValen.map((p) => ({ metodo: p.metodo, monto_usd: p.monto_usd, referencia: p.referencia ?? "" })),
   };
-  const clienteElegido = clientes.find((c) => c.id === clienteId);
-  // La referencia va con el pago que la tiene: el primero que no sea efectivo (un pago móvil, una transferencia…).
-  const conReferencia = pagos.findIndex(
-    (p) => !["efectivo_usd", "efectivo_bs", "otro"].includes(p.metodo),
-  );
+
   const stockDe = (l: Linea) => {
     const a = porClave.get(l.clave);
-    if (!a || a.existencia === null)
-      return { estado: "sin_seguir" as const, texto: "Sin seguir" };
-    if (l.cantidad > a.existencia)
-      return {
-        estado: "sin" as const,
-        texto: `Hay ${cantidad(a.existencia, a.unidad)}`,
-      };
-    return {
-      estado: a.estado,
-      texto: `${ESTADO_TEXTO[a.estado]}: ${cantidad(a.existencia, a.unidad)}`,
-    };
+    if (!a || a.existencia === null) return { estado: "sin_seguir" as const, texto: "Sin seguir" };
+    if (l.cantidad > a.existencia) return { estado: "sin" as const, texto: `Hay ${cantidad(a.existencia, a.unidad)}` };
+    return { estado: a.estado, texto: `${ESTADO_TEXTO[a.estado]}: ${cantidad(a.existencia, a.unidad)}` };
+  };
+  const saldo = describirSaldo(clienteElegido?.saldo_usd ?? 0);
+  const saldoNuevo = describirSaldo(cuenta.saldoNuevo);
+  const nombreDeCliente = (c: ClienteParaLaCaja) => (c.id === mostradorId ? "Mostrador (sin cliente)" : c.rotulo);
+  const describirPago = () => {
+    if (modo === "credito") return "Queda pendiente en su cuenta";
+    const vias = pagosQueValen.map((p) => `${METODOS_PAGO[p.metodo]} ${usd(p.monto_usd)}`).join(" · ");
+    return modo === "parte" ? `Paga ${vias}; quedan ${usd(cuenta.pendiente)} en su cuenta` : vias;
   };
 
   return (
-    <div className={estilos.caja}>
-      <section className="tarjeta">
-        <div className={estilos.escaner}>
-          <label htmlFor="pos-buscar">
-            <strong>Escanea el código o escribe el producto</strong>{" "}
-            <span className="ayuda">(F2)</span>
-          </label>
-          <input
-            ref={buscador}
-            id="pos-buscar"
-            type="search"
-            autoFocus
-            autoComplete="off"
-            placeholder="Código de barras, SKU, nombre o marca…"
-            value={busqueda}
-            onChange={(e) => {
-              setBusqueda(e.target.value);
-              setElegido(0);
-              setNoEncontrado(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                confirmarBusqueda();
-              } else if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setElegido((i) =>
-                  Math.min(i + 1, Math.max(0, resultados.length - 1)),
-                );
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setElegido((i) => Math.max(0, i - 1));
-              }
-            }}
-          />
-          {resultados.length > 0 && busqueda && (
-            <ul
-              className={estilos.resultados}
-              role="listbox"
-              aria-label="Productos que coinciden"
-            >
-              {resultados.map((a, i) => (
-                <li key={a.clave} role="option" aria-selected={i === elegido}>
-                  <button
-                    type="button"
-                    className={estilos.resultado}
-                    data-elegido={i === elegido ? "1" : undefined}
-                    onMouseEnter={() => setElegido(i)}
-                    onClick={() => agregar(a)}
-                  >
-                    <span className={estilos.resultadoNombre}>
-                      <strong>{a.nombre}</strong>
-                      <span className="ayuda">
-                        {[
-                          a.presentacionTexto,
-                          a.sku ? `SKU ${a.sku}` : "",
-                          a.familia,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}{" "}
-                        <span
-                          className={`${estilos.stock} ${estilos[`stock--${a.estado}`]}`}
-                        >
-                          {a.existencia === null
-                            ? "Sin seguir"
-                            : `${ESTADO_TEXTO[a.estado]}: ${cantidad(a.existencia, a.unidad)}`}
-                        </span>
-                      </span>
-                    </span>
-                    <span className={estilos.resultadoPrecio}>
-                      {a.precio_usd === null
-                        ? "sin precio"
-                        : `${usd(precioDe(a, clienteId))} / ${NOMBRE_UNIDAD[a.unidad]}`}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {noEncontrado && (
-            <div className={estilos.noEncontrado}>
-              <strong>
-                Producto no encontrado: «{noEncontrado}». ¿Quieres registrarlo?
-              </strong>
-              <form
-                action={asignarCodigo}
-                className={panel.accionesFila}
-                style={{ flexWrap: "wrap", alignItems: "center" }}
-              >
-                <input
-                  type="hidden"
-                  name="codigo_barras"
-                  value={noEncontrado}
-                />
-                <input type="hidden" name="volver_a" value="/admin/pos" />
-                <label className="ayuda" htmlFor="pos-asignar">
-                  Ponerle este código a:
-                </label>
-                <select
-                  id="pos-asignar"
-                  name="clave"
-                  value={asignarA}
-                  onChange={(e) => setAsignarA(e.target.value)}
-                  required
-                >
-                  <option value="">Elige el artículo</option>
-                  {catalogo.map((a) => (
-                    <option key={a.clave} value={a.clave}>
-                      {a.nombre}
-                      {a.codigo_barras ? ` (ya tiene ${a.codigo_barras})` : ""}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="submit"
-                  className={`boton ${panel.botonPequeno}`}
-                  disabled={!asignarA}
-                >
-                  Guardar el código
-                </button>
-                <Link
-                  href={`/admin/productos/nuevo?codigo_barras=${encodeURIComponent(noEncontrado)}`}
-                >
-                  Crear un producto nuevo
-                </Link>
-              </form>
-            </div>
-          )}
-        </div>
+    <form
+      ref={formulario}
+      action={guardarVentaPos}
+      encType="multipart/form-data"
+      className={estilos.caja}
+      // Enter en una casilla no manda la venta: eso solo lo hace «Confirmar».
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="venta" value={JSON.stringify(venta)} />
 
-        <h2
-          className={panel.subtitulo}
-          style={{ marginTop: "var(--espacio-4)" }}
-        >
-          Venta{" "}
-          {lineas.length > 0
-            ? `(${lineas.length} ${lineas.length === 1 ? "artículo" : "artículos"})`
-            : ""}
-        </h2>
-        {lineas.length === 0 ? (
-          <p className="vacio">
-            Escanea un producto o escríbelo arriba para empezar.
-          </p>
-        ) : (
-          <ul className={estilos.carrito}>
-            {lineas.map((l) => {
-              const stock = stockDe(l);
-              return (
-                <li
-                  key={l.clave}
-                  className={`${estilos.linea} ${recien === l.clave ? estilos["linea--nueva"] : ""}`}
-                >
-                  <div className={estilos.lineaNombre}>
-                    <strong>{l.nombre}</strong>
-                    <span className="ayuda">
-                      {porClave.get(l.clave)?.presentacionTexto}{" "}
-                      <span
-                        className={`${estilos.stock} ${estilos[`stock--${stock.estado}`]}`}
-                      >
-                        {stock.texto}
-                      </span>
-                    </span>
-                  </div>
-                  <span className={estilos.lineaSubtotal}>
-                    {usd(Math.round(l.cantidad * l.precio_usd * 100) / 100)}
-                  </span>
-                  <div className={estilos.lineaCampos}>
-                    <span className={estilos.masMenos}>
-                      <button
-                        type="button"
-                        aria-label="Una menos"
-                        onClick={() =>
-                          cambiarLinea(l.clave, {
-                            cantidad: Math.max(
-                              0,
-                              Math.round(
-                                (l.cantidad - (l.unidad === "kg" ? 0.5 : 1)) *
-                                  1000,
-                              ) / 1000,
-                            ),
-                          })
-                        }
-                      >
-                        −
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Una más"
-                        onClick={() =>
-                          cambiarLinea(l.clave, {
-                            cantidad:
-                              Math.round(
-                                (l.cantidad + (l.unidad === "kg" ? 0.5 : 1)) *
-                                  1000,
-                              ) / 1000,
-                          })
-                        }
-                      >
-                        +
-                      </button>
-                    </span>
-                    <label>
-                      Cantidad
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step={l.unidad === "kg" ? "0.001" : "1"}
-                        value={l.cantidad}
-                        onChange={(e) =>
-                          cambiarLinea(l.clave, {
-                            cantidad: Number(e.target.value) || 0,
-                          })
-                        }
-                        aria-label={`Cantidad de ${l.nombre}`}
-                      />
-                      <span>{NOMBRE_UNIDAD[l.unidad]}</span>
-                    </label>
-                    <label>
-                      USD por {NOMBRE_UNIDAD[l.unidad]}
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step="0.01"
-                        value={l.precio_usd}
-                        onChange={(e) =>
-                          cambiarLinea(l.clave, {
-                            precio_usd: Number(e.target.value) || 0,
-                            precioManual: true,
-                          })
-                        }
-                        aria-label={`Precio de ${l.nombre}`}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      className={estilos.quitar}
-                      onClick={() => quitarLinea(l.clave)}
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      <aside className={estilos.resumen}>
-        <section className="tarjeta">
-          <div className="campo">
-            <label htmlFor="pos-cliente">
+      <div className={estilos.izquierda}>
+        <section className={`tarjeta ${estilos.cabecera}`}>
+          <div className={estilos.clienteCampo}>
+            <label htmlFor="pos-cliente-buscar">
               Cliente <span className="ayuda">(F4)</span>
             </label>
-            <select
-              ref={selectorCliente}
-              id="pos-cliente"
-              value={clienteId}
-              onChange={(e) => cambiarCliente(Number(e.target.value))}
-            >
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.id === mostradorId ? "Mostrador (sin cliente)" : c.rotulo}
-                  {preciosEspeciales[c.id] ? " · precio especial" : ""}
-                </option>
-              ))}
-            </select>
+            {clienteElegido && (
+              <div className={estilos.clienteElegido} data-cliente={clienteElegido.id}>
+                <strong>{nombreDeCliente(clienteElegido)}</strong>
+                {esMostrador ? (
+                  <span className="ayuda">Paga en el momento</span>
+                ) : (
+                  <span className={`${estilos.saldo} ${estilos[`saldo--${saldo.tono}`]}`}>
+                    {saldo.tono === "debe" ? "⚠️ " : "✓ "}
+                    {saldo.texto}
+                  </span>
+                )}
+              </div>
+            )}
+            <div className={estilos.buscadorCliente}>
+              <input
+                ref={buscadorCliente}
+                id="pos-cliente-buscar"
+                type="search"
+                autoComplete="off"
+                placeholder="Buscar cliente por nombre o teléfono…"
+                value={busquedaCliente}
+                onFocus={() => setListaClientes(true)}
+                onBlur={() => setTimeout(() => setListaClientes(false), 150)}
+                onChange={(e) => {
+                  setBusquedaCliente(e.target.value);
+                  setClienteMarcado(0);
+                  setListaClientes(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const c = clientesQueCoinciden[Math.min(clienteMarcado, clientesQueCoinciden.length - 1)];
+                    if (c) elegirCliente(c.id);
+                  } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setClienteMarcado((i) => Math.min(i + 1, Math.max(0, clientesQueCoinciden.length - 1)));
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setClienteMarcado((i) => Math.max(0, i - 1));
+                  }
+                }}
+              />
+              {listaClientes && (
+                <ul id="pos-clientes" className={estilos.resultados} role="listbox" aria-label="Clientes que coinciden">
+                  {clientesQueCoinciden.map((c, i) => {
+                    const s = describirSaldo(c.saldo_usd);
+                    return (
+                      <li key={c.id} role="option" aria-selected={i === clienteMarcado}>
+                        <button
+                          type="button"
+                          className={estilos.resultado}
+                          data-elegido={i === clienteMarcado ? "1" : undefined}
+                          onMouseEnter={() => setClienteMarcado(i)}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => elegirCliente(c.id)}
+                        >
+                          <span className={estilos.resultadoNombre}>
+                            <strong>{nombreDeCliente(c)}</strong>
+                            {c.id !== mostradorId && c.telefono ? <span className="ayuda">{c.telefono}</span> : null}
+                          </span>
+                          {c.id === mostradorId ? (
+                            <span className="ayuda">sin cuenta</span>
+                          ) : (
+                            <span className={`${estilos.saldo} ${estilos[`saldo--${s.tono}`]}`}>{s.texto}</span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {clientesQueCoinciden.length === 0 && (
+                    <li className={estilos.sinResultados}>
+                      Ningún cliente con «{busquedaCliente}». <Link href="/admin/clientes">Registrarlo en Clientes</Link>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
           </div>
-          <div className="campo">
-            <label htmlFor="pos-cajero">Cajero</label>
+          <div className={`campo ${estilos.fechaCampo}`}>
+            <label htmlFor="pos-fecha">Fecha de la nota</label>
+            <input id="pos-fecha" type="date" max={hoy} value={fecha} onChange={(e) => setFecha(e.target.value || hoy)} />
+          </div>
+          <p className={estilos.numeroNota}>
+            Nota <strong>N.º {siguienteNota}</strong>
+          </p>
+        </section>
+
+        <section className="tarjeta">
+          <div className={estilos.escaner}>
+            <label htmlFor="pos-buscar">
+              <strong>Agregar producto</strong> <span className="ayuda">(F2) · escanea el código o escribe el nombre</span>
+            </label>
             <input
-              id="pos-cajero"
-              type="text"
-              value={cajero}
-              onChange={(e) => setCajero(e.target.value)}
-              placeholder="Quién está en la caja"
-              maxLength={60}
+              ref={buscador}
+              id="pos-buscar"
+              type="search"
+              autoFocus
+              autoComplete="off"
+              placeholder="Código de barras, SKU, nombre, marca o categoría…"
+              value={busqueda}
+              onChange={(e) => {
+                setBusqueda(e.target.value);
+                setElegido(0);
+                setNoEncontrado(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  confirmarBusqueda();
+                } else if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setElegido((i) => Math.min(i + 1, Math.max(0, resultados.length - 1)));
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setElegido((i) => Math.max(0, i - 1));
+                }
+              }}
             />
+            {resultados.length > 0 && busqueda && (
+              <ul className={estilos.resultados} role="listbox" aria-label="Productos que coinciden">
+                {resultados.map((a, i) => (
+                  <li key={a.clave} role="option" aria-selected={i === elegido}>
+                    <button
+                      type="button"
+                      className={estilos.resultado}
+                      data-elegido={i === elegido ? "1" : undefined}
+                      onMouseEnter={() => setElegido(i)}
+                      onClick={() => agregar(a)}
+                    >
+                      <span className={estilos.resultadoNombre}>
+                        <strong>{a.nombre}</strong>
+                        <span className="ayuda">
+                          {[a.presentacionTexto, a.sku ? `SKU ${a.sku}` : "", a.familia].filter(Boolean).join(" · ")}{" "}
+                          <span className={`${estilos.stock} ${estilos[`stock--${a.estado}`]}`}>
+                            {a.existencia === null ? "Sin seguir" : a.estado === "sin" ? "❌ Sin stock" : `Stock: ${cantidad(a.existencia, a.unidad)}`}
+                          </span>
+                        </span>
+                      </span>
+                      <span className={estilos.resultadoPrecio}>
+                        {a.precio_usd === null && !preciosEspeciales[clienteId]?.[a.clave] ? "sin precio" : `${usd(precioDe(a, clienteId))} / ${NOMBRE_UNIDAD[a.unidad]}`}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {noEncontrado && (
+              <div className={estilos.noEncontrado}>
+                <strong>Producto no encontrado: «{noEncontrado}». ¿Quieres registrarlo?</strong>
+                <div className={panel.accionesFila} style={{ flexWrap: "wrap", alignItems: "center" }}>
+                  <label className="ayuda" htmlFor="pos-asignar">
+                    Ponerle este código a:
+                  </label>
+                  <select id="pos-asignar" value={asignarA} onChange={(e) => setAsignarA(e.target.value)}>
+                    <option value="">Elige el artículo</option>
+                    {catalogo.map((a) => (
+                      <option key={a.clave} value={a.clave}>
+                        {a.nombre}
+                        {a.codigo_barras ? ` (ya tiene ${a.codigo_barras})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" className={`boton ${panel.botonPequeno}`} disabled={!asignarA || asignando} onClick={asignarElCodigo}>
+                    {asignando ? "Guardando…" : "Guardar el código"}
+                  </button>
+                  <Link href={`/admin/productos/nuevo?codigo_barras=${encodeURIComponent(noEncontrado)}`}>Crear un producto nuevo</Link>
+                </div>
+              </div>
+            )}
           </div>
+
+          <h2 className={`${panel.subtitulo} ${estilos.tituloCarrito}`}>
+            Carrito {lineas.length > 0 ? `(${lineas.length} ${lineas.length === 1 ? "artículo" : "artículos"})` : ""}
+          </h2>
+          {lineas.length === 0 ? (
+            <p className="vacio">Escanea un producto o escríbelo arriba para empezar.</p>
+          ) : (
+            <div className="tabla-envoltorio">
+              <table className={`tabla tabla--fichas ${estilos.carrito}`}>
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Cant.</th>
+                    <th>Unidad</th>
+                    <th>Precio</th>
+                    <th className="numero">Total</th>
+                    <th>
+                      <span className="visualmente-oculto">Quitar</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lineas.map((l) => {
+                    const stock = stockDe(l);
+                    const articulo = porClave.get(l.clave);
+                    return (
+                      <tr key={l.clave} className={recien === l.clave ? estilos["linea--nueva"] : undefined}>
+                        <td data-label="Producto">
+                          <strong>{l.nombre}</strong>
+                          <span className={`ayuda ${estilos.lineaDetalle}`}>
+                            {articulo?.presentacionTexto ? `${articulo.presentacionTexto} · ` : ""}
+                            <span className={`${estilos.stock} ${estilos[`stock--${stock.estado}`]}`}>{stock.texto}</span>
+                            {l.unidad === "kg" && articulo?.pesoTipico ? ` · suele pesar ${cantidad(articulo.pesoTipico, "kg")} por pieza` : ""}
+                          </span>
+                        </td>
+                        <td data-label="Cant.">
+                          <span className={estilos.cantidad}>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="0"
+                              step={l.unidad === "kg" ? "0.001" : "1"}
+                              value={l.cantidad}
+                              onChange={(e) => cambiarLinea(l.clave, { cantidad: Number(e.target.value) || 0 })}
+                              aria-label={`Cantidad de ${l.nombre}`}
+                            />
+                            {l.unidad === "kg" && (
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min="1"
+                                step="1"
+                                placeholder="pzas"
+                                title="Piezas (opcional)"
+                                className={estilos.piezas}
+                                value={l.piezas ?? ""}
+                                onChange={(e) => cambiarLinea(l.clave, { piezas: e.target.value ? Number(e.target.value) : null })}
+                                aria-label={`Piezas de ${l.nombre}`}
+                              />
+                            )}
+                          </span>
+                        </td>
+                        <td data-label="Unidad">{NOMBRE_UNIDAD[l.unidad]}</td>
+                        <td data-label="Precio">
+                          <span className={estilos.precio}>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="0"
+                              step="0.01"
+                              value={l.precio_usd}
+                              onChange={(e) => cambiarLinea(l.clave, { precio_usd: Number(e.target.value) || 0, precioManual: true })}
+                              aria-label={`Precio de ${l.nombre}`}
+                            />
+                            <span className="ayuda">USD/{NOMBRE_UNIDAD[l.unidad]}</span>
+                          </span>
+                        </td>
+                        <td data-label="Total" className="numero">
+                          <strong>{usd(Math.round(l.cantidad * l.precio_usd * 100) / 100)}</strong>
+                        </td>
+                        <td className={estilos.celdaQuitar}>
+                          <button type="button" className={estilos.quitar} onClick={() => quitarLinea(l.clave)} aria-label={`Quitar ${l.nombre}`} title="Quitar">
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <details className={estilos.plegable} open={entrega === "despacho" || Boolean(fotoEnEspera) || pideConfirmarNota}>
+          <summary>
+            Entrega{" "}
+            <span className="ayuda">
+              {entrega === "ahora" ? "Entregada ahora" : `Queda por entregar${entregaPrevista ? ` el ${fechaCorta(entregaPrevista)}` : ""}`}
+              {fotoEnEspera ? " · con la foto de la nota" : ""}
+            </span>
+          </summary>
+          <div className={estilos.plegableCuerpo}>
+            <div className={estilos.opciones} role="radiogroup" aria-label="Entrega">
+              <label>
+                <input type="radio" name="entrega_modo" checked={entrega === "ahora"} onChange={() => setEntrega("ahora")} /> Entregada ahora
+              </label>
+              <label>
+                <input type="radio" name="entrega_modo" checked={entrega === "despacho"} onChange={() => setEntrega("despacho")} /> Queda por entregar
+              </label>
+            </div>
+            {entrega === "despacho" ? (
+              <div className="campo">
+                <label htmlFor="pos-entrega-prevista">Día previsto de entrega</label>
+                <input id="pos-entrega-prevista" type="date" min={fecha} value={entregaPrevista} onChange={(e) => setEntregaPrevista(e.target.value)} />
+                <span className="ayuda">Sale en el despacho con su ruta, y el resumen te lo recuerda.</span>
+              </div>
+            ) : (
+              <div className="campo">
+                <label htmlFor="pos-foto">Foto de la nota firmada (si la tienes a mano)</label>
+                {fotoEnEspera && <input type="hidden" name="foto_espera" value={fotoEnEspera} />}
+                <EntradaFoto nombre="foto" id="pos-foto" opcional soloFoto />
+                <span className="ayuda">
+                  {fotoEnEspera ? "La foto que pusiste ya está guardada; solo pon otra si quieres cambiarla. " : "También se puede poner después, desde la nota. "}
+                  {seLee && "Se lee sola: si no es la nota, o su fecha o su suma no cuadran con lo anotado, avisa."}
+                </span>
+                {pideConfirmarNota && (
+                  <label className={panel.casilla}>
+                    <input type="checkbox" checked={confirmarNota} onChange={(e) => setConfirmarNota(e.target.checked)} />
+                    <span>Ya revisé la foto de la nota: guardar igual</span>
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
+        </details>
+
+        <details className={estilos.plegable} open={Boolean(nota)}>
+          <summary>
+            Observación y cajero <span className="ayuda">{[nota, cajero].filter(Boolean).join(" · ")}</span>
+          </summary>
+          <div className={`${estilos.plegableCuerpo} formulario__fila`}>
+            <div className="campo">
+              <label htmlFor="pos-nota">Observación</label>
+              <input id="pos-nota" type="text" value={nota} onChange={(e) => setNota(e.target.value)} maxLength={300} />
+            </div>
+            <div className="campo">
+              <label htmlFor="pos-cajero">Cajero</label>
+              <input id="pos-cajero" type="text" value={cajero} onChange={(e) => setCajero(e.target.value)} placeholder="Quién está en la caja" maxLength={60} />
+            </div>
+          </div>
+        </details>
+
+        <p className={`ayuda ${estilos.pieIzquierda}`}>
+          <Link href="/admin/codigos">Códigos de barras y SKU</Link> · <Link href="/admin/ventas/clasica">Formulario clásico</Link>
+        </p>
+      </div>
+
+      <aside className={estilos.resumen} ref={resumen} id="resumen">
+        <section className="tarjeta">
+          <h2 className={panel.subtitulo} style={{ marginBottom: "var(--espacio-2)" }}>
+            Resumen
+          </h2>
           <dl className={estilos.totales}>
             <div>
               <dt>Subtotal</dt>
@@ -736,7 +855,7 @@ export function Pos({
                   step="0.01"
                   value={descuento}
                   onChange={(e) => setDescuento(e.target.value)}
-                  style={{ width: 110, textAlign: "right" }}
+                  className={estilos.descuento}
                 />
               </dd>
             </div>
@@ -745,81 +864,38 @@ export function Pos({
               <dd>{usd(totales.total)}</dd>
             </div>
             <div className={estilos.totalBs}>
-              <dt>
-                {tasa ? `Tasa BCV ${dinero.format(tasa)}` : "Sin tasa del día"}
-              </dt>
+              <dt>{tasa ? `Tasa BCV ${numero.format(tasa)}` : "Sin tasa del día"}</dt>
               <dd>{totales.totalBs === null ? "—" : bs(totales.totalBs)}</dd>
             </div>
           </dl>
-          <button
-            type="button"
-            className={`boton ${estilos.cobrar}`}
-            onClick={abrirCobro}
-            disabled={lineas.length === 0}
-          >
-            Cobrar{" "}
-            <span className="ayuda" style={{ color: "inherit", opacity: 0.8 }}>
-              (F8)
-            </span>
-          </button>
-          <button
-            type="button"
-            className="boton boton--secundario"
-            onClick={cancelar}
-          >
-            Cancelar venta (Esc)
-          </button>
-          <p className={estilos.atajos}>
-            <kbd>F2</kbd> buscar · <kbd>F4</kbd> cliente · <kbd>F8</kbd> cobrar
-            · <kbd>Esc</kbd> cancelar · <kbd>Enter</kbd> confirmar
-            {sinTope ? " · Se puede vender sin existencia" : ""}
-          </p>
-        </section>
-      </aside>
 
-      {cobrando && (
-        <div
-          className={estilos.fondo}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="pos-cobro-titulo"
-          onClick={(e) => e.target === e.currentTarget && setCobrando(false)}
-        >
-          <div className={estilos.ventana}>
-            <h2
-              id="pos-cobro-titulo"
-              className={panel.subtitulo}
-              style={{ marginBottom: 0 }}
-            >
-              Cobrar {usd(totales.total)}
-            </h2>
-            <p className="ayuda" style={{ margin: 0 }}>
-              {clienteElegido?.id === mostradorId
-                ? "Mostrador"
-                : clienteElegido?.rotulo}{" "}
-              · {lineas.length} {lineas.length === 1 ? "artículo" : "artículos"}
-              {totales.descuento > 0
-                ? ` · descuento ${usd(totales.descuento)}`
-                : ""}
-              {totales.totalBs !== null
-                ? ` · ${bs(totales.totalBs)} a ${dinero.format(tasa!)}`
-                : ""}
-            </p>
-            <ul className={panel.pedidos}>
-              {lineas.map((l) => (
-                <li key={l.clave}>
-                  <p>
-                    {dinero.format(l.cantidad)} {NOMBRE_UNIDAD[l.unidad]}{" "}
-                    {l.nombre} × {usd(l.precio_usd)} ={" "}
-                    <strong>
-                      {usd(Math.round(l.cantidad * l.precio_usd * 100) / 100)}
-                    </strong>
-                  </p>
-                </li>
-              ))}
-            </ul>
-            <div>
-              <strong>Cómo paga</strong>
+          <div className={estilos.modos} role="group" aria-label="Cómo paga">
+            {(["ahora", "parte", "credito"] as ModoDePago[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={`${estilos.modo} ${modo === m ? estilos["modo--activo"] : ""}`}
+                aria-pressed={modo === m}
+                disabled={m !== "ahora" && esMostrador}
+                title={m !== "ahora" && esMostrador ? "Con el mostrador se paga en el momento: elige al cliente" : undefined}
+                onClick={() => {
+                  setModo(m);
+                  if (m === "parte" && !pagosTocados) {
+                    setPagosTocados(true);
+                    setPagos([{ metodo: "efectivo_usd", monto_usd: 0 }]);
+                  }
+                  if (m === "ahora" && pagosTocados && pagos.length === 1) {
+                    setPagosTocados(false);
+                  }
+                }}
+              >
+                {NOMBRE_MODO[m]}
+              </button>
+            ))}
+          </div>
+
+          {modo !== "credito" && (
+            <div className={estilos.pagos}>
               {pagos.map((p, i) => (
                 <div key={i} className={estilos.pago}>
                   <div className="campo">
@@ -827,15 +903,10 @@ export function Pos({
                     <select
                       id={`pos-metodo-${i}`}
                       value={p.metodo}
-                      onChange={(e) =>
-                        setPagos(
-                          pagos.map((x, j) =>
-                            j === i
-                              ? { ...x, metodo: e.target.value as MetodoPago }
-                              : x,
-                          ),
-                        )
-                      }
+                      onChange={(e) => {
+                        setPagosTocados(true);
+                        setPagos(pagos.map((x, j) => (j === i ? { ...x, metodo: e.target.value as MetodoPago } : x)));
+                      }}
                     >
                       {(Object.keys(METODOS_PAGO) as MetodoPago[]).map((m) => (
                         <option key={m} value={m}>
@@ -845,7 +916,7 @@ export function Pos({
                     </select>
                   </div>
                   <div className="campo">
-                    <label htmlFor={`pos-monto-${i}`}>Monto (USD)</label>
+                    <label htmlFor={`pos-monto-${i}`}>{modo === "parte" ? "Paga ahora (USD)" : "Monto (USD)"}</label>
                     <input
                       id={`pos-monto-${i}`}
                       type="number"
@@ -853,22 +924,20 @@ export function Pos({
                       min="0"
                       step="0.01"
                       value={p.monto_usd}
-                      onChange={(e) =>
-                        setPagos(
-                          pagos.map((x, j) =>
-                            j === i
-                              ? { ...x, monto_usd: Number(e.target.value) || 0 }
-                              : x,
-                          ),
-                        )
-                      }
+                      onChange={(e) => {
+                        setPagosTocados(true);
+                        setPagos(pagos.map((x, j) => (j === i ? { ...x, monto_usd: Number(e.target.value) || 0 } : x)));
+                      }}
                     />
                   </div>
                   {pagos.length > 1 ? (
                     <button
                       type="button"
-                      className={estilos.quitar}
-                      onClick={() => setPagos(pagos.filter((_, j) => j !== i))}
+                      className={estilos.quitarTexto}
+                      onClick={() => {
+                        setPagosTocados(true);
+                        setPagos(pagos.filter((_, j) => j !== i));
+                      }}
                     >
                       Quitar
                     </button>
@@ -877,112 +946,192 @@ export function Pos({
                   )}
                 </div>
               ))}
-              <div
-                className={panel.accionesFila}
-                style={{
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                  marginTop: "var(--espacio-2)",
-                }}
-              >
+              <div className={panel.accionesFila} style={{ flexWrap: "wrap", alignItems: "center" }}>
                 <button
                   type="button"
                   className={`boton boton--secundario ${panel.botonPequeno}`}
-                  onClick={() =>
-                    setPagos([
-                      ...pagos,
-                      { metodo: "pago_movil", monto_usd: Math.max(0, falta) },
-                    ])
-                  }
+                  onClick={() => {
+                    setPagosTocados(true);
+                    setPagos([...pagos, { metodo: "pago_movil", monto_usd: Math.max(0, falta) }]);
+                  }}
                 >
-                  Pago mixto: añadir otra vía
+                  Pago mixto: otra vía
                 </button>
-                <span
-                  className={Math.abs(falta) > 0.01 ? panel.vencida : "ayuda"}
-                >
-                  {Math.abs(falta) <= 0.01
-                    ? "Cuadra."
-                    : falta > 0
-                      ? `Faltan ${usd(falta)}`
-                      : `Se pasa por ${usd(-falta)}`}
+                <span className={modo === "ahora" && Math.abs(falta) > 0.01 ? panel.vencida : "ayuda"}>
+                  {modo === "ahora"
+                    ? Math.abs(falta) <= 0.01
+                      ? "Cuadra."
+                      : falta > 0
+                        ? `Faltan ${usd(falta)}`
+                        : `Se pasa por ${usd(-falta)}`
+                    : `Pendiente: ${usd(cuenta.pendiente)}`}
                 </span>
               </div>
-              <p className="ayuda" style={{ marginBottom: 0 }}>
-                Lo que va en bolívares (pago móvil, transferencia, efectivo en
-                Bs, tarjeta) se guarda a la tasa del día
-                {tasa ? ` (${dinero.format(tasa)})` : ""}.
-              </p>
+              {soloEfectivo && (
+                <div className={estilos.recibido}>
+                  <label htmlFor="pos-recibido">Recibido (USD)</label>
+                  <input id="pos-recibido" type="number" inputMode="decimal" min="0" step="0.01" value={recibido} onChange={(e) => setRecibido(e.target.value)} placeholder={String(totales.total)} />
+                  <span>
+                    Cambio: <strong>{usd(cambio)}</strong>
+                  </span>
+                </div>
+              )}
+              {conReferencia >= 0 && (
+                <div className="campo">
+                  <label htmlFor="pos-referencia">Referencia del {METODOS_PAGO[pagosQueValen[conReferencia].metodo].toLowerCase()} (opcional)</label>
+                  <input
+                    id="pos-referencia"
+                    type="text"
+                    value={pagosQueValen[conReferencia]?.referencia ?? ""}
+                    onChange={(e) => {
+                      setPagosTocados(true);
+                      setPagos(pagos.map((x, j) => (j === conReferencia ? { ...x, referencia: e.target.value } : x)));
+                    }}
+                    placeholder="Últimos dígitos del pago"
+                    maxLength={60}
+                  />
+                </div>
+              )}
+              {pagosQueValen.some((p) => METODOS_EN_BOLIVARES.includes(p.metodo)) && (
+                <p className="ayuda" style={{ margin: 0 }}>
+                  Lo que va en bolívares se guarda a la tasa del día de la nota{tasa ? ` (${numero.format(tasa)})` : ""}.
+                </p>
+              )}
             </div>
-            <div className="campo">
-              <label htmlFor="pos-referencia">
-                Referencia
-                {pagos.length > 1 && conReferencia >= 0
-                  ? ` del ${METODOS_PAGO[pagos[conReferencia].metodo].toLowerCase()}`
-                  : ""}{" "}
-                (opcional)
-              </label>
-              <input
-                id="pos-referencia"
-                type="text"
-                value={pagos[Math.max(conReferencia, 0)]?.referencia ?? ""}
-                onChange={(e) =>
-                  setPagos(
-                    pagos.map((x, j) =>
-                      j === Math.max(conReferencia, 0)
-                        ? { ...x, referencia: e.target.value }
-                        : x,
-                    ),
-                  )
-                }
-                placeholder="Últimos dígitos del pago móvil"
-                maxLength={60}
-              />
-            </div>
-            <div className="campo">
-              <label htmlFor="pos-nota">Observación (opcional)</label>
-              <input
-                id="pos-nota"
-                type="text"
-                value={nota}
-                onChange={(e) => setNota(e.target.value)}
-                maxLength={300}
-              />
-            </div>
+          )}
+
+          {!esMostrador && clienteElegido && (
+            <dl className={`${estilos.totales} ${estilos.cuenta}`} aria-label="Cómo queda su cuenta">
+              <div>
+                <dt>Saldo anterior</dt>
+                <dd>{saldo.texto}</dd>
+              </div>
+              <div>
+                <dt>Esta venta</dt>
+                <dd>+ {usd(totales.total)}</dd>
+              </div>
+              {cuenta.pagado > 0 && (
+                <div>
+                  <dt>Paga ahora</dt>
+                  <dd>− {usd(cuenta.pagado)}</dd>
+                </div>
+              )}
+              <div className={estilos.saldoNuevo}>
+                <dt>Nuevo saldo</dt>
+                <dd className={estilos[`saldo--${saldoNuevo.tono}`]}>{saldoNuevo.texto}</dd>
+              </div>
+            </dl>
+          )}
+
+          {pideConfirmar && (
+            <label className={`${panel.casilla} ${estilos.casillaAviso}`}>
+              <input type="checkbox" checked={confirmar} onChange={(e) => setConfirmar(e.target.checked)} />
+              <span>Lo escrito es correcto: guardar igual</span>
+            </label>
+          )}
+          {pideConfirmarNota && entrega === "ahora" && (
+            <p className={`ayuda ${estilos.casillaAviso}`}>Revisa la foto de la nota en «Entrega», abajo, y marca «Ya revisé la foto de la nota».</p>
+          )}
+
+          <button type="button" className={`boton ${estilos.cobrar}`} onClick={abrirConfirmacion} disabled={lineas.length === 0 || guardando}>
+            {guardando ? "Guardando…" : "Confirmar venta"}{" "}
+            {!guardando && (
+              <span className="ayuda" style={{ color: "inherit", opacity: 0.8 }}>
+                (F8)
+              </span>
+            )}
+          </button>
+          <button type="button" className="boton boton--secundario" onClick={cancelar}>
+            Cancelar venta (Esc)
+          </button>
+          <p className={estilos.atajos}>
+            <kbd>F2</kbd> producto · <kbd>F4</kbd> cliente · <kbd>F8</kbd> confirmar · <kbd>Esc</kbd> cancelar
+            {sinTope ? " · Se puede vender sin existencia" : ""}
+          </p>
+        </section>
+      </aside>
+
+      {lineas.length > 0 && (
+        <div className={estilos.barraMovil}>
+          <span>
+            <strong>{usd(totales.total)}</strong> · {lineas.length} {lineas.length === 1 ? "artículo" : "artículos"}
+          </span>
+          <button type="button" className="boton" onClick={() => resumen.current?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+            Ir a cobrar
+          </button>
+        </div>
+      )}
+
+      {confirmando && (
+        <div className={estilos.fondo} role="dialog" aria-modal="true" aria-labelledby="pos-confirmar-titulo" onClick={(e) => e.target === e.currentTarget && setConfirmando(false)}>
+          <div className={estilos.ventana}>
+            <h2 id="pos-confirmar-titulo" className={panel.subtitulo} style={{ marginBottom: 0 }}>
+              ¿Confirmar venta?
+            </h2>
+            <dl className={estilos.detalle}>
+              <div>
+                <dt>Cliente</dt>
+                <dd>{clienteElegido ? nombreDeCliente(clienteElegido) : ""}</dd>
+              </div>
+              <div>
+                <dt>Fecha de la nota</dt>
+                <dd>{fechaCorta(fecha)}</dd>
+              </div>
+              <div>
+                <dt>Productos</dt>
+                <dd>
+                  {lineas.map((l) => (
+                    <div key={l.clave}>
+                      {numero.format(l.cantidad)} {NOMBRE_UNIDAD[l.unidad]} {l.nombre} × {usd(l.precio_usd)} = <strong>{usd(Math.round(l.cantidad * l.precio_usd * 100) / 100)}</strong>
+                    </div>
+                  ))}
+                  {totales.descuento > 0 && <div>Descuento: − {usd(totales.descuento)}</div>}
+                </dd>
+              </div>
+              <div className={estilos.detalleTotal}>
+                <dt>Total</dt>
+                <dd>
+                  <strong>{usd(totales.total)}</strong>
+                  {totales.totalBs !== null ? ` · ${bs(totales.totalBs)}` : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>Pago</dt>
+                <dd>
+                  {describirPago()}
+                  {soloEfectivo && cambio > 0 ? ` · cambio ${usd(cambio)}` : ""}
+                </dd>
+              </div>
+              {!esMostrador && (
+                <div>
+                  <dt>Su cuenta</dt>
+                  <dd>
+                    {saldo.texto} → <strong className={estilos[`saldo--${saldoNuevo.tono}`]}>{saldoNuevo.texto}</strong>
+                  </dd>
+                </div>
+              )}
+              <div>
+                <dt>Entrega</dt>
+                <dd>{entrega === "ahora" ? "Entregada ahora" : `Queda por entregar el ${entregaPrevista ? fechaCorta(entregaPrevista) : "…"}`}</dd>
+              </div>
+            </dl>
             <div className={panel.accionesFila} style={{ flexWrap: "wrap" }}>
-              <button
-                type="button"
-                className="boton"
-                onClick={confirmarCobro}
-                disabled={Math.abs(falta) > 0.01}
-              >
-                Confirmar venta (Enter)
+              <button type="button" className="boton" onClick={confirmarVenta} disabled={guardando}>
+                {guardando ? "Guardando…" : "Confirmar venta (Enter)"}
               </button>
-              <button
-                type="button"
-                className="boton boton--secundario"
-                onClick={() => setCobrando(false)}
-              >
-                Volver (Esc)
+              <button type="button" className="boton boton--secundario" onClick={() => setConfirmando(false)} disabled={guardando}>
+                Cancelar (Esc)
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* El cobro va por esta forma, que está siempre en la página aunque no se vea: la venta entera en un JSON. Sin JavaScript no hay caja: el panel de siempre sigue en Ventas. */}
-      <form ref={formulario} action={cobrarEnPos} hidden aria-hidden="true">
-        <input type="hidden" name="venta" value={JSON.stringify(venta)} />
-      </form>
-
       {aviso && (
-        <div
-          className={`${estilos.aviso} ${aviso.mal ? estilos["aviso--mal"] : ""}`}
-          role="status"
-          aria-live="polite"
-        >
+        <div className={`${estilos.aviso} ${aviso.mal ? estilos["aviso--mal"] : ""}`} role="status" aria-live="polite">
           {aviso.texto}
         </div>
       )}
-    </div>
+    </form>
   );
 }

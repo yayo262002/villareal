@@ -1,32 +1,123 @@
 /*
- * La caja (punto de venta): pensada para un computador con lector de
- * códigos, pero cabe en el teléfono. A la izquierda lo que se escanea y el
- * carrito; a la derecha el cliente, los totales y «Cobrar».
+ * Registrar venta, como una caja: a la izquierda el cliente, el buscador
+ * y el carrito; a la derecha (debajo, en el teléfono) el resumen, el pago
+ * y «Confirmar». Compacta: lo secundario va plegado.
  */
 .caja {
   display: grid;
-  gap: var(--espacio-4);
+  gap: var(--espacio-3);
+  padding-bottom: 72px; /* la barra fija del teléfono */
 }
 @media (min-width: 900px) {
   .caja {
-    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+    grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
     align-items: start;
+    padding-bottom: 0;
   }
 }
+.izquierda {
+  display: grid;
+  gap: var(--espacio-3);
+  min-width: 0;
+}
+.caja :global(.tarjeta) {
+  margin: 0;
+}
 
+/* La cabecera: cliente (con su saldo), fecha y número de nota, en una fila. */
+.cabecera {
+  display: grid;
+  gap: var(--espacio-2) var(--espacio-3);
+  align-items: start;
+}
+@media (min-width: 700px) {
+  .cabecera {
+    grid-template-columns: minmax(0, 1fr) 170px auto;
+  }
+}
+.clienteCampo {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.clienteCampo > label {
+  font-weight: 700;
+}
+.clienteElegido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--espacio-2);
+  font-size: 18px;
+}
+.saldo {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.saldo--debe {
+  background: var(--color-error-fondo);
+  color: var(--color-error-oscuro);
+}
+.saldo--al_dia,
+.saldo--a_favor {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+.buscadorCliente {
+  position: relative;
+}
+.buscadorCliente input {
+  width: 100%;
+  min-height: 44px;
+}
+.buscadorCliente .resultados {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 30;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  max-height: 320px;
+  overflow: auto;
+}
+.sinResultados {
+  padding: var(--espacio-2) var(--espacio-3);
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+.fechaCampo {
+  margin: 0;
+}
+.fechaCampo input {
+  min-height: 44px;
+}
+.numeroNota {
+  margin: 0;
+  align-self: end;
+  padding-bottom: 8px;
+  color: var(--color-texto-suave);
+  white-space: nowrap;
+}
+
+/* El escáner: una casilla grande, enfocada, y debajo lo que coincide. */
 .escaner {
   display: grid;
   gap: var(--espacio-2);
+  position: relative;
 }
-.escaner input {
-  font-size: 20px;
-  min-height: 56px;
-  padding: 0 var(--espacio-4);
+.escaner > input {
+  font-size: 18px;
+  min-height: 52px;
+  padding: 0 var(--espacio-3);
   border: 2px solid var(--color-marca);
   border-radius: var(--radio);
   width: 100%;
 }
-.escaner input:focus {
+.escaner > input:focus {
   outline: 3px solid var(--color-acento);
   outline-offset: 2px;
 }
@@ -47,7 +138,7 @@
   align-items: center;
   gap: var(--espacio-3);
   width: 100%;
-  padding: var(--espacio-2) var(--espacio-3);
+  padding: 8px var(--espacio-3);
   border: none;
   border-bottom: 1px solid var(--color-borde);
   background: transparent;
@@ -55,7 +146,7 @@
   font: inherit;
   cursor: pointer;
 }
-.resultado:last-child {
+.resultados li:last-child .resultado {
   border-bottom: none;
 }
 .resultado:hover,
@@ -75,89 +166,91 @@
   font-weight: 700;
 }
 
-/* El carrito: una fila por artículo, con la cantidad y el precio a mano. */
-.carrito {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: var(--espacio-2);
+/* El carrito: una tabla compacta; en el teléfono, fichas (tabla--fichas). */
+.tituloCarrito {
+  margin-top: var(--espacio-3);
 }
-.linea {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--espacio-2) var(--espacio-3);
-  padding: var(--espacio-3);
+.carrito td,
+.carrito th {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  vertical-align: middle;
+  white-space: normal;
+}
+.carrito td:first-child {
+  min-width: 200px;
+  max-width: 360px;
+}
+.carrito td:nth-child(3) {
+  white-space: nowrap;
+}
+.carrito input {
+  min-height: 38px;
+  font-size: 16px;
+  text-align: right;
+  padding: 0 8px;
+}
+.lineaDetalle {
+  display: block;
+  font-size: 12px;
+}
+.cantidad {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.cantidad input {
+  width: 84px;
+}
+.cantidad .piezas {
+  width: 64px;
+  text-align: center;
+}
+.precio {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.precio input {
+  width: 84px;
+}
+.celdaQuitar {
+  text-align: right;
+}
+.quitar {
+  min-width: 36px;
+  min-height: 36px;
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
   background: var(--color-superficie);
-}
-.linea--nueva {
-  animation: recienAnadida 0.9s ease-out;
-}
-@keyframes recienAnadida {
-  from {
-    background: var(--color-acento-fondo, #fff4cc);
-  }
-  to {
-    background: var(--color-superficie);
-  }
-}
-.lineaNombre {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.lineaNombre strong {
-  overflow-wrap: anywhere;
-}
-.lineaSubtotal {
-  font-weight: 800;
-  font-size: 18px;
-  white-space: nowrap;
-  text-align: right;
-}
-.lineaCampos {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--espacio-2) var(--espacio-3);
-}
-.lineaCampos label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  color: var(--color-texto-suave);
-}
-.lineaCampos input {
-  width: 96px;
-  min-height: 40px;
-  font-size: 16px;
-  text-align: right;
-}
-.masMenos {
-  display: inline-flex;
-  gap: 4px;
-}
-.masMenos button {
-  min-width: 40px;
-  min-height: 40px;
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
-  background: var(--color-superficie-suave);
-  font-size: 18px;
+  color: var(--color-error);
+  font-size: 20px;
+  line-height: 1;
   cursor: pointer;
 }
-.quitar {
-  margin-left: auto;
+.quitar:hover {
+  background: var(--color-error-fondo);
+}
+.quitarTexto {
   border: none;
   background: none;
   color: var(--color-error, #a3261f);
   text-decoration: underline;
   cursor: pointer;
   font: inherit;
+  align-self: end;
+  padding-bottom: 12px;
+}
+.linea--nueva {
+  animation: recienAnadida 0.9s ease-out;
+}
+@keyframes recienAnadida {
+  from {
+    background: #fff4cc;
+  }
+  to {
+    background: transparent;
+  }
 }
 
 /* Lo que hay en inventario: verde, amarillo, rojo. */
@@ -185,16 +278,60 @@
   color: var(--color-texto-suave);
 }
 
-/* La columna de la derecha: cliente, totales y cobrar. */
+/* Lo secundario, plegado: entrega, observación. */
+.plegable {
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  padding: 0 var(--espacio-3);
+}
+.plegable > summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: 700;
+}
+.plegable > summary .ayuda {
+  font-weight: 400;
+  margin-left: 6px;
+}
+.plegableCuerpo {
+  display: grid;
+  gap: var(--espacio-2);
+  padding-bottom: var(--espacio-3);
+}
+.opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-3);
+}
+.opciones label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.pieIzquierda {
+  margin: 0;
+}
+
+/* La columna de la derecha: totales, cómo paga, la cuenta del cliente y confirmar. */
 .resumen {
   display: grid;
   gap: var(--espacio-3);
-  position: sticky;
-  top: var(--espacio-3);
+}
+@media (min-width: 900px) {
+  .resumen {
+    position: sticky;
+    top: var(--espacio-3);
+  }
+}
+.resumen :global(.tarjeta) {
+  display: grid;
+  gap: var(--espacio-3);
 }
 .totales {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   margin: 0;
 }
 .totales div {
@@ -211,21 +348,97 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+.descuento {
+  width: 110px;
+  text-align: right;
+  min-height: 36px;
+}
 .total dd {
   font-size: 30px;
   font-weight: 800;
   color: var(--color-marca-oscuro);
 }
 .totalBs dd {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
+}
+.modos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.modo {
+  min-height: 44px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-marca);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  color: var(--color-marca);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.modo--activo {
+  background: var(--color-marca);
+  color: var(--color-marca-texto);
+}
+.modo:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.pagos {
+  display: grid;
+  gap: var(--espacio-2);
+}
+.pago {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto;
+  gap: var(--espacio-2);
+  align-items: end;
+}
+.pago :global(.campo) {
+  margin: 0;
+}
+.pago select,
+.pago input {
+  min-height: 44px;
+}
+.recibido {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--espacio-2);
+  align-items: center;
+  padding: var(--espacio-2) var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+.recibido input {
+  min-height: 40px;
+  text-align: right;
+}
+.cuenta {
+  padding: var(--espacio-2) var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+.saldoNuevo dd {
+  font-size: 18px;
+  font-weight: 800;
+}
+.casillaAviso {
+  padding: var(--espacio-2) var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-aviso-fondo);
+  border: 1px solid var(--color-aviso);
 }
 .cobrar {
   width: 100%;
-  min-height: 60px;
-  font-size: 20px;
+  min-height: 56px;
+  font-size: 19px;
 }
 .atajos {
+  margin: 0;
   font-size: 13px;
   color: var(--color-texto-suave);
 }
@@ -240,11 +453,36 @@
   font-size: 12px;
 }
 
+/* En el teléfono, el total y «Ir a cobrar» siempre a la vista. */
+.barraMovil {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 35;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--espacio-3);
+  padding: 10px 16px;
+  background: var(--color-superficie);
+  border-top: 1px solid var(--color-borde);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+}
+.barraMovil .boton {
+  min-height: 44px;
+}
+@media (min-width: 900px) {
+  .barraMovil {
+    display: none;
+  }
+}
+
 /* El aviso que sale un momento al escanear. */
 .aviso {
   position: fixed;
   left: 50%;
-  bottom: 24px;
+  bottom: 84px;
   transform: translateX(-50%);
   z-index: 50;
   padding: var(--espacio-3) var(--espacio-4);
@@ -255,11 +493,16 @@
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
   max-width: min(90vw, 480px);
 }
+@media (min-width: 900px) {
+  .aviso {
+    bottom: 24px;
+  }
+}
 .aviso--mal {
   background: #8a1c15;
 }
 
-/* La ventana de cobrar. */
+/* La ventana de confirmar. */
 .fondo {
   position: fixed;
   inset: 0;
@@ -270,7 +513,7 @@
   padding: var(--espacio-3);
 }
 .ventana {
-  width: min(100%, 560px);
+  width: min(100%, 520px);
   max-height: 95vh;
   overflow: auto;
   background: var(--color-superficie);
@@ -279,15 +522,25 @@
   display: grid;
   gap: var(--espacio-3);
 }
-.pago {
+.detalle {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto;
-  gap: var(--espacio-2);
-  align-items: end;
+  gap: 6px;
+  margin: 0;
 }
-.pago select,
-.pago input {
-  min-height: 44px;
+.detalle > div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: var(--espacio-2);
+  align-items: baseline;
+}
+.detalle dt {
+  color: var(--color-texto-suave);
+}
+.detalle dd {
+  margin: 0;
+}
+.detalleTotal dd {
+  font-size: 20px;
 }
 .noEncontrado {
   display: grid;

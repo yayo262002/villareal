@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buscarVenta } from "@/lib/ventas";
+import { pagosDeVenta } from "@/lib/pagos";
+import { METODOS_PAGO } from "@/lib/dinero";
 import { borrarVenta } from "@/lib/acciones";
 import { cantidad, fechaCorta, usd } from "@/lib/dinero";
 import estilos from "../../../panel.module.css";
@@ -16,6 +18,9 @@ export default async function PaginaEliminarVenta({ params }: { params: Promise<
   const { id } = await params;
   const venta = await buscarVenta(Number(id));
   if (!venta) notFound();
+  // Los pagos que se cobraron con ella en la caja se borran con ella.
+  const pagos = await pagosDeVenta(venta.id);
+  const cobrado = pagos.reduce((s, p) => s + Number(p.monto_usd), 0);
 
   const volver = `/admin/clientes/${venta.cliente_id}`;
 
@@ -61,8 +66,10 @@ export default async function PaginaEliminarVenta({ params }: { params: Promise<
         </dl>
 
         <p className={estilos.ayuda}>
-          Se quita del historial y el saldo del cliente baja {usd(venta.total_usd)}. No se puede
-          deshacer: si te equivocaste de cantidad o precio, bórrala y regístrala de nuevo.
+          Se quita del historial y el saldo del cliente baja {usd(venta.total_usd)}.
+          {pagos.length > 0 &&
+            ` Se borran también ${pagos.length === 1 ? "el pago que se cobró" : `los ${pagos.length} pagos que se cobraron`} con ella en la caja (${pagos.map((p) => `${METODOS_PAGO[p.metodo]} ${usd(p.monto_usd)}`).join(", ")}, ${usd(cobrado)} en total): la cuenta del cliente queda como antes de la venta.`}{" "}
+          No se puede deshacer: si te equivocaste de cantidad o precio, bórrala y regístrala de nuevo.
         </p>
 
         <form action={borrarVenta} className={estilos.accionesFila}>

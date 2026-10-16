@@ -23,7 +23,7 @@ export default async function PaginaCodigos({ searchParams }: { searchParams: Pr
     <>
       <div>
         <p>
-          <Link href="/admin/pos">← Caja</Link>
+          <Link href="/admin/ventas">← Ventas</Link>
         </p>
         <h1 className={estilos.titulo}>Códigos de barras y SKU</h1>
       </div>
