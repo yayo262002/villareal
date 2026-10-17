@@ -58,6 +58,18 @@
   font-weight: 700;
   white-space: nowrap;
 }
+/* El saldo entre paréntesis junto al nombre: si no cabe en la línea, baja entero a la siguiente. */
+.saldoEnLinea {
+  display: inline-block;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.saldoEnLinea.saldo--debe,
+.saldoEnLinea.saldo--al_dia,
+.saldoEnLinea.saldo--a_favor {
+  background: none;
+  padding: 0;
+}
 .saldo--debe {
   background: var(--color-error-fondo);
   color: var(--color-error-oscuro);

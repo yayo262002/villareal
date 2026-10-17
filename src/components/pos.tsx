@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type InputHTMLAttributes } from "react";
 import { METODOS_PAGO, METODOS_EN_BOLIVARES, bs, cantidad, fechaCorta, usd, type MetodoPago, type Unidad } from "@/lib/dinero";
 import {
   NOMBRE_MODO,
@@ -506,15 +506,17 @@ export function Pos({
             </label>
             {clienteElegido && (
               <div className={estilos.clienteElegido} data-cliente={clienteElegido.id}>
-                <strong>{nombreDeCliente(clienteElegido)}</strong>
-                {esMostrador ? (
-                  <span className="ayuda">Paga en el momento</span>
-                ) : (
-                  <span className={`${estilos.saldo} ${estilos[`saldo--${saldo.tono}`]}`}>
-                    {saldo.tono === "debe" ? "⚠️ " : "✓ "}
-                    {saldo.texto}
-                  </span>
-                )}
+                <strong>
+                  {nombreDeCliente(clienteElegido)}
+                  {!esMostrador && (
+                    <span className={`${estilos.saldoEnLinea} ${estilos[`saldo--${saldo.tono}`]}`}>
+                      {" "}
+                      ({saldo.tono === "debe" ? "⚠️ " : "✓ "}
+                      {saldo.texto})
+                    </span>
+                  )}
+                </strong>
+                {esMostrador && <span className="ayuda">Paga en el momento</span>}
               </div>
             )}
             <div className={estilos.buscadorCliente}>
@@ -561,14 +563,13 @@ export function Pos({
                           onClick={() => elegirCliente(c.id)}
                         >
                           <span className={estilos.resultadoNombre}>
-                            <strong>{nombreDeCliente(c)}</strong>
+                            <strong>
+                              {nombreDeCliente(c)}
+                              {c.id !== mostradorId && <span className={`${estilos.saldoEnLinea} ${estilos[`saldo--${s.tono}`]}`}> ({s.texto})</span>}
+                            </strong>
                             {c.id !== mostradorId && c.telefono ? <span className="ayuda">{c.telefono}</span> : null}
                           </span>
-                          {c.id === mostradorId ? (
-                            <span className="ayuda">sin cuenta</span>
-                          ) : (
-                            <span className={`${estilos.saldo} ${estilos[`saldo--${s.tono}`]}`}>{s.texto}</span>
-                          )}
+                          {c.id === mostradorId && <span className="ayuda">sin cuenta</span>}
                         </button>
                       </li>
                     );
@@ -711,26 +712,20 @@ export function Pos({
                         </td>
                         <td data-label="Cant.">
                           <span className={estilos.cantidad}>
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              min="0"
-                              step={l.unidad === "kg" ? "0.001" : "1"}
-                              value={l.cantidad}
-                              onChange={(e) => cambiarLinea(l.clave, { cantidad: Number(e.target.value) || 0 })}
+                            <EntradaNumero
+                              valor={l.cantidad}
+                              entero={l.unidad !== "kg"}
+                              onCambio={(n) => cambiarLinea(l.clave, { cantidad: n ?? 0 })}
                               aria-label={`Cantidad de ${l.nombre}`}
                             />
                             {l.unidad === "kg" && (
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                min="1"
-                                step="1"
+                              <EntradaNumero
+                                valor={l.piezas}
+                                entero
                                 placeholder="pzas"
                                 title="Piezas (opcional)"
                                 className={estilos.piezas}
-                                value={l.piezas ?? ""}
-                                onChange={(e) => cambiarLinea(l.clave, { piezas: e.target.value ? Number(e.target.value) : null })}
+                                onCambio={(n) => cambiarLinea(l.clave, { piezas: n && n > 0 ? n : null })}
                                 aria-label={`Piezas de ${l.nombre}`}
                               />
                             )}
@@ -739,13 +734,9 @@ export function Pos({
                         <td data-label="Unidad">{NOMBRE_UNIDAD[l.unidad]}</td>
                         <td data-label="Precio">
                           <span className={estilos.precio}>
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              min="0"
-                              step="0.01"
-                              value={l.precio_usd}
-                              onChange={(e) => cambiarLinea(l.clave, { precio_usd: Number(e.target.value) || 0, precioManual: true })}
+                            <EntradaNumero
+                              valor={l.precio_usd}
+                              onCambio={(n) => cambiarLinea(l.clave, { precio_usd: n ?? 0, precioManual: true })}
                               aria-label={`Precio de ${l.nombre}`}
                             />
                             <span className="ayuda">USD/{NOMBRE_UNIDAD[l.unidad]}</span>
@@ -849,10 +840,8 @@ export function Pos({
               <dd>
                 <input
                   id="pos-descuento"
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  min="0"
-                  step="0.01"
                   value={descuento}
                   onChange={(e) => setDescuento(e.target.value)}
                   className={estilos.descuento}
@@ -917,16 +906,12 @@ export function Pos({
                   </div>
                   <div className="campo">
                     <label htmlFor={`pos-monto-${i}`}>{modo === "parte" ? "Paga ahora (USD)" : "Monto (USD)"}</label>
-                    <input
+                    <EntradaNumero
                       id={`pos-monto-${i}`}
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.01"
-                      value={p.monto_usd}
-                      onChange={(e) => {
+                      valor={p.monto_usd}
+                      onCambio={(n) => {
                         setPagosTocados(true);
-                        setPagos(pagos.map((x, j) => (j === i ? { ...x, monto_usd: Number(e.target.value) || 0 } : x)));
+                        setPagos(pagos.map((x, j) => (j === i ? { ...x, monto_usd: n ?? 0 } : x)));
                       }}
                     />
                   </div>
@@ -970,7 +955,7 @@ export function Pos({
               {soloEfectivo && (
                 <div className={estilos.recibido}>
                   <label htmlFor="pos-recibido">Recibido (USD)</label>
-                  <input id="pos-recibido" type="number" inputMode="decimal" min="0" step="0.01" value={recibido} onChange={(e) => setRecibido(e.target.value)} placeholder={String(totales.total)} />
+                  <input id="pos-recibido" type="text" inputMode="decimal" value={recibido} onChange={(e) => setRecibido(e.target.value)} placeholder={String(totales.total).replace(".", ",")} />
                   <span>
                     Cambio: <strong>{usd(cambio)}</strong>
                   </span>
@@ -1133,5 +1118,42 @@ export function Pos({
         </div>
       )}
     </form>
+  );
+}
+
+/**
+ * Una casilla para un número que se escribe como aquí, con coma o con punto
+ * («2,5»). Es de texto, no «number»: en el iPhone la casilla numérica
+ * rechaza la coma del teclado y volvía la cantidad a 0. Mientras se escribe
+ * se guarda lo tecleado tal cual; al salir se enseña el número limpio.
+ */
+function EntradaNumero({
+  valor,
+  onCambio,
+  entero = false,
+  ...resto
+}: {
+  valor: number | null;
+  onCambio: (n: number | null) => void;
+  entero?: boolean;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type" | "inputMode">) {
+  const [texto, setTexto] = useState<string | null>(null);
+  const mostrado = texto ?? (valor === null ? "" : String(valor).replace(".", ","));
+  return (
+    <input
+      type="text"
+      inputMode={entero ? "numeric" : "decimal"}
+      autoComplete="off"
+      value={mostrado}
+      onChange={(e) => {
+        const escrito = e.target.value;
+        setTexto(escrito);
+        if (escrito.trim() === "") return onCambio(null);
+        const n = Number(escrito.replace(",", "."));
+        if (Number.isFinite(n)) onCambio(entero ? Math.round(n) : n);
+      }}
+      onBlur={() => setTexto(null)}
+      {...resto}
+    />
   );
 }

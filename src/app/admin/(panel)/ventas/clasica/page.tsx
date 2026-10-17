@@ -5,7 +5,7 @@ import { listarVariantes } from "@/lib/variantes";
 import { vendiblesDe } from "@/lib/catalogo";
 import { guardarVenta } from "@/lib/acciones";
 import { leerTasa } from "@/lib/ajustes";
-import { hoy } from "@/lib/dinero";
+import { hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { TotalDeVenta } from "@/components/total-de-venta";
 import { FilaDeProducto } from "@/components/fila-de-producto";
@@ -73,6 +73,7 @@ export default async function PaginaVentaClasica({ searchParams }: { searchParam
                   {clientes.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.rotulo}
+                      {c.saldo_usd > 0.009 ? ` (debe ${usd(c.saldo_usd)})` : c.saldo_usd < -0.009 ? ` (a favor ${usd(-c.saldo_usd)})` : " (al día)"}
                     </option>
                   ))}
                 </select>
