@@ -251,7 +251,9 @@ export const ESQUEMA = `
     -- Quién estaba en la caja.
     cajero text not null default '',
     -- La clave que pone la caja a cada cobro: si llega dos veces, la venta es una sola.
-    clave_pos text
+    clave_pos text,
+    -- Los días de crédito de esta nota, si se pusieron al venderla; si no, valen los del cliente.
+    dias_credito integer
   );
 
   create table if not exists venta_lineas (

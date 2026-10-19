@@ -58,6 +58,26 @@ test("cada nota vence a los días de crédito de su fecha; solo cuenta si queda 
   );
 });
 
+test("una nota con sus propios días de crédito vence a esos días; sin ellos, a los del cliente", () => {
+  const cuentas = conVencimiento(
+    [
+      { id: 1, fecha: "2026-09-20", pendiente_usd: 10, dias_credito: 15 },
+      { id: 2, fecha: "2026-09-20", pendiente_usd: 10, dias_credito: null },
+      { id: 3, fecha: "2026-09-20", pendiente_usd: 10, dias_credito: 0 },
+    ],
+    7,
+    "2026-09-29",
+  );
+  assert.deepEqual(
+    cuentas.map((c) => [c.id, c.vence, c.vencida]),
+    [
+      [1, "2026-10-05", false],
+      [2, "2026-09-27", true],
+      [3, "2026-09-20", true],
+    ],
+  );
+});
+
 test("el resumen separa lo vencido de lo que está en plazo", () => {
   const resumen = resumenDeVencimiento(aplicarPagos(ventas, 15), 7, "2026-09-29");
   assert.deepEqual(resumen, { vencido_usd: 15, en_plazo_usd: 30, mayor_atraso: 2, proximo_vencimiento: "2026-10-05", urgencia: 2 });

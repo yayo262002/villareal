@@ -30,7 +30,7 @@ export default async function PaginaNotaDelCliente({ params }: Parametros) {
   const total = Number(nota.total_usd);
   const totalBs = aBolivares(total, nota.tasa);
   const pendienteBs = nota.pendiente_usd > 0 ? aBolivares(nota.pendiente_usd, cuenta.tasa?.valor ?? null) : null;
-  const vence = sumarDias(nota.fecha, cuenta.cliente.dias_credito);
+  const vence = sumarDias(nota.fecha, nota.dias_credito ?? cuenta.cliente.dias_credito);
   const pedirLoMismo = enlaceWhatsapp(`Hola, soy ${cuenta.cliente.rotulo}. Quiero pedir lo mismo que la nota ${numeroDeNota(nota.id)}: ${resumenDeLineas(nota.lineas)}.`);
   const avisarPago = enlaceWhatsapp(`Hola, soy ${cuenta.cliente.rotulo}. Ya pagué la nota ${numeroDeNota(nota.id)}; le mando el comprobante.`);
 

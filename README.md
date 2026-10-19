@@ -420,7 +420,9 @@ datos/                    La base de datos (fuera de Git)
 - Las cuentas internas siguen en **dólares**.
 - Cada venta suma al saldo del cliente. Cada pago resta.
 - **Días de crédito.** Cada cliente tiene los suyos (7 si no se dice otra
-  cosa; se cambian en su ficha). Una nota vence a esos días de su fecha:
+  cosa; se cambian en su ficha), y una nota puede llevar los suyos propios
+  si se le ponen al venderla en la caja (`ventas.dias_credito`; vacío,
+  valen los del cliente). Una nota vence a esos días de su fecha:
   si pasado el plazo queda algo por pagar de ella, está **vencida**. El
   Resumen, Clientes y Lo que te deben dicen cuánto está vencido y desde
   cuándo («Vencida hace 3 días»). **Quien debe va por lo que vence
@@ -750,10 +752,11 @@ Binance y otro.
     con el código puesto. Lo que no tiene código se vende igual por su
     nombre.
   - **El carrito** es una tabla compacta: producto (con lo que hay en
-    inventario, en verde, amarillo o rojo), cantidad (y las piezas, solo en
-    lo que va por kilo), unidad, precio (se puede cambiar a mano) y total.
-    Cada producto enseña solo lo suyo: kilos y precio por kilo, cartones y
-    precio por cartón, unidades y precio por unidad.
+    inventario, en verde, amarillo o rojo), la cantidad con su nombre
+    («Kilos», «Cartones», «Unidades») y, solo en lo que va por kilo, las
+    «Piezas» al lado, el precio (se puede cambiar a mano) y el total. Las
+    casillas de números son de texto y aceptan coma o punto («2,5»): la
+    casilla numérica rechazaba la coma del teclado del iPhone.
   - **Resumen** (a la derecha; debajo, en el teléfono, con una barra fija
     que dice el total y lleva a cobrar): subtotal, descuento en dólares,
     total en USD y en Bs a la tasa del día de la nota, y **cómo paga**:
@@ -762,17 +765,20 @@ Binance y otro.
     **cambio**), **Paga una parte** (lo que paga ahora es un abono y el
     resto queda en su cuenta) o **Queda pendiente** (todo a su cuenta).
     Con un cliente de verdad se ve cómo queda: saldo anterior, esta venta,
-    lo que paga ahora y el **nuevo saldo**. Lo que va en bolívares se
-    guarda a la tasa del día de la nota, con su referencia.
+    lo que paga ahora y el **nuevo saldo**; y, si queda algo pendiente,
+    los **días de crédito de esta nota** (los de la ficha del cliente, 7
+    si no se dijo otra cosa; se cambian para esta venta y se guardan con
+    ella en `ventas.dias_credito`) con la fecha en que vence. Lo que va en
+    bolívares se guarda a la tasa del día de la nota, con su referencia.
   - **Confirmar venta** (F8) abre una confirmación compacta (cliente,
     fecha, productos, total, pago, cómo queda su cuenta, entrega) y Enter
     guarda. Antes de abrirla se revisa en la pantalla lo mismo que
     revisará el servidor (`revisarVentaPos`), así el aviso es inmediato.
-  - **Plegado abajo**, para no estorbar: **Entrega** («Entregada ahora»,
-    con la **foto de la nota firmada** si se tiene a mano, que se lee y se
+  - **Debajo del carrito**: **Entrega**, a la vista («Ya entregada», con
+    la **foto de la nota firmada** si se tiene a mano, que se lee y se
     coteja como siempre y también se puede poner después desde la nota; o
-    «Queda por entregar» con su día previsto, que entra en el despacho) y
-    **Observación y cajero**.
+    «Queda por entregar el» con su fecha, que se cambia ahí mismo y entra
+    en el despacho) y, plegados, **Observación y cajero**.
   - Atajos: **F2** producto, **F4** cliente, **F8** confirmar, **Esc**
     cancelar o cerrar, **Enter** confirmar en la ventana; los atajos no
     estorban al escribir. El carrito se guarda en el navegador: si la

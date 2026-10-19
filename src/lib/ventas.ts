@@ -49,6 +49,8 @@ export type Venta = {
   descuento_usd: number;
   cajero: string;
   clave_pos: string | null;
+  /** Los días de crédito de esta nota, si se pusieron al venderla; null: valen los del cliente. */
+  dias_credito: number | null;
 };
 
 export type VentaConLineas = Venta & { lineas: LineaVentaGuardada[] };
@@ -141,7 +143,7 @@ export async function crearVenta(
   porEntregar = false,
   entregaPrevista: string | null = null,
   /** Lo que añade la caja: de dónde salió, el descuento, quién cobró y la clave del cobro. */
-  caja: { origen?: string; descuento_usd?: number; cajero?: string; clave_pos?: string | null } = {},
+  caja: { origen?: string; descuento_usd?: number; cajero?: string; clave_pos?: string | null; dias_credito?: number | null } = {},
 ): Promise<number> {
   if (lineas.length === 0) throw new Error("Una venta necesita al menos un producto.");
   for (const l of lineas) {
@@ -153,8 +155,8 @@ export async function crearVenta(
 
   return transaccion(async (tx) => {
     const venta = await tx.execute({
-      sql: `insert into ventas (cliente_id, fecha, total_usd, nota, tasa, por_entregar, entrega_prevista, origen, descuento_usd, cajero, clave_pos)
-            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id`,
+      sql: `insert into ventas (cliente_id, fecha, total_usd, nota, tasa, por_entregar, entrega_prevista, origen, descuento_usd, cajero, clave_pos, dias_credito)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id`,
       args: [
         clienteId,
         fecha,
@@ -167,6 +169,7 @@ export async function crearVenta(
         caja.descuento_usd ?? 0,
         caja.cajero ?? "",
         caja.clave_pos ?? null,
+        caja.dias_credito ?? null,
       ],
     });
     const ventaId = Number(venta.rows[0].id);

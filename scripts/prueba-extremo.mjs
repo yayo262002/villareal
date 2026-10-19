@@ -2394,8 +2394,15 @@ async function probarCaja() {
     `${r.destino} saldo ${await saldoDe(cliente.id)}`,
   );
   // Queda pendiente entera: sin pagos, a la nota.
-  r = await mandar({ clave_pos: clave + "-credito", lineas: [mozzarella(4), huevos], pagos: [], modo: "credito" });
+  r = await mandar({ clave_pos: clave + "-credito", lineas: [mozzarella(4), huevos], pagos: [], modo: "credito", dias_credito: 15 });
   const creditoId = idDe(r.destino);
+  const vence15 = new Date(Date.parse(hoyVet + "T00:00:00Z") + 15 * 86400000).toISOString().slice(0, 10).split("-").reverse().join("/");
+  comprobar(
+    "los días de crédito de esa nota se guardan con ella y mandan en su vencimiento",
+    Boolean(creditoId) && (await consultar("select dias_credito from ventas where id = ?", [creditoId]))[0].dias_credito == 15 && r.destino.includes("vence el " + vence15) && legible((await pagina(`/admin/ventas/${creditoId}/nota`)).html).includes(vence15),
+    `${r.destino} ${vence15}`,
+  );
+  comprobar("sin días escritos, la nota lleva los del cliente", parteId && (await consultar("select dias_credito from ventas where id = ?", [parteId]))[0].dias_credito === null);
   comprobar(
     "queda pendiente: va a la nota (no al ticket), sin pagos, y el saldo del cliente sube el total",
     Boolean(creditoId) && !r.destino.includes("formato=ticket") && r.destino.includes(`vendida=${clave}-credito`) && r.destino.includes("Quedan " + usd("35,40") + " pendientes") &&

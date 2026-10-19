@@ -63,7 +63,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
     estado: a.estado,
     pesoTipico: a.pesoTipico?.peso ?? null,
   }));
-  const paraElegir = (c: (typeof clientes)[number]): ClienteParaLaCaja => ({ id: c.id, rotulo: c.rotulo, nombre: c.nombre, telefono: c.telefono, saldo_usd: c.saldo_usd });
+  const paraElegir = (c: (typeof clientes)[number]): ClienteParaLaCaja => ({ id: c.id, rotulo: c.rotulo, nombre: c.nombre, telefono: c.telefono, saldo_usd: c.saldo_usd, dias_credito: c.dias_credito });
   const listaDeClientes = [paraElegir(mostrador), ...clientes.filter((c) => c.id !== mostrador.id).map(paraElegir)];
   // Las ventas recientes ya guardadas desde la caja: un carrito con una de esas claves ya se vendió.
   const clavesVendidas = [...ventas.map((v) => v.clave_pos), texto("vendida")].filter((c): c is string => Boolean(c));

@@ -100,6 +100,8 @@ export type VentaDelPos = {
   /** «ahora»: entregada en el momento; «despacho»: queda por entregar el día previsto. */
   entrega: "ahora" | "despacho";
   entrega_prevista: string;
+  /** Los días de crédito de esta nota (7 si no se dice otra cosa, o los del cliente); null: los del cliente. */
+  dias_credito: number | null;
   /** Las casillas de «lo escrito es correcto» y «ya revisé la foto de la nota». */
   confirmar: boolean;
   confirmar_nota: boolean;
@@ -133,6 +135,7 @@ export async function guardarVentaDelPos(v: VentaDelPos, tasa: number | null): P
     descuento_usd: descuento,
     cajero: v.cajero,
     clave_pos: v.clave_pos || null,
+    dias_credito: v.dias_credito,
   });
   // El total de la venta es el de las líneas menos el descuento: así lo ven las cuentas, la caja y las estadísticas.
   if (descuento > 0) await ejecutar("update ventas set total_usd = ? where id = ?", [total, ventaId]);

@@ -17,6 +17,7 @@ import {
 } from "@/lib/pos-calculo";
 import { asignarCodigo, guardarVentaPos } from "@/lib/acciones";
 import { EntradaFoto } from "@/components/entrada-foto";
+import { sumarDias } from "@/lib/credito";
 import estilos from "./pos.module.css";
 import panel from "@/app/admin/(panel)/panel.module.css";
 
@@ -56,6 +57,8 @@ export type ClienteParaLaCaja = {
   telefono: string;
   /** Lo comprado menos lo abonado: positivo, debe; negativo, a favor. La misma cifra que en Clientes. */
   saldo_usd: number;
+  /** Los días de crédito que tiene en su ficha (7 si no se dijo otra cosa). */
+  dias_credito: number;
 };
 
 type Linea = LineaDelPos & { precioManual: boolean; piezas: number | null };
@@ -132,6 +135,7 @@ function pitar(bien: boolean) {
 }
 
 const NOMBRE_UNIDAD: Record<Unidad, string> = { kg: "kg", unidad: "unid.", carton: "cartón" };
+const NOMBRE_CANTIDAD: Record<Unidad, string> = { kg: "Kilos", unidad: "Unidades", carton: "Cartones" };
 const ESTADO_TEXTO = { bien: "Hay", poco: "Queda poco", sin: "Sin existencia", sin_seguir: "Sin seguir" } as const;
 const SIN_REFERENCIA: MetodoPago[] = ["efectivo_usd", "efectivo_bs", "otro"];
 
@@ -145,6 +149,7 @@ type Guardado = {
   modo: ModoDePago;
   entrega: Entrega;
   entregaPrevista: string;
+  diasCredito: string;
 };
 
 export function Pos({
@@ -187,6 +192,8 @@ export function Pos({
   const [recibido, setRecibido] = useState("");
   const [entrega, setEntrega] = useState<Entrega>("ahora");
   const [entregaPrevista, setEntregaPrevista] = useState("");
+  // Los días de crédito de esta nota: vacío, los del cliente.
+  const [diasCredito, setDiasCredito] = useState("");
   const [confirmar, setConfirmar] = useState(false);
   const [confirmarNota, setConfirmarNota] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -216,6 +223,7 @@ export function Pos({
           setModo(guardado.modo ?? "ahora");
           setEntrega(guardado.entrega ?? "ahora");
           setEntregaPrevista(guardado.entregaPrevista ?? "");
+          setDiasCredito(guardado.diasCredito ?? "");
         } else {
           setClave(nuevaClave());
           if (yaVendido) localStorage.removeItem(GUARDADO);
@@ -233,14 +241,14 @@ export function Pos({
     try {
       if (lineas.length === 0) localStorage.removeItem(GUARDADO);
       else {
-        const guardado: Guardado = { clave, clienteId, lineas, descuento, nota, fecha, modo, entrega, entregaPrevista };
+        const guardado: Guardado = { clave, clienteId, lineas, descuento, nota, fecha, modo, entrega, entregaPrevista, diasCredito };
         localStorage.setItem(GUARDADO, JSON.stringify(guardado));
       }
       localStorage.setItem(CAJERO, cajero);
     } catch {
       // Sin sitio para guardar no pasa nada.
     }
-  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista]);
+  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito]);
 
   const porClave = useMemo(() => new Map(catalogo.map((a) => [a.clave, a])), [catalogo]);
   const precioDe = useCallback(
@@ -367,6 +375,7 @@ export function Pos({
     setListaClientes(false);
     setClienteMarcado(0);
     if (nuevo === mostradorId && modo !== "ahora") setModo("ahora");
+    setDiasCredito("");
     // Los precios que no se tocaron a mano siguen al cliente (su precio especial, o el de la lista).
     setLineas((actuales) => actuales.map((l) => (l.precioManual ? l : { ...l, precio_usd: precioDe(porClave.get(l.clave)!, nuevo) })));
     enfocarBuscador();
@@ -385,6 +394,7 @@ export function Pos({
     setModo("ahora");
     setEntrega("ahora");
     setEntregaPrevista("");
+    setDiasCredito("");
     setClave(nuevaClave());
     avisar("Venta cancelada");
     enfocarBuscador();
@@ -455,6 +465,7 @@ export function Pos({
     modo,
     entrega,
     entrega_prevista: entrega === "despacho" ? entregaPrevista : "",
+    dias_credito: diasCredito.trim() === "" ? null : Number(diasCredito),
     confirmar,
     confirmar_nota: confirmarNota,
     lineas: lineas.map((l) => ({
@@ -477,6 +488,8 @@ export function Pos({
     return { estado: a.estado, texto: `${ESTADO_TEXTO[a.estado]}: ${cantidad(a.existencia, a.unidad)}` };
   };
   const saldo = describirSaldo(clienteElegido?.saldo_usd ?? 0);
+  const diasEfectivos = diasCredito.trim() === "" ? (clienteElegido?.dias_credito ?? 7) : Math.max(0, Math.round(Number(diasCredito) || 0));
+  const venceEl = fechaCorta(sumarDias(fecha, diasEfectivos));
   const saldoNuevo = describirSaldo(cuenta.saldoNuevo);
   const nombreDeCliente = (c: ClienteParaLaCaja) => (c.id === mostradorId ? "Mostrador (sin cliente)" : c.rotulo);
   const describirPago = () => {
@@ -687,8 +700,7 @@ export function Pos({
                 <thead>
                   <tr>
                     <th>Producto</th>
-                    <th>Cant.</th>
-                    <th>Unidad</th>
+                    <th>Cantidad</th>
                     <th>Precio</th>
                     <th className="numero">Total</th>
                     <th>
@@ -710,28 +722,33 @@ export function Pos({
                             {l.unidad === "kg" && articulo?.pesoTipico ? ` · suele pesar ${cantidad(articulo.pesoTipico, "kg")} por pieza` : ""}
                           </span>
                         </td>
-                        <td data-label="Cant.">
+                        <td data-label="Cantidad">
                           <span className={estilos.cantidad}>
-                            <EntradaNumero
-                              valor={l.cantidad}
-                              entero={l.unidad !== "kg"}
-                              onCambio={(n) => cambiarLinea(l.clave, { cantidad: n ?? 0 })}
-                              aria-label={`Cantidad de ${l.nombre}`}
-                            />
-                            {l.unidad === "kg" && (
+                            <label className={estilos.campoLinea}>
+                              <span>{NOMBRE_CANTIDAD[l.unidad]}</span>
                               <EntradaNumero
-                                valor={l.piezas}
-                                entero
-                                placeholder="pzas"
-                                title="Piezas (opcional)"
-                                className={estilos.piezas}
-                                onCambio={(n) => cambiarLinea(l.clave, { piezas: n && n > 0 ? n : null })}
-                                aria-label={`Piezas de ${l.nombre}`}
+                                valor={l.cantidad}
+                                entero={l.unidad !== "kg"}
+                                onCambio={(n) => cambiarLinea(l.clave, { cantidad: n ?? 0 })}
+                                aria-label={`Cantidad de ${l.nombre}`}
                               />
+                            </label>
+                            {l.unidad === "kg" && (
+                              <label className={estilos.campoLinea}>
+                                <span>Piezas</span>
+                                <EntradaNumero
+                                  valor={l.piezas}
+                                  entero
+                                  placeholder="—"
+                                  title="Piezas (opcional)"
+                                  className={estilos.piezas}
+                                  onCambio={(n) => cambiarLinea(l.clave, { piezas: n && n > 0 ? n : null })}
+                                  aria-label={`Piezas de ${l.nombre}`}
+                                />
+                              </label>
                             )}
                           </span>
                         </td>
-                        <td data-label="Unidad">{NOMBRE_UNIDAD[l.unidad]}</td>
                         <td data-label="Precio">
                           <span className={estilos.precio}>
                             <EntradaNumero
@@ -759,29 +776,49 @@ export function Pos({
           )}
         </section>
 
-        <details className={estilos.plegable} open={entrega === "despacho" || Boolean(fotoEnEspera) || pideConfirmarNota}>
+        <details className={estilos.plegable} open>
           <summary>
             Entrega{" "}
             <span className="ayuda">
-              {entrega === "ahora" ? "Entregada ahora" : `Queda por entregar${entregaPrevista ? ` el ${fechaCorta(entregaPrevista)}` : ""}`}
+              {entrega === "ahora" ? "ya entregada" : `queda por entregar${entregaPrevista ? ` el ${fechaCorta(entregaPrevista)}` : ""}`}
               {fotoEnEspera ? " · con la foto de la nota" : ""}
             </span>
           </summary>
           <div className={estilos.plegableCuerpo}>
             <div className={estilos.opciones} role="radiogroup" aria-label="Entrega">
               <label>
-                <input type="radio" name="entrega_modo" checked={entrega === "ahora"} onChange={() => setEntrega("ahora")} /> Entregada ahora
+                <input type="radio" name="entrega_modo" checked={entrega === "ahora"} onChange={() => setEntrega("ahora")} /> Ya entregada
               </label>
-              <label>
-                <input type="radio" name="entrega_modo" checked={entrega === "despacho"} onChange={() => setEntrega("despacho")} /> Queda por entregar
-              </label>
+              <span className={estilos.opcionConFecha}>
+                <label>
+                  <input
+                    type="radio"
+                    name="entrega_modo"
+                    checked={entrega === "despacho"}
+                    onChange={() => {
+                      setEntrega("despacho");
+                      if (!entregaPrevista) setEntregaPrevista(hoy);
+                    }}
+                  />{" "}
+                  Queda por entregar el
+                </label>
+                <input
+                  id="pos-entrega-prevista"
+                  type="date"
+                  min={fecha}
+                  value={entregaPrevista || hoy}
+                  aria-label="Fecha de entrega"
+                  onChange={(e) => {
+                    setEntregaPrevista(e.target.value);
+                    setEntrega("despacho");
+                  }}
+                />
+              </span>
             </div>
             {entrega === "despacho" ? (
-              <div className="campo">
-                <label htmlFor="pos-entrega-prevista">Día previsto de entrega</label>
-                <input id="pos-entrega-prevista" type="date" min={fecha} value={entregaPrevista} onChange={(e) => setEntregaPrevista(e.target.value)} />
-                <span className="ayuda">Sale en el despacho con su ruta, y el resumen te lo recuerda.</span>
-              </div>
+              <p className="ayuda" style={{ margin: 0 }}>
+                Sale en el despacho con su ruta, y el resumen te lo recuerda.
+              </p>
             ) : (
               <div className="campo">
                 <label htmlFor="pos-foto">Foto de la nota firmada (si la tienes a mano)</label>
@@ -1007,6 +1044,21 @@ export function Pos({
               </div>
             </dl>
           )}
+          {!esMostrador && clienteElegido && modo !== "ahora" && (
+            <div className={estilos.credito}>
+              <label htmlFor="pos-dias-credito">Días de crédito</label>
+              <EntradaNumero
+                id="pos-dias-credito"
+                entero
+                valor={diasCredito.trim() === "" ? clienteElegido.dias_credito : Number(diasCredito)}
+                onCambio={(n) => setDiasCredito(n === null ? "" : String(Math.max(0, n)))}
+              />
+              <span className="ayuda">
+                Vence el <strong>{venceEl}</strong>
+                {diasCredito.trim() === "" ? " (los de su ficha)" : ""}
+              </span>
+            </div>
+          )}
 
           {pideConfirmar && (
             <label className={`${panel.casilla} ${estilos.casillaAviso}`}>
@@ -1095,9 +1147,17 @@ export function Pos({
                   </dd>
                 </div>
               )}
+              {!esMostrador && cuenta.pendiente > 0.009 && (
+                <div>
+                  <dt>Vence</dt>
+                  <dd>
+                    {venceEl} ({diasEfectivos} {diasEfectivos === 1 ? "día" : "días"} de crédito)
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt>Entrega</dt>
-                <dd>{entrega === "ahora" ? "Entregada ahora" : `Queda por entregar el ${entregaPrevista ? fechaCorta(entregaPrevista) : "…"}`}</dd>
+                <dd>{entrega === "ahora" ? "Ya entregada" : `Queda por entregar el ${entregaPrevista ? fechaCorta(entregaPrevista) : "…"}`}</dd>
               </div>
             </dl>
             <div className={panel.accionesFila} style={{ flexWrap: "wrap" }}>

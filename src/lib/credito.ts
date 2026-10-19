@@ -43,14 +43,18 @@ export type ConVencimiento<V> = V & {
   vencida: boolean;
 };
 
-/** A cada cuenta, su vencimiento, contado desde la fecha de la nota. */
-export function conVencimiento<V extends { fecha: string; pendiente_usd: number }>(
+/**
+ * A cada cuenta, su vencimiento, contado desde la fecha de la nota: con los
+ * días que se le pusieron a esa nota al venderla, o, si no se le pusieron,
+ * con los del cliente (`diasDeCredito`).
+ */
+export function conVencimiento<V extends { fecha: string; pendiente_usd: number; dias_credito?: number | null }>(
   cuentas: V[],
   diasDeCredito: number,
   hoy: string,
 ): ConVencimiento<V>[] {
   return cuentas.map((cuenta) => {
-    const vence = sumarDias(cuenta.fecha, diasDeCredito);
+    const vence = sumarDias(cuenta.fecha, cuenta.dias_credito ?? diasDeCredito);
     const atraso = diasEntre(vence, hoy);
     return { ...cuenta, vence, atraso, vencida: cuenta.pendiente_usd > 0 && atraso > 0 };
   });
@@ -75,7 +79,7 @@ export type ResumenDeVencimiento = {
 
 /** Cuánto está vencido y cuánto en plazo de lo que debe un cliente (o el negocio a un proveedor). */
 export function resumenDeVencimiento(
-  cuentas: Pick<CuentaDeVenta<{ id: number; fecha: string; total_usd: number }>, "fecha" | "pendiente_usd">[],
+  cuentas: (Pick<CuentaDeVenta<{ id: number; fecha: string; total_usd: number }>, "fecha" | "pendiente_usd"> & { dias_credito?: number | null })[],
   diasDeCredito: number,
   hoy: string,
 ): ResumenDeVencimiento {

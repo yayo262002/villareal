@@ -2095,6 +2095,7 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     modo: cruda.modo === "parte" || cruda.modo === "credito" ? cruda.modo : "ahora",
     entrega: cruda.entrega === "despacho" ? "despacho" : "ahora",
     entrega_prevista: String(cruda.entrega_prevista ?? "").slice(0, 10),
+    dias_credito: cruda.dias_credito === null || cruda.dias_credito === undefined || !Number.isFinite(Number(cruda.dias_credito)) ? null : leerDiasDeCredito(Number(cruda.dias_credito)),
     confirmar: cruda.confirmar === true,
     confirmar_nota: cruda.confirmar_nota === true,
     lineas: (Array.isArray(cruda.lineas) ? cruda.lineas : []).map((l) => ({
@@ -2235,7 +2236,9 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
   }
   const partes = [`Venta registrada: nota ${numeroDeNota(resultado.ventaId)}.`];
   if (resultado.pagado > 0) partes.push(`Cobrados ${usd(resultado.pagado)}.`);
-  if (!mostrador && resultado.pendiente > 0) partes.push(`Quedan ${usd(resultado.pendiente)} pendientes en la cuenta de ${cliente.nombre}.`);
+  if (!mostrador && resultado.pendiente > 0) {
+    partes.push(`Quedan ${usd(resultado.pendiente)} pendientes en la cuenta de ${cliente.nombre}: vence el ${fechaCorta(sumarDias(venta.fecha, venta.dias_credito ?? cliente.dias_credito))}.`);
+  }
   if (venta.entrega === "despacho") partes.push("Queda por entregar: ya está en el despacho y en el resumen.");
   else if (!foto) partes.push("Sin la foto de la nota firmada: si la tienes, ponla aquí mismo.");
   const comentario = comentarioDeLaLectura(lectura, reparos).trim();

@@ -179,6 +179,7 @@ async function migrar(cliente: Client): Promise<void> {
     await añadirColumna(cliente, "ventas", "cajero text not null default ''");
     await añadirColumna(cliente, "ventas", "clave_pos text");
   }
+  if (!/\bdias_credito\b/.test(await definicionDe(cliente, "ventas"))) await añadirColumna(cliente, "ventas", "dias_credito integer");
   for (const [tabla, sql, fotos, columna] of [
     ["pagos", RECONSTRUIR_PAGOS, "adjuntos", "pago_id"],
     ["pagos_proveedores", RECONSTRUIR_PAGOS_PROVEEDORES, "adjuntos_proveedores", "pago_proveedor_id"],

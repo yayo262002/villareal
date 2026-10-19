@@ -68,7 +68,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
       total_usd: venta.total_usd,
       saldo_usd: cliente.saldo_usd,
       tasa: venta.tasa ?? tasaDeHoy?.valor,
-      vence: cuenta && cuenta.pendiente_usd > 0 ? sumarDias(venta.fecha, cliente.dias_credito) : undefined,
+      vence: cuenta && cuenta.pendiente_usd > 0 ? sumarDias(venta.fecha, venta.dias_credito ?? cliente.dias_credito) : undefined,
       enlace: cliente.enlace ? direccionDeCuenta(cliente.enlace) : null,
     }),
   );
@@ -347,7 +347,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
               {cuenta.pendiente_usd > 0 && (
                 <div>
                   <dt>Fecha límite de pago</dt>
-                  <dd>{fechaCorta(sumarDias(venta.fecha, cliente.dias_credito))}</dd>
+                  <dd>{fechaCorta(sumarDias(venta.fecha, venta.dias_credito ?? cliente.dias_credito))}</dd>
                 </div>
               )}
             </>
