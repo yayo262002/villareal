@@ -89,6 +89,8 @@ type Props = {
   pideConfirmarNota?: boolean;
   /** El cliente con el que se abrió la caja (desde su ficha). */
   clienteInicial?: number;
+  /** Lo que el servidor contestó al intentar guardar, para enseñarlo también junto a «Confirmar». */
+  error?: string;
 };
 
 const GUARDADO = "venta-carrito";
@@ -168,6 +170,7 @@ export function Pos({
   pideConfirmar = false,
   pideConfirmarNota = false,
   clienteInicial,
+  error,
 }: Props) {
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [clienteId, setClienteId] = useState(clienteInicial ?? mostradorId);
@@ -235,6 +238,16 @@ export function Pos({
       setCargado(true);
     }
   }, [clavesVendidas, mostradorId, claveDevuelta, hoy]);
+
+  // Si el navegador vuelve a esta pantalla desde su memoria (el botón «atrás» del iPhone después de guardar), se
+  // recarga: lo que había era de una venta ya guardada y con su clave no se podría registrar otra.
+  useEffect(() => {
+    const alVolver = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", alVolver);
+    return () => window.removeEventListener("pageshow", alVolver);
+  }, []);
 
   useEffect(() => {
     if (!cargado) return;
@@ -596,12 +609,8 @@ export function Pos({
               )}
             </div>
           </div>
-          <div className={`campo ${estilos.fechaCampo}`}>
-            <label htmlFor="pos-fecha">Fecha de la nota</label>
-            <input id="pos-fecha" type="date" max={hoy} value={fecha} onChange={(e) => setFecha(e.target.value || hoy)} />
-          </div>
           <p className={estilos.numeroNota}>
-            Nota <strong>N.º {siguienteNota}</strong>
+            Nota <strong>N.º {siguienteNota}</strong> · {fecha === hoy ? "hoy" : fechaCorta(fecha)}
           </p>
         </section>
 
@@ -895,6 +904,12 @@ export function Pos({
             </div>
           </dl>
 
+          <div className={`campo ${estilos.fechaVenta}`}>
+            <label htmlFor="pos-fecha">Fecha de la venta</label>
+            <input id="pos-fecha" type="date" max={hoy} value={fecha} onChange={(e) => setFecha(e.target.value || hoy)} />
+            <span className="ayuda">{fecha === hoy ? "Hoy. Si la nota es de otro día, cámbiala: los días de crédito cuentan desde ahí." : `La nota es del ${fechaCorta(fecha)}: los días de crédito cuentan desde ahí.`}</span>
+          </div>
+
           <div className={estilos.modos} role="group" aria-label="Cómo paga">
             {(["ahora", "parte", "credito"] as ModoDePago[]).map((m) => (
               <button
@@ -1060,6 +1075,11 @@ export function Pos({
             </div>
           )}
 
+          {error && (
+            <p className="aviso aviso--error" role="alert" style={{ margin: 0 }}>
+              {error}
+            </p>
+          )}
           {pideConfirmar && (
             <label className={`${panel.casilla} ${estilos.casillaAviso}`}>
               <input type="checkbox" checked={confirmar} onChange={(e) => setConfirmar(e.target.checked)} />

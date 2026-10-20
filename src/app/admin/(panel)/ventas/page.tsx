@@ -98,6 +98,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         pideConfirmar={parametros.confirmar === "1"}
         pideConfirmarNota={parametros.confirmar_nota === "1"}
         clienteInicial={clienteInicial && clienteInicial !== mostrador.id ? clienteInicial : undefined}
+        error={texto("error") || undefined}
       />
 
       <section className="tarjeta" style={{ marginTop: "var(--espacio-4)" }}>

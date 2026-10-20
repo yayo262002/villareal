@@ -741,8 +741,8 @@ Binance y otro.
     calcula otra. El elegido queda arriba con su saldo, sin entrar en
     Clientes. **«Mostrador (sin cliente)»** es un cliente fijo que la caja
     crea la primera vez, para quien compra y paga en el momento: con él no
-    se deja nada pendiente. Al lado, la **fecha de la nota** (la del papel,
-    aunque sea de días atrás; nunca de mañana) y el número que llevará.
+    se deja nada pendiente. Al lado, el número que llevará la nota y su
+    fecha.
   - **Productos**: la casilla «Agregar producto» (F2) busca por **código de
     barras, SKU, nombre, marca, presentación o categoría** y enseña solo lo
     que coincide, con su existencia y su precio (el especial del cliente si
@@ -759,7 +759,9 @@ Binance y otro.
     casilla numérica rechazaba la coma del teclado del iPhone.
   - **Resumen** (a la derecha; debajo, en el teléfono, con una barra fija
     que dice el total y lleva a cobrar): subtotal, descuento en dólares,
-    total en USD y en Bs a la tasa del día de la nota, y **cómo paga**:
+    total en USD y en Bs a la tasa del día de la nota, la **fecha de la
+    venta** (la de la nota de papel, aunque sea de días atrás; nunca de
+    mañana: los días de crédito cuentan desde ahí) y **cómo paga**:
     **Paga todo ahora** (método, monto, «Pago mixto: otra vía» para varias
     vías que suman el total; en efectivo en dólares, lo **recibido** y el
     **cambio**), **Paga una parte** (lo que paga ahora es un abono y el
@@ -783,7 +785,12 @@ Binance y otro.
     cancelar o cerrar, **Enter** confirmar en la ventana; los atajos no
     estorban al escribir. El carrito se guarda en el navegador: si la
     página se recarga o la venta vuelve con un aviso, no se pierde; una
-    venta ya guardada no vuelve a aparecer.
+    venta ya guardada no vuelve a aparecer, y si el navegador vuelve atrás
+    a la pantalla ya usada (el iPhone la recupera de su memoria), se
+    recarga limpia. Cada venta lleva una clave: la misma venta dos veces
+    es una sola, y la misma clave con otro carrito es una venta nueva. Lo
+    que el servidor conteste al guardar sale arriba y también junto a
+    «Confirmar».
 - **Al guardar** (`guardarVentaPos` en `src/lib/acciones.ts`) se aplican
   las mismas reglas que al formulario de siempre: `revisarVenta` (sin
   cantidad, sin precio, cantidades o precios que no pueden ser; un precio

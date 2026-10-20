@@ -32,8 +32,14 @@
 }
 @media (min-width: 700px) {
   .cabecera {
-    grid-template-columns: minmax(0, 1fr) 170px auto;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
+}
+.fechaVenta {
+  margin: 0;
+}
+.fechaVenta input {
+  min-height: 44px;
 }
 .clienteCampo {
   display: grid;

@@ -2385,6 +2385,12 @@ async function probarCaja() {
   r = await mandar({});
   comprobar("la misma venta dos veces es una sola: vuelve a su nota", r.destino.includes("ya estaba registrada") && r.destino.includes(`/admin/ventas/${ventaId}/nota`) && (await consultar("select count(*) as n from ventas where clave_pos = ?", [clave]))[0].n == 1, r.destino);
 
+  r = await mandar({ lineas: [mozzarella(2.2), huevos], modo: "credito", pagos: [] });
+  const conLaMismaClave = idDe(r.destino);
+  comprobar("la misma clave con otro carrito (el navegador volvió atrás) es una venta nueva, no «ya estaba»", Boolean(conLaMismaClave) && conLaMismaClave !== ventaId && r.destino.includes("Venta registrada"), r.destino);
+  // Se borra en el momento: lo que sigue cuenta con el inventario y el saldo tal como estaban.
+  if (conLaMismaClave) await enviar(`/admin/ventas/${conLaMismaClave}/eliminar`, 'name="id"', { id: String(conLaMismaClave) });
+
   // Paga una parte: lo demás queda en su cuenta.
   r = await mandar({ clave_pos: clave + "-parte", lineas: [mozzarella(3), huevos], pagos: [{ metodo: "efectivo_usd", monto_usd: 5 }], modo: "parte" });
   const parteId = idDe(r.destino);

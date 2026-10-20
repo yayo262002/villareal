@@ -75,7 +75,7 @@ import {
   entradaBloqueada,
   olvidarEntradasFallidas,
 } from "./intentos";
-import { buscarVenta, buscarVentaPorClavePos, crearVenta, eliminarVenta, marcarEntrega, ultimoPrecioAlCliente, ventaRepetidaReciente, type LineaVenta } from "./ventas";
+import { buscarVenta, buscarVentaPorClavePos, crearVenta, eliminarVenta, lineasDeVenta, marcarEntrega, ultimoPrecioAlCliente, ventaRepetidaReciente, type LineaVenta, type Venta } from "./ventas";
 import { KILOS_MAXIMOS, PRECIO_MAXIMO, lineaRellena, revisarFecha, revisarVenta, type LineaEscrita } from "./venta-sensata";
 import { existenciaSinMarca, existenciasPorClave, registrarAjuste } from "./inventario";
 import { ajustePorRecuento } from "./stock";
@@ -2121,14 +2121,18 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     if (casilla) escrito.set(casilla, "1");
     volverConError(`/admin/ventas?${escrito.toString()}`, mensaje);
   };
-  const vendida = `vendida=${encodeURIComponent(venta.clave_pos)}`;
-
-  // Si esta misma venta ya entró (el botón dos veces, la página recargada), es esa: a su nota.
+  // Si esta misma venta ya entró (el botón dos veces, la página recargada), es esa: a su nota. Pero si con la misma
+  // clave llega otro carrito (el navegador volvió atrás a la pantalla ya usada y se cambió lo que había), es una venta nueva.
   const yaEntro = venta.clave_pos ? await buscarVentaPorClavePos(venta.clave_pos) : null;
-  if (yaEntro) {
+  if (yaEntro && (await esLaMismaVenta(yaEntro, venta))) {
     if (foto) await olvidarFotoEnEspera(foto.id);
-    volverConExito(`/admin/ventas/${yaEntro.id}/nota?${vendida}`, "Esa venta ya estaba registrada: esta es su nota.");
+    volverConExito(`/admin/ventas/${yaEntro.id}/nota?vendida=${encodeURIComponent(venta.clave_pos)}`, "Esa venta ya estaba registrada: esta es su nota.");
   }
+  if (yaEntro) {
+    venta.clave_pos = `${venta.clave_pos}-${Date.now().toString(36)}`.slice(-60);
+    escrito.set("clave", venta.clave_pos);
+  }
+  const vendida = `vendida=${encodeURIComponent(venta.clave_pos)}`;
 
   for (const p of venta.pagos) if (!esMetodoPago(String(p.metodo))) volver("Elige cómo pagó el cliente.");
   if (!venta.cliente_id) volver("Elige un cliente.");
@@ -2245,6 +2249,17 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
   if (comentario) partes.push(comentario);
   // Con algo cobrado sale el ticket de caja; si quedó pendiente, la nota de entrega.
   volverConExito(`/admin/ventas/${resultado.ventaId}/nota?${resultado.pagado > 0 ? "formato=ticket&" : ""}${vendida}`, partes.join(" "));
+}
+
+/** Si lo que llega es la venta ya guardada con esa clave (mismo cliente, misma fecha, mismas líneas): el botón pulsado dos veces. */
+async function esLaMismaVenta(guardada: Venta, nueva: VentaDelPos): Promise<boolean> {
+  if (Number(guardada.cliente_id) !== nueva.cliente_id || guardada.fecha !== nueva.fecha) return false;
+  const lineas = await lineasDeVenta(guardada.id);
+  if (lineas.length !== nueva.lineas.length) return false;
+  const firma = (l: { producto_id: number; variante_id: number | null; cantidad: number; precio: number }) => `${l.producto_id}/${l.variante_id ?? 0}/${Number(l.cantidad)}/${Number(l.precio)}`;
+  const guardadas = lineas.map((l) => firma({ producto_id: Number(l.producto_id), variante_id: l.variante_id ? Number(l.variante_id) : null, cantidad: l.cantidad, precio: l.precio_unitario_usd })).sort();
+  const nuevas = nueva.lineas.map((l) => firma({ producto_id: l.producto_id, variante_id: l.variante_id, cantidad: l.cantidad, precio: l.precio_usd })).sort();
+  return guardadas.every((f, i) => f === nuevas[i]);
 }
 
 /** El código de barras y el SKU de un artículo («3-7») o de un tipo («3»), desde la pantalla de códigos o desde la caja. */
