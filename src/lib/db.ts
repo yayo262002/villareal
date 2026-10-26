@@ -180,6 +180,9 @@ async function migrar(cliente: Client): Promise<void> {
     await añadirColumna(cliente, "ventas", "clave_pos text");
   }
   if (!/\bdias_credito\b/.test(await definicionDe(cliente, "ventas"))) await añadirColumna(cliente, "ventas", "dias_credito integer");
+  // Antes, quien se registraba sin nombre llevaba el teléfono como nombre; ahora el nombre queda vacío y las
+  // pantallas enseñan el teléfono cuando no hay otra cosa. Una sola vez, y no hace nada si ya no queda ninguno.
+  await cliente.execute("update clientes set nombre = '' where nombre <> '' and nombre = telefono");
   for (const [tabla, sql, fotos, columna] of [
     ["pagos", RECONSTRUIR_PAGOS, "adjuntos", "pago_id"],
     ["pagos_proveedores", RECONSTRUIR_PAGOS_PROVEEDORES, "adjuntos_proveedores", "pago_proveedor_id"],

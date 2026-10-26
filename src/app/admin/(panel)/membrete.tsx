@@ -38,7 +38,7 @@ export function DatosDelCliente({
 }: {
   cliente: { nombre: string; telefono: string; cedula_rif: string; direccion: string; razon_social?: string };
 }) {
-  // Quien se registró solo con el teléfono lo lleva como nombre: no se repite.
+  // Quien se registró sin nombre no tiene nombre que poner.
   const sinNombre = esSoloUnTelefono(cliente.nombre);
   const razonSocial = cliente.razon_social?.trim() ?? "";
   return (

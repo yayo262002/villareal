@@ -186,6 +186,9 @@ src/lib/cuenta-proveedor.ts  Lo que un proveedor ve de nuestra cuenta con él, c
 src/components/cuenta.tsx El marco, las pestañas y las tarjetas de la cuenta del cliente
 src/lib/exportar.ts       Lo que se descarga para Excel: movimientos y resumen por día
 src/lib/buscar.ts         Buscar sin tildes ni mayúsculas; una nota por su número
+src/lib/parecido.ts         Buscar «parecido»: encuentra aunque falte, sobre o cambie una letra (la caja y la cartera)
+src/components/filtro-en-vivo.tsx  La cartera se filtra mientras se escribe, sin pulsar «Buscar»
+src/components/foto-ampliable.tsx  Una foto que se amplía ahí mismo, con su flecha para volver (el panel como app no tiene atrás)
 src/lib/direcciones.ts    Lee una dirección y la sitúa en la cuadrícula
 src/lib/ruta.ts           El orden en que conviene visitar a los clientes
 src/lib/despacho.ts       Junta las dos cosas: el plan de un despacho; sitúa a cada cliente
@@ -547,11 +550,16 @@ Binance y otro.
 
 ## Cartera, notas y despacho
 
-- **Alta rápida.** En Clientes basta el teléfono y la dirección. El nombre
-  es opcional: quien no lo tiene lleva el teléfono como nombre. El teléfono
-  se guarda siempre escrito igual (`0412-1234567`) y no se puede registrar
-  dos veces, se escriba como se escriba. Tras guardar se vuelve al mismo
-  formulario, para registrar el siguiente.
+- **Alta rápida.** En Clientes basta el teléfono y la dirección. Primero
+  va la **razón social o negocio** (lo que sale en grande en las listas y
+  en la nota) y después el nombre de la persona (a quien se saluda por
+  WhatsApp); los dos son opcionales. Sin ninguno, el nombre queda **vacío**
+  (nunca se guarda el teléfono como nombre) y las listas enseñan el
+  teléfono con «sin nombre». El teléfono se guarda siempre escrito igual
+  (`0412-1234567`) y no se puede registrar dos veces, se escriba como se
+  escriba. Tras guardar se vuelve al mismo formulario, para registrar el
+  siguiente. La cartera se **filtra mientras se escribe**, también
+  «parecido» (`src/lib/parecido.ts`).
 - **Borrar un cliente.** Desde su ficha, «Eliminar cliente» lleva a una
   pantalla que dice qué se lleva (notas, abonos, fotos y la deuda) y pide
   la **clave del panel** otra vez, porque no tiene vuelta atrás. Las
@@ -620,7 +628,10 @@ Binance y otro.
     se abre en su **visor** (`/admin/adjuntos/12/ver`): entera, con la
     fecha y la hora en que se guardó, de qué cliente y de qué nota o abono
     es, «← Volver» a donde se estaba (`?volver_a=`), «Abrir la foto sola»
-    y «Eliminar». Las capturas de los proveedores tienen el suyo
+    y «Eliminar». Tocar la foto la **amplía ahí mismo**, a pantalla entera
+    con su «← Volver» (`src/components/foto-ampliable.tsx`): el panel
+    puesto como app no tiene botón de atrás, y abrir el archivo solo
+    obligaba a cerrar la app. Las capturas de los proveedores tienen el suyo
     (`/admin/adjuntos-proveedor/[id]/ver`).
   - **La foto se lee y se coteja con el pedido.** Con la clave
     `ANTHROPIC_API_KEY` puesta, al guardar se le enseña la foto a Claude
@@ -717,9 +728,12 @@ Binance y otro.
   «Atención». Los mensajes de WhatsApp saludan por el nombre. Los dos son
   opcionales: sin nombre, el cliente queda con el teléfono y se dice
   bajito («sin nombre») en la cartera y en la ficha, sin frenar nada.
-- **Calles con letra.** Por el oeste hay calles «13A», «13B»: se entienden
-  y se colocan entre la 13 y la 14, y se escriben igual al enseñarlas
-  («carrera 5 con calle 13A»).
+- **Calles con letra.** Por el oeste hay calles y carreras «13A», «13B»:
+  se entienden pegadas («13A», «13-a») y también separadas («calle 13 A
+  con carrera 5», «carrera 13 b, casa 4») cuando después viene el final o
+  una palabra de dirección («calle 13 a la derecha» sigue siendo la 13), se
+  colocan entre la 13 y la 14 y se escriben igual al enseñarlas («carrera
+  13A con calle 60»).
 - **Buscar una venta.** En Ventas, por el nombre del cliente, por el número
   de la nota («26» o «000026») o por la fecha («30/09»). Sin buscar salen
   las últimas 50 (`src/lib/buscar.ts`).
@@ -735,7 +749,11 @@ Binance y otro.
   JavaScript de verdad (`src/components/pos.tsx`); nunca enseña la lista
   entera de productos.
   - **Cliente**: se busca escribiendo el nombre, la razón social o el
-    teléfono (F4) y cada uno sale con su saldo: «Debe USD 235,40» en rojo,
+    teléfono (F4), mientras se escribe y **aunque falte, sobre o cambie
+    una letra** («kleider» encuentra a Cleiderman; `src/lib/parecido.ts`:
+    sin tildes, con b/v, s/z/c, y/ll y la h muda juntas, y un error por
+    palabra, dos en las largas), y cada uno sale con su saldo: «Debe USD
+    235,40» en rojo,
     «Al día» o «A favor USD 20,00» en verde. Es la misma cifra que en
     Clientes (lo comprado menos lo abonado, `listarClientes`); no se
     calcula otra. El elegido queda arriba con su saldo, sin entrar en
@@ -776,11 +794,12 @@ Binance y otro.
     fecha, productos, total, pago, cómo queda su cuenta, entrega) y Enter
     guarda. Antes de abrirla se revisa en la pantalla lo mismo que
     revisará el servidor (`revisarVentaPos`), así el aviso es inmediato.
-  - **Debajo del carrito**: **Entrega**, a la vista («Ya entregada», con
-    la **foto de la nota firmada** si se tiene a mano, que se lee y se
-    coteja como siempre y también se puede poner después desde la nota; o
-    «Queda por entregar el» con su fecha, que se cambia ahí mismo y entra
-    en el despacho) y, plegados, **Observación y cajero**.
+  - **Debajo del carrito**: **Entrega**, a la vista y **sin opción por
+    defecto**: «Ya entregada», que **exige la foto de la nota firmada**
+    (se lee y se coteja como siempre), o «Queda por entregar el» con su
+    fecha, que se cambia ahí mismo, entra en el despacho y el Resumen la
+    recuerda ese día («Entregas pendientes»). Sin elegir una, o entregada
+    sin foto, no se guarda. Plegados, **Observación y cajero**.
   - Atajos: **F2** producto, **F4** cliente, **F8** confirmar, **Esc**
     cancelar o cerrar, **Enter** confirmar en la ventana; los atajos no
     estorban al escribir. El carrito se guarda en el navegador: si la

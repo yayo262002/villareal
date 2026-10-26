@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { datosDelAdjuntoDeProveedor } from "@/lib/adjuntos";
 import { buscarProveedor } from "@/lib/proveedores";
 import { fechaCorta, fechaDeLaBase, horaDeLaBase } from "@/lib/dinero";
+import { FotoAmpliable } from "@/components/foto-ampliable";
 import estilos from "../../../panel.module.css";
 
 type Parametros = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -45,10 +46,7 @@ export default async function PaginaAdjuntoDeProveedor({ params, searchParams }:
             </a>
           </p>
         ) : (
-          <a href={archivo} target="_blank" rel="noopener" title="Abrir la captura sola, para ampliarla">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={archivo} alt={adjunto.descripcion || "Captura"} className={estilos.adjuntoEntero} />
-          </a>
+          <FotoAmpliable src={archivo} alt={adjunto.descripcion || "Captura"} className={estilos.adjuntoEntero} />
         )}
         <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginTop: "var(--espacio-3)" }}>
           <Link href={volver} className="boton boton--secundario">

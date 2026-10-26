@@ -18,6 +18,7 @@ import {
 import { asignarCodigo, guardarVentaPos } from "@/lib/acciones";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { sumarDias } from "@/lib/credito";
+import { buscarParecidos } from "@/lib/parecido";
 import estilos from "./pos.module.css";
 import panel from "@/app/admin/(panel)/panel.module.css";
 
@@ -63,7 +64,8 @@ export type ClienteParaLaCaja = {
 
 type Linea = LineaDelPos & { precioManual: boolean; piezas: number | null };
 
-type Entrega = "ahora" | "despacho";
+/** Vacío mientras no se diga: la entrega se elige a mano, no hay opción por defecto. */
+type Entrega = "" | "ahora" | "despacho";
 
 type Props = {
   catalogo: ArticuloParaLaCaja[];
@@ -193,7 +195,7 @@ export function Pos({
   const [pagosEscritos, setPagos] = useState<PagoDelPos[]>([]);
   const [pagosTocados, setPagosTocados] = useState(false);
   const [recibido, setRecibido] = useState("");
-  const [entrega, setEntrega] = useState<Entrega>("ahora");
+  const [entrega, setEntrega] = useState<Entrega>("");
   const [entregaPrevista, setEntregaPrevista] = useState("");
   // Los días de crédito de esta nota: vacío, los del cliente.
   const [diasCredito, setDiasCredito] = useState("");
@@ -224,7 +226,7 @@ export function Pos({
           setNota(guardado.nota ?? "");
           setFecha(guardado.fecha && guardado.fecha <= hoy ? guardado.fecha : hoy);
           setModo(guardado.modo ?? "ahora");
-          setEntrega(guardado.entrega ?? "ahora");
+          setEntrega(guardado.entrega ?? "");
           setEntregaPrevista(guardado.entregaPrevista ?? "");
           setDiasCredito(guardado.diasCredito ?? "");
         } else {
@@ -330,13 +332,7 @@ export function Pos({
     if (!texto) return [];
     const exacto = catalogo.filter((a) => normalizar(a.codigo_barras) === texto || normalizar(a.sku) === texto);
     if (exacto.length) return exacto;
-    const palabras = texto.split(/\s+/);
-    return catalogo
-      .filter((a) => {
-        const en = normalizar(`${a.nombre} ${a.marca} ${a.sku} ${a.presentacionTexto} ${a.familia}`);
-        return palabras.every((p) => en.includes(p));
-      })
-      .slice(0, MAXIMO_DE_RESULTADOS);
+    return buscarParecidos(busqueda, catalogo, (a) => `${a.nombre} ${a.marca} ${a.sku} ${a.presentacionTexto} ${a.familia}`, MAXIMO_DE_RESULTADOS);
   }, [busqueda, catalogo]);
 
   /** Lo que hace Enter en el buscador: el lector lo pulsa solo después del código. */
@@ -370,13 +366,10 @@ export function Pos({
   };
 
   // Los clientes que coinciden con lo escrito (nombre, razón social o teléfono); sin escribir, los primeros.
-  const clientesQueCoinciden = useMemo(() => {
-    const texto = normalizar(busquedaCliente);
-    const lista = texto
-      ? clientes.filter((c) => normalizar(`${c.rotulo} ${c.nombre} ${c.telefono} ${c.telefono.replace(/\D/g, "")}`).includes(texto))
-      : clientes;
-    return lista.slice(0, MAXIMO_DE_RESULTADOS);
-  }, [busquedaCliente, clientes]);
+  const clientesQueCoinciden = useMemo(
+    () => buscarParecidos(busquedaCliente, clientes, (c) => `${c.rotulo} ${c.nombre} ${c.telefono}`, MAXIMO_DE_RESULTADOS),
+    [busquedaCliente, clientes],
+  );
 
   const cambiarLinea = (claveLinea: string, cambios: Partial<Linea>) =>
     setLineas((actuales) => actuales.map((l) => (l.clave === claveLinea ? { ...l, ...cambios } : l)));
@@ -405,7 +398,7 @@ export function Pos({
     setRecibido("");
     setPagosTocados(false);
     setModo("ahora");
-    setEntrega("ahora");
+    setEntrega("");
     setEntregaPrevista("");
     setDiasCredito("");
     setClave(nuevaClave());
@@ -426,7 +419,11 @@ export function Pos({
       tasa,
       metodosEnBolivares: METODOS_EN_BOLIVARES,
     });
-    if (entrega === "despacho" && !entregaPrevista) motivos.push("Escribe el día previsto de entrega.");
+    if (!entrega) motivos.push("Di si ya la entregaste o si queda por entregar (abajo, en «Entrega»).");
+    else if (entrega === "despacho" && !entregaPrevista) motivos.push("Escribe el día previsto de entrega.");
+    else if (entrega === "ahora" && !fotoEnEspera && !((document.getElementById("pos-foto") as HTMLInputElement | null)?.files?.length ?? 0)) {
+      motivos.push("Ya entregada: adjunta la foto de la nota firmada (abajo, en «Entrega»).");
+    }
     if (motivos.length > 0) {
       avisar(motivos[0], true);
       resumen.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -789,14 +786,15 @@ export function Pos({
           <summary>
             Entrega{" "}
             <span className="ayuda">
-              {entrega === "ahora" ? "ya entregada" : `queda por entregar${entregaPrevista ? ` el ${fechaCorta(entregaPrevista)}` : ""}`}
+              {entrega === "" ? "¿ya la entregaste?" : entrega === "ahora" ? "ya entregada" : `queda por entregar${entregaPrevista ? ` el ${fechaCorta(entregaPrevista)}` : ""}`}
               {fotoEnEspera ? " · con la foto de la nota" : ""}
             </span>
           </summary>
           <div className={estilos.plegableCuerpo}>
             <div className={estilos.opciones} role="radiogroup" aria-label="Entrega">
               <label>
-                <input type="radio" name="entrega_modo" checked={entrega === "ahora"} onChange={() => setEntrega("ahora")} /> Ya entregada
+                <input type="radio" name="entrega_modo" checked={entrega === "ahora"} onChange={() => setEntrega("ahora")} /> Ya entregada: va con la foto de la
+                nota firmada
               </label>
               <span className={estilos.opcionConFecha}>
                 <label>
@@ -824,17 +822,23 @@ export function Pos({
                 />
               </span>
             </div>
-            {entrega === "despacho" ? (
+            {entrega === "" && (
               <p className="ayuda" style={{ margin: 0 }}>
-                Sale en el despacho con su ruta, y el resumen te lo recuerda.
+                Elige una de las dos antes de confirmar.
               </p>
-            ) : (
+            )}
+            {entrega === "despacho" && (
+              <p className="ayuda" style={{ margin: 0 }}>
+                Sale en el despacho con su ruta, y el Resumen te lo recuerda ese día.
+              </p>
+            )}
+            {entrega === "ahora" && (
               <div className="campo">
-                <label htmlFor="pos-foto">Foto de la nota firmada (si la tienes a mano)</label>
+                <label htmlFor="pos-foto">Foto de la nota firmada (obligatoria)</label>
                 {fotoEnEspera && <input type="hidden" name="foto_espera" value={fotoEnEspera} />}
                 <EntradaFoto nombre="foto" id="pos-foto" opcional soloFoto />
                 <span className="ayuda">
-                  {fotoEnEspera ? "La foto que pusiste ya está guardada; solo pon otra si quieres cambiarla. " : "También se puede poner después, desde la nota. "}
+                  {fotoEnEspera ? "La foto que pusiste ya está guardada; solo pon otra si quieres cambiarla. " : "La hoja firmada por el cliente. "}
                   {seLee && "Se lee sola: si no es la nota, o su fecha o su suma no cuadran con lo anotado, avisa."}
                 </span>
                 {pideConfirmarNota && (
@@ -1177,7 +1181,7 @@ export function Pos({
               )}
               <div>
                 <dt>Entrega</dt>
-                <dd>{entrega === "ahora" ? "Ya entregada" : `Queda por entregar el ${entregaPrevista ? fechaCorta(entregaPrevista) : "…"}`}</dd>
+                <dd>{entrega === "ahora" ? "Ya entregada, con la foto de la nota" : entrega === "despacho" ? `Queda por entregar el ${entregaPrevista ? fechaCorta(entregaPrevista) : "…"}` : "Sin decir"}</dd>
               </div>
             </dl>
             <div className={panel.accionesFila} style={{ flexWrap: "wrap" }}>

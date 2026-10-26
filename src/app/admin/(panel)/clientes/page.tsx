@@ -6,12 +6,13 @@ import { guardarCliente, situarClientesQueFaltan } from "@/lib/acciones";
 import { necesitaElMapa } from "@/lib/mapa";
 import { enlaceAlMapa, planDeDespacho, situar } from "@/lib/despacho";
 import { explicarMotivo } from "@/lib/direcciones";
-import { esSoloUnTelefono } from "@/lib/whatsapp";
+import { sinNombre as leFaltaNombre } from "@/lib/rotulo";
+import { coincideParecido } from "@/lib/parecido";
+import { FiltroEnVivo } from "@/components/filtro-en-vivo";
 import { fechaCorta, hoy, redondear, usd } from "@/lib/dinero";
 import { estudioDeClientes } from "@/lib/estudio-de-clientes";
 import { describirTrato } from "@/lib/seguimiento";
 import { enlaceWhatsappA } from "@/lib/whatsapp";
-import { normalizar } from "@/lib/buscar";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
 
@@ -37,6 +38,11 @@ function mismoTexto(a: string, b: string): boolean {
   return limpiar(a) === limpiar(b);
 }
 
+/** Por qué se busca a un cliente: nombre, razón social, teléfono, cédula, dirección y nota. */
+function textoDeBusqueda(c: { nombre: string; razon_social: string; telefono: string; cedula_rif: string; direccion: string; nota: string }): string {
+  return [c.nombre, c.razon_social, c.telefono, c.cedula_rif, c.direccion, c.nota].join(" ");
+}
+
 export default async function PaginaClientes({
   searchParams,
 }: {
@@ -54,12 +60,8 @@ export default async function PaginaClientes({
   // Recién guardado: si su dirección no se entiende, se avisa aquí mismo, sin deshacer nada.
   const situacionDelNuevo = nuevo ? situar(nuevo, CIUDAD) : null;
   const mapaDelNuevo = nuevo ? enlaceAlMapa(nuevo, CIUDAD) : null;
-  const clave = normalizar(busqueda);
-  const filtrados = clave
-    ? todos.filter((c) =>
-        [c.nombre, c.razon_social, c.telefono, c.cedula_rif, c.direccion, c.nota].some((campo) => normalizar(campo).includes(clave)),
-      )
-    : todos;
+  // Se busca «parecido»: una letra de más o de menos no esconde al cliente.
+  const filtrados = busqueda ? todos.filter((c) => coincideParecido(busqueda, textoDeBusqueda(c))) : todos;
 
   // El orden de la ruta sirve también para saber quién no está ubicado.
   const plan = planDeDespacho({ direccion: negocio.direccion, ciudad: CIUDAD }, filtrados);
@@ -191,14 +193,14 @@ export default async function PaginaClientes({
           </div>
           <div className="formulario__fila">
             <div className="campo">
-              <label htmlFor="nombre">Nombre del cliente (opcional)</label>
-              <input id="nombre" name="nombre" type="text" autoComplete="off" placeholder="Luis, Panadería Tuttopan" />
-              <span className="ayuda">Como lo llamas tú. Sin nombre queda con el teléfono, y se avisa.</span>
+              <label htmlFor="razon_social">Razón social o negocio</label>
+              <input id="razon_social" name="razon_social" type="text" autoComplete="off" autoCorrect="off" placeholder="Burger Cleiderman, Tutto Pan, C.A." />
+              <span className="ayuda">Es lo que sale en grande en las listas y en la nota.</span>
             </div>
             <div className="campo">
-              <label htmlFor="razon_social">Razón social (opcional)</label>
-              <input id="razon_social" name="razon_social" type="text" autoComplete="off" placeholder="Tutto Pan, C.A." />
-              <span className="ayuda">El nombre legal del negocio, para la nota.</span>
+              <label htmlFor="nombre">Nombre de la persona (opcional)</label>
+              <input id="nombre" name="nombre" type="text" autoComplete="off" autoCorrect="off" placeholder="Luis, María" />
+              <span className="ayuda">Quién atiende: a él se le saluda por WhatsApp. Sin nombre ni negocio, queda con el teléfono y se avisa.</span>
             </div>
           </div>
           <details className={estilos.masDatos}>
@@ -256,7 +258,8 @@ export default async function PaginaClientes({
                 id="buscar"
                 name="q"
                 type="search"
-                placeholder="Nombre, teléfono o dirección"
+                autoComplete="off"
+                placeholder="Nombre, negocio, teléfono o dirección"
                 defaultValue={busqueda}
               />
               {orden !== "nombre" && <input type="hidden" name="orden" value={orden} />}
@@ -269,6 +272,8 @@ export default async function PaginaClientes({
                 </Link>
               )}
             </form>
+            {/* Con JavaScript, la lista se filtra mientras se escribe, sin pulsar «Buscar». */}
+            <FiltroEnVivo entrada="buscar" lista="cartera" />
             <nav aria-label="Orden de la lista" className={estilos.pestanas}>
               {(Object.keys(ORDENES) as Orden[]).map((o) => (
                 <Link key={o} href={enlaceOrden(o)} aria-current={o === orden ? "true" : undefined}>
@@ -280,15 +285,15 @@ export default async function PaginaClientes({
             {clientes.length === 0 ? (
               <p className="vacio">Ningún cliente coincide con «{busqueda}».</p>
             ) : (
-              <ul className={estilos.cartera}>
+              <ul className={estilos.cartera} id="cartera">
                 {clientes.map((c, i) => {
                   const whatsapp = enlaceWhatsappA(c.telefono, "Hola, le saluda " + negocio.nombre + ".");
                   const mapa = enlaceAlMapa(c, CIUDAD);
                   const sinUbicar = motivo.get(c.id);
                   const situacion = situar(c, CIUDAD);
-                  const sinNombre = esSoloUnTelefono(c.nombre);
+                  const sinNombre = leFaltaNombre(c);
                   return (
-                    <li key={c.id} className={estilos.carteraCliente}>
+                    <li key={c.id} className={estilos.carteraCliente} data-busca={textoDeBusqueda(c)}>
                       <div className={estilos.carteraCabecera}>
                         <Link href={`/admin/clientes/${c.id}`} className={estilos.carteraNombre}>
                           {orden === "ruta" && !sinUbicar && <span className={estilos.carteraOrden}>{i + 1}</span>}
@@ -326,15 +331,15 @@ export default async function PaginaClientes({
                       </p>
                       <p className={estilos.carteraDato}>
                         {[
-                          c.razon_social && !sinNombre ? c.nombre : "",
-                          c.telefono && c.telefono !== c.nombre ? c.telefono : "",
+                          c.razon_social && c.nombre ? c.nombre : "",
+                          c.telefono && c.telefono !== c.rotulo ? c.telefono : "",
                           c.ultima_compra ? `compró el ${fechaCorta(c.ultima_compra)}` : "",
                         ]
                           .filter(Boolean)
                           .join(" · ")}
                         {c.por_entregar > 0 && (
                           <>
-                            {(c.razon_social && !sinNombre) || (c.telefono && c.telefono !== c.nombre) || c.ultima_compra ? " · " : ""}
+                            {(c.razon_social && c.nombre) || (c.telefono && c.telefono !== c.rotulo) || c.ultima_compra ? " · " : ""}
                             <Link href="/admin/despacho" className={estilos.deuda}>
                               {c.por_entregar === 1 ? "1 pedido por entregar" : `${c.por_entregar} pedidos por entregar`}
                             </Link>

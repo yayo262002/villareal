@@ -5,6 +5,7 @@ import { buscarCliente } from "@/lib/clientes";
 import { listarPagosDeCliente } from "@/lib/pagos";
 import { numeroDeNota } from "@/lib/entregas";
 import { fechaCorta, fechaDeLaBase, horaDeLaBase, usd } from "@/lib/dinero";
+import { FotoAmpliable } from "@/components/foto-ampliable";
 import estilos from "../../../panel.module.css";
 
 type Parametros = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -72,10 +73,7 @@ export default async function PaginaAdjunto({ params, searchParams }: Parametros
             </a>
           </p>
         ) : (
-          <a href={archivo} target="_blank" rel="noopener" title="Abrir la foto sola, para ampliarla">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={archivo} alt={adjunto.descripcion || "Foto"} className={estilos.adjuntoEntero} />
-          </a>
+          <FotoAmpliable src={archivo} alt={adjunto.descripcion || "Foto"} className={estilos.adjuntoEntero} />
         )}
         <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginTop: "var(--espacio-3)" }}>
           <Link href={volver} className="boton boton--secundario">

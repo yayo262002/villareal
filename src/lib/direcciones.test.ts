@@ -49,6 +49,17 @@ test("una dirección a medias no se adivina: se dice qué falta, y se guarda lo 
   assert.equal(ubicacion("   "), "no tiene dirección");
 });
 
+test("la letra también vale separada, «calle 13 A», si después viene el final o una palabra de dirección", () => {
+  assert.deepEqual(ubicacion("Calle 13 A con carrera 5"), { calle: 13.3, carrera: 5 });
+  assert.deepEqual(ubicacion("Carrera 5 con calle 13 A"), { calle: 13.3, carrera: 5 });
+  assert.deepEqual(ubicacion("Calle 60 con carrera 13 a"), { calle: 60, carrera: 13.3 });
+  assert.deepEqual(ubicacion("Calle 13 A, casa 4, con carrera 5"), { calle: 13.3, carrera: 5 });
+  assert.deepEqual(ubicacion("Carrera 13 B entre calles 1 y 2"), { calle: 1.5, carrera: 13.4 });
+  // «13 a la derecha» sigue siendo la 13.
+  assert.deepEqual(ubicacion("Calle 13 a la derecha con carrera 5"), { calle: 13, carrera: 5 });
+  assert.deepEqual(ubicacion("Calle 13 al lado del banco con carrera 5"), { calle: 13, carrera: 5 });
+});
+
 test("las calles con letra del oeste, «calle 13A», caen entre la 13 y la 14 y se escriben igual", () => {
   assert.deepEqual(ubicacion("Calle 13A con carrera 5"), { calle: 13.3, carrera: 5 });
   assert.deepEqual(ubicacion("calle 13a carrera 5"), { calle: 13.3, carrera: 5 });

@@ -75,7 +75,7 @@ function conSaldo(f: ClienteConSaldo): ClienteConSaldo {
 }
 
 export async function listarClientes(): Promise<ClienteConSaldo[]> {
-  const f = await filas<ClienteConSaldo>(`${CONSULTA_CON_SALDO} order by c.nombre collate nocase`);
+  const f = await filas<ClienteConSaldo>(`${CONSULTA_CON_SALDO} order by (${ROTULO_DEL_CLIENTE}) collate nocase`);
   return f.map(conSaldo);
 }
 

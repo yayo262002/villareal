@@ -78,9 +78,15 @@ export function leerDireccion(direccion: string): Lectura {
     return { ubicada: false, motivo: "parece una urbanización o un barrio, fuera de la cuadrícula del centro" };
   }
 
-  // «calle 38», «carreras 30 y 31», «entre 30 y 31», «con 25», «esquina 25», «calle 13a», «carrera 5-b».
-  const patron =
-    /\b(calles?|cll|cl|carreras?|cra|kra|krr|carr|cr|avenida|ave|av|entre|con|c\/|esquina|esq)\s*(\d{1,3})(?:-?([a-d]))?(?:\s*(?:y|e|-)\s*(\d{1,3})(?:-?([a-d]))?)?\b/g;
+  // «calle 38», «carreras 30 y 31», «entre 30 y 31», «con 25», «esquina 25», «calle 13a», «carrera 5-b», «calle 13 A con…».
+  // La letra separada por un espacio solo vale si después viene el final o una palabra de dirección («con», «entre»,
+  // «casa»…): «calle 13 a la derecha» no es la 13A.
+  // Pegada al número («13a», «13-a») vale siempre; separada por un espacio, solo con una palabra de dirección detrás.
+  const letra = String.raw`(?:(?:-|\s)?([a-d])\b(?:(?<=[\d-][a-d])|(?=\s*(?:$|con\b|entre\b|esquina\b|esq\b|y\b|e\b|cruce\b|casa\b|local\b|edif\b|edificio\b|frente\b|lado\b|nro\b|numero\b|sector\b|cerca\b|diagonal\b|detras\b|galpon\b|quinta\b|apto\b|piso\b))))?`;
+  const patron = new RegExp(
+    String.raw`\b(calles?|cll|cl|carreras?|cra|kra|krr|carr|cr|avenida|ave|av|entre|con|c\/|esquina|esq)\s*(\d{1,3})${letra}(?:\s*(?:y|e|-)\s*(\d{1,3})${letra})?\b`,
+    "g",
+  );
   const valores: Record<Eje, number[]> = { calle: [], carrera: [] };
   let ultimo: Eje | null = null;
 

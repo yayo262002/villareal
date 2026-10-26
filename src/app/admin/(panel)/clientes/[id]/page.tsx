@@ -23,7 +23,8 @@ import { EntradaFoto } from "@/components/entrada-foto";
 import { negocio } from "@/config/negocio";
 import { enlaceAlMapa, situar } from "@/lib/despacho";
 import { explicarMotivo } from "@/lib/direcciones";
-import { enlaceWhatsappA, esSoloUnTelefono, mensajeAbono, mensajeEnlaceDeCuenta, mensajeNota, mensajePedirResena, mensajeRecordatorio } from "@/lib/whatsapp";
+import { sinNombre as leFaltaNombre } from "@/lib/rotulo";
+import { enlaceWhatsappA, mensajeAbono, mensajeEnlaceDeCuenta, mensajeNota, mensajePedirResena, mensajeRecordatorio } from "@/lib/whatsapp";
 import { direccionDeCuenta } from "@/lib/enlace-cuenta";
 import { rutaProducto, rutaVariante } from "@/lib/enlaces";
 import { claveDe } from "@/lib/catalogo";
@@ -183,10 +184,10 @@ export default async function PaginaCliente({
             <Link href="/admin/clientes">← Clientes</Link>
           </p>
           <h1 className={estilos.titulo}>{cliente.rotulo}</h1>
-          {cliente.razon_social && !esSoloUnTelefono(cliente.nombre) && (
+          {cliente.razon_social && cliente.nombre && (
             <p className={estilos.ayuda} style={{ marginBottom: 0 }}>Atención: {cliente.nombre}</p>
           )}
-          {esSoloUnTelefono(cliente.nombre) && (
+          {leFaltaNombre(cliente) && (
             <p className={estilos.sinNombre}>
               Sin nombre: <Link href="#datos">ponlo en Datos</Link> cuando lo sepas.
             </p>
@@ -291,12 +292,14 @@ export default async function PaginaCliente({
             <input type="hidden" name="id" value={cliente.id} />
             <div className="formulario__fila">
               <div className="campo">
-                <label htmlFor="nombre">Nombre del cliente</label>
-                <input id="nombre" name="nombre" type="text" defaultValue={esSoloUnTelefono(cliente.nombre) ? "" : cliente.nombre} placeholder="Luis" />
+                <label htmlFor="razon_social">Razón social o negocio</label>
+                <input id="razon_social" name="razon_social" type="text" autoComplete="off" autoCorrect="off" defaultValue={cliente.razon_social} placeholder="Burger Cleiderman, Tutto Pan, C.A." />
+                <span className="ayuda">Lo que sale en grande en las listas y en la nota.</span>
               </div>
               <div className="campo">
-                <label htmlFor="razon_social">Razón social</label>
-                <input id="razon_social" name="razon_social" type="text" defaultValue={cliente.razon_social} placeholder="Tutto Pan, C.A." />
+                <label htmlFor="nombre">Nombre de la persona</label>
+                <input id="nombre" name="nombre" type="text" autoComplete="off" autoCorrect="off" defaultValue={cliente.nombre} placeholder="Luis, María" />
+                <span className="ayuda">Quién atiende: a él se le saluda por WhatsApp.</span>
               </div>
             </div>
             <div className="formulario__fila">

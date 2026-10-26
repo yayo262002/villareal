@@ -1168,9 +1168,11 @@ async function probarCartera() {
   const cercaId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
   comprobar("alta rápida: solo teléfono y dirección, con su aviso de que falta el nombre", r.destino.includes("Cliente guardado: 0414-5550101. Sin nombre, por ahora.") && !r.destino.includes("Ojo") && cercaId > 0, r.destino);
   comprobar("la cartera y la ficha lo dicen bajito", (await pagina("/admin/clientes")).html.includes("· sin nombre") && legible((await pagina(`/admin/clientes/${cercaId}`)).html).includes("Sin nombre: "));
+  comprobar("sin nombre, el nombre queda vacío en la base (no el teléfono) y la lista lo enseña por el teléfono", (await consultar("select nombre from clientes where id = ?", [cercaId]))[0].nombre === "" && (await pagina("/admin/clientes")).html.includes("0414-5550101"));
 
   r = await alta({ telefono: "04245550102", direccion: "Carrera 22 entre calles 30 y 31", nombre: "Pizzería La Esquina" });
   comprobar("alta con nombre", r.destino.includes("Cliente guardado: Pizzería La Esquina."), r.destino);
+  comprobar("buscar con una letra cambiada o de menos encuentra igual", legible((await pagina("/admin/clientes?q=piseria")).html).includes("Pizzería La Esquina") && legible((await pagina("/admin/clientes?q=bodega+pruena")).html).includes("Bodega Prueba") && legible((await pagina("/admin/clientes?q=zzzz")).html).includes("Ningún cliente coincide"));
 
   r = await alta({ telefono: "0416-5550103", direccion: "Urb. Del Este, casa 4" });
   comprobar("una dirección fuera de la cuadrícula se guarda, con aviso", r.destino.includes("Cliente guardado") && r.destino.includes("Ojo: queda fuera de la ruta de despacho. La dirección parece una urbanización"), r.destino);
@@ -1203,8 +1205,8 @@ async function probarCartera() {
   comprobar(
     "los teléfonos se guardan escritos igual",
     JSON.stringify(guardados) === JSON.stringify([
-      { nombre: "0414-5550101", telefono: "0414-5550101" },
-      { nombre: "0416-5550103", telefono: "0416-5550103" },
+      { nombre: "", telefono: "0414-5550101" },
+      { nombre: "", telefono: "0416-5550103" },
       { nombre: "Pizzería La Esquina", telefono: "0424-5550102" },
       { nombre: "En la avenida", telefono: "0426-5550109" },
     ]),
@@ -2338,7 +2340,8 @@ async function probarCaja() {
       ],
       ...cambios,
     });
-  const mandar = (cambios) => enviar("/admin/ventas", 'name="venta"', { venta: ventaDeCaja(cambios) });
+  // Una venta entregada va siempre con la foto de la nota firmada.
+  const mandar = (cambios, conFoto = (cambios.entrega ?? "ahora") === "ahora") => enviar("/admin/ventas", 'name="venta"', { venta: ventaDeCaja(cambios), ...(conFoto ? { foto: fotoFirmada() } : {}) });
   const idDe = (destino) => Number(destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
 
   // Lo que no se guarda, con su motivo; el carrito se conserva (vuelve con su clave).
@@ -2346,6 +2349,10 @@ async function probarCaja() {
   comprobar("si los pagos no cubren el total, no se guarda y lo dice", r.destino.startsWith("/admin/ventas?clave=") && r.destino.includes("no cubren el total"), r.destino);
   r = await mandar({ fecha: manana });
   comprobar("la fecha de la nota no puede ser de mañana", r.destino.includes("de mañana"), r.destino);
+  r = await mandar({ entrega: "" });
+  comprobar("sin decir si se entregó, no se guarda", r.destino.includes("ya la entregaste"), r.destino);
+  r = await mandar({}, false);
+  comprobar("entregada sin la foto de la nota firmada, no se guarda", r.destino.includes("adjunta la foto de la nota firmada"), r.destino);
   r = await mandar({ cliente_id: mostrador.id, modo: "credito", pagos: [] });
   comprobar("el mostrador no deja nada pendiente: hay que elegir al cliente", r.destino.includes("mostrador"), r.destino);
   r = await mandar({ lineas: [mozzarella(2, 7.7, 2), huevos] });
@@ -2371,6 +2378,7 @@ async function probarCaja() {
     JSON.stringify(pagosDeCaja),
   );
   comprobar("la venta pagada entera no cambia el saldo del cliente", cerca(await saldoDe(cliente.id), saldoInicial), `${await saldoDe(cliente.id)} vs ${saldoInicial}`);
+  comprobar("la foto de la nota firmada queda guardada con la venta", (await consultar("select count(*) as n from adjuntos where venta_id = ?", [ventaId]))[0].n == 1);
   const ticket = await pagina(r.destino);
   const textoTicket = legible(ticket.html);
   comprobar(

@@ -32,8 +32,9 @@ import {
   pagoProveedorRepetidoReciente,
 } from "./proveedores";
 import { leerDiasDeCredito, sumarDias } from "./credito";
+import { rotuloDe } from "./rotulo";
 import { explicarMotivo, leerDireccion } from "./direcciones";
-import { esSoloUnTelefono, telefonoLegible } from "./whatsapp";
+import { telefonoLegible } from "./whatsapp";
 import {
   actualizarProducto,
   buscarProducto,
@@ -449,8 +450,8 @@ function leerCliente(datos: FormData) {
   const tipo: TipoCliente = "mayor";
   const telefono = telefonoLegible(texto(datos, "telefono"));
   return {
-    // Quien se registra solo con el teléfono lleva el teléfono como nombre.
-    nombre: nombre || telefono,
+    // Sin nombre, el nombre queda vacío: las listas enseñan la razón social o, si no hay, el teléfono.
+    nombre,
     telefono,
     cedula_rif: texto(datos, "cedula_rif"),
     direccion: texto(datos, "direccion"),
@@ -485,9 +486,9 @@ function avisoDeDireccion(direccion: string, sitio: SitioDelMapa): string {
 export async function guardarCliente(datos: FormData): Promise<void> {
   await exigirSesion();
   const cliente = leerCliente(datos);
-  if (!cliente.nombre) volverConError("/admin/clientes", "Escribe al menos el teléfono o el nombre.");
+  if (!cliente.nombre && !cliente.telefono && !cliente.razon_social) volverConError("/admin/clientes", "Escribe al menos el teléfono o el nombre.");
 
-  const repetido = await buscarClientePorTelefono(cliente.telefono);
+  const repetido = cliente.telefono ? await buscarClientePorTelefono(cliente.telefono) : null;
   if (repetido) {
     volverConError(`/admin/clientes/${repetido.id}`, "Ese teléfono ya es de este cliente. No se registró otra vez.");
   }
@@ -495,9 +496,9 @@ export async function guardarCliente(datos: FormData): Promise<void> {
   const sitio = await sitioDe(cliente.direccion);
   const id = await crearCliente(cliente, sitio);
   revalidatePath("/admin", "layout");
-  const sinNombre = esSoloUnTelefono(cliente.nombre) ? " Sin nombre, por ahora." : "";
+  const sinNombre = !cliente.nombre && !cliente.razon_social ? " Sin nombre, por ahora." : "";
   redirect(
-    `/admin/clientes?ok=${encodeURIComponent(`Cliente guardado: ${cliente.nombre}.${sinNombre}${avisoDeDireccion(cliente.direccion, sitio)}`)}&nuevo=${id}`,
+    `/admin/clientes?ok=${encodeURIComponent(`Cliente guardado: ${rotuloDe(cliente)}.${sinNombre}${avisoDeDireccion(cliente.direccion, sitio)}`)}&nuevo=${id}`,
   );
 }
 
@@ -506,11 +507,11 @@ export async function editarCliente(datos: FormData): Promise<void> {
   const id = numero(datos, "id");
   if (!id) volverConError("/admin/clientes", "No se encontró el cliente.");
   const cliente = leerCliente(datos);
-  if (!cliente.nombre) volverConError(`/admin/clientes/${id}`, "Escribe al menos el teléfono o el nombre.");
+  if (!cliente.nombre && !cliente.telefono && !cliente.razon_social) volverConError(`/admin/clientes/${id}`, "Escribe al menos el teléfono o el nombre.");
 
-  const repetido = await buscarClientePorTelefono(cliente.telefono, id);
+  const repetido = cliente.telefono ? await buscarClientePorTelefono(cliente.telefono, id) : null;
   if (repetido) {
-    volverConError(`/admin/clientes/${id}`, `Ese teléfono ya es de otro cliente: ${repetido.nombre}.`);
+    volverConError(`/admin/clientes/${id}`, `Ese teléfono ya es de otro cliente: ${rotuloDe(repetido)}.`);
   }
 
   // Si la dirección no cambió, lo que dijo el mapa sigue valiendo y no se vuelve a preguntar.
@@ -578,7 +579,7 @@ export async function borrarCliente(datos: FormData): Promise<void> {
   await exigirClave(datos, `/admin/clientes/${id}/eliminar`);
 
   await eliminarCliente(id);
-  volverConExito("/admin/clientes", `Cliente ${cliente.nombre} eliminado con todo lo suyo.`);
+  volverConExito("/admin/clientes", `Cliente ${rotuloDe(cliente)} eliminado con todo lo suyo.`);
 }
 
 // ---------- Proveedores ----------
@@ -2094,6 +2095,7 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     nota: String(cruda.nota ?? "").slice(0, 300),
     modo: cruda.modo === "parte" || cruda.modo === "credito" ? cruda.modo : "ahora",
     entrega: cruda.entrega === "despacho" ? "despacho" : "ahora",
+    // (si no se eligió ninguna, se avisa más abajo, antes de guardar)
     entrega_prevista: String(cruda.entrega_prevista ?? "").slice(0, 10),
     dias_credito: cruda.dias_credito === null || cruda.dias_credito === undefined || !Number.isFinite(Number(cruda.dias_credito)) ? null : leerDiasDeCredito(Number(cruda.dias_credito)),
     confirmar: cruda.confirmar === true,
@@ -2140,6 +2142,8 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
   if (!cliente) volver("No se encontró el cliente.");
   const malaFecha = revisarFecha(venta.fecha, hoy());
   if (malaFecha) volver(malaFecha);
+  // La entrega se elige a mano: si ya se entregó, con la foto de la nota firmada; si no, con el día previsto.
+  if (cruda.entrega !== "ahora" && cruda.entrega !== "despacho") volver("Di si ya la entregaste o si queda por entregar.");
   const mostrador = esMostrador(cliente);
 
   // La nota va con la tasa del día de la nota, aunque se registre días después; sus pagos, con la misma.
@@ -2213,7 +2217,9 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     }
   } else if (fotoMala) {
     volver(fotoMala);
-  } else if (foto) {
+  } else if (!foto) {
+    volver(SIN_FOTO);
+  } else {
     lectura = await leerLaNota(foto, catalogo);
     const anotadas = venta.lineas.map((l) => ({
       clave: l.clave,
@@ -2244,7 +2250,7 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     partes.push(`Quedan ${usd(resultado.pendiente)} pendientes en la cuenta de ${cliente.nombre}: vence el ${fechaCorta(sumarDias(venta.fecha, venta.dias_credito ?? cliente.dias_credito))}.`);
   }
   if (venta.entrega === "despacho") partes.push("Queda por entregar: ya está en el despacho y en el resumen.");
-  else if (!foto) partes.push("Sin la foto de la nota firmada: si la tienes, ponla aquí mismo.");
+  else partes.push("Con la foto de la nota firmada.");
   const comentario = comentarioDeLaLectura(lectura, reparos).trim();
   if (comentario) partes.push(comentario);
   // Con algo cobrado sale el ticket de caja; si quedó pendiente, la nota de entrega.
