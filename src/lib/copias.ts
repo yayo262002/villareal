@@ -1,4 +1,5 @@
-import { createClient, type Client, type Value } from "@libsql/client";
+import { createClient, type Client, type InStatement, type ResultSet, type Value } from "@libsql/client";
+import type { DatabaseSync, StatementSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 import { ESQUEMA, TABLAS } from "./esquema.ts";
@@ -9,8 +10,10 @@ import { ESQUEMA, TABLAS } from "./esquema.ts";
  * misma copia sirve para restaurar en un servidor propio o para abrirla
  * con cualquier programa que lea SQLite.
  *
- * Se lee dentro de una transacción de lectura para que la copia sea
- * consistente aunque el panel esté escribiendo en ese momento.
+ * Las tablas de datos se leen dentro de una transacción de lectura para
+ * que la copia sea consistente aunque el panel esté escribiendo en ese
+ * momento; las de fotos, que pesan decenas de megas, van después y por
+ * tandas pequeñas (ver `copiarTabla`).
  *
  * Este módulo no lleva `server-only` porque también lo usa el script de
  * línea de comandos, fuera de Next.
@@ -22,6 +25,40 @@ const PATRON_COPIA = /^villareal-\d{4}-\d{2}-\d{2}-\d{4}\.db$/;
 
 /** Cuántas copias guarda `npm run copia` antes de borrar las más viejas. */
 export const COPIAS_A_CONSERVAR = 30;
+
+/** Las tablas que guardan fotos: pesan decenas de megas y se bajan aparte, por tandas pequeñas. */
+function esTablaDeFotos(tabla: string): boolean {
+  return tabla.startsWith("fotos_") || tabla.startsWith("adjuntos");
+}
+
+/**
+ * Copia una tabla por tandas, en el orden del rowid. Las de fotos se piden
+ * de 5 en 5 y fuera de la transacción de lectura: Turso corta una
+ * transacción cuyo flujo pasa unos segundos sin peticiones, y bajar una
+ * tanda de fotos tarda más que eso; y una respuesta de muchos megas la
+ * cerraba a medias («terminated»). Las demás, de 200 en 200.
+ */
+async function copiarTabla(origen: { execute(consulta: InStatement): Promise<ResultSet> }, salida: DatabaseSync, tabla: string): Promise<void> {
+  const tanda = esTablaDeFotos(tabla) ? 5 : 200;
+  let insertar: StatementSync | null = null;
+  salida.exec("begin");
+  try {
+    for (let desde = 0; ; desde += tanda) {
+      const resultado = await origen.execute({ sql: `select * from ${tabla} order by rowid limit ? offset ?`, args: [tanda, desde] });
+      if (resultado.rows.length === 0) break;
+      const columnas = resultado.columns;
+      insertar ??= salida.prepare(`insert into ${tabla} (${columnas.join(", ")}) values (${columnas.map(() => "?").join(", ")})`);
+      for (const fila of resultado.rows) {
+        insertar.run(...columnas.map((c) => valorParaSqlite(fila[c])));
+      }
+      if (resultado.rows.length < tanda) break;
+    }
+    salida.exec("commit");
+  } catch (error) {
+    salida.exec("rollback");
+    throw error;
+  }
+}
 
 function dosCifras(n: number): string {
   return String(n).padStart(2, "0");
@@ -60,36 +97,26 @@ export async function exportarBaseDeDatos(origen: Client, destino: string): Prom
   const parcial = `${destino}.parcial`;
   fs.rmSync(parcial, { force: true });
 
-  const lectura = await origen.transaction("read");
+  const salida = new DatabaseSync(parcial);
   try {
+    salida.exec(ESQUEMA);
     // Solo las tablas que tiene la base: una que aún no se puso al día no tiene las nuevas.
-    const existentes = new Set((await lectura.execute("select name from sqlite_master where type = 'table'")).rows.map((f) => String(f.name)));
-    const salida = new DatabaseSync(parcial);
+    const existentes = new Set((await origen.execute("select name from sqlite_master where type = 'table'")).rows.map((f) => String(f.name)));
+    const tablas = TABLAS.filter((t) => existentes.has(t));
+    // Primero las de datos, todas en una transacción de lectura: la foto es consistente. Las de fotos, después y fuera de ella.
+    const lectura = await origen.transaction("read");
     try {
-      salida.exec(ESQUEMA);
-      for (const tabla of TABLAS) {
-        if (!existentes.has(tabla)) continue;
-        const resultado = await lectura.execute(`select * from ${tabla}`);
-        if (resultado.rows.length === 0) continue;
-        const columnas = resultado.columns;
-        const insertar = salida.prepare(
-          `insert into ${tabla} (${columnas.join(", ")}) values (${columnas.map(() => "?").join(", ")})`,
-        );
-        salida.exec("begin");
-        for (const fila of resultado.rows) {
-          insertar.run(...columnas.map((c) => valorParaSqlite(fila[c])));
-        }
-        salida.exec("commit");
-      }
+      for (const tabla of tablas) if (!esTablaDeFotos(tabla)) await copiarTabla(lectura, salida, tabla);
     } finally {
-      salida.close();
+      lectura.close();
     }
+    for (const tabla of tablas) if (esTablaDeFotos(tabla)) await copiarTabla(origen, salida, tabla);
   } catch (error) {
+    salida.close();
     fs.rmSync(parcial, { force: true });
     throw error;
-  } finally {
-    lectura.close();
   }
+  salida.close();
   fs.rmSync(destino, { force: true });
   fs.renameSync(parcial, destino);
   return destino;
