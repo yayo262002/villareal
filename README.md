@@ -113,6 +113,12 @@ tiene plan gratuito. Solo hay que poner dos variables; el código no cambia.
      la primera vez y quedan en la tabla `ajustes`.
    - `ANTHROPIC_API_KEY` (opcional): para que la foto de cada nota se lea
      sola. Se crea en https://console.anthropic.com y se paga por uso.
+   - `RESEND_API_KEY` (opcional): para que «He olvidado la clave» mande el
+     enlace por correo. Se crea gratis en https://resend.com con el correo
+     del dueño (sin dominio propio, Resend solo entrega a ese correo). El
+     destino es `CORREO_DEL_DUENO` o, si no está, el correo del negocio de
+     `src/config/negocio.ts`. Sin esta clave, el enlace llega solo como
+     aviso al teléfono.
 4. Despliega. La primera visita crea las tablas y los productos iniciales
    (queso amarillo, mozzarella, pecorino y huevos) sin precio.
 
@@ -212,7 +218,10 @@ src/lib/acciones.ts       Lo que hacen los formularios del panel
 src/lib/copias.ts         Copias de seguridad de la base de datos
 scripts/copia.ts          npm run copia
 scripts/prueba-extremo.mjs  La prueba de extremo a extremo, en local o contra la web
-src/lib/sesion.ts         La clave del panel y la cookie
+src/lib/sesion.ts         La cookie de sesión, firmada con la clave del panel
+src/lib/clave.ts          La clave del panel: la de .env.local o la que el dueño puso con «He olvidado la clave»; el enlace de un solo uso
+src/lib/correo.ts         Mandar un correo al dueño (Resend): hoy, el enlace de la clave nueva
+src/app/admin/entrar/     Entrar; /olvide pide el enlace; /nueva pone la clave nueva
 src/proxy.ts              Corta el paso a /admin sin sesión
 src/app/page.tsx          La portada de la web pública (sus estilos, en inicio.module.css)
 src/app/producto/         La página de cada producto, y dentro la de cada una de sus marcas
@@ -1160,6 +1169,18 @@ Binance y otro.
   para mandársela a los clientes).
 
 ## Seguridad
+
+- **La clave del panel** nace en `.env.local` (`ADMIN_CLAVE`, y la misma
+  en Vercel). **«He olvidado la clave»**, en la entrada, manda un enlace de
+  un solo uso que vale 30 minutos: al correo del dueño si hay Resend
+  configurado (`RESEND_API_KEY`) y como aviso a los teléfonos con avisos
+  activados. Con él se pone una clave nueva, que se guarda en la base
+  (`ajustes.clave_panel`, como resumen con sal; nunca en claro) y manda
+  sobre la de `.env.local`; las sesiones abiertas caducan. Para volver a
+  la de `.env.local` se borra ese ajuste. No se manda otro enlace si se
+  pidió uno hace menos de dos minutos, y desde una dirección frenada por
+  claves malas no se manda ninguno (`src/lib/clave.ts`,
+  `src/lib/correo.ts`).
 
 - La entrada al panel frena a quien pruebe claves: con 5 fallos en 15
   minutos desde una dirección, esa dirección espera. Hay también un tope

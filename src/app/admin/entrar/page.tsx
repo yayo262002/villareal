@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { negocio } from "@/config/negocio";
 import { entrar } from "@/lib/acciones";
@@ -27,7 +28,7 @@ export default async function PaginaEntrar({
           <p>Panel del negocio</p>
         </div>
 
-        {!claveConfigurada() ? (
+        {!(await claveConfigurada()) ? (
           <p className="aviso aviso--aviso">
             Falta la clave del panel. Escribe una de al menos 8 caracteres en el archivo{" "}
             <code>.env.local</code> como <code>ADMIN_CLAVE=...</code> y reinicia el servidor.
@@ -42,6 +43,9 @@ export default async function PaginaEntrar({
             <button type="submit" className="boton">
               Entrar
             </button>
+            <p className="ayuda" style={{ margin: 0 }}>
+              <Link href="/admin/entrar/olvide">He olvidado la clave</Link>
+            </p>
           </>
         )}
       </form>

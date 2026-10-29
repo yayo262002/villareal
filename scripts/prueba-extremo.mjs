@@ -184,7 +184,7 @@ async function arrancarServidor() {
   // pero definidas no las pisa, y la prueba nunca toca la nube.
   servidor = spawn(process.execPath, [path.join(raiz, "node_modules/next/dist/bin/next"), "start", "-p", String(puerto)], {
     cwd: raiz,
-    env: { ...process.env, ...env, TURSO_DATABASE_URL: "", TURSO_AUTH_TOKEN: "", RUTA_BASE_DATOS: rutaDb, MAPA_APAGADO: "1", LECTOR_DE_NOTAS_FALSO: "1" },
+    env: { ...process.env, ...env, TURSO_DATABASE_URL: "", TURSO_AUTH_TOKEN: "", RUTA_BASE_DATOS: rutaDb, MAPA_APAGADO: "1", LECTOR_DE_NOTAS_FALSO: "1", RECUPERACION_A_LA_CONSOLA: "1" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   servidor.stdout.on("data", (d) => (salidaServidor += d));
@@ -2474,6 +2474,48 @@ async function probarCaja() {
   await enviar("/admin/codigos", 'name="clave" value="2"', { clave: "2", codigo_barras: "", sku: "", volver_a: "/admin/codigos" });
 }
 
+/**
+ * «He olvidado la clave»: el enlace de un solo uso (aquí sale por la consola
+ * del servidor), la clave nueva, que la de antes deja de valer y que las
+ * sesiones de antes caducan. Al final se vuelve a la clave de .env.local.
+ */
+async function probarRecuperacion() {
+  const olvide = await pagina("/admin/entrar/olvide", "");
+  comprobar("«He olvidado la clave» tiene su pantalla, sin sesión", olvide.status === 200 && olvide.html.includes("Mandarme el enlace"));
+  comprobar("la entrada enlaza con ella", (await pagina("/admin/entrar", "")).html.includes("/admin/entrar/olvide"));
+  const desde = salidaServidor.length;
+  let r = await enviar("/admin/entrar/olvide", 'name="pedir"', {}, "");
+  await new Promise((espera) => setTimeout(espera, 500));
+  const enlace = salidaServidor.slice(desde).match(/\[recuperacion\] (\S+)/)?.[1] ?? "";
+  comprobar("pedirlo manda el enlace (aquí, a la consola) y lo dice", r.destino.includes("Enlace enviado") && enlace.includes("/admin/entrar/nueva?clave="), r.destino + " " + enlace);
+  r = await enviar("/admin/entrar/olvide", 'name="pedir"', {}, "");
+  comprobar("pedir otro enseguida no manda dos: pide esperar", r.destino.includes("hace un momento"), r.destino);
+  const secreto = new URL(enlace).searchParams.get("clave") ?? "";
+  comprobar("un enlace inventado no vale", (await pagina("/admin/entrar/nueva?clave=nada", "")).html.includes("ya no vale"));
+  const nueva = await pagina(`/admin/entrar/nueva?clave=${secreto}`, "");
+  comprobar("el enlace abre la pantalla de la clave nueva", nueva.status === 200 && nueva.html.includes('name="otra_vez"'), String(nueva.status));
+  r = await enviar(`/admin/entrar/nueva?clave=${secreto}`, 'name="otra_vez"', { enlace: secreto, clave: "corta", otra_vez: "corta" }, "");
+  comprobar("una clave corta no se acepta", r.destino.includes("al menos 8"), r.destino);
+  r = await enviar(`/admin/entrar/nueva?clave=${secreto}`, 'name="otra_vez"', { enlace: secreto, clave: "clave-nueva-123", otra_vez: "clave-nueva-124" }, "");
+  comprobar("dos claves distintas no se aceptan", r.destino.includes("no coinciden"), r.destino);
+  r = await enviar(`/admin/entrar/nueva?clave=${secreto}`, 'name="otra_vez"', { enlace: secreto, clave: "clave-nueva-123", otra_vez: "clave-nueva-123" }, "");
+  comprobar("la clave nueva se guarda y manda a entrar", r.destino.includes("Clave cambiada"), r.destino);
+  comprobar("el enlace ya usado no vale más", (await pagina(`/admin/entrar/nueva?clave=${secreto}`, "")).html.includes("ya no vale"));
+  const vieja = await enviar("/admin/entrar", 'name="clave"', { clave: env.ADMIN_CLAVE }, "");
+  comprobar("la clave de antes ya no entra", vieja.destino.includes("no es correcta"), vieja.destino);
+  const buena = await enviar("/admin/entrar", 'name="clave"', { clave: "clave-nueva-123" }, "");
+  const galleta = buena.galleta.split(";")[0];
+  comprobar(
+    "la nueva entra, y la sesión de antes caducó",
+    buena.destino.endsWith("/admin") && (await pagina("/admin", galleta)).status === 200 && (await pagina("/admin")).status !== 200,
+    `${buena.destino} ${(await pagina("/admin")).status}`,
+  );
+  // Se vuelve a la clave de .env.local para lo que sigue (el servidor la recuerda unos segundos).
+  escribirEnLocal("delete from ajustes where clave in ('clave_panel', 'recuperacion')");
+  await new Promise((espera) => setTimeout(espera, 11000));
+  comprobar("quitado el ajuste, vuelve a valer la clave de .env.local", (await pagina("/admin")).status === 200);
+}
+
 // ---------- Principal ----------
 
 try {
@@ -2545,6 +2587,7 @@ try {
     await probarCaja();
     await probarVitrina();
     await probarTareaDiaria();
+    await probarRecuperacion();
     await probarFreno();
   }
 

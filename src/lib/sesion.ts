@@ -1,27 +1,27 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { claveEsCorrecta as compararClave, hayClaveConfigurada, secretoDeSesion } from "./clave";
 
 /**
- * El panel lo usa una sola persona (o dos), así que una clave en `.env.local`
- * basta: no hay usuarios, ni recuperación de contraseña, ni tabla de sesiones.
+ * El panel lo usa una sola persona (o dos), así que una clave basta: no
+ * hay usuarios ni tabla de sesiones. La clave nace en `.env.local` y se
+ * puede cambiar desde «He olvidado la clave» (`clave.ts`).
  *
- * La cookie no lleva la clave: lleva una firma HMAC de un texto fijo con la
- * clave como secreto. Quien lea la cookie no puede sacar la clave de ahí, y
- * si la clave cambia todas las sesiones caducan solas.
+ * La cookie no lleva la clave: lleva una firma HMAC de un texto fijo con
+ * un secreto que sale de la clave. Quien lea la cookie no puede sacar la
+ * clave de ahí, y si la clave cambia todas las sesiones caducan solas.
  */
 
 export const COOKIE_SESION = "villareal_sesion";
 const TEXTO_FIRMADO = "panel-villareal-v1";
-const LARGO_MINIMO_CLAVE = 8;
 
-export function claveConfigurada(): boolean {
-  const clave = process.env.ADMIN_CLAVE ?? "";
-  return clave.length >= LARGO_MINIMO_CLAVE;
+export async function claveConfigurada(): Promise<boolean> {
+  return hayClaveConfigurada();
 }
 
-function firma(clave: string): string {
-  return createHmac("sha256", clave).update(TEXTO_FIRMADO).digest("hex");
+function firma(secreto: string): string {
+  return createHmac("sha256", secreto).update(TEXTO_FIRMADO).digest("hex");
 }
 
 function igualesEnTiempoConstante(a: string, b: string): boolean {
@@ -30,14 +30,13 @@ function igualesEnTiempoConstante(a: string, b: string): boolean {
   return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
 }
 
-export function claveEsCorrecta(intento: string): boolean {
-  if (!claveConfigurada()) return false;
-  return igualesEnTiempoConstante(intento, process.env.ADMIN_CLAVE!);
+export async function claveEsCorrecta(intento: string): Promise<boolean> {
+  return compararClave(intento);
 }
 
 export async function iniciarSesion(): Promise<void> {
   const almacen = await cookies();
-  almacen.set(COOKIE_SESION, firma(process.env.ADMIN_CLAVE!), {
+  almacen.set(COOKIE_SESION, firma(await secretoDeSesion()), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -52,11 +51,11 @@ export async function cerrarSesion(): Promise<void> {
 }
 
 export async function haySesion(): Promise<boolean> {
-  if (!claveConfigurada()) return false;
+  if (!(await hayClaveConfigurada())) return false;
   const almacen = await cookies();
   const valor = almacen.get(COOKIE_SESION)?.value;
   if (!valor) return false;
-  return igualesEnTiempoConstante(valor, firma(process.env.ADMIN_CLAVE!));
+  return igualesEnTiempoConstante(valor, firma(await secretoDeSesion()));
 }
 
 /** Para las acciones del servidor: lanza si no hay sesión válida. */

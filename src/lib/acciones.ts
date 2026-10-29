@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { cerrarSesion, claveEsCorrecta, exigirSesion, iniciarSesion } from "./sesion";
+import { MINUTOS_QUE_VALE_EL_ENLACE, crearEnlaceDeRecuperacion, enlaceDeRecuperacionVale, gastarEnlaceDeRecuperacion, guardarClaveNueva, revisarClaveNueva } from "./clave";
+import { correoConfigurado, correoDelDueno, correoDisimulado, enviarCorreo } from "./correo";
 import {
   actualizarCliente,
   buscarCliente,
@@ -206,7 +208,7 @@ async function exigirClave(datos: FormData, volverA: string): Promise<void> {
   if (await entradaBloqueada(direccion)) {
     volverConError(volverA, `Demasiados intentos fallidos. Espera ${VENTANA_MINUTOS} minutos y vuelve a probar.`);
   }
-  if (!claveEsCorrecta(texto(datos, "clave"))) {
+  if (!(await claveEsCorrecta(texto(datos, "clave")))) {
     await anotarEntradaFallida(direccion);
     volverConError(volverA, "La clave no es correcta. No se borró nada.");
   }
@@ -428,7 +430,7 @@ export async function entrar(datos: FormData): Promise<void> {
   if (await entradaBloqueada(direccion)) {
     volverConError("/admin/entrar", `Demasiados intentos fallidos. Espera ${VENTANA_MINUTOS} minutos y vuelve a probar.`);
   }
-  if (!claveEsCorrecta(texto(datos, "clave"))) {
+  if (!(await claveEsCorrecta(texto(datos, "clave")))) {
     await anotarEntradaFallida(direccion);
     volverConError("/admin/entrar", "La clave no es correcta.");
   }
@@ -440,6 +442,73 @@ export async function entrar(datos: FormData): Promise<void> {
 export async function salir(): Promise<void> {
   await cerrarSesion();
   redirect("/admin/entrar");
+}
+
+/**
+ * «He olvidado la clave»: manda un enlace de un solo uso para poner una
+ * clave nueva, al correo del dueño (si hay correo configurado) y como aviso
+ * a los teléfonos con avisos. No pide ningún dato ni dice nada que no se
+ * sepa ya. Con los mismos frenos que la entrada: desde una dirección con
+ * demasiados fallos no se manda nada, y no se manda otro enlace si se pidió
+ * uno hace un momento.
+ */
+export async function pedirRecuperacion(): Promise<void> {
+  const direccion = await direccionDeLaPeticion();
+  if (await entradaBloqueada(direccion)) {
+    volverConError("/admin/entrar/olvide", `Demasiados intentos fallidos desde aquí. Espera ${VENTANA_MINUTOS} minutos y vuelve a probar.`);
+  }
+  const resultado = await crearEnlaceDeRecuperacion();
+  if ("espera" in resultado) {
+    volverConError("/admin/entrar/olvide", `Ya te mandé un enlace hace un momento: mira el correo (también la carpeta de spam) o el teléfono. Puedes pedir otro en ${resultado.espera} ${resultado.espera === 1 ? "minuto" : "minutos"}.`);
+  }
+  const enlace = `${negocio.web}/admin/entrar/nueva?clave=${resultado.token}`;
+  const canales: string[] = [];
+  const fallos: string[] = [];
+  if (correoConfigurado()) {
+    try {
+      await enviarCorreo({
+        asunto: `Clave nueva para el panel de ${negocio.nombre}`,
+        texto: `Alguien pidió poner una clave nueva al panel de ${negocio.nombre} (seguramente tú).\n\nAbre este enlace para ponerla; vale ${MINUTOS_QUE_VALE_EL_ENLACE} minutos y se usa una sola vez:\n${enlace}\n\nSi no fuiste tú, no hagas nada: la clave de siempre sigue valiendo.`,
+      });
+      canales.push(`al correo ${correoDisimulado(correoDelDueno())}`);
+    } catch (error) {
+      console.error("No se pudo mandar el correo de recuperación:", mensajeDe(error));
+      fallos.push("el correo no salió");
+    }
+  }
+  const envio = await empujarAviso({
+    titulo: `Clave nueva del panel de ${negocio.nombre}`,
+    cuerpo: `Toca para poner una clave nueva. Vale ${MINUTOS_QUE_VALE_EL_ENLACE} minutos.`,
+    url: enlace,
+    etiqueta: "recuperacion",
+  });
+  if (envio.enviados > 0) canales.push(envio.enviados === 1 ? "como aviso al teléfono" : `como aviso a ${envio.enviados} teléfonos`);
+  // En las pruebas locales no hay correo ni teléfono: el enlace sale por la consola del servidor.
+  if (process.env.RECUPERACION_A_LA_CONSOLA === "1") {
+    console.log(`[recuperacion] ${enlace}`);
+    canales.push("a la consola del servidor");
+  }
+  if (canales.length === 0) {
+    volverConError(
+      "/admin/entrar/olvide",
+      fallos.length > 0
+        ? "No se pudo mandar el enlace: el correo falló y ningún teléfono tiene los avisos activados. Vuelve a probar en un rato."
+        : "No hay adónde mandar el enlace: configura el correo (RESEND_API_KEY) o activa los avisos en un teléfono desde la campanita del panel.",
+    );
+  }
+  volverConExito("/admin/entrar/olvide", `Enlace enviado ${canales.join(" y ")}. Vale ${MINUTOS_QUE_VALE_EL_ENLACE} minutos y se usa una sola vez.${fallos.length ? " (El correo no salió; mira el teléfono.)" : ""}`);
+}
+
+/** La clave nueva, desde el enlace de recuperación. Al guardarla caducan todas las sesiones abiertas. */
+export async function ponerClaveNueva(datos: FormData): Promise<void> {
+  const enlace = texto(datos, "enlace");
+  if (!(await enlaceDeRecuperacionVale(enlace))) volverConError("/admin/entrar/olvide", "Ese enlace ya no vale: caducó o ya se usó. Pide otro.");
+  const motivo = revisarClaveNueva(texto(datos, "clave"), texto(datos, "otra_vez"));
+  if (motivo) volverConError(`/admin/entrar/nueva?clave=${encodeURIComponent(enlace)}`, motivo);
+  await guardarClaveNueva(texto(datos, "clave"));
+  await gastarEnlaceDeRecuperacion();
+  await cerrarSesion();
+  volverConExito("/admin/entrar", "Clave cambiada. Entra con la nueva.");
 }
 
 // ---------- Clientes ----------
