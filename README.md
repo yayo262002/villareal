@@ -22,7 +22,8 @@ Tiene dos partes:
   recordatorios de cobro y el estado de cuenta de cada cliente; el
   inventario, que entra con las compras y sale con las ventas; los pedidos
   por entregar y la ruta de
-  despacho, que los ordena desde la tienda y dice qué cargar; la foto de
+  despacho, que los ordena desde la tienda y dice qué cargar; las
+  facturas con su IVA, sus notas de crédito y el libro de ventas; la foto de
   cada nota en papel, las reseñas de cada producto, los proveedores (a
   quién se le debe y los pagos que se les hacen), los días de crédito de
   unos y otros, y un informe de cuánto se vende, de qué y a quién.
@@ -258,6 +259,9 @@ src/app/admin/(panel)/ayuda/  «Cómo se usa el panel»: la guía rápida, en el
 src/lib/pos-calculo.ts    Las cuentas de la caja: totales, descuento, cómo paga, cómo queda la cuenta del cliente y el SKU propuesto (puro, con pruebas)
 src/lib/pos.ts            La caja desde la base: el catálogo con existencias, el cliente de mostrador y el guardado de la venta con sus pagos
 src/lib/codigos.ts        Los códigos de barras y los SKU: quién tiene un código, ponerlo y quitarlo
+src/lib/factura-calculo.ts  Las cuentas de la factura: lo exento, la base imponible, el IVA, el total en Bs; el libro de ventas (puro, con pruebas)
+src/lib/facturas.ts       Las facturas y las notas de crédito desde la base: emitir, numerar, el número de control, anular, listar
+src/app/admin/(panel)/facturas/  Facturas: la lista del mes, los ajustes, cada factura (carta y ticket), anular, y el libro de ventas para Excel
 src/lib/precios-especiales.ts  El precio especial de un cliente para un artículo
 src/components/pos.tsx    Registrar venta, como una caja (con JavaScript: cliente con saldo, lector, carrito, pago, atajos)
 src/app/admin/(panel)/ventas/  Ventas: arriba la caja, debajo las últimas ventas; /clasica, el formulario de siempre, de respaldo
@@ -866,6 +870,65 @@ Binance y otro.
   unidades), devoluciones, anulación sin borrar, movimientos de inventario,
   usuarios y roles, lotes y vencimientos, filtros de reportes por cajero.
 
+## Facturación
+
+- **Qué es.** Desde la Providencia SNAT/2026/00093 (Gaceta Oficial
+  43.484, del 21/10/2026) la factura en Venezuela se emite por medios
+  digitales: ya no hace falta la máquina fiscal. La nota de entrega sigue
+  siendo el papel de la entrega y de la cuenta del cliente, y la
+  **factura** es el documento fiscal de esa venta (`/admin/facturas`).
+- **Cómo se emite.** En la caja, marcando **«Emitir factura fiscal»**
+  antes de confirmar: la venta se guarda como siempre y sale la factura
+  (en ticket si se cobró algo, en carta si quedó pendiente). O después,
+  desde la nota de entrega, con **«Facturar»**. El cliente necesita
+  **cédula o RIF** en su ficha; si le falta, el panel lleva a ponerlo. El
+  mostrador no se factura: hay que elegir al cliente. Una venta con
+  factura vigente no se factura dos veces.
+- **Lo que lleva** (artículos 8 y 9 de la providencia): «Factura», el
+  número correlativo (`facturas.numero`, seis cifras, desde el que diga
+  el ajuste «numerar desde» si ya se facturaba en papel), el **número de
+  control** cuando lo haya, la razón social, el RIF y el domicilio del
+  emisor (`src/config/negocio.ts`), la fecha y la hora, el cliente con su
+  RIF o cédula, cada línea con su cantidad, su precio y su importe (las
+  exentas marcadas «(E)»), el descuento si lo hubo, lo exento, la base
+  imponible, la alícuota, el IVA, el total y su equivalente en bolívares a
+  la tasa BCV del día de emisión, la condición (contado o crédito a tantos
+  días) y la nota de entrega de la que sale. Se imprime en carta o en la
+  impresora de 80 mm y se manda por WhatsApp (`mensajeFactura`).
+- **Los precios llevan el IVA incluido.** El precio de la lista es lo que
+  paga el cliente; la factura lo desglosa: la base es el precio entre
+  1,16 (`calcularFactura` en `src/lib/factura-calculo.ts`). Así el total
+  de la factura es el de la nota y el de la cuenta del cliente, y la caja
+  no cambia. El descuento se reparte entre las líneas en proporción. Lo
+  exento, la base y el IVA suman el total exacto, también en bolívares.
+- **IVA de cada producto** (`productos.iva`: `general` o `exento`). Se
+  marca en la ficha del producto («IVA (para la factura)»). Los huevos
+  nacen exentos, que la ley los exime; lo demás, gravado. Qué más está
+  exento (queso blanco duro, pan, harina…) lo confirma el contador. La
+  **alícuota** (16 %) y el número desde el que numerar están en Facturas →
+  Ajustes (`ajustes.iva_pct`, `ajustes.facturas_desde`; este último solo
+  mientras no haya facturas).
+- **Una factura no cambia.** Guarda una foto de todo (emisor, cliente,
+  líneas, importes) en JSON: cambiar después el precio o el nombre del
+  cliente no la toca. Tampoco se borra: se **anula con una nota de
+  crédito** por el mismo importe (`tipo = 'nota_credito'`, con su propia
+  numeración y la factura que anula en `factura_id`), y las dos quedan en
+  el libro. La venta no se toca al anular: se puede facturar otra vez (con
+  el número que sigue) o borrar. Una venta con factura vigente **no se
+  borra** hasta anularla.
+- **El número de control** lo asigna la imprenta digital autorizada por el
+  SENIAT (o el servicio del propio SENIAT): cuando llega, se anota en la
+  factura, que mientras tanto dice «pendiente» y el panel avisa de cuántas
+  faltan. Integrar la imprenta digital para que lo asigne sola es el paso
+  siguiente, cuando el dueño elija una con su contador.
+- **El libro de ventas** (Facturas → «Libro de ventas (Excel)»,
+  `/admin/facturas/libro?mes=2026-10`): una fila por factura y por nota
+  de crédito (en negativo), con el control, el RIF, lo exento, la base, la
+  alícuota, el IVA y el total en bolívares a la tasa de cada documento y
+  en dólares. Es lo que el contador necesita para declarar el IVA.
+- **Lo que no hace el sistema**: renovar el RIF (venció en 2019), elegir
+  la imprenta digital, ni declarar el IVA. Lo dice la propia pantalla.
+
 ## Proveedores
 
 - En Proveedores se registra a quien le vende al negocio (el de los quesos,
@@ -1239,8 +1302,12 @@ Binance y otro.
 - Poner `ANTHROPIC_API_KEY` en Vercel y en `.env.local` para que las
   fotos de las notas se lean solas. Sin ella, la foto se guarda sin más.
 - Un dominio propio.
-- Facturación fiscal, cuando el negocio empiece a facturar. Hoy hay notas
-  de entrega, que no son facturas.
+- Para facturar de verdad: renovar el RIF, elegir con el contador la
+  imprenta digital autorizada (y entonces integrarla para que asigne el
+  número de control sola) y confirmar con él qué productos están exentos.
+  El panel ya emite las facturas, las notas de crédito y el libro de
+  ventas; hasta tener el número de control, el papel no vale como factura
+  fiscal.
 - Las avenidas con nombre y los sitios conocidos entran en la ruta por el
   mapa libre, con la precisión que tenga ese mapa: conviene comprobar en
   la ficha dónde los puso.

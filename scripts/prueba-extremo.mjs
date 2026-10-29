@@ -2095,6 +2095,7 @@ async function probarSinEscribir() {
     ["/admin/codigos", "Códigos de barras y SKU", "Escanea aquí"],
     ["/admin/stickers", "Stickers para WhatsApp", "Cuando pagan"],
     ["/admin/proveedores", "Proveedores", "Proveedor nuevo"],
+    ["/admin/facturas", "Facturas", "Libro de ventas"],
     ["/admin/caja", "Cierre del día", "Descargar para Excel"],
     ["/admin/app", "Cómo ponerlo como app", "Añadir a pantalla de inicio"],
   ];
@@ -2117,6 +2118,8 @@ async function probarSinEscribir() {
   if (nota) comprobar("una nota de entrega", (await pagina(nota)).html.includes("No es una factura"));
   const proveedor = vistas["/admin/proveedores"].match(/href="(\/admin\/proveedores\/\d+)"/)?.[1];
   if (proveedor) comprobar("la ficha de un proveedor", (await pagina(proveedor)).html.includes("Registrar compra"));
+  const factura = vistas["/admin/facturas"].match(/href="(\/admin\/facturas\/\d+)"/)?.[1];
+  if (factura) comprobar("una factura, con su IVA desglosado", (await pagina(factura)).html.includes("Base imponible"));
   const fichaDeProducto = vistas["/admin/productos"].match(/href="(\/admin\/productos\/\d+)"/)?.[1];
   if (fichaDeProducto) comprobar("la ficha de un producto, con su formulario entero", (await pagina(fichaDeProducto)).html.includes("Datos del tipo de producto"));
   console.log(`      (con datos: ${cliente ? "cliente" : "sin clientes"}, ${nota ? "nota" : "sin notas"}, ${proveedor ? "proveedor" : "sin proveedores"})`);
@@ -2130,6 +2133,8 @@ async function probarSinEscribir() {
   comprobar("los movimientos para Excel", respuesta.status === 200 && archivo[0] === 0xef && archivo.toString("utf8").includes("Fecha;Tipo;Nota n.º;"));
   respuesta = await fetch(base + "/admin/caja/exportar?forma=dias", { headers: { cookie } });
   comprobar("el resumen por día para Excel", respuesta.status === 200 && Buffer.from(await respuesta.arrayBuffer()).toString("utf8").includes("Fecha;Notas;Vendido USD;"));
+  respuesta = await fetch(base + "/admin/facturas/libro", { headers: { cookie } });
+  comprobar("el libro de ventas del mes para Excel", respuesta.status === 200 && Buffer.from(await respuesta.arrayBuffer()).toString("utf8").includes("Fecha;Tipo;N.º;N.º de control;"));
 
   // La copia de seguridad: se baja, se abre y se cuenta lo que lleva. Es leer, no guardar.
   respuesta = await fetch(base + "/admin/copia", { headers: { cookie } });
@@ -2479,6 +2484,132 @@ async function probarCaja() {
  * del servidor), la clave nueva, que la de antes deja de valer y que las
  * sesiones de antes caducan. Al final se vuelve a la clave de .env.local.
  */
+async function probarFacturas() {
+  let p = await pagina("/admin/facturas");
+  comprobar(
+    `la pantalla de facturas, con el libro de ventas y los ajustes (${p.ms} ms)`,
+    p.status === 200 && p.html.includes("Libro de ventas") && p.html.includes('name="iva_pct"') && p.html.includes('name="facturas_desde"'),
+    String(p.status),
+  );
+  let r = await enviar("/admin/facturas", 'name="iva_pct"', { iva_pct: "16", facturas_desde: "100" });
+  comprobar("los ajustes se guardan: la alícuota y desde qué número se numera", r.destino.includes("Ajustes guardados") && (await consultar("select valor from ajustes where clave = 'facturas_desde'"))[0]?.valor === "100", r.destino);
+  comprobar("los huevos nacen exentos de IVA y la mozzarella gravada", (await consultar("select iva from productos where id = 3"))[0]?.iva === "exento" && (await consultar("select iva from productos where id = 2"))[0]?.iva === "general");
+  comprobar("la ficha del producto dice si lleva IVA", (await pagina("/admin/productos/3")).html.includes('name="iva"'));
+
+  // Un cliente con RIF, y el mostrador, que no lo tiene.
+  const [cliente] = await consultar("select id, nombre from clientes where telefono <> '' order by id limit 1");
+  escribirEnLocal("update clientes set cedula_rif = 'J-12345678-9' where id = ?", [cliente.id]);
+  const [mostrador] = await consultar("select id from clientes where nombre = 'Mostrador' and telefono = ''");
+  const hoyVet = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  const clave = `factura-${Date.now()}`;
+  const ventaDeCaja = (cambios) =>
+    JSON.stringify({
+      clave_pos: clave,
+      cliente_id: cliente.id,
+      fecha: hoyVet,
+      cajero: "",
+      descuento_usd: 0,
+      nota: "",
+      modo: "ahora",
+      entrega: "despacho",
+      entrega_prevista: hoyVet,
+      dias_credito: null,
+      confirmar: false,
+      confirmar_nota: false,
+      facturar: true,
+      lineas: [
+        { clave: "2", producto_id: 2, variante_id: null, nombre: "Mozzarella", unidad: "kg", cantidad: 2, precio_usd: 7.7, piezas: null },
+        { clave: "3", producto_id: 3, variante_id: null, nombre: "Huevos", unidad: "carton", cantidad: 1, precio_usd: 6.25, piezas: null },
+      ],
+      pagos: [{ metodo: "efectivo_usd", monto_usd: 21.65 }],
+      ...cambios,
+    });
+  const mandar = (cambios) => enviar("/admin/ventas", 'name="venta"', { venta: ventaDeCaja(cambios) });
+  const facturaDe = (destino) => Number(destino.match(/\/admin\/facturas\/(\d+)/)?.[1]);
+  const ventaDe = (destino) => Number(destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+
+  // En la caja, «Emitir factura» con el mostrador no vale; con un cliente con RIF, sale la factura con su ticket.
+  r = await mandar({ cliente_id: mostrador.id, clave_pos: clave + "-m", lineas: [{ clave: "3", producto_id: 3, variante_id: null, nombre: "Huevos", unidad: "carton", cantidad: 1, precio_usd: 6.25, piezas: null }], pagos: [{ metodo: "efectivo_usd", monto_usd: 6.25 }] });
+  comprobar("una venta de mostrador no se factura: la caja lo dice y no guarda nada", r.destino.includes("mostrador no se factura"), r.destino);
+  r = await mandar({});
+  const facturaId = facturaDe(r.destino);
+  const [factura] = facturaId ? await consultar("select * from facturas where id = ?", [facturaId]) : [null];
+  const ventaId = factura ? Number(factura.venta_id) : 0;
+  comprobar(
+    `la caja guarda la venta y emite su factura, numerada desde el 100, con el IVA desglosado (${r.ms} ms)`,
+    r.destino.includes("formato=ticket") && r.destino.includes("Factura N.º 000100 emitida") && factura?.tipo === "factura" && Number(factura?.numero) === 100 && factura?.estado === "emitida" &&
+      cerca(Number(factura.exento_usd), 6.25) && cerca(Number(factura.base_imponible_usd), 13.28) && cerca(Number(factura.iva_usd), 2.12) && cerca(Number(factura.total_usd), 21.65) && Number(factura.iva_pct) === 16 && factura.hora.length >= 4,
+    `${r.destino} ${JSON.stringify(factura)}`,
+  );
+  const lineas = factura ? JSON.parse(factura.lineas) : [];
+  const clienteGuardado = factura ? JSON.parse(factura.cliente) : {};
+  comprobar("la factura guarda una foto de la venta: las líneas con su IVA, el cliente con su RIF y el emisor", lineas.length === 2 && lineas[1].iva === "exento" && cerca(lineas[0].base_usd, 13.28) && clienteGuardado.cedula_rif === "J-12345678-9" && JSON.parse(factura?.emisor ?? "{}").rif);
+  p = await pagina(`/admin/facturas/${facturaId}?formato=ticket`);
+  let ticket = legible(p.html);
+  comprobar("el ticket de la factura (80 mm)", p.status === 200 && ticket.includes("FACTURA") && ticket.includes("N.º 000100") && ticket.includes("Base imponible") && ticket.includes("Huevos (E)"), String(p.status));
+  p = await pagina(`/admin/facturas/${facturaId}`);
+  const carta = legible(p.html);
+  comprobar(
+    "la factura en tamaño carta: número, control pendiente, cliente con RIF, (E) en lo exento, IVA y totales",
+    p.status === 200 && carta.includes("N.º 000100") && carta.includes("pendiente de la imprenta digital") && carta.includes("J-12345678-9") && carta.includes("Huevos (E)") && carta.includes("IVA 16 %") && carta.includes(usd("13,28")) && carta.includes(usd("2,12")) && carta.includes(usd("21,65")) && carta.includes("Enviar por WhatsApp"),
+    String(p.status),
+  );
+  const nota = legible((await pagina(`/admin/ventas/${ventaId}/nota`)).html);
+  comprobar("la nota de entrega enlaza su factura y ya no ofrece facturar", nota.includes("Factura N.º 000100") && !nota.includes(">Facturar<"));
+  comprobar("Ventas enseña la factura de cada venta", (await pagina("/admin/ventas")).html.includes(`/admin/facturas/${facturaId}`));
+  // Una venta de mostrador sin factura: su nota sí tiene «Facturar», y con su formulario se prueba a facturar la otra a mano.
+  r = await mandar({ cliente_id: mostrador.id, clave_pos: clave + "-m", facturar: false, lineas: [{ clave: "3", producto_id: 3, variante_id: null, nombre: "Huevos", unidad: "carton", cantidad: 1, precio_usd: 6.25, piezas: null }], pagos: [{ metodo: "efectivo_usd", monto_usd: 6.25 }] });
+  const ventaMostrador = ventaDe(r.destino);
+  comprobar("una venta de mostrador sin pedir factura se guarda como siempre y su nota ofrece «Facturar»", Boolean(ventaMostrador) && (await pagina(`/admin/ventas/${ventaMostrador}/nota`)).html.includes(">Facturar<"), r.destino);
+  r = await enviar(`/admin/ventas/${ventaMostrador}/nota`, 'name="venta_id"', { venta_id: String(ventaId), volver_a: `/admin/ventas/${ventaId}/nota`, formato: "" }, cookie, {}, ">Facturar<");
+  comprobar("una venta con factura vigente no se factura dos veces, ni mandando la acción a mano", r.destino.includes("ya tiene la factura"), `${r.status} ${r.destino}`);
+
+  // El número de control, cuando llega de la imprenta digital.
+  r = await enviar(`/admin/facturas/${facturaId}`, 'name="numero_control"', { id: String(facturaId), numero_control: "00-00000123", volver_a: `/admin/facturas/${facturaId}` });
+  comprobar("el número de control se anota en la factura", r.destino.includes("00-00000123 guardado") && (await pagina(`/admin/facturas/${facturaId}`)).html.includes("N.º de control 00-00000123"), r.destino);
+
+  // El libro de ventas del mes.
+  const respuesta = await fetch(`${base}/admin/facturas/libro?mes=${hoyVet.slice(0, 7)}`, { headers: { cookie } });
+  const libro = Buffer.from(await respuesta.arrayBuffer()).toString("utf8");
+  comprobar("el libro de ventas lleva la factura con su control, su RIF, su base y su IVA", respuesta.status === 200 && libro.includes("Fecha;Tipo;N.º;N.º de control;") && libro.includes("Factura;000100;00-00000123;") && libro.includes("J-12345678-9") && libro.includes("13,28") && libro.includes("2,12"), libro.slice(0, 300));
+
+  // Mientras tenga factura, la venta no se borra; se anula con una nota de crédito.
+  r = await enviar(`/admin/ventas/${ventaId}/eliminar`, 'name="id"', { id: String(ventaId) });
+  comprobar("una venta con factura emitida no se borra: hay que anularla antes", r.destino.includes("anúlala primero") && (await consultar("select count(*) as n from ventas where id = ?", [ventaId]))[0].n === 1, r.destino);
+  comprobar("la pantalla de anular explica y pide el motivo", (await pagina(`/admin/facturas/${facturaId}/anular`)).html.includes('name="motivo"'));
+  r = await enviar(`/admin/facturas/${facturaId}/anular`, 'name="motivo"', { id: String(facturaId), motivo: "Prueba automática" });
+  const notaCreditoId = facturaDe(r.destino);
+  const [nc] = notaCreditoId ? await consultar("select tipo, numero, factura_id, total_usd, motivo from facturas where id = ?", [notaCreditoId]) : [null];
+  comprobar(
+    "anular emite una nota de crédito por el mismo importe y deja la factura anulada",
+    r.destino.includes("anulada con la nota de crédito N.º 000001") && nc?.tipo === "nota_credito" && Number(nc.numero) === 1 && Number(nc.factura_id) === facturaId && cerca(Number(nc.total_usd), 21.65) && nc.motivo === "Prueba automática" &&
+      (await consultar("select estado from facturas where id = ?", [facturaId]))[0].estado === "anulada",
+    `${r.destino} ${JSON.stringify(nc)}`,
+  );
+  p = await pagina(`/admin/facturas/${notaCreditoId}`);
+  comprobar("la nota de crédito dice qué factura anula", p.html.includes("NOTA DE CRÉDITO") && legible(p.html).includes("Anula la factura N.º 000100"));
+  comprobar("la factura anulada lo enseña, con su sello", (await pagina(`/admin/facturas/${facturaId}`)).html.includes("ANULADA"));
+  comprobar("el libro lleva la nota de crédito en negativo", (await (await fetch(`${base}/admin/facturas/libro?mes=${hoyVet.slice(0, 7)}`, { headers: { cookie } })).text()).includes("Nota de crédito;000001;;") );
+  comprobar("la lista del mes enseña las dos", legible((await pagina("/admin/facturas")).html).includes("Nota de crédito N.º 000001"));
+
+  // Anulada, la venta se puede facturar otra vez (con el número que sigue) y, anulada esa, borrar.
+  r = await enviar(`/admin/ventas/${ventaId}/nota`, 'name="venta_id"', { venta_id: String(ventaId), volver_a: `/admin/ventas/${ventaId}/nota`, formato: "" }, cookie, {}, ">Facturar<");
+  const segunda = facturaDe(r.destino);
+  comprobar("desde la nota se vuelve a facturar, con el número que sigue", r.destino.includes("Factura N.º 000101 emitida") && Number((await consultar("select numero from facturas where id = ?", [segunda]))[0]?.numero) === 101, r.destino);
+  r = await enviar(`/admin/facturas/${segunda}/anular`, 'name="motivo"', { id: String(segunda), motivo: "" });
+  comprobar("la segunda nota de crédito sigue su propia numeración", r.destino.includes("nota de crédito N.º 000002"), r.destino);
+  comprobar("los ajustes ya no dejan cambiar desde qué número se numera", (await enviar("/admin/facturas", 'name="iva_pct"', { iva_pct: "16", facturas_desde: "5" })).destino.includes("numeración sigue sola"));
+
+  // Sin cédula ni RIF no hay factura: la nota manda a la ficha del cliente.
+  r = ventaMostrador ? await enviar(`/admin/ventas/${ventaMostrador}/nota`, 'name="venta_id"', { venta_id: String(ventaMostrador), volver_a: "", formato: "" }, cookie, {}, ">Facturar<") : { destino: "" };
+  comprobar("facturar a quien no tiene cédula ni RIF manda a su ficha a ponerlo", r.destino.startsWith(`/admin/clientes/${mostrador.id}?error=`) && r.destino.includes("cédula o el RIF"), r.destino);
+
+  // Se limpia: las ventas de prueba se borran (ya sin factura vigente) y las existencias vuelven.
+  for (const id of [ventaId, ventaMostrador]) if (id) await enviar(`/admin/ventas/${id}/eliminar`, 'name="id"', { id: String(id) });
+  comprobar("las ventas de la prueba se borran al terminar", (await consultar("select count(*) as n from ventas where id in (?, ?)", [ventaId, ventaMostrador || 0]))[0].n === 0);
+  escribirEnLocal("update clientes set cedula_rif = '' where id = ?", [cliente.id]);
+}
+
 async function probarRecuperacion() {
   const olvide = await pagina("/admin/entrar/olvide", "");
   comprobar("«He olvidado la clave» tiene su pantalla, sin sesión", olvide.status === 200 && olvide.html.includes("Mandarme el enlace"));
@@ -2585,6 +2716,7 @@ try {
     await probarCatalogo();
     await probarAvisos();
     await probarCaja();
+    await probarFacturas();
     await probarVitrina();
     await probarTareaDiaria();
     await probarRecuperacion();

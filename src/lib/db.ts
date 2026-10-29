@@ -180,6 +180,12 @@ async function migrar(cliente: Client): Promise<void> {
     await añadirColumna(cliente, "ventas", "clave_pos text");
   }
   if (!/\bdias_credito\b/.test(await definicionDe(cliente, "ventas"))) await añadirColumna(cliente, "ventas", "dias_credito integer");
+  // Facturación: si cada producto lleva IVA o está exento. Todo gravado salvo los huevos, que la ley exime; lo demás lo
+  // marca el dueño en la ficha de cada producto (una sola vez, al crear la columna: después manda lo que él ponga).
+  if (!/\biva\b/.test(await definicionDe(cliente, "productos"))) {
+    await añadirColumna(cliente, "productos", "iva text not null default 'general'");
+    await cliente.execute("update productos set iva = 'exento' where lower(nombre) like '%huevo%'");
+  }
   // Antes, quien se registraba sin nombre llevaba el teléfono como nombre; ahora el nombre queda vacío y las
   // pantallas enseñan el teléfono cuando no hay otra cosa. Una sola vez, y no hace nada si ya no queda ninguno.
   await cliente.execute("update clientes set nombre = '' where nombre <> '' and nombre = telefono");
@@ -333,8 +339,8 @@ async function sembrar(cliente: Client): Promise<void> {
     if (hay.rows.length === 0) {
       if (!nueva) continue;
       await cliente.execute({
-        sql: "insert into productos (nombre, unidad, descripcion) values (?, ?, ?)",
-        args: [p.nombre, p.unidad, p.descripcion],
+        sql: "insert into productos (nombre, unidad, descripcion, iva) values (?, ?, ?, ?)",
+        args: [p.nombre, p.unidad, p.descripcion, /huevo/i.test(p.nombre) ? "exento" : "general"],
       });
     } else if (p.descripcion && !String(hay.rows[0].descripcion ?? "")) {
       await cliente.execute({ sql: "update productos set descripcion = ? where id = ?", args: [p.descripcion, hay.rows[0].id] });

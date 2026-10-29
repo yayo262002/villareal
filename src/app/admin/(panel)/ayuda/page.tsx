@@ -56,6 +56,12 @@ export default function PaginaAyuda() {
             Sale la nota de entrega: se imprime, se guarda en PDF o se manda por WhatsApp. La foto de la nota firmada queda en la nota, en Ventas
             y en la ficha del cliente.
           </li>
+          <li>
+            Para <strong>facturar</strong>, marca «Emitir factura fiscal» en la caja antes de confirmar, o pulsa «Facturar» en la nota: sale la factura
+            con el IVA desglosado, para imprimirla (carta o ticket) o mandarla. El cliente necesita cédula o RIF en su ficha. Cuando la imprenta
+            digital mande el número de control, se anota en la factura. En <Link href="/admin/facturas">Facturas</Link> está el libro de ventas de cada
+            mes para el contador.
+          </li>
           <li>Si te equivocaste, la venta se borra desde la ficha del cliente y se anota otra vez: no hay edición, así nada se cambia a medias.</li>
         </ol>
       </section>

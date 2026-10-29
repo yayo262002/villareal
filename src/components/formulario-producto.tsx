@@ -325,6 +325,14 @@ export function FormularioProducto({ producto, categorias, familias, parametros,
           </>
         )}
       </div>
+      <div className="campo">
+        <label htmlFor={`${id}-iva`}>IVA (para la factura)</label>
+        <select id={`${id}-iva`} name="iva" defaultValue={valor("iva", producto?.iva ?? "general") || "general"}>
+          <option value="general">Gravado: lleva IVA, incluido en el precio</option>
+          <option value="exento">Exento (E): no lleva IVA</option>
+        </select>
+        <span className="ayuda">La ley exime los huevos, el queso blanco duro, el pan, la harina, el arroz…; lo demás va gravado. Confírmalo con tu contador.</span>
+      </div>
       {!conMarcas && (
         <div className="campo">
           <label htmlFor={`${id}-contenido`}>Peso o contenido</label>

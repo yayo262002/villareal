@@ -69,7 +69,7 @@ import {
 import { actualizarOferta, buscarOferta, crearOferta, eliminarOferta, esEstadoDeOferta, listarOfertas } from "./ofertas";
 import { prepararCatalogoInicial } from "./preparar-catalogo";
 import { esIcono } from "./iconos";
-import { describirFuenteDeTasa, guardarTasa, ponerAvisoTasa, ponerTasaAutomatica, quitarPreciosDeEjemplo, tasaEnFecha } from "./ajustes";
+import { describirFuenteDeTasa, guardarTasa, ponerAlicuotaIva, ponerAvisoTasa, ponerNumeracionDeFacturasDesde, ponerTasaAutomatica, quitarPreciosDeEjemplo, tasaEnFecha } from "./ajustes";
 import { actualizarTasaOficial } from "./tasa-oficial";
 import {
   VENTANA_MINUTOS,
@@ -104,6 +104,8 @@ import { anotarContacto, esTipoDeContacto, TIPOS_DE_CONTACTO } from "./contactos
 import { duenoDelCodigo, limpiarCodigo, limpiarSku, ponerCodigoAProducto, ponerCodigoAVariante } from "./codigos";
 import { guardarPrecioEspecial, listarPreciosEspecialesDe, quitarPrecioEspecial } from "./precios-especiales";
 import { catalogoDelPos, esMostrador, guardarVentaDelPos, type VentaDelPos } from "./pos";
+import { FaltaElRif, anularConNotaDeCredito, buscarFactura, contarFacturas, emitirFacturaDeVenta, facturaVigenteDeVenta, ponerNumeroDeControl } from "./facturas";
+import { esTipoIva, numeroDeFactura } from "./factura-calculo";
 import { revisarVentaPos, totalesDe } from "./pos-calculo";
 import { permitirStockNegativo, ponerPermitirStockNegativo } from "./ajustes";
 import { empujarAviso } from "./push";
@@ -944,6 +946,7 @@ const CAMPOS_DEL_PRODUCTO = [
   "contenido",
   "codigo_barras",
   "sku",
+  "iva",
   "familia_id",
   "estado",
   "destacado",
@@ -1074,10 +1077,12 @@ async function leerFormularioDeProducto(datos: FormData, actual: Producto | null
     const dueno = await duenoDelCodigo(codigoBarras);
     if (dueno && !(dueno.tipo === "producto" && dueno.id === actual?.id)) volver(`El código de barras ${codigoBarras} ya es de «${dueno.nombre}»: un código no puede estar en dos artículos.`);
   }
+  const ivaEscrito = texto(datos, "iva");
   return {
     datos: {
       nombre,
       unidad: viene("unidad") ? leerUnidad(datos) : (actual?.unidad ?? "kg"),
+      iva: viene("iva") && esTipoIva(ivaEscrito) ? ivaEscrito : (actual?.iva ?? "general"),
       codigo_barras: codigoBarras,
       sku: viene("sku") ? limpiarSku(texto(datos, "sku")) : (actual?.sku ?? ""),
       descripcion: viene("descripcion") ? texto(datos, "descripcion") : (actual?.descripcion ?? ""),
@@ -1697,6 +1702,11 @@ export async function borrarVenta(datos: FormData): Promise<void> {
   const id = numero(datos, "id");
   const venta = id ? await buscarVenta(id) : null;
   if (!id || !venta) volverConError("/admin/ventas", "No se encontró la venta.");
+  // Una factura emitida es un documento fiscal: la venta no se borra mientras la tenga vigente.
+  const factura = await facturaVigenteDeVenta(id);
+  if (factura) {
+    volverConError(`/admin/ventas/${id}/nota`, `Esta venta tiene la factura N.º ${numeroDeFactura(factura.numero)} emitida: anúlala primero desde la factura (sale una nota de crédito) y después borra la venta.`);
+  }
 
   // Los pagos que se cobraron con ella en la caja se van con ella: si no, el cliente quedaría con dinero a favor de una venta que no existe.
   const pagosDeLaCaja = await pagosDeVenta(id);
@@ -2169,6 +2179,7 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     dias_credito: cruda.dias_credito === null || cruda.dias_credito === undefined || !Number.isFinite(Number(cruda.dias_credito)) ? null : leerDiasDeCredito(Number(cruda.dias_credito)),
     confirmar: cruda.confirmar === true,
     confirmar_nota: cruda.confirmar_nota === true,
+    facturar: cruda.facturar === true,
     lineas: (Array.isArray(cruda.lineas) ? cruda.lineas : []).map((l) => ({
       clave: String(l.clave ?? ""),
       producto_id: Number(l.producto_id) || 0,
@@ -2303,6 +2314,11 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     if (reparos.length > 0 && !venta.confirmar_nota) volver(avisoDeLaNota(reparos, "confirma otra vez"), "confirmar_nota");
   }
 
+  // Si se pidió factura, antes de guardar se mira que se pueda: el cliente tiene que tener cédula o RIF.
+  if (venta.facturar) {
+    if (mostrador) volver("Una venta de mostrador no se factura: elige al cliente (con su cédula o RIF) o quita «Emitir factura».");
+    if (!cliente.cedula_rif.trim()) volver(`Para facturar hace falta la cédula o el RIF de ${rotuloDe(cliente)}: ponlo en su ficha, o quita «Emitir factura».`);
+  }
   let resultado: Awaited<ReturnType<typeof guardarVentaDelPos>> | null = null;
   try {
     resultado = await guardarVentaDelPos(venta, tasa?.valor ?? null);
@@ -2322,6 +2338,20 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
   else partes.push("Con la foto de la nota firmada.");
   const comentario = comentarioDeLaLectura(lectura, reparos).trim();
   if (comentario) partes.push(comentario);
+  // Si se pidió factura, se emite ya y se va a ella; si no se pudo, la venta queda igual y se factura desde la nota.
+  let facturada: Awaited<ReturnType<typeof emitirFacturaDeVenta>> | null = null;
+  if (venta.facturar) {
+    try {
+      facturada = await emitirFacturaDeVenta(resultado.ventaId);
+    } catch (error) {
+      partes.push(`La factura no se emitió: ${mensajeDe(error)} Puedes facturarla desde la nota.`);
+    }
+  }
+  if (facturada) {
+    partes.push(`Factura N.º ${numeroDeFactura(facturada.numero)} emitida.`);
+    if (facturada.aviso) partes.push(facturada.aviso);
+    volverConExito(`/admin/facturas/${facturada.id}?${resultado.pagado > 0 ? "formato=ticket&" : ""}${vendida}`, partes.join(" "));
+  }
   // Con algo cobrado sale el ticket de caja; si quedó pendiente, la nota de entrega.
   volverConExito(`/admin/ventas/${resultado.ventaId}/nota?${resultado.pagado > 0 ? "formato=ticket&" : ""}${vendida}`, partes.join(" "));
 }
@@ -2386,4 +2416,80 @@ export async function ponerStockNegativo(datos: FormData): Promise<void> {
   const permitir = texto(datos, "permitir") === "1";
   await ponerPermitirStockNegativo(permitir);
   volverConExito("/admin/inventario", permitir ? "La caja puede vender aunque el inventario diga que no hay." : "La caja ya no vende más de lo que hay en inventario.");
+}
+
+// ---------- Facturas ----------
+
+/** Dónde volver tras una acción de factura: lo que diga el formulario si es del panel; si no, la factura. */
+function vueltaDeFactura(datos: FormData, porDefecto: string): string {
+  const pedida = texto(datos, "volver_a");
+  return pedida.startsWith("/admin") ? pedida : porDefecto;
+}
+
+/**
+ * Emite la factura de una venta (desde su nota de entrega). Si al cliente
+ * le falta la cédula o el RIF, se va a su ficha con el aviso, para ponerlo
+ * y volver.
+ */
+export async function emitirFactura(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const ventaId = numero(datos, "venta_id");
+  const volverA = vueltaDeFactura(datos, ventaId ? `/admin/ventas/${ventaId}/nota` : "/admin/ventas");
+  if (!ventaId) volverConError(volverA, "No se encontró la venta.");
+  let factura: Awaited<ReturnType<typeof emitirFacturaDeVenta>>;
+  try {
+    factura = await emitirFacturaDeVenta(ventaId);
+  } catch (error) {
+    if (error instanceof FaltaElRif) volverConError(`/admin/clientes/${error.clienteId}`, error.message);
+    volverConError(volverA, mensajeDe(error));
+  }
+  const formato = texto(datos, "formato") === "ticket" ? "?formato=ticket" : "";
+  volverConExito(`/admin/facturas/${factura.id}${formato}`, `Factura N.º ${numeroDeFactura(factura.numero)} emitida.${factura.aviso ? ` ${factura.aviso}` : ""}`);
+}
+
+/** El número de control que asignó la imprenta digital; vacío lo quita. */
+export async function ponerControlDeFactura(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const factura = id ? await buscarFactura(id) : null;
+  if (!id || !factura) volverConError("/admin/facturas", "No se encontró la factura.");
+  const volverA = vueltaDeFactura(datos, `/admin/facturas/${id}`);
+  const control = texto(datos, "numero_control").replace(/\s+/g, " ").slice(0, 40);
+  await ponerNumeroDeControl(id, control);
+  volverConExito(volverA, control ? `Número de control ${control} guardado.` : "Número de control quitado.");
+}
+
+/** Anula una factura con una nota de crédito; la confirmación está en /admin/facturas/[id]/anular. */
+export async function anularFactura(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const factura = id ? await buscarFactura(id) : null;
+  if (!id || !factura || factura.tipo !== "factura") volverConError("/admin/facturas", "No se encontró la factura.");
+  if (factura.estado === "anulada") volverConError(`/admin/facturas/${id}`, "Esa factura ya estaba anulada.");
+  let notaDeCreditoId: number;
+  try {
+    notaDeCreditoId = await anularConNotaDeCredito(id, texto(datos, "motivo").slice(0, 200));
+  } catch (error) {
+    volverConError(`/admin/facturas/${id}/anular`, mensajeDe(error));
+  }
+  const notaDeCredito = await buscarFactura(notaDeCreditoId);
+  volverConExito(
+    `/admin/facturas/${notaDeCreditoId}`,
+    `Factura N.º ${numeroDeFactura(factura.numero)} anulada con la nota de crédito N.º ${numeroDeFactura(notaDeCredito?.numero ?? 0)}. La venta sigue registrada.`,
+  );
+}
+
+/** La alícuota del IVA y, mientras no haya facturas, desde qué número se numeran. */
+export async function guardarAjustesDeFacturacion(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const pct = numero(datos, "iva_pct");
+  if (pct === null || pct < 0 || pct > 100) volverConError("/admin/facturas", "La alícuota del IVA es un porcentaje entre 0 y 100.");
+  await ponerAlicuotaIva(Math.round(pct * 100) / 100);
+  const desde = numero(datos, "facturas_desde");
+  if (desde !== null) {
+    if (!Number.isInteger(desde) || desde < 1) volverConError("/admin/facturas", "El número desde el que numerar tiene que ser un entero de 1 en adelante.");
+    if ((await contarFacturas()) > 0) volverConError("/admin/facturas", "Ya hay facturas emitidas: la numeración sigue sola y no se cambia.");
+    await ponerNumeracionDeFacturasDesde(desde);
+  }
+  volverConExito("/admin/facturas", "Ajustes guardados.");
 }

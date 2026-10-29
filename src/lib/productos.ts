@@ -1,6 +1,7 @@
 import "server-only";
 import { ejecutar, fila, filas, transaccion } from "./db";
 import { precioDeVenta, type Unidad } from "./dinero";
+import type { TipoIva } from "./factura-calculo";
 import { normalizarFotoDeProducto } from "./foto-producto";
 import type { EstadoProducto } from "./catalogo";
 import { limpiarTexto } from "./marcas-texto";
@@ -48,6 +49,8 @@ export type Producto = {
   /** El código de barras que lee el lector y el SKU, cuando el tipo se vende de una sola forma. Vacíos si no tiene. */
   codigo_barras: string;
   sku: string;
+  /** Si lleva IVA o está exento: lo que la factura marca con «(E)». */
+  iva: TipoIva;
   creado_en: string;
   /** Cuándo se puso la foto principal, o null si no tiene (entonces va la de referencia). */
   foto_version: string | null;
@@ -70,6 +73,8 @@ export type DatosProducto = PreciosProducto & {
   seccion: string;
   codigo_barras: string;
   sku: string;
+  /** Si lleva IVA o está exento: lo que la factura marca con «(E)». */
+  iva: TipoIva;
 };
 
 const CONSULTA = `
@@ -105,6 +110,7 @@ function completar(p: Producto): Producto {
     seccion: p.seccion ?? "",
     codigo_barras: p.codigo_barras ?? "",
     sku: p.sku ?? "",
+    iva: p.iva === "exento" ? "exento" : "general",
     creado_en: p.creado_en,
     foto_version: p.foto_version ?? null,
   };
@@ -137,8 +143,8 @@ export async function crearProducto(datos: DatosProducto, estado: EstadoProducto
   const { activo, borrador } = columnasDeEstado(estado);
   const r = await ejecutar(
     `insert into productos (nombre, unidad, costo_usd, margen_pct, precio_usd, descripcion, familia_id, marca, presentacion, contenido,
-                            precio_detal_usd, destacado, en_oferta, activo, borrador, marca_id, seccion, codigo_barras, sku)
-     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            precio_detal_usd, destacado, en_oferta, activo, borrador, marca_id, seccion, codigo_barras, sku, iva)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       datos.nombre,
       datos.unidad,
@@ -159,6 +165,7 @@ export async function crearProducto(datos: DatosProducto, estado: EstadoProducto
       limpiarTexto(datos.seccion),
       datos.codigo_barras,
       datos.sku,
+      datos.iva,
     ],
   );
   return r.ultimoId;
@@ -169,7 +176,7 @@ export async function actualizarProducto(id: number, datos: DatosProducto): Prom
     `update productos
      set nombre = ?, unidad = ?, costo_usd = ?, margen_pct = ?, precio_usd = ?, descripcion = ?, familia_id = ?, marca = ?,
          presentacion = ?, contenido = ?, precio_detal_usd = ?, destacado = ?, en_oferta = ?, marca_id = ?, seccion = ?,
-         codigo_barras = ?, sku = ?
+         codigo_barras = ?, sku = ?, iva = ?
      where id = ?`,
     [
       datos.nombre,
@@ -189,6 +196,7 @@ export async function actualizarProducto(id: number, datos: DatosProducto): Prom
       limpiarTexto(datos.seccion),
       datos.codigo_barras,
       datos.sku,
+      datos.iva,
       id,
     ],
   );

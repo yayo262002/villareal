@@ -105,6 +105,8 @@ export type VentaDelPos = {
   /** Las casillas de «lo escrito es correcto» y «ya revisé la foto de la nota». */
   confirmar: boolean;
   confirmar_nota: boolean;
+  /** Si al guardar se emite la factura fiscal (el cliente necesita cédula o RIF). */
+  facturar: boolean;
   lineas: LineaDelPos[];
   pagos: PagoDelPos[];
 };

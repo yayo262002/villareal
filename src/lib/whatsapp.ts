@@ -172,6 +172,45 @@ export function mensajeNota(datos: {
   return lineas.join("\n");
 }
 
+/**
+ * La factura por WhatsApp: el número, el de control si ya lo tiene, lo
+ * facturado con su IVA y el total en dólares y en bolívares a la tasa con
+ * que se emitió. Los importes de cada línea van sin IVA, como en el papel.
+ */
+export function mensajeFactura(datos: {
+  negocio: string;
+  rif: string;
+  cliente: string;
+  cliente_rif: string;
+  numero: string;
+  numero_control: string;
+  fecha: string;
+  hora: string;
+  lineas: { descripcion: string; cantidad: number; unidad: string; base_usd: number; iva: "general" | "exento" }[];
+  exento_usd: number;
+  base_imponible_usd: number;
+  iva_pct: number;
+  iva_usd: number;
+  total_usd: number;
+  tasa?: number | null;
+  /** La nota de entrega de la que sale, «000012». */
+  nota?: string;
+  anulada?: boolean;
+}): string {
+  const lineas = [`${datos.negocio} · RIF ${datos.rif}`, `Factura N.º ${datos.numero}${datos.anulada ? " (ANULADA)" : ""} · ${fechaCorta(datos.fecha)}${datos.hora ? ` ${datos.hora}` : ""}`];
+  lineas.push(datos.numero_control ? `N.º de control: ${datos.numero_control}` : "N.º de control: pendiente");
+  lineas.push(`Cliente: ${datos.cliente} · ${datos.cliente_rif}`, "");
+  for (const l of datos.lineas) {
+    lineas.push(`${formatearCantidad(l.cantidad)} ${nombreUnidad(l.unidad)} ${l.descripcion}${l.iva === "exento" ? " (E)" : ""} = ${usd(l.base_usd)}`);
+  }
+  lineas.push("");
+  if (datos.exento_usd > 0) lineas.push(`Exento (E): ${usd(datos.exento_usd)}`);
+  lineas.push(`Base imponible: ${usd(datos.base_imponible_usd)}`, `IVA ${formatearCantidad(datos.iva_pct)} %: ${usd(datos.iva_usd)}`, `Total: ${dolaresYBolivares(datos.total_usd, datos.tasa)}`);
+  if (datos.tasa) lineas.push(`Tasa BCV: ${bs(datos.tasa)} por dólar`);
+  if (datos.nota) lineas.push(`Corresponde a la nota de entrega N.º ${datos.nota}.`);
+  return lineas.join("\n");
+}
+
 /** El recibo de un abono: lo que se recibió y cómo queda la cuenta hoy. */
 export function mensajeAbono(datos: {
   negocio: string;

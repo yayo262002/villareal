@@ -2,6 +2,8 @@ import Link from "next/link";
 import { listarClientes } from "@/lib/clientes";
 import { conLineas, listarVentas } from "@/lib/ventas";
 import { adjuntosDeVentas } from "@/lib/adjuntos";
+import { facturasDeVentas } from "@/lib/facturas";
+import { numeroDeFactura } from "@/lib/factura-calculo";
 import { leerTasa, permitirStockNegativo } from "@/lib/ajustes";
 import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { ventaCoincide } from "@/lib/buscar";
@@ -45,7 +47,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
     ).then(conLineas),
   ]);
   // La foto de la nota firmada de cada venta, para enlazarla desde su fila.
-  const fotos = await adjuntosDeVentas(ventas.map((v) => v.id));
+  const [fotos, facturas] = await Promise.all([adjuntosDeVentas(ventas.map((v) => v.id)), facturasDeVentas(ventas.map((v) => v.id))]);
 
   const paraLaCaja: ArticuloParaLaCaja[] = catalogo.map((a) => ({
     clave: a.clave,
@@ -63,7 +65,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
     estado: a.estado,
     pesoTipico: a.pesoTipico?.peso ?? null,
   }));
-  const paraElegir = (c: (typeof clientes)[number]): ClienteParaLaCaja => ({ id: c.id, rotulo: c.rotulo, nombre: c.nombre, telefono: c.telefono, saldo_usd: c.saldo_usd, dias_credito: c.dias_credito });
+  const paraElegir = (c: (typeof clientes)[number]): ClienteParaLaCaja => ({ id: c.id, rotulo: c.rotulo, nombre: c.nombre, telefono: c.telefono, cedula_rif: c.cedula_rif, saldo_usd: c.saldo_usd, dias_credito: c.dias_credito });
   const listaDeClientes = [paraElegir(mostrador), ...clientes.filter((c) => c.id !== mostrador.id).map(paraElegir)];
   // Las ventas recientes ya guardadas desde la caja: un carrito con una de esas claves ya se vendió.
   const clavesVendidas = [...ventas.map((v) => v.clave_pos), texto("vendida")].filter((c): c is string => Boolean(c));
@@ -132,11 +134,13 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
                   <th>Productos</th>
                   <th className="numero">Total</th>
                   <th>Entrega</th>
+                  <th>Factura</th>
                 </tr>
               </thead>
               <tbody>
                 {ventas.map((v) => {
                   const foto = fotos.get(v.id)?.[0];
+                  const factura = facturas.get(v.id);
                   return (
                     <tr key={v.id}>
                       <td data-label="Nota">
@@ -168,6 +172,15 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
                               </>
                             )}
                           </>
+                        )}
+                      </td>
+                      <td data-label="Factura" data-vacio={factura ? undefined : ""}>
+                        {factura ? (
+                          <Link href={`/admin/facturas/${factura.id}`} className={`${estilos.estado} ${factura.estado === "anulada" ? estilos["estado--por_pagar"] : estilos["estado--pagada"]}`}>
+                            {factura.estado === "anulada" ? `N.º ${numeroDeFactura(factura.numero)} anulada` : `N.º ${numeroDeFactura(factura.numero)}`}
+                          </Link>
+                        ) : (
+                          "—"
                         )}
                       </td>
                     </tr>

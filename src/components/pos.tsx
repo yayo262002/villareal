@@ -56,6 +56,8 @@ export type ClienteParaLaCaja = {
   rotulo: string;
   nombre: string;
   telefono: string;
+  /** La cédula o el RIF, que hace falta para facturar. */
+  cedula_rif: string;
   /** Lo comprado menos lo abonado: positivo, debe; negativo, a favor. La misma cifra que en Clientes. */
   saldo_usd: number;
   /** Los días de crédito que tiene en su ficha (7 si no se dijo otra cosa). */
@@ -154,6 +156,7 @@ type Guardado = {
   entrega: Entrega;
   entregaPrevista: string;
   diasCredito: string;
+  facturar: boolean;
 };
 
 export function Pos({
@@ -199,6 +202,8 @@ export function Pos({
   const [entregaPrevista, setEntregaPrevista] = useState("");
   // Los días de crédito de esta nota: vacío, los del cliente.
   const [diasCredito, setDiasCredito] = useState("");
+  // Si al guardar se emite la factura fiscal.
+  const [facturar, setFacturar] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
   const [confirmarNota, setConfirmarNota] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -229,6 +234,7 @@ export function Pos({
           setEntrega(guardado.entrega ?? "");
           setEntregaPrevista(guardado.entregaPrevista ?? "");
           setDiasCredito(guardado.diasCredito ?? "");
+          setFacturar(guardado.facturar === true);
         } else {
           setClave(nuevaClave());
           if (yaVendido) localStorage.removeItem(GUARDADO);
@@ -256,14 +262,14 @@ export function Pos({
     try {
       if (lineas.length === 0) localStorage.removeItem(GUARDADO);
       else {
-        const guardado: Guardado = { clave, clienteId, lineas, descuento, nota, fecha, modo, entrega, entregaPrevista, diasCredito };
+        const guardado: Guardado = { clave, clienteId, lineas, descuento, nota, fecha, modo, entrega, entregaPrevista, diasCredito, facturar };
         localStorage.setItem(GUARDADO, JSON.stringify(guardado));
       }
       localStorage.setItem(CAJERO, cajero);
     } catch {
       // Sin sitio para guardar no pasa nada.
     }
-  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito]);
+  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito, facturar]);
 
   const porClave = useMemo(() => new Map(catalogo.map((a) => [a.clave, a])), [catalogo]);
   const precioDe = useCallback(
@@ -424,6 +430,10 @@ export function Pos({
     else if (entrega === "ahora" && !fotoEnEspera && !((document.getElementById("pos-foto") as HTMLInputElement | null)?.files?.length ?? 0)) {
       motivos.push("Ya entregada: adjunta la foto de la nota firmada (abajo, en «Entrega»).");
     }
+    if (facturar) {
+      if (esMostrador) motivos.push("Una venta de mostrador no se factura: elige al cliente (con su cédula o RIF) o quita «Emitir factura».");
+      else if (clienteElegido && !clienteElegido.cedula_rif.trim()) motivos.push(`Para facturar hace falta la cédula o el RIF de ${clienteElegido.rotulo}: ponlo en su ficha, o quita «Emitir factura».`);
+    }
     if (motivos.length > 0) {
       avisar(motivos[0], true);
       resumen.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -478,6 +488,7 @@ export function Pos({
     dias_credito: diasCredito.trim() === "" ? null : Number(diasCredito),
     confirmar,
     confirmar_nota: confirmarNota,
+    facturar,
     lineas: lineas.map((l) => ({
       clave: l.clave,
       producto_id: l.producto_id,
@@ -1079,6 +1090,19 @@ export function Pos({
             </div>
           )}
 
+          <label className={panel.casilla} style={{ margin: 0 }}>
+            <input type="checkbox" checked={facturar} onChange={(e) => setFacturar(e.target.checked)} disabled={esMostrador} />
+            <span>
+              Emitir factura fiscal
+              {esMostrador ? (
+                <span className="ayuda"> (elige al cliente)</span>
+              ) : clienteElegido && !clienteElegido.cedula_rif.trim() ? (
+                <span className="ayuda"> (le falta la cédula o el RIF en su ficha)</span>
+              ) : clienteElegido ? (
+                <span className="ayuda"> ({clienteElegido.cedula_rif})</span>
+              ) : null}
+            </span>
+          </label>
           {error && (
             <p className="aviso aviso--error" role="alert" style={{ margin: 0 }}>
               {error}
@@ -1163,6 +1187,12 @@ export function Pos({
                   {soloEfectivo && cambio > 0 ? ` · cambio ${usd(cambio)}` : ""}
                 </dd>
               </div>
+              {facturar && (
+                <div>
+                  <dt>Factura</dt>
+                  <dd>Se emite al confirmar{clienteElegido?.cedula_rif ? ` · ${clienteElegido.cedula_rif}` : ""}</dd>
+                </div>
+              )}
               {!esMostrador && (
                 <div>
                   <dt>Su cuenta</dt>

@@ -24,6 +24,7 @@ const SECCIONES = [
   { ruta: "/admin", nombre: "Resumen" },
   { ruta: "/admin/clientes", nombre: "Clientes" },
   { ruta: "/admin/ventas", nombre: "Ventas" },
+  { ruta: "/admin/facturas", nombre: "Facturas" },
   { ruta: "/admin/pagos", nombre: "Abonos" },
   { ruta: "/admin/despacho", nombre: "Despacho" },
   { ruta: "/admin/cuentas", nombre: "Te deben" },

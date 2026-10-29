@@ -2,6 +2,7 @@ import "server-only";
 import { ejecutar, fila, filas } from "./db";
 import { fechaCorta, hoy } from "./dinero";
 import { esFinDeSemana, lunesDespuesDe } from "./tasa";
+import { IVA_GENERAL_POR_DEFECTO } from "./factura-calculo";
 
 /**
  * Ajustes sueltos del negocio, guardados como clave y valor. La tasa del
@@ -180,4 +181,28 @@ export async function permitirStockNegativo(): Promise<boolean> {
 
 export async function ponerPermitirStockNegativo(permitir: boolean): Promise<void> {
   await guardar("permitir_stock_negativo", permitir ? "1" : "0");
+}
+
+/** La alícuota general del IVA (16 % si el dueño no puso otra). */
+export async function alicuotaIva(): Promise<number> {
+  const valor = Number((await leer("iva_pct")).get("iva_pct")?.valor);
+  return Number.isFinite(valor) && valor >= 0 && valor <= 100 ? valor : IVA_GENERAL_POR_DEFECTO;
+}
+
+export async function ponerAlicuotaIva(pct: number): Promise<void> {
+  await guardar("iva_pct", String(pct));
+}
+
+/**
+ * Desde qué número se numeran las facturas: si el negocio ya emitió
+ * facturas antes de este sistema (en papel), la primera de aquí sigue la
+ * cuenta. Vale 1 si no se dijo nada.
+ */
+export async function numeracionDeFacturasDesde(): Promise<number> {
+  const valor = Number((await leer("facturas_desde")).get("facturas_desde")?.valor);
+  return Number.isInteger(valor) && valor >= 1 ? valor : 1;
+}
+
+export async function ponerNumeracionDeFacturasDesde(numero: number): Promise<void> {
+  await guardar("facturas_desde", String(numero));
 }

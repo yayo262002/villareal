@@ -109,7 +109,9 @@ export const ESQUEMA = `
     seccion text not null default '',
     -- El código de barras que lee el lector (único en todo el catálogo) y el SKU, cuando el tipo se vende de una sola forma.
     codigo_barras text not null default '',
-    sku text not null default ''
+    sku text not null default '',
+    -- Si lleva IVA o está exento (los huevos, el queso blanco duro…): lo que la factura marca con «(E)».
+    iva text not null default 'general' check (iva in ('general', 'exento'))
   );
 
   -- Las marcas: Guaralact, Kemmental, El Legado… Una marca puede vender
@@ -474,6 +476,45 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- Las facturas y las notas de crédito. Cada una es una foto de la venta
+  -- en el momento de emitirla: el emisor, el cliente y las líneas van
+  -- guardados en JSON, porque una factura emitida no cambia aunque después
+  -- cambie el nombre del cliente o el precio del producto. El número es
+  -- correlativo por tipo y no se repite; el número de control lo da la
+  -- imprenta digital autorizada y se anota cuando llega.
+  create table if not exists facturas (
+    id integer primary key autoincrement,
+    tipo text not null default 'factura' check (tipo in ('factura', 'nota_credito')),
+    numero integer not null,
+    venta_id integer references ventas(id) on delete set null,
+    -- La factura que anula, si es una nota de crédito.
+    factura_id integer references facturas(id) on delete set null,
+    cliente_id integer references clientes(id) on delete set null,
+    fecha text not null,
+    hora text not null default '',
+    emisor text not null,
+    cliente text not null,
+    lineas text not null,
+    subtotal_usd real not null default 0,
+    descuento_usd real not null default 0,
+    exento_usd real not null default 0,
+    base_imponible_usd real not null default 0,
+    iva_pct real not null default 16,
+    iva_usd real not null default 0,
+    total_usd real not null default 0,
+    tasa real,
+    total_bs real,
+    numero_control text not null default '',
+    control_puesto_en text,
+    estado text not null default 'emitida' check (estado in ('emitida', 'anulada')),
+    anulada_en text,
+    motivo text not null default '',
+    creado_en text not null default (datetime('now'))
+  );
+  create unique index if not exists facturas_numero on facturas(tipo, numero);
+  create index if not exists facturas_venta on facturas(venta_id);
+  create index if not exists facturas_fecha on facturas(fecha);
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (
@@ -529,6 +570,7 @@ export const TABLAS = [
   "avisos",
   "contactos",
   "precios_especiales",
+  "facturas",
 ] as const;
 
 /**

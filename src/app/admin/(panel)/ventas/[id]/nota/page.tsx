@@ -6,7 +6,9 @@ import { buscarVenta, listarVentasDeCliente } from "@/lib/ventas";
 import { leerTasa } from "@/lib/ajustes";
 import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { sumarDias } from "@/lib/credito";
-import { cambiarEntrega, subirAdjunto } from "@/lib/acciones";
+import { cambiarEntrega, emitirFactura, subirAdjunto } from "@/lib/acciones";
+import { facturaVigenteDeVenta } from "@/lib/facturas";
+import { numeroDeFactura } from "@/lib/factura-calculo";
 import { adjuntosDeVenta } from "@/lib/adjuntos";
 import { pagosDeVenta } from "@/lib/pagos";
 import { numeroDeNota, piezasDe } from "@/lib/entregas";
@@ -48,7 +50,13 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
   const pideConfirmarNota = parametros.confirmar_nota === "1";
   const volverA = typeof parametros.volver_a === "string" && parametros.volver_a.startsWith("/admin") ? parametros.volver_a : `/admin/ventas/${venta.id}/nota`;
 
-  const [ventas, tasaDeHoy, fotos, pagosDeLaVenta] = await Promise.all([listarVentasDeCliente(cliente.id), leerTasa(), adjuntosDeVenta(venta.id), pagosDeVenta(venta.id)]);
+  const [ventas, tasaDeHoy, fotos, pagosDeLaVenta, factura] = await Promise.all([
+    listarVentasDeCliente(cliente.id),
+    leerTasa(),
+    adjuntosDeVenta(venta.id),
+    pagosDeVenta(venta.id),
+    facturaVigenteDeVenta(venta.id),
+  ]);
   // El ticket: el comprobante corto de la caja, para impresora térmica (80 mm) o normal.
   const formatoTicket = parametros.formato === "ticket";
   const claveVendida = typeof parametros.vendida === "string" ? parametros.vendida : typeof parametros.pos === "string" ? parametros.pos : "";
@@ -73,6 +81,22 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
     }),
   );
 
+  // La factura de esta venta, o el botón para emitirla (a la ficha del cliente si le falta el RIF).
+  const botonFactura = factura ? (
+    <Link href={`/admin/facturas/${factura.id}${formatoTicket ? "?formato=ticket" : ""}`} className="boton boton--secundario">
+      Factura N.º {numeroDeFactura(factura.numero)}
+    </Link>
+  ) : (
+    <form action={emitirFactura} style={{ display: "contents" }}>
+      <input type="hidden" name="venta_id" value={venta.id} />
+      <input type="hidden" name="volver_a" value={`/admin/ventas/${venta.id}/nota${formatoTicket ? "?formato=ticket" : ""}`} />
+      <input type="hidden" name="formato" value={formatoTicket ? "ticket" : ""} />
+      <button type="submit" className="boton boton--secundario" title="Emite la factura fiscal de esta venta, con su IVA">
+        Facturar
+      </button>
+    </form>
+  );
+
   if (formatoTicket) {
     const subtotal = venta.lineas.reduce((s, l) => s + Number(l.subtotal_usd), 0);
     return (
@@ -95,6 +119,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
             <Link href={`/admin/ventas/${venta.id}/nota`} className="boton boton--secundario">
               Ver la nota completa
             </Link>
+            {botonFactura}
           </div>
         </div>
         <article className={estilos.ticket}>
@@ -215,6 +240,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
           <Link href={`/admin/ventas/${venta.id}/nota?formato=ticket`} className="boton boton--secundario">
             Ticket de caja
           </Link>
+          {botonFactura}
         </div>
 
         {/* La entrega: si va al despacho, si ya se llevó, y el botón para cambiarlo. */}
@@ -367,7 +393,7 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
           <span>Recibido conforme</span>
         </div>
         <p className={estilos.notaPie}>
-          Nota de entrega. No es una factura. Los abonos se aplican a las notas más antiguas primero.
+          Nota de entrega. No es una factura{factura ? ` (su factura es la N.º ${numeroDeFactura(factura.numero)})` : ""}. Los abonos se aplican a las notas más antiguas primero.
         </p>
       </article>
     </>

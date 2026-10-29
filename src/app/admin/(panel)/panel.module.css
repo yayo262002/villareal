@@ -1557,3 +1557,24 @@
     padding: 0;
   }
 }
+
+/* ---------- Factura ---------- */
+
+/* «ANULADA» cruzado sobre el papel, como un sello. */
+.facturaSello {
+  margin: 0;
+  padding: var(--espacio-2) var(--espacio-4);
+  border: 3px solid var(--color-error);
+  border-radius: var(--radio);
+  color: var(--color-error);
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-align: center;
+  transform: rotate(-4deg);
+  justify-self: center;
+}
+/* La fila del número de control: la casilla, el botón y la explicación debajo. */
+.facturaControl {
+  align-items: flex-end;
+}
