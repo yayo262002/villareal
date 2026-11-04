@@ -11,10 +11,11 @@
   html, body { margin: 0; background: #fff; color: #000; }
   body { padding: 8mm 10mm; font: 500 10.5pt/1.35 "Archivo", Arial, sans-serif; width: 190mm; }
   h1 { font: 400 17pt/1.1 "Archivo Black", Arial Black, sans-serif; margin: 0 0 2mm; }
-  .intro { margin: 0 0 7mm; max-width: 175mm; }
+  h2.grupo { font: 400 13pt/1.2 "Archivo Black", Arial Black, sans-serif; margin: 8mm 0 3mm; }
+  .intro { margin: 0 0 6mm; max-width: 175mm; }
   .intro p { margin: 0 0 1.5mm; }
-  .modelo { margin: 0 0 9mm; break-inside: avoid; }
-  .modelo h2 { font: 400 11pt/1.2 "Archivo Black", Arial Black, sans-serif; margin: 0 0 1mm; }
+  .modelo { margin: 0 0 8mm; break-inside: avoid; }
+  .modelo h3 { font: 400 11pt/1.2 "Archivo Black", Arial Black, sans-serif; margin: 0 0 1mm; }
   .modelo .para { margin: 0 0 2.5mm; font-size: 9.5pt; color: #222; }
   /* El arte del sello: negro sobre blanco, con su marco. Todo en milímetros, al tamaño real del sello. */
   .sello {
@@ -40,15 +41,47 @@
 </head>
 <body>
 
-<h1>Sellos de tinta · Comercializadora Villa Real 08, C.A.</h1>
+<h1>Sello de tinta · Comercializadora Villa Real 08, C.A.</h1>
 <div class="intro">
-  <p>Cinco modelos, cada uno al tamaño real y en negro sobre blanco, que es como lo pide la sellería. Debajo de cada uno va la medida y el sello automático que le corresponde (Trodat / Shiny), por si se quiere de ese tipo; también sirven para un sello de goma con mango de madera, a la misma medida.</p>
-  <p>Datos: razón social <strong>Comercializadora Villa Real 08, C.A.</strong> · RIF <strong>J-40806430-8</strong> · Calle 38 entre carreras 30 y 31, local s/n, sector Centro, Barquisimeto, estado Lara · 0424-6343236.</p>
+  <p>El sello del negocio: el león, la razón social y el RIF. Está en dos medidas, al tamaño real y en negro sobre blanco, que es como lo pide la sellería; se elige una. Debajo va el sello automático Trodat de esa medida (o el equivalente de otra marca); también sirve para un sello de goma con mango, a la misma medida.</p>
+  <p>Datos: razón social <strong>Comercializadora Villa Real 08, C.A.</strong> · RIF <strong>J-40806430-8</strong>.</p>
 </div>
 
 <div class="modelo">
-  <h2>1. Sello de empresa (pequeño)</h2>
-  <p class="para">58 × 22 mm · automático Trodat 4913 / Shiny S-843. El que se pone en notas, recibos y papeles del día.</p>
+  <h3>Sello de empresa con el león · mediano</h3>
+  <p class="para">60 × 33 mm · automático Trodat 4928. El de los papeles importantes: se lee bien de lejos.</p>
+  <div class="sello" data-archivo="sello-empresa-leon-60x33" style="width: 60mm; height: 33mm; padding: 1.5mm 2.2mm;">
+    <div class="conLeon">
+      <img class="leon" src="../public/marca/leon.svg" alt="" style="width: 14.5mm; height: 20.9mm;">
+      <div class="textoLeon">
+        <div class="empresa" style="font-size: 3.35mm;">Comercializadora</div>
+        <div class="empresa" style="font-size: 3.35mm;">Villa Real 08, C.A.</div>
+        <div class="rif" style="font-size: 3.3mm; margin-top: 1.6mm;">RIF J-40806430-8</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modelo">
+  <h3>Sello de empresa con el león · pequeño</h3>
+  <p class="para">58 × 22 mm · automático Trodat 4913. El mismo, más chico, para notas y recibos.</p>
+  <div class="sello" data-archivo="sello-empresa-leon-58x22" style="width: 58mm; height: 22mm; padding: 1.2mm 2mm;">
+    <div class="conLeon" style="gap: 2mm;">
+      <img class="leon" src="../public/marca/leon.svg" alt="" style="width: 11.5mm; height: 16.5mm;">
+      <div class="textoLeon">
+        <div class="empresa" style="font-size: 3.3mm;">Comercializadora</div>
+        <div class="empresa" style="font-size: 3.3mm;">Villa Real 08, C.A.</div>
+        <div class="rif" style="font-size: 3.2mm; margin-top: 1mm;">RIF J-40806430-8</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="grupo">Otros modelos, por si después hacen falta</h2>
+
+<div class="modelo">
+  <h3>Sello de empresa pequeño, sin león</h3>
+  <p class="para">58 × 22 mm · automático Trodat 4913.</p>
   <div class="sello" data-archivo="sello-1-empresa-58x22" style="width: 58mm; height: 22mm;">
     <div class="empresa" style="font-size: 3.5mm;">Comercializadora</div>
     <div class="empresa" style="font-size: 3.5mm;">Villa Real 08, C.A.</div>
@@ -58,8 +91,8 @@
 </div>
 
 <div class="modelo">
-  <h2>2. Sello de empresa con el león y la dirección</h2>
-  <p class="para">60 × 40 mm · automático Trodat 4927 / Shiny S-830. Con el domicilio fiscal completo, para facturas y documentos.</p>
+  <h3>Sello de empresa con el león, la dirección y el teléfono</h3>
+  <p class="para">60 × 40 mm · automático Trodat 4927. Con el domicilio fiscal completo, para facturas y documentos.</p>
   <div class="sello" data-archivo="sello-2-empresa-leon-60x40" style="width: 60mm; height: 40mm; padding: 1.5mm 2.2mm;">
     <div class="conLeon">
       <img class="leon" src="../public/marca/leon.svg" alt="" style="width: 14.5mm; height: 20.9mm;">
@@ -77,8 +110,8 @@
 </div>
 
 <div class="modelo">
-  <h2>3. RECIBIDO, con fecha y firma</h2>
-  <p class="para">60 × 40 mm · automático Trodat 4927 / Shiny S-830. Para sellar la nota o la factura del proveedor cuando llega la mercancía.</p>
+  <h3>RECIBIDO, con fecha y firma</h3>
+  <p class="para">60 × 40 mm · automático Trodat 4927. Para sellar la nota o la factura del proveedor cuando llega la mercancía.</p>
   <div class="sello" data-archivo="sello-3-recibido-60x40" style="width: 60mm; height: 40mm; padding: 1.5mm 2.5mm;">
     <div class="titulo" style="font-size: 8mm;">Recibido</div>
     <div class="regla"></div>
@@ -93,8 +126,8 @@
 </div>
 
 <div class="modelo">
-  <h2>4. MERCANCÍA RECIBIDA, con hora, número de nota y quién recibe</h2>
-  <p class="para">75 × 38 mm · automático Trodat 4926 / Shiny S-828. El más completo para el almacén: deja anotado cuándo llegó, con qué nota y quién la recibió.</p>
+  <h3>MERCANCÍA RECIBIDA, con hora, número de nota y quién recibe</h3>
+  <p class="para">75 × 38 mm · automático Trodat 4926.</p>
   <div class="sello" data-archivo="sello-4-mercancia-recibida-75x38" style="width: 75mm; height: 38mm; padding: 1.5mm 2.8mm;">
     <div class="titulo" style="font-size: 4.9mm;">Mercancía recibida</div>
     <div class="regla"></div>
@@ -109,8 +142,8 @@
 </div>
 
 <div class="modelo">
-  <h2>5. PAGADO</h2>
-  <p class="para">47 × 18 mm · automático Trodat 4912 / Shiny S-842. Para la nota del cliente que ya pagó.</p>
+  <h3>PAGADO</h3>
+  <p class="para">47 × 18 mm · automático Trodat 4912. Para la nota del cliente que ya pagó.</p>
   <div class="sello" data-archivo="sello-5-pagado-47x18" style="width: 47mm; height: 18mm; padding: 1mm 2mm;">
     <div class="titulo" style="font-size: 5mm;">Pagado</div>
     <div class="empresa" style="font-size: 2.15mm; margin-top: 0.6mm;">Comercializadora</div>
