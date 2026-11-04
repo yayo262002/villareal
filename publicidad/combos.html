@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Cartel de combos · Villa Real</title>
+<style>
+  /* Las fuentes del proyecto (OFL) y el león, por ruta relativa: se abre desde esta carpeta. */
+  @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
+  @font-face { font-family: "Archivo"; src: url("../src/assets/fuentes/Archivo-Medium.ttf"); font-weight: 500; }
+
+  /* El cartel mide 60 × 90 cm (lona o papel); todo va en milímetros, al tamaño real. */
+  @page { size: 600mm 900mm; margin: 0; }
+  :root {
+    --verde: #0f2d1c;
+    --verde-claro: #1c4a30;
+    --oro: #e3a91f;
+    --crema: #f6efd9;
+    --crema-oscura: #e6dcbd;
+    --tinta: #10261a;
+    --tinta-suave: #4f6457;
+  }
+  html, body { margin: 0; background: #888; }
+  body { font-family: "Archivo", Arial, sans-serif; }
+  .cartel {
+    position: relative; box-sizing: border-box; width: 600mm; height: 900mm; overflow: hidden;
+    background: var(--verde); color: var(--crema);
+    padding: 26mm 30mm 24mm;
+    display: grid; grid-template-rows: auto 1fr auto; gap: 16mm;
+  }
+  /* Un marco dorado fino, como el de un letrero. */
+  .cartel::before {
+    content: ""; position: absolute; inset: 12mm; border: 1.6mm solid var(--oro); border-radius: 10mm; pointer-events: none; opacity: 0.9;
+  }
+  .cabecera { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 22mm; padding: 6mm 8mm 0; }
+  .cabecera img { width: 92mm; height: 132mm; display: block; }
+  .marca { display: grid; gap: 4mm; }
+  .marca .charcuteria { font-family: "Archivo Black"; font-size: 15mm; letter-spacing: 0.14em; text-transform: uppercase; color: var(--oro); line-height: 1; }
+  .marca .nombre { font-family: "Archivo Black"; font-size: 44mm; line-height: 0.95; color: var(--crema); letter-spacing: -0.01em; }
+  .marca .combos { font-family: "Archivo Black"; font-size: 64mm; line-height: 0.9; color: var(--oro); letter-spacing: 0.02em; margin-top: 4mm; }
+  .marca .lema { font-size: 11mm; color: var(--crema-oscura); margin-top: 3mm; }
+
+  .lista { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 12mm; }
+  .combo {
+    background: var(--crema); color: var(--tinta); border-radius: 8mm;
+    display: grid; grid-template-columns: 34mm 1fr; column-gap: 9mm; align-items: center;
+    padding: 11mm 12mm 11mm 11mm;
+  }
+  .combo .numero {
+    width: 34mm; height: 34mm; border-radius: 50%; background: var(--oro); color: var(--tinta);
+    display: grid; place-items: center; font-family: "Archivo Black"; font-size: 19mm; line-height: 1; align-self: start;
+  }
+  .combo .numero small { font-size: 5.6mm; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: -2mm; }
+  .combo .que { display: grid; gap: 2mm; min-width: 0; }
+  .combo .producto { font-family: "Archivo Black"; font-size: 14.5mm; line-height: 1.02; text-transform: uppercase; }
+  .combo .mas { color: var(--oro); font-family: "Archivo Black"; font-size: 11mm; line-height: 1; margin: 0.5mm 0; }
+  .combo .detalle { font-size: 8mm; color: var(--tinta-suave); margin-top: 2mm; }
+  .combo .precio { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: flex-end; gap: 3mm; margin-top: 4mm; border-top: 0.8mm solid var(--crema-oscura); padding-top: 4mm; }
+  .combo .precio .bs { font-family: "Archivo Black"; font-size: 11mm; color: var(--tinta-suave); }
+  .combo .precio .monto { font-family: "Archivo Black"; font-size: 26mm; line-height: 1; color: var(--verde); font-variant-numeric: tabular-nums; }
+
+  .pie { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10mm; padding: 0 8mm 4mm; }
+  .pie .donde { font-size: 10.5mm; line-height: 1.35; color: var(--crema); }
+  .pie .donde strong { font-family: "Archivo Black"; color: var(--oro); }
+  .pie .pagos { font-size: 9mm; color: var(--crema-oscura); margin-top: 2mm; }
+  .pie .aviso { font-size: 7.5mm; color: var(--crema-oscura); text-align: right; max-width: 190mm; line-height: 1.3; }
+</style>
+</head>
+<body>
+
+<div class="cartel" data-archivo="combos-60x90">
+  <header class="cabecera">
+    <img src="../public/marca/leon.svg" alt="">
+    <div class="marca">
+      <div class="charcuteria">Charcutería</div>
+      <div class="nombre">Villa Real</div>
+      <div class="combos">Combos</div>
+      <div class="lema">Bandejas listas para la arepa, el sándwich y la pizza</div>
+    </div>
+  </header>
+
+  <section class="lista">
+    <article class="combo">
+      <div class="numero"><small>Combo</small>1</div>
+      <div class="que">
+        <div class="producto">Jamón de espalda</div>
+        <div class="mas">+</div>
+        <div class="producto">Queso amarillo</div>
+        <div class="detalle">Bandeja de 400 g</div>
+      </div>
+      <div class="precio"><span class="bs">Bs</span><span class="monto">3.020</span></div>
+    </article>
+
+    <article class="combo">
+      <div class="numero"><small>Combo</small>2</div>
+      <div class="que">
+        <div class="producto">Jamón arepero</div>
+        <div class="mas">+</div>
+        <div class="producto">Mozzarella</div>
+        <div class="detalle">Bandeja de 400 g</div>
+      </div>
+      <div class="precio"><span class="bs">Bs</span><span class="monto">3.390</span></div>
+    </article>
+
+    <article class="combo">
+      <div class="numero"><small>Combo</small>3</div>
+      <div class="que">
+        <div class="producto">Mortadela de pollo</div>
+        <div class="mas">+</div>
+        <div class="producto">Queso amarillo</div>
+        <div class="detalle">Bandeja de 400 g</div>
+      </div>
+      <div class="precio"><span class="bs">Bs</span><span class="monto">2.750</span></div>
+    </article>
+
+    <article class="combo">
+      <div class="numero"><small>Combo</small>4</div>
+      <div class="que">
+        <div class="producto">Queso amarillo</div>
+        <div class="mas">+</div>
+        <div class="producto">Jamón arepero</div>
+        <div class="detalle">Bandeja de 400 g</div>
+      </div>
+      <div class="precio"><span class="bs">Bs</span><span class="monto">3.550</span></div>
+    </article>
+
+    <article class="combo">
+      <div class="numero"><small>Combo</small>6</div>
+      <div class="que">
+        <div class="producto">Boloña de pollo</div>
+        <div class="mas">+</div>
+        <div class="producto">Suero San Pedro</div>
+        <div class="detalle">200 g de boloña y 1 bolsa de suero</div>
+      </div>
+      <div class="precio"><span class="bs">Bs</span><span class="monto">1.870</span></div>
+    </article>
+
+    <article class="combo">
+      <div class="numero"><small>Combo</small>7</div>
+      <div class="que">
+        <div class="producto">Pechuga de pavo</div>
+        <div class="mas">+</div>
+        <div class="producto">Mozzarella</div>
+        <div class="detalle">Bandeja de 400 g</div>
+      </div>
+      <div class="precio"><span class="bs">Bs</span><span class="monto">2.930</span></div>
+    </article>
+
+    <article class="combo">
+      <div class="numero"><small>Combo</small>8</div>
+      <div class="que">
+        <div class="producto">Mortadela de pollo</div>
+        <div class="mas">+</div>
+        <div class="producto">6 huevos</div>
+        <div class="detalle">200 g de mortadela y media docena de huevos</div>
+      </div>
+      <div class="precio"><span class="bs">Bs</span><span class="monto">1.980</span></div>
+    </article>
+
+    <article class="combo">
+      <div class="numero"><small>Combo</small>9</div>
+      <div class="que">
+        <div class="producto">Jamón ahumado</div>
+        <div class="mas">+</div>
+        <div class="producto">Mozzarella</div>
+        <div class="detalle">Bandeja de 400 g</div>
+      </div>
+      <div class="precio"><span class="bs">Bs</span><span class="monto">2.880</span></div>
+    </article>
+  </section>
+
+  <footer class="pie">
+    <div>
+      <div class="donde"><strong>Calle 38 entre carreras 30 y 31</strong>, sector Centro · Barquisimeto<br>WhatsApp <strong>0424-6343236</strong></div>
+      <div class="pagos">Pago móvil · Efectivo · Zelle · Al mayor y al detal</div>
+    </div>
+    <div class="aviso">Precios en bolívares. Pueden cambiar con la tasa del BCV; pregunta por el precio del día.</div>
+  </footer>
+</div>
+
+</body>
+</html>
