@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Modelos de sellos de tinta · Comercializadora Villa Real 08, C.A.</title>
+<style>
+  /* Las fuentes del proyecto (OFL) y el león, por ruta relativa: se abre desde esta carpeta. */
+  @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
+  @font-face { font-family: "Archivo"; src: url("../src/assets/fuentes/Archivo-Medium.ttf"); font-weight: 500; }
+  @page { size: A4; margin: 14mm; }
+  html, body { margin: 0; background: #fff; color: #000; }
+  body { padding: 8mm 10mm; font: 500 10.5pt/1.35 "Archivo", Arial, sans-serif; width: 190mm; }
+  h1 { font: 400 17pt/1.1 "Archivo Black", Arial Black, sans-serif; margin: 0 0 2mm; }
+  .intro { margin: 0 0 7mm; max-width: 175mm; }
+  .intro p { margin: 0 0 1.5mm; }
+  .modelo { margin: 0 0 9mm; break-inside: avoid; }
+  .modelo h2 { font: 400 11pt/1.2 "Archivo Black", Arial Black, sans-serif; margin: 0 0 1mm; }
+  .modelo .para { margin: 0 0 2.5mm; font-size: 9.5pt; color: #222; }
+  /* El arte del sello: negro sobre blanco, con su marco. Todo en milímetros, al tamaño real del sello. */
+  .sello {
+    box-sizing: border-box; border: 0.55mm solid #000; background: #fff; color: #000;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    text-align: center; padding: 1.2mm 2mm; overflow: hidden; line-height: 1.12;
+  }
+  .sello .empresa { font-family: "Archivo Black", Arial Black, sans-serif; text-transform: uppercase; line-height: 1.05; white-space: nowrap; }
+  .sello .rif { font-family: "Archivo Black", Arial Black, sans-serif; letter-spacing: 0.02em; white-space: nowrap; }
+  .sello .titulo { font-family: "Archivo Black", Arial Black, sans-serif; letter-spacing: 0.05em; line-height: 1; text-transform: uppercase; }
+  .sello .linea { line-height: 1.15; }
+  .sello .campos { width: 100%; display: flex; flex-direction: column; align-items: stretch; }
+  .sello .campo { display: flex; align-items: baseline; gap: 1.2mm; white-space: nowrap; text-align: left; }
+  .sello .campo .raya { flex: 1 1 auto; border-bottom: 0.3mm solid #000; height: 0.8em; }
+  .sello .campo .fija { border-bottom: 0.3mm solid #000; height: 0.8em; display: inline-block; }
+  .sello .regla { width: 100%; border-top: 0.3mm solid #000; margin: 0.8mm 0; }
+  .sello .conLeon { display: flex; align-items: center; gap: 2.2mm; width: 100%; height: 100%; }
+  /* El león del logo, en negro: el sello es de un solo color. */
+  .sello .leon { flex: none; filter: brightness(0); }
+  .sello .textoLeon { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; }
+  .pie { margin-top: 4mm; font-size: 9pt; color: #333; }
+</style>
+</head>
+<body>
+
+<h1>Sellos de tinta · Comercializadora Villa Real 08, C.A.</h1>
+<div class="intro">
+  <p>Cinco modelos, cada uno al tamaño real y en negro sobre blanco, que es como lo pide la sellería. Debajo de cada uno va la medida y el sello automático que le corresponde (Trodat / Shiny), por si se quiere de ese tipo; también sirven para un sello de goma con mango de madera, a la misma medida.</p>
+  <p>Datos: razón social <strong>Comercializadora Villa Real 08, C.A.</strong> · RIF <strong>J-40806430-8</strong> · Calle 38 entre carreras 30 y 31, local s/n, sector Centro, Barquisimeto, estado Lara · 0424-6343236.</p>
+</div>
+
+<div class="modelo">
+  <h2>1. Sello de empresa (pequeño)</h2>
+  <p class="para">58 × 22 mm · automático Trodat 4913 / Shiny S-843. El que se pone en notas, recibos y papeles del día.</p>
+  <div class="sello" data-archivo="sello-1-empresa-58x22" style="width: 58mm; height: 22mm;">
+    <div class="empresa" style="font-size: 3.5mm;">Comercializadora</div>
+    <div class="empresa" style="font-size: 3.5mm;">Villa Real 08, C.A.</div>
+    <div class="rif" style="font-size: 3.1mm; margin-top: 0.7mm;">RIF J-40806430-8</div>
+    <div class="linea" style="font-size: 2.25mm; margin-top: 0.6mm;">Barquisimeto, estado Lara · 0424-6343236</div>
+  </div>
+</div>
+
+<div class="modelo">
+  <h2>2. Sello de empresa con el león y la dirección</h2>
+  <p class="para">60 × 40 mm · automático Trodat 4927 / Shiny S-830. Con el domicilio fiscal completo, para facturas y documentos.</p>
+  <div class="sello" data-archivo="sello-2-empresa-leon-60x40" style="width: 60mm; height: 40mm; padding: 1.5mm 2.2mm;">
+    <div class="conLeon">
+      <img class="leon" src="../public/marca/leon.svg" alt="" style="width: 14.5mm; height: 20.9mm;">
+      <div class="textoLeon">
+        <div class="empresa" style="font-size: 3.15mm;">Comercializadora</div>
+        <div class="empresa" style="font-size: 3.15mm;">Villa Real 08, C.A.</div>
+        <div class="rif" style="font-size: 3.1mm; margin-top: 1mm;">RIF J-40806430-8</div>
+        <div class="linea" style="font-size: 2.35mm; margin-top: 1.1mm;">Calle 38 entre carreras 30 y 31,</div>
+        <div class="linea" style="font-size: 2.35mm;">local s/n, sector Centro</div>
+        <div class="linea" style="font-size: 2.35mm;">Barquisimeto, estado Lara</div>
+        <div class="linea" style="font-size: 2.6mm; margin-top: 0.8mm;">Tel. 0424-6343236</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modelo">
+  <h2>3. RECIBIDO, con fecha y firma</h2>
+  <p class="para">60 × 40 mm · automático Trodat 4927 / Shiny S-830. Para sellar la nota o la factura del proveedor cuando llega la mercancía.</p>
+  <div class="sello" data-archivo="sello-3-recibido-60x40" style="width: 60mm; height: 40mm; padding: 1.5mm 2.5mm;">
+    <div class="titulo" style="font-size: 8mm;">Recibido</div>
+    <div class="regla"></div>
+    <div class="empresa" style="font-size: 3mm;">Comercializadora</div>
+    <div class="empresa" style="font-size: 3mm;">Villa Real 08, C.A.</div>
+    <div class="rif" style="font-size: 3mm; margin-top: 0.5mm;">RIF J-40806430-8</div>
+    <div class="campos" style="font-size: 3.1mm; margin-top: 2.2mm; gap: 2mm;">
+      <div class="campo"><span>Fecha:</span><span class="fija" style="width: 7mm;"></span><span>/</span><span class="fija" style="width: 7mm;"></span><span>/</span><span class="fija" style="width: 11mm;"></span></div>
+      <div class="campo"><span>Firma:</span><span class="raya"></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="modelo">
+  <h2>4. MERCANCÍA RECIBIDA, con hora, número de nota y quién recibe</h2>
+  <p class="para">75 × 38 mm · automático Trodat 4926 / Shiny S-828. El más completo para el almacén: deja anotado cuándo llegó, con qué nota y quién la recibió.</p>
+  <div class="sello" data-archivo="sello-4-mercancia-recibida-75x38" style="width: 75mm; height: 38mm; padding: 1.5mm 2.8mm;">
+    <div class="titulo" style="font-size: 4.9mm;">Mercancía recibida</div>
+    <div class="regla"></div>
+    <div class="empresa" style="font-size: 2.7mm;">Comercializadora Villa Real 08, C.A.</div>
+    <div class="rif" style="font-size: 2.8mm; margin-top: 0.3mm;">RIF J-40806430-8</div>
+    <div class="campos" style="font-size: 2.95mm; margin-top: 1.9mm; gap: 2mm;">
+      <div class="campo"><span>Fecha:</span><span class="fija" style="width: 7mm;"></span><span>/</span><span class="fija" style="width: 7mm;"></span><span>/</span><span class="fija" style="width: 10mm;"></span><span style="margin-left: 3mm;">Hora:</span><span class="fija" style="width: 7mm;"></span><span>:</span><span class="fija" style="width: 7mm;"></span></div>
+      <div class="campo"><span>Nota / factura N.º:</span><span class="raya"></span></div>
+      <div class="campo"><span>Recibido por:</span><span class="raya"></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="modelo">
+  <h2>5. PAGADO</h2>
+  <p class="para">47 × 18 mm · automático Trodat 4912 / Shiny S-842. Para la nota del cliente que ya pagó.</p>
+  <div class="sello" data-archivo="sello-5-pagado-47x18" style="width: 47mm; height: 18mm; padding: 1mm 2mm;">
+    <div class="titulo" style="font-size: 5mm;">Pagado</div>
+    <div class="empresa" style="font-size: 2.15mm; margin-top: 0.6mm;">Comercializadora</div>
+    <div class="empresa" style="font-size: 2.15mm;">Villa Real 08, C.A.</div>
+    <div class="rif" style="font-size: 2.2mm; margin-top: 0.2mm;">RIF J-40806430-8</div>
+    <div class="campos" style="font-size: 2.3mm; margin-top: 0.6mm;">
+      <div class="campo" style="justify-content: center;"><span>Fecha:</span><span class="fija" style="width: 6mm;"></span><span>/</span><span class="fija" style="width: 6mm;"></span><span>/</span><span class="fija" style="width: 9mm;"></span></div>
+    </div>
+  </div>
+</div>
+
+<p class="pie">Cada modelo está también como imagen aparte (PNG a 600 ppp, negro sobre blanco), que es lo que la sellería graba. Las medidas son las del área de impresión; si la sellería trabaja con otra medida parecida, el arte se escala sin problema. Tinta negra o azul, como se prefiera.</p>
+
+</body>
+</html>

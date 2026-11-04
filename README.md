@@ -270,6 +270,7 @@ src/lib/stickers.ts       La lista de stickers de WhatsApp (texto, forma, color,
 scripts/stickers.ts       Los dibuja con Chrome en public/stickers/ (PNG y WebP, 512 × 512, y un ZIP)
 src/app/admin/(panel)/stickers/  La pantalla para guardarlos en el teléfono
 src/app/admin/            El panel (productos/nuevo y productos/[id], marcas, familias, ofertas…)
+sellos/                   Los modelos de los sellos de tinta (empresa, RECIBIDO, MERCANCÍA RECIBIDA, PAGADO): sellos.html los dibuja y generar.mjs saca los PNG a 600 ppp y el PDF para la sellería
 datos/                    La base de datos (fuera de Git)
 ```
 
