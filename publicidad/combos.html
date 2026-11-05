@@ -106,90 +106,6 @@
 </head>
 <body>
 
-<!-- Cada foto lleva en --cm lo que mide el producto de alto en la vida real: el cartel los dibuja a la misma escala. -->
-<template id="tarjetas">
-  <article class="combo">
-    <div class="numero"><small>Combo</small>1</div>
-    <div class="fotos"><img src="fotos/jamon-de-espalda.png" style="--cm: 28" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 26" alt=""></div>
-    <div class="pie">
-      <div class="que"><div class="producto">Jamón de espalda</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
-      <div class="precio"><span class="bs">Bs</span></div>
-    </div>
-  </article>
-
-  <article class="combo">
-    <div class="numero"><small>Combo</small>2</div>
-    <div class="fotos"><img src="fotos/jamon-arepero.png" style="--cm: 32" alt=""><img src="fotos/mozzarella.png" style="--cm: 27" alt=""></div>
-    <div class="pie">
-      <div class="que"><div class="producto">Jamón arepero</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
-      <div class="precio"><span class="bs">Bs</span></div>
-    </div>
-  </article>
-
-  <article class="combo combo--separado">
-    <div class="numero"><small>Combo</small>3</div>
-    <div class="fotos"><img src="fotos/jamon-arepero.png" style="--cm: 32" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 26" alt=""></div>
-    <div class="pie">
-      <div class="que"><div class="producto">Jamón arepero</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
-      <div class="precio"><span class="bs">Bs</span></div>
-    </div>
-  </article>
-
-  <article class="combo">
-    <div class="numero"><small>Combo</small>4</div>
-    <div class="fotos"><img src="fotos/jamon-ahumado.png" style="--cm: 28" alt=""><img src="fotos/mozzarella.png" style="--cm: 27" alt=""></div>
-    <div class="pie">
-      <div class="que"><div class="producto">Jamón ahumado</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
-      <div class="precio"><span class="bs">Bs</span></div>
-    </div>
-  </article>
-
-  <article class="combo">
-    <div class="numero"><small>Combo</small>5</div>
-    <div class="fotos"><img src="fotos/jamon-de-pierna.png" style="--cm: 30" alt=""><img src="fotos/queso-amarillo-vallecito.png" style="--cm: 32" alt=""></div>
-    <div class="pie">
-      <div class="que"><div class="producto">Jamón de pierna</div><div class="producto">Queso amarillo</div><div class="detalle">200 g de jamón de pierna y queso amarillo</div></div>
-      <div class="precio"><span class="bs">Bs</span></div>
-    </div>
-  </article>
-
-  <article class="combo">
-    <div class="numero"><small>Combo</small>6</div>
-    <div class="fotos"><img src="fotos/bolona-de-pollo.png" style="--cm: 30" alt=""><img src="fotos/suero-san-pedro.png" style="--cm: 18" alt=""></div>
-    <div class="pie">
-      <div class="que"><div class="producto">Boloña de pollo</div><div class="producto">Suero San Pedro</div><div class="detalle">200 g de boloña y 1 bolsa de suero</div></div>
-      <div class="precio"><span class="bs">Bs</span></div>
-    </div>
-  </article>
-
-  <article class="combo">
-    <div class="numero"><small>Combo</small>7</div>
-    <div class="fotos"><img src="fotos/pechuga-de-pavo.png" style="--cm: 28" alt=""><img src="fotos/mozzarella.png" style="--cm: 27" alt=""></div>
-    <div class="pie">
-      <div class="que"><div class="producto">Pechuga de pavo</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
-      <div class="precio"><span class="bs">Bs</span></div>
-    </div>
-  </article>
-
-  <article class="combo combo--tres">
-    <div class="numero"><small>Combo</small>8</div>
-    <div class="fotos"><img src="fotos/queso-amarillo.png" style="--cm: 26" alt=""><img src="fotos/jamon-de-espalda.png" style="--cm: 28" alt=""><img src="fotos/salchichas.png" style="--cm: 17" alt=""></div>
-    <div class="pie">
-      <div class="que"><div class="producto">Combo perrero</div><div class="detalle">100 g de queso amarillo, 100 g de jamón<br>de espalda y 6 salchichas</div></div>
-      <div class="precio"><span class="bs">Bs</span></div>
-    </div>
-  </article>
-
-  <article class="combo combo--tres">
-    <div class="numero"><small>Combo</small>9</div>
-    <div class="fotos"><img src="fotos/suero-san-pedro.png" style="--cm: 18" alt=""><img src="fotos/huevos.png" style="--cm: 9" alt=""><img src="fotos/mortadela-de-pollo.png" style="--cm: 20" alt=""></div>
-    <div class="pie">
-      <div class="que"><div class="producto">Combo solidario</div><div class="detalle">1 suero San Pedro de 900 ml, 6 huevos<br>y 5 salchichas o 100 g de mortadela extra</div></div>
-      <div class="precio"><span class="bs">Bs</span></div>
-    </div>
-  </article>
-
-</template>
 
 <template id="cartel">
   <div class="cartel">
@@ -210,11 +126,24 @@
   </div>
 </template>
 
+<script src="combos-datos.js"></script>
 <script>
-  // El cartel se arma con las tarjetas de arriba (así se puede sacar en otro color sin repetirlas).
+  // El cartel se arma con los combos de combos-datos.js (los mismos de las hojas de cada combo).
+  const tarjetaDe = (combo) => {
+    const clases = ["combo", combo.productos.length > 2 ? "combo--tres" : "", combo.separado ? "combo--separado" : ""].filter(Boolean).join(" ");
+    const nombres = combo.titulo ? `<div class="producto">${combo.titulo}</div>` : combo.productos.map(([, nombre]) => `<div class="producto">${nombre}</div>`).join("");
+    return `<article class="${clases}">
+      <div class="numero"><small>Combo</small>${combo.n}</div>
+      <div class="fotos">${combo.productos.map(([foto]) => fotoDe(foto)).join("")}</div>
+      <div class="pie">
+        <div class="que">${nombres}<div class="detalle">${combo.detalle}</div></div>
+        <div class="precio"><span class="bs">Bs</span></div>
+      </div>
+    </article>`;
+  };
   const cartel = document.getElementById("cartel").content.firstElementChild.cloneNode(true);
   cartel.dataset.archivo = "combos-60x90";
-  cartel.querySelector(".lista").append(document.getElementById("tarjetas").content.cloneNode(true));
+  cartel.querySelector(".lista").innerHTML = COMBOS.map(tarjetaDe).join("");
   document.body.append(cartel);
 </script>
 </body>

@@ -81,14 +81,14 @@ try {
     await espera(400);
 
     const carteles = await evaluar(
-      `(() => [...document.querySelectorAll("[data-archivo]")].map((c) => { const r = c.getBoundingClientRect(); return { archivo: c.dataset.archivo, x: r.x + window.scrollX, y: r.y + window.scrollY, ancho: r.width, alto: r.height }; }))()`,
+      `(() => [...document.querySelectorAll("[data-archivo]")].map((c) => { const r = c.getBoundingClientRect(); return { archivo: c.dataset.archivo, ppp: Number(c.dataset.ppp) || 0, x: r.x + window.scrollX, y: r.y + window.scrollY, ancho: r.width, alto: r.height }; }))()`,
     );
     for (const cartel of carteles) {
       const anchoMm = cartel.ancho / PX_POR_MM;
       const altoMm = cartel.alto / PX_POR_MM;
 
-      // La vista previa.
-      const escala = ANCHO_PREVIA_PX / cartel.ancho;
+      // La vista previa: unos 1500 px de ancho, o a los puntos por pulgada que pida la pieza (data-ppp) si va a imprimirse tal cual.
+      const escala = cartel.ppp ? cartel.ppp / 96 : ANCHO_PREVIA_PX / cartel.ancho;
       const captura = await enviar("Page.captureScreenshot", { format: "png", clip: { x: cartel.x, y: cartel.y, width: cartel.ancho, height: cartel.alto, scale: escala }, captureBeyondViewport: true });
       fs.writeFileSync(path.join(aqui, `${cartel.archivo}.png`), Buffer.from(captura.data, "base64"));
 

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Hojas de combos · Villa Real</title>
+<style>
+  /* Las fuentes del proyecto (OFL) y el león, por ruta relativa: se abre desde esta carpeta. */
+  @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
+  @font-face { font-family: "Archivo"; src: url("../src/assets/fuentes/Archivo-Medium.ttf"); font-weight: 500; }
+
+  /* Cada combo en su propia hoja, tamaño carta (216 × 279 mm), para imprimir y plastificar una a una.
+     Los mismos colores que el cartel grande: rojo sobre crema, con dorado. generar.mjs saca cada hoja. */
+  @page { size: 216mm 279mm; margin: 0; }
+  html, body { margin: 0; background: #888; }
+  body { font-family: "Archivo", Arial, sans-serif; display: grid; gap: 20mm; padding: 20mm; justify-content: start; }
+
+  .hoja {
+    --fondo: #f6ead3; --cabecera: #b3231d; --titulo: #f6ead3; --oro: #e9b13a;
+    --acento: #b3231d; --sobre-acento: #fff7e6;
+    --tarjeta: #ffffff; --tinta: #1d1a17; --tinta-suave: #6b625a;
+    /* La escala de los productos: lo que mide un centímetro real en la hoja. */
+    --mm-por-cm: 2.75;
+    position: relative; box-sizing: border-box; width: 216mm; height: 279mm; overflow: hidden;
+    background: var(--fondo); color: var(--tinta);
+    display: grid; grid-template-rows: auto 1fr auto;
+  }
+
+  /* La cabecera: el león, el nombre y el número del combo, bien grande. */
+  .cabecera {
+    background: var(--cabecera); color: var(--titulo); border-bottom: 2.5mm solid var(--oro);
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: 6mm; padding: 7mm 12mm 6mm;
+  }
+  .cabecera img { width: 26mm; height: 37mm; display: block; }
+  .marca { display: grid; gap: 1.5mm; }
+  .marca .charcuteria { font-family: "Archivo Black"; font-size: 6mm; letter-spacing: 0.18em; text-transform: uppercase; color: var(--oro); line-height: 1; }
+  .marca .nombre { font-family: "Archivo Black"; font-size: 19mm; line-height: 0.95; }
+  .numero { text-align: right; line-height: 0.9; }
+  .numero small { display: block; font-family: "Archivo Black"; font-size: 7mm; letter-spacing: 0.14em; text-transform: uppercase; color: var(--titulo); margin-bottom: 1.5mm; }
+  .numero b { font-family: "Archivo Black"; font-size: 36mm; color: var(--oro); font-weight: normal; }
+
+  .cuerpo { display: grid; grid-template-rows: auto 1fr auto; row-gap: 5mm; padding: 7mm 12mm 6mm; min-height: 0; }
+
+  /* Los productos, juntos como en una foto de producto, a la misma escala, derechos, apoyados en la misma
+     línea y un poco solapados, el más pequeño delante; sobre una bandeja blanca. */
+  .fotos {
+    background: var(--tarjeta); border-radius: 7mm;
+    display: flex; justify-content: center; align-items: flex-end; gap: 0; min-height: 0; min-width: 0; padding: 6mm 8mm 5mm;
+  }
+  .fotos img {
+    height: calc(var(--cm, 30) * var(--mm-por-cm) * 1mm); width: auto; max-width: 120mm; min-width: 0;
+    object-fit: contain; object-position: center bottom; display: block; position: relative; z-index: calc(100 - var(--cm, 30));
+  }
+  .fotos img + img { margin-left: -14mm; }
+  .hoja--separado .fotos img + img { margin-left: 3mm; }
+  .hoja--tres .fotos img + img { margin-left: -8mm; }
+  .hoja--tres { --mm-por-cm: 2.45; }
+
+  /* Lo que lleva: los nombres grandes, qué es y para qué, y la casilla del precio. */
+  .texto { display: grid; row-gap: 3mm; }
+  .producto { font-family: "Archivo Black"; font-size: 14mm; line-height: 1.02; text-transform: uppercase; }
+  .titulo { font-family: "Archivo Black"; font-size: 17mm; line-height: 1; text-transform: uppercase; color: var(--acento); }
+  .detalle { font-family: "Archivo Black"; font-size: 8mm; line-height: 1.25; color: var(--acento); margin-top: 1mm; }
+  .lema { font-size: 7mm; line-height: 1.3; color: var(--tinta); }
+  /* La casilla del precio va en blanco: se escribe con marcador (o con una etiqueta) y se cambia cuando cambia la tasa. */
+  .precio {
+    box-sizing: border-box; width: 100%; height: 30mm; border: 1.6mm solid var(--acento); border-radius: 4mm; background: #fff;
+    display: flex; align-items: center; padding: 0 6mm; gap: 4mm; margin-top: 1mm;
+  }
+  .precio .bs { font-family: "Archivo Black"; font-size: 13mm; color: var(--acento); line-height: 1; }
+
+  .pie { padding: 0 12mm 6mm; font-size: 5.6mm; line-height: 1.4; color: var(--tinta); white-space: nowrap; }
+  .pie strong { font-family: "Archivo Black"; color: var(--acento); }
+  .pie .pagos { color: var(--tinta-suave); }
+
+  /* Los combos especiales (perrero, solidario): el cuerpo en rojo, el título en dorado y la cinta «Especial». */
+  .hoja--especial .cuerpo { background: var(--acento); color: var(--sobre-acento); }
+  .hoja--especial .titulo { color: var(--oro); }
+  .hoja--especial .detalle { color: var(--sobre-acento); }
+  .hoja--especial .lema { color: var(--sobre-acento); opacity: 0.9; }
+  .hoja--especial .precio { border-color: var(--oro); }
+  .cinta {
+    background: var(--oro); color: var(--tinta); font-family: "Archivo Black"; font-size: 7mm; letter-spacing: 0.2em; text-transform: uppercase;
+    text-align: center; padding: 2.5mm 8mm; border-radius: 3mm; line-height: 1;
+  }
+  .hoja--especial .pie { background: var(--acento); color: var(--sobre-acento); padding-top: 2mm; }
+  .hoja--especial .pie strong { color: var(--oro); }
+  .hoja--especial .pie .pagos { color: var(--sobre-acento); opacity: 0.85; }
+</style>
+</head>
+<body>
+<script src="combos-datos.js"></script>
+<script>
+  // Una hoja por combo, con los datos de combos-datos.js.
+  for (const combo of COMBOS) {
+    const clases = ["hoja", combo.especial ? "hoja--especial" : "", combo.productos.length > 2 ? "hoja--tres" : "", combo.separado ? "hoja--separado" : ""].filter(Boolean).join(" ");
+    const nombres = combo.titulo
+      ? `<div class="titulo">${combo.titulo}</div>`
+      : combo.productos.map(([, nombre]) => `<div class="producto">${nombre}</div>`).join("");
+    const hoja = document.createElement("article");
+    hoja.className = clases;
+    hoja.dataset.archivo = `combo-${combo.n}-carta`;
+    hoja.dataset.ppp = "300";
+    hoja.innerHTML = `
+      <header class="cabecera">
+        <img src="../public/marca/leon.svg" alt="">
+        <div class="marca">
+          <div class="charcuteria">Charcutería</div>
+          <div class="nombre">Villa Real</div>
+        </div>
+        <div class="numero"><small>Combo</small><b>${combo.n}</b></div>
+      </header>
+      <section class="cuerpo">
+        ${combo.especial ? `<div class="cinta">Combo especial</div>` : `<div></div>`}
+        <div class="fotos">${combo.productos.map(([foto]) => fotoDe(foto)).join("")}</div>
+        <div class="texto">
+          <div>${nombres}<div class="detalle">${combo.detalle}</div></div>
+          <div class="lema">${combo.lema}</div>
+          <div class="precio"><span class="bs">Bs</span></div>
+        </div>
+      </section>
+      <footer class="pie">
+        <div>Pedidos por WhatsApp <strong>0424-6343236</strong> <span class="pagos">· Pago móvil · Efectivo · Zelle</span></div>
+        <div>Calle 38 entre carreras 30 y 31, sector Centro, Barquisimeto <span class="pagos">· Al mayor y al detal</span></div>
+      </footer>`;
+    document.body.append(hoja);
+  }
+</script>
+</body>
+</html>
