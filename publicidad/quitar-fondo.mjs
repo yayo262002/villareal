@@ -26,6 +26,8 @@ const SOLO_LO_BLANCO = new Set(["mozzarella"]);
 /** Fotos en que el recortador toma el envoltorio por fondo (un paquete rosado, translúcido): el fondo es lo que
  *  se toca desde los bordes de la foto y no tiene color (gris, blanco o negro); lo demás es producto. */
 const DESDE_LOS_BORDES = new Set(["pechuga-de-pavo"]);
+/** Fotos que ya vienen bien recortadas (de un banco de fotos): se respeta su transparencia. */
+const CON_SU_RECORTE = new Set(["huevos"]);
 
 if (argumentos[0] === "--recortar") {
   // El proceso hijo: solo el recorte, con el recortador y nada más.
@@ -47,7 +49,7 @@ for (const archivo of fs.readdirSync(origen).sort()) {
   // La foto original, aplanada sobre blanco (algunas ya vienen con transparencia).
   const plana = path.join(temporal, `${nombre}-plana.png`);
   const cortada = path.join(temporal, `${nombre}-cortada.png`);
-  await sharp(path.join(origen, archivo)).flatten({ background: "#ffffff" }).png().toFile(plana);
+  await sharp(await descontaminar(path.join(origen, archivo))).flatten({ background: "#ffffff" }).png().toFile(plana);
 
   const { data: orig, info } = await sharp(plana).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   let data;
@@ -58,6 +60,9 @@ for (const archivo of fs.readdirSync(origen).sort()) {
       const lejos = Math.max(255 - data[i], 255 - data[i + 1], 255 - data[i + 2]);
       data[i + 3] = Math.min(255, Math.max(0, (lejos - 6) * 12));
     }
+  } else if (CON_SU_RECORTE.has(nombre)) {
+    // 1. El recorte que trae, descontaminado.
+    data = Buffer.from((await sharp(await descontaminar(path.join(origen, archivo))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })).data);
   } else if (DESDE_LOS_BORDES.has(nombre)) {
     // 1. Desde los bordes hacia dentro, por los píxeles sin color (gris, blanco o negro): eso es fondo.
     data = Buffer.from(orig);
@@ -85,6 +90,9 @@ for (const archivo of fs.readdirSync(origen).sort()) {
     if (hijo.status !== 0) throw new Error(`No se pudo recortar ${archivo}: ${String(hijo.stderr).split("\n").filter((l) => !l.includes("GLib")).join("\n")}`);
     data = (await sharp(cortada).ensureAlpha().raw().toBuffer({ resolveWithObject: true })).data;
   }
+
+  // Un píxel menos de contorno: ahí es donde queda el color del fondo viejo (el «bordecito azul»).
+  erosionar(data, info.width, info.height);
 
   // 2. El color. Si el fondo de la foto original es claro, sirve de referencia de blanco: un fondo que
   //    salió gris o amarillento se lleva a blanco y el producto se corrige con él. Si el fondo es oscuro
@@ -131,3 +139,66 @@ for (const archivo of fs.readdirSync(origen).sort()) {
   console.log(`${nombre}.png: ${salida.width} × ${salida.height}; ${como}`);
 }
 fs.rmSync(temporal, { recursive: true, force: true });
+
+/**
+ * Una foto que ya viene recortada (PNG con transparencia, de una app que quita fondos) guarda en los
+ * píxeles medio transparentes del borde el color del fondo que tenía: sobre blanco salen manchas azules
+ * o moradas. Se les pone el color de los píxeles de dentro del producto que tienen al lado, y se deja la
+ * transparencia como estaba. Una foto sin transparencia sale tal cual.
+ */
+async function descontaminar(ruta) {
+  const imagen = sharp(ruta);
+  const { hasAlpha } = await imagen.metadata();
+  if (!hasAlpha) return ruta;
+  const { data, info } = await imagen.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width, height } = info;
+  const firme = new Uint8Array(width * height);
+  for (let k = 0; k < firme.length; k++) firme[k] = data[k * 4 + 3] >= 230 ? 1 : 0;
+  // Desde lo firme hacia fuera, pasada a pasada: cada píxel flojo toma la media de los firmes que lo rodean.
+  for (let pasada = 0; pasada < 12; pasada++) {
+    const nuevos = [];
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const k = y * width + x;
+        if (firme[k] || data[k * 4 + 3] === 0) continue;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx, yy = y + dy;
+            if (xx < 0 || yy < 0 || xx >= width || yy >= height) continue;
+            const j = yy * width + xx;
+            if (!firme[j]) continue;
+            r += data[j * 4]; g += data[j * 4 + 1]; b += data[j * 4 + 2]; n++;
+          }
+        }
+        if (n > 0) nuevos.push(k, Math.round(r / n), Math.round(g / n), Math.round(b / n));
+      }
+    }
+    if (nuevos.length === 0) break;
+    for (let i = 0; i < nuevos.length; i += 4) {
+      const k = nuevos[i];
+      data[k * 4] = nuevos[i + 1]; data[k * 4 + 1] = nuevos[i + 2]; data[k * 4 + 2] = nuevos[i + 3];
+      firme[k] = 1;
+    }
+  }
+  return sharp(data, { raw: { width, height, channels: 4 } }).png().toBuffer();
+}
+
+/** Deja la transparencia de cada píxel en la menor de las de su alrededor: el contorno pierde un píxel. */
+function erosionar(data, width, height) {
+  const alfa = new Uint8Array(width * height);
+  for (let k = 0; k < alfa.length; k++) alfa[k] = data[k * 4 + 3];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let menor = 255;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = Math.min(width - 1, Math.max(0, x + dx));
+          const yy = Math.min(height - 1, Math.max(0, y + dy));
+          menor = Math.min(menor, alfa[yy * width + xx]);
+        }
+      }
+      data[(y * width + x) * 4 + 3] = menor;
+    }
+  }
+}

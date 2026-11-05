@@ -61,6 +61,14 @@
     object-fit: contain; object-position: center bottom; display: block; position: relative; z-index: calc(100 - var(--cm, 30));
   }
   .combo .fotos img + img, .combo .fotos img + .falta, .combo .fotos .falta + img { margin-left: -12mm; }
+  /* El combo solidario lleva tres cosas y un solo título. */
+  .combo--solidario .fotos img + img, .combo--solidario .fotos img + .falta, .combo--solidario .fotos .falta + img { margin-left: -8mm; }
+  .combo--solidario .producto { font-size: 11.5mm; color: var(--acento); }
+  .combo--solidario .detalle { color: var(--tinta); }
+  /* El combo solidario lleva tres cosas y un solo título. */
+  .combo--solidario .fotos img + img, .combo--solidario .fotos img + .falta, .combo--solidario .fotos .falta + img { margin-left: -8mm; }
+  .combo--solidario .producto { font-size: 11.5mm; color: var(--acento); }
+  .combo--solidario .detalle { color: var(--tinta); }
   /* Mientras falte la foto de un producto, un hueco que lo dice. */
   .combo .fotos .falta {
     box-sizing: border-box; width: 40mm; height: 70mm; border: 0.8mm dashed var(--tinta-suave); border-radius: 4mm; background: var(--tarjeta); position: relative; z-index: 0;
@@ -90,16 +98,16 @@
 <template id="tarjetas">
   <article class="combo">
     <div class="numero"><small>Combo</small>1</div>
-    <div class="fotos"><img src="fotos/jamon-ahumado.png" style="--cm: 28" alt=""><img src="fotos/mozzarella.png" style="--cm: 20" alt=""></div>
+    <div class="fotos"><img src="fotos/jamon-de-espalda.png" style="--cm: 28" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 26" alt=""></div>
     <div class="pie">
-      <div class="que"><div class="producto">Jamón ahumado</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
+      <div class="que"><div class="producto">Jamón de espalda</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
     </div>
   </article>
 
   <article class="combo">
     <div class="numero"><small>Combo</small>2</div>
-    <div class="fotos"><img src="fotos/jamon-arepero.png" style="--cm: 32" alt=""><img src="fotos/mozzarella.png" style="--cm: 20" alt=""></div>
+    <div class="fotos"><img src="fotos/jamon-arepero.png" style="--cm: 32" alt=""><img src="fotos/mozzarella.png" style="--cm: 27" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Jamón arepero</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -108,7 +116,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>3</div>
-    <div class="fotos"><img src="fotos/jamon-arepero.png" style="--cm: 32" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 34" alt=""></div>
+    <div class="fotos"><img src="fotos/jamon-arepero.png" style="--cm: 32" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 26" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Jamón arepero</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -117,9 +125,9 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>4</div>
-    <div class="fotos"><img src="fotos/jamon-de-espalda.png" style="--cm: 28" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 34" alt=""></div>
+    <div class="fotos"><img src="fotos/jamon-ahumado.png" style="--cm: 28" alt=""><img src="fotos/mozzarella.png" style="--cm: 27" alt=""></div>
     <div class="pie">
-      <div class="que"><div class="producto">Jamón de espalda</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
+      <div class="que"><div class="producto">Jamón ahumado</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
     </div>
   </article>
@@ -144,7 +152,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>7</div>
-    <div class="fotos"><img src="fotos/mortadela-de-pollo.png" style="--cm: 12" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 34" alt=""></div>
+    <div class="fotos"><img src="fotos/mortadela-de-pollo.png" style="--cm: 12" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 26" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Mortadela de pollo</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -153,18 +161,18 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>8</div>
-    <div class="fotos"><img src="fotos/mortadela-de-pollo.png" style="--cm: 12" alt=""><span class="falta">Falta la foto: 6 huevos</span></div>
+    <div class="fotos"><img src="fotos/pechuga-de-pavo.png" style="--cm: 28" alt=""><img src="fotos/mozzarella.png" style="--cm: 27" alt=""></div>
     <div class="pie">
-      <div class="que"><div class="producto">Mortadela de pollo</div><div class="producto">6 huevos</div><div class="detalle">200 g de mortadela y medio cartón de huevos</div></div>
+      <div class="que"><div class="producto">Pechuga de pavo</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
     </div>
   </article>
 
-  <article class="combo">
+  <article class="combo combo--solidario">
     <div class="numero"><small>Combo</small>9</div>
-    <div class="fotos"><img src="fotos/pechuga-de-pavo.png" style="--cm: 28" alt=""><img src="fotos/mozzarella.png" style="--cm: 20" alt=""></div>
+    <div class="fotos"><img src="fotos/suero-san-pedro.png" style="--cm: 18" alt=""><img src="fotos/huevos.png" style="--cm: 9" alt=""><img src="fotos/mortadela-extra.png" style="--cm: 30" alt=""></div>
     <div class="pie">
-      <div class="que"><div class="producto">Pechuga de pavo</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
+      <div class="que"><div class="producto">Combo solidario</div><div class="detalle">1 suero San Pedro de 900 ml, 6 huevos<br>y 5 salchichas o 100 g de mortadela extra</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
     </div>
   </article>
