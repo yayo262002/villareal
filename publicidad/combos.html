@@ -58,6 +58,28 @@
   .combo .precio .bs { font-family: "Archivo Black"; font-size: 11mm; color: var(--tinta-suave); }
   .combo .precio .monto { font-family: "Archivo Black"; font-size: 26mm; line-height: 1; color: var(--verde); font-variant-numeric: tabular-nums; }
 
+  /* La tarjeta con las fotos de los productos de fondo: las dos, una a cada lado, y abajo un
+     velo verde donde van los nombres y el precio. Las fotos son las de la web, sobre blanco. */
+  .combo--foto { display: block; position: relative; overflow: hidden; background: #fff; padding: 0; }
+  /* Las fotos ocupan lo alto de la tarjeta, enteras y arrimadas al «+» del centro; el velo cubre lo de abajo. */
+  .combo--foto .fotos { position: absolute; inset: 0 0 auto; height: 80%; display: grid; grid-template-columns: 1fr 1fr; }
+  .combo--foto .fotos img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: 84% top; }
+  .combo--foto .fotos img + img { object-position: 20% top; }
+  .combo--foto .velo { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(15, 45, 28, 0) 42%, rgba(15, 45, 28, 0.88) 70%, var(--verde) 100%); }
+  .combo--foto .numero { position: absolute; top: 7mm; left: 7mm; box-shadow: 0 1.5mm 4mm rgba(0, 0, 0, 0.25); }
+  .combo--foto .mas {
+    position: absolute; left: 50%; top: 36%; transform: translate(-50%, -50%); margin: 0;
+    width: 19mm; height: 19mm; border-radius: 50%; background: var(--oro); color: var(--tinta);
+    display: grid; place-items: center; font-size: 14mm; box-shadow: 0 1.5mm 4mm rgba(0, 0, 0, 0.25);
+  }
+  .combo--foto .texto { position: absolute; left: 11mm; right: 11mm; bottom: 8mm; display: grid; grid-template-columns: 1fr auto; align-items: end; column-gap: 6mm; }
+  .combo--foto .que { color: var(--crema); }
+  .combo--foto .producto { color: var(--crema); font-size: 11.5mm; white-space: nowrap; }
+  .combo--foto .detalle { color: var(--crema-oscura); }
+  .combo--foto .precio { grid-column: auto; margin: 0; padding: 0; border: 0; }
+  .combo--foto .precio .bs { color: var(--crema-oscura); }
+  .combo--foto .precio .monto { color: var(--oro); }
+
   .pie { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10mm; padding: 0 8mm 4mm; }
   .pie .donde { font-size: 10.5mm; line-height: 1.35; color: var(--crema); }
   .pie .donde strong { font-family: "Archivo Black"; color: var(--oro); }
@@ -79,15 +101,22 @@
   </header>
 
   <section class="lista">
-    <article class="combo">
-      <div class="numero"><small>Combo</small>1</div>
-      <div class="que">
-        <div class="producto">Jamón de espalda</div>
-        <div class="mas">+</div>
-        <div class="producto">Queso amarillo</div>
-        <div class="detalle">Bandeja de 400 g</div>
+    <article class="combo combo--foto">
+      <div class="fotos">
+        <img src="fotos/jamon-de-espalda.jpg" alt="">
+        <img src="fotos/queso-amarillo.jpg" alt="">
       </div>
-      <div class="precio"><span class="bs">Bs</span><span class="monto">3.020</span></div>
+      <div class="velo"></div>
+      <div class="numero"><small>Combo</small>1</div>
+      <div class="mas">+</div>
+      <div class="texto">
+        <div class="que">
+          <div class="producto">Jamón de espalda</div>
+          <div class="producto">Queso amarillo</div>
+          <div class="detalle">Bandeja de 400 g</div>
+        </div>
+        <div class="precio"><span class="bs">Bs</span><span class="monto">3.020</span></div>
+      </div>
     </article>
 
     <article class="combo">
