@@ -50,18 +50,20 @@
   }
   .combo .numero small { font-size: 4.8mm; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: -1.5mm; }
 
-  /* Los productos, juntos como en un anuncio: cada foto recortada al producto, a la misma altura, y el «+» entre
-     los dos. Si la pareja no cabe en la tarjeta, las fotos encogen (sin estirar la tarjeta) y siguen apoyadas abajo. */
-  .combo .fotos { display: flex; justify-content: center; align-items: flex-end; gap: 1mm; min-height: 0; min-width: 0; padding: 4mm 0 0; }
-  .combo .fotos img { height: 102mm; width: auto; max-width: 104mm; min-width: 0; object-fit: contain; object-position: center bottom; display: block; }
-  .combo .fotos .mas {
-    align-self: center; flex: none; z-index: 1; margin: 0 -4mm;
-    width: 13mm; height: 13mm; border-radius: 50%; background: var(--acento); color: var(--sobre-acento);
-    display: grid; place-items: center; font-family: "Archivo Black"; font-size: 10mm; line-height: 1;
+  /* Los productos, juntos como en una foto de producto: cada foto recortada al producto, todos a la misma
+     escala (--cm es lo que mide de alto en la vida real; --mm-por-cm, la escala del cartel), apoyados en la
+     misma línea y un poco solapados, el más pequeño delante. Si la pareja no cabe en la tarjeta, las fotos
+     encogen sin estirar la tarjeta. */
+  .cartel { --mm-por-cm: 3.3; }
+  .combo .fotos { display: flex; justify-content: center; align-items: flex-end; gap: 0; min-height: 0; min-width: 0; padding: 4mm 0 0; }
+  .combo .fotos img {
+    height: calc(var(--cm, 30) * var(--mm-por-cm) * 1mm); width: auto; max-width: 104mm; min-width: 0;
+    object-fit: contain; object-position: center bottom; display: block; position: relative; z-index: calc(100 - var(--cm, 30));
   }
+  .combo .fotos img + img, .combo .fotos img + .falta, .combo .fotos .falta + img { margin-left: -12mm; }
   /* Mientras falte la foto de un producto, un hueco que lo dice. */
   .combo .fotos .falta {
-    box-sizing: border-box; width: 46mm; height: 102mm; border: 0.8mm dashed var(--tinta-suave); border-radius: 4mm;
+    box-sizing: border-box; width: 40mm; height: 70mm; border: 0.8mm dashed var(--tinta-suave); border-radius: 4mm; background: var(--tarjeta); position: relative; z-index: 0;
     display: grid; place-items: center; text-align: center; font-size: 6mm; color: var(--tinta-suave); padding: 4mm; opacity: 0.7;
   }
 
@@ -84,10 +86,11 @@
 </head>
 <body>
 
+<!-- Cada foto lleva en --cm lo que mide el producto de alto en la vida real: el cartel los dibuja a la misma escala. -->
 <template id="tarjetas">
   <article class="combo">
     <div class="numero"><small>Combo</small>1</div>
-    <div class="fotos"><img src="fotos/jamon-ahumado.png" alt=""><span class="mas">+</span><img src="fotos/mozzarella.png" alt=""></div>
+    <div class="fotos"><img src="fotos/jamon-ahumado.png" style="--cm: 28" alt=""><img src="fotos/mozzarella.png" style="--cm: 20" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Jamón ahumado</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -96,7 +99,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>2</div>
-    <div class="fotos"><img src="fotos/jamon-arepero.png" alt=""><span class="mas">+</span><img src="fotos/mozzarella.png" alt=""></div>
+    <div class="fotos"><img src="fotos/jamon-arepero.png" style="--cm: 32" alt=""><img src="fotos/mozzarella.png" style="--cm: 20" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Jamón arepero</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -105,7 +108,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>3</div>
-    <div class="fotos"><img src="fotos/jamon-arepero.png" alt=""><span class="mas">+</span><img src="fotos/queso-amarillo.png" alt=""></div>
+    <div class="fotos"><img src="fotos/jamon-arepero.png" style="--cm: 32" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 34" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Jamón arepero</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -114,7 +117,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>4</div>
-    <div class="fotos"><img src="fotos/jamon-de-espalda.png" alt=""><span class="mas">+</span><img src="fotos/queso-amarillo.png" alt=""></div>
+    <div class="fotos"><img src="fotos/jamon-de-espalda.png" style="--cm: 28" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 34" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Jamón de espalda</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -123,7 +126,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>5</div>
-    <div class="fotos"><img src="fotos/jamon-de-pierna.png" alt=""><span class="mas">+</span><span class="falta">Falta la foto: queso gouda</span></div>
+    <div class="fotos"><img src="fotos/jamon-de-pierna.png" style="--cm: 30" alt=""><img src="fotos/queso-gouda.png" style="--cm: 30" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Jamón de pierna</div><div class="producto">Queso gouda</div><div class="detalle">200 g de jamón de pierna y queso gouda</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -132,7 +135,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>6</div>
-    <div class="fotos"><img src="fotos/bolona-de-pollo.png" alt=""><span class="mas">+</span><img src="fotos/suero-san-pedro.png" alt=""></div>
+    <div class="fotos"><img src="fotos/bolona-de-pollo.png" style="--cm: 30" alt=""><img src="fotos/suero-san-pedro.png" style="--cm: 18" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Boloña de pollo</div><div class="producto">Suero San Pedro</div><div class="detalle">200 g de boloña y 1 bolsa de suero</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -141,7 +144,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>7</div>
-    <div class="fotos"><img src="fotos/mortadela-de-pollo.png" alt=""><span class="mas">+</span><img src="fotos/queso-amarillo.png" alt=""></div>
+    <div class="fotos"><img src="fotos/mortadela-de-pollo.png" style="--cm: 12" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 34" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Mortadela de pollo</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -150,7 +153,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>8</div>
-    <div class="fotos"><img src="fotos/mortadela-de-pollo.png" alt=""><span class="mas">+</span><span class="falta">Falta la foto: 6 huevos</span></div>
+    <div class="fotos"><img src="fotos/mortadela-de-pollo.png" style="--cm: 12" alt=""><span class="falta">Falta la foto: 6 huevos</span></div>
     <div class="pie">
       <div class="que"><div class="producto">Mortadela de pollo</div><div class="producto">6 huevos</div><div class="detalle">200 g de mortadela y medio cartón de huevos</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -159,7 +162,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>9</div>
-    <div class="fotos"><img src="fotos/pechuga-de-pavo.png" alt=""><span class="mas">+</span><img src="fotos/mozzarella.png" alt=""></div>
+    <div class="fotos"><img src="fotos/pechuga-de-pavo.png" style="--cm: 28" alt=""><img src="fotos/mozzarella.png" style="--cm: 20" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Pechuga de pavo</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
