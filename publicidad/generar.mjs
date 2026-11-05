@@ -1,5 +1,5 @@
 // Dibuja los carteles de esta carpeta con Chrome: de cada cartel de cada archivo .html, un PDF
-// al tamaño real (vectorial, el que se lleva a imprimir) y un PNG de vista previa para WhatsApp.
+// al tamaño real (el que se lleva a imprimir) y una imagen, PNG o JPG, de vista previa para WhatsApp.
 // Una página puede traer el mismo cartel en varios colores: cada uno con su data-archivo.
 //
 //   node publicidad/generar.mjs            todos los carteles
@@ -80,17 +80,46 @@ try {
     await evaluar("document.fonts.ready.then(() => true)");
     await espera(400);
 
+    // Al imprimir, la página es solo el cartel: sin el margen gris que lo rodea en pantalla (se comía el borde y sacaba una segunda página).
+    await evaluar(`(() => { const e = document.createElement("style"); e.textContent = "@media print { html, body { margin: 0 !important; padding: 0 !important; background: none !important; display: block !important; } }"; document.head.append(e); return true; })()`);
     const carteles = await evaluar(
-      `(() => [...document.querySelectorAll("[data-archivo]")].map((c) => { const r = c.getBoundingClientRect(); return { archivo: c.dataset.archivo, ppp: Number(c.dataset.ppp) || 0, x: r.x + window.scrollX, y: r.y + window.scrollY, ancho: r.width, alto: r.height }; }))()`,
+      `(() => [...document.querySelectorAll("[data-archivo]")].map((c) => { const r = c.getBoundingClientRect(); return { archivo: c.dataset.archivo, ppp: Number(c.dataset.ppp) || 0, formato: c.dataset.formato === "jpeg" ? "jpeg" : "png", x: r.x + window.scrollX, y: r.y + window.scrollY, ancho: r.width, alto: r.height }; }))()`,
     );
+    // Lo escrito o los productos no pueden salirse de su sitio: mejor un error aquí que una hoja mal impresa.
+    // Se miden las piezas de verdad, una a una: la sombra de un producto o el subrayado de la frase pueden salirse, y no pasa nada.
+    const desbordes = await evaluar(`(() => {
+      const fuera = [];
+      for (const hoja of document.querySelectorAll("[data-archivo]")) {
+        const h = hoja.getBoundingClientRect();
+        for (const c of hoja.querySelectorAll(".contenido")) {
+          const caja = c.getBoundingClientRect();
+          for (const hijo of c.children) {
+            const r = hijo.getBoundingClientRect();
+            if (r.bottom > caja.bottom + 1) fuera.push(hoja.dataset.archivo + ": el texto se pasa " + ((r.bottom - caja.bottom) / ${PX_POR_MM}).toFixed(1) + " mm por abajo");
+          }
+        }
+        for (const e of hoja.querySelectorAll(".pieza img, .linea, .pildora")) {
+          const r = e.getBoundingClientRect();
+          if (r.left < h.left || r.right > h.right) fuera.push(hoja.dataset.archivo + ": " + e.className + e.tagName + " se sale por el lado");
+        }
+      }
+      return fuera;
+    })()`);
+    if (desbordes.length > 0) throw new Error(`Se sale de su sitio:\n${desbordes.join("\n")}`);
     for (const cartel of carteles) {
       const anchoMm = cartel.ancho / PX_POR_MM;
       const altoMm = cartel.alto / PX_POR_MM;
 
       // La vista previa: unos 1500 px de ancho, o a los puntos por pulgada que pida la pieza (data-ppp) si va a imprimirse tal cual.
       const escala = cartel.ppp ? cartel.ppp / 96 : ANCHO_PREVIA_PX / cartel.ancho;
-      const captura = await enviar("Page.captureScreenshot", { format: "png", clip: { x: cartel.x, y: cartel.y, width: cartel.ancho, height: cartel.alto, scale: escala }, captureBeyondViewport: true });
-      fs.writeFileSync(path.join(aqui, `${cartel.archivo}.png`), Buffer.from(captura.data, "base64"));
+      // Con fondo de foto, mejor JPG (data-formato="jpeg"): en PNG cada hoja pesaría diez veces más.
+      const captura = await enviar("Page.captureScreenshot", {
+        format: cartel.formato,
+        ...(cartel.formato === "jpeg" ? { quality: 94 } : {}),
+        clip: { x: cartel.x, y: cartel.y, width: cartel.ancho, height: cartel.alto, scale: escala },
+        captureBeyondViewport: true,
+      });
+      fs.writeFileSync(path.join(aqui, `${cartel.archivo}.${cartel.formato === "jpeg" ? "jpg" : "png"}`), Buffer.from(captura.data, "base64"));
 
       // El PDF al tamaño real: vectorial, con las fuentes dentro. Solo este cartel a la vista.
       await evaluar(`(() => { document.querySelectorAll("[data-archivo]").forEach((c) => { c.style.display = c.dataset.archivo === ${JSON.stringify(cartel.archivo)} ? "" : "none"; }); return true; })()`);
@@ -104,9 +133,13 @@ try {
         marginLeft: 0,
         marginRight: 0,
       });
-      fs.writeFileSync(path.join(aqui, `${cartel.archivo}.pdf`), Buffer.from(pdf.data, "base64"));
+      const bytes = Buffer.from(pdf.data, "base64");
+      // Un cartel es una página: si sale más de una, algo se desbordó y el archivo no sirve para imprimir.
+      const paginas = (bytes.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+      if (paginas !== 1) throw new Error(`${cartel.archivo}: el PDF salió con ${paginas} páginas, tendría que ser una.`);
+      fs.writeFileSync(path.join(aqui, `${cartel.archivo}.pdf`), bytes);
       await evaluar(`(() => { document.querySelectorAll("[data-archivo]").forEach((c) => { c.style.display = ""; }); return true; })()`);
-      console.log(`${cartel.archivo}: ${anchoMm.toFixed(0)} × ${altoMm.toFixed(0)} mm → PNG de vista previa y PDF`);
+      console.log(`${cartel.archivo}: ${anchoMm.toFixed(0)} × ${altoMm.toFixed(0)} mm → imagen y PDF`);
     }
   }
 } finally {

@@ -17,33 +17,45 @@ const CM = {
   "pechuga-de-pavo": 28,
   huevos: 9,
   salchichas: 17,
+  tocineta: 28,
 };
 
 // La charcutería (el jamón, la boloña, la mortadela, el pavo) va siempre primero, a la izquierda; el queso
-// o lo que acompaña, después. Los combos con nombre propio (perrero, solidario) son los especiales.
+// o lo que acompaña, después. Los combos con nombre propio (perrero, solidario, navideño) son los especiales y van al final.
 const COMBOS = [
-  { n: 1, productos: [["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo"]], detalle: "Bandeja de 400 g", lema: "El clásico para la arepa y el sándwich" },
-  { n: 2, productos: [["jamon-arepero", "Jamón arepero"], ["mozzarella", "Mozzarella"]], detalle: "Bandeja de 400 g", lema: "Para la arepa, el sándwich y la pizza" },
-  { n: 3, productos: [["jamon-arepero", "Jamón arepero"], ["queso-amarillo", "Queso amarillo"]], detalle: "Bandeja de 400 g", lema: "Para la arepa y el sándwich de todos los días", separado: true },
-  { n: 4, productos: [["jamon-ahumado", "Jamón ahumado"], ["mozzarella", "Mozzarella"]], detalle: "Bandeja de 400 g", lema: "Sabor ahumado para la pizza y el sándwich" },
-  { n: 5, productos: [["jamon-de-pierna", "Jamón de pierna"], ["queso-amarillo-vallecito", "Queso amarillo"]], detalle: "200 g de jamón de pierna y queso amarillo", lema: "Para el sándwich y la arepa" },
-  { n: 6, productos: [["bolona-de-pollo", "Boloña de pollo"], ["suero-san-pedro", "Suero San Pedro"]], detalle: "200 g de boloña y 1 bolsa de suero", lema: "Desayuno completo: boloña y suero" },
-  { n: 7, productos: [["pechuga-de-pavo", "Pechuga de pavo"], ["mozzarella", "Mozzarella"]], detalle: "Bandeja de 400 g", lema: "Pavo y mozzarella, más ligero" },
+  { n: 1, productos: [["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo"]], detalle: "Bandeja de 400 g", lema: "El clásico para la arepa y el sándwich", destacar: "la arepa" },
+  { n: 2, productos: [["jamon-arepero", "Jamón arepero"], ["mozzarella", "Mozzarella"]], detalle: "Bandeja de 400 g", lema: "Para la arepa, el sándwich y la pizza", destacar: "la pizza" },
+  { n: 3, productos: [["jamon-ahumado", "Jamón ahumado"], ["mozzarella", "Mozzarella"]], detalle: "Bandeja de 400 g", lema: "Sabor ahumado para la pizza y el sándwich", destacar: "Sabor ahumado" },
+  { n: 4, productos: [["jamon-de-pierna", "Jamón de pierna"], ["queso-amarillo-vallecito", "Queso amarillo"]], detalle: "200 g de jamón de pierna y queso amarillo", lema: "Para el sándwich y la arepa", destacar: "el sándwich" },
+  { n: 5, productos: [["bolona-de-pollo", "Boloña de pollo"], ["suero-san-pedro", "Suero San Pedro"]], detalle: "200 g de boloña y 1 bolsa de suero", lema: "Desayuno completo: boloña y suero", destacar: "Desayuno completo" },
+  { n: 6, productos: [["pechuga-de-pavo", "Pechuga de pavo"], ["mozzarella", "Mozzarella"]], detalle: "Bandeja de 400 g", lema: "Para un sándwich diferente", destacar: "diferente" },
   {
-    n: 8,
+    n: 7,
     titulo: "Combo perrero",
     productos: [["queso-amarillo", "Queso amarillo"], ["jamon-de-espalda", "Jamón de espalda"], ["salchichas", "Salchichas"]],
     detalle: "100 g de queso amarillo, 100 g de jamón de espalda y 6 salchichas",
     lema: "Todo para los perros calientes de la casa",
+    destacar: "perros calientes",
     especial: true,
   },
   {
-    n: 9,
+    n: 8,
     titulo: "Combo solidario",
     productos: [["suero-san-pedro", "Suero San Pedro"], ["huevos", "Huevos"], ["mortadela-de-pollo", "Mortadela"]],
     detalle: "1 suero San Pedro de 900 ml, 6 huevos y 5 salchichas o 100 g de mortadela extra",
     lema: "Lo básico de la casa en un solo combo",
+    destacar: "un solo combo",
     especial: true,
+  },
+  {
+    n: 9,
+    titulo: "Combo navideño",
+    productos: [["tocineta", "Tocineta"], ["jamon-de-pierna", "Jamón"], ["mozzarella", "Mozzarella"]],
+    detalle: "200 g de tocineta, 200 g de jamón y 200 g de mozzarella",
+    lema: "Para tu mesa de Navidad",
+    destacar: "Navidad",
+    especial: true,
+    etiqueta: "Especial de Navidad",
   },
 ];
 
