@@ -271,7 +271,7 @@ scripts/stickers.ts       Los dibuja con Chrome en public/stickers/ (PNG y WebP,
 src/app/admin/(panel)/stickers/  La pantalla para guardarlos en el teléfono
 src/app/admin/            El panel (productos/nuevo y productos/[id], marcas, familias, ofertas…)
 sellos/                   Los modelos de los sellos de tinta (empresa, RECIBIDO, MERCANCÍA RECIBIDA, PAGADO): sellos.html los dibuja y generar.mjs saca los PNG a 600 ppp y el PDF para la sellería
-publicidad/               Los carteles para la pared del detal (combos.html, 60 × 90 cm, con las fotos de los productos de fondo, en fotos/: las mismas de la web, sin la marca): generar.mjs saca el PDF para la imprenta y la vista previa
+publicidad/               Los carteles para la pared del detal: combos.html (60 × 90 cm, en rojo y en negro, con los productos juntos y la casilla del precio en blanco para el marcador); recortar-fotos.mjs deja las fotos de fotos/originales/ pegadas al producto; generar.mjs saca el PDF para la imprenta y la vista previa de cada color
 datos/                    La base de datos (fuera de Git)
 ```
 

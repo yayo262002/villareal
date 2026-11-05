@@ -1,5 +1,6 @@
-// Dibuja los carteles de esta carpeta con Chrome: de cada archivo .html, un PDF al tamaño
-// real (vectorial, el que se lleva a imprimir) y un PNG de vista previa para WhatsApp.
+// Dibuja los carteles de esta carpeta con Chrome: de cada cartel de cada archivo .html, un PDF
+// al tamaño real (vectorial, el que se lleva a imprimir) y un PNG de vista previa para WhatsApp.
+// Una página puede traer el mismo cartel en varios colores: cada uno con su data-archivo.
 //
 //   node publicidad/generar.mjs            todos los carteles
 //   node publicidad/generar.mjs combos     solo combos.html
@@ -20,11 +21,11 @@ const PX_POR_MM = 96 / MM_POR_PULGADA;
 const ANCHO_PREVIA_PX = 1500;
 
 const pedidos = process.argv.slice(2);
-const carteles = fs
+const paginas = fs
   .readdirSync(aqui)
   .filter((f) => f.endsWith(".html") && (pedidos.length === 0 || pedidos.includes(f.replace(/\.html$/, ""))))
   .sort();
-if (carteles.length === 0) throw new Error("No hay ningún cartel que dibujar.");
+if (paginas.length === 0) throw new Error("No hay ningún cartel que dibujar.");
 
 const perfil = fs.mkdtempSync(path.join(os.tmpdir(), "carteles-chrome-"));
 const chrome = spawn(
@@ -69,8 +70,8 @@ try {
   const evaluar = async (expresion) => (await enviar("Runtime.evaluate", { expression: expresion, awaitPromise: true, returnByValue: true })).result.value;
   await enviar("Page.enable");
 
-  for (const archivo of carteles) {
-    await enviar("Emulation.setDeviceMetricsOverride", { width: 4000, height: 4000, deviceScaleFactor: 1, mobile: false });
+  for (const archivo of paginas) {
+    await enviar("Emulation.setDeviceMetricsOverride", { width: 4000, height: 8000, deviceScaleFactor: 1, mobile: false });
     await enviar("Page.navigate", { url: pathToFileURL(path.join(aqui, archivo)).href });
     for (let i = 0; i < 40; i++) {
       if ((await evaluar("document.readyState")) === "complete") break;
@@ -79,28 +80,34 @@ try {
     await evaluar("document.fonts.ready.then(() => true)");
     await espera(400);
 
-    const cartel = await evaluar(`(() => { const c = document.querySelector("[data-archivo]"); const r = c.getBoundingClientRect(); return { archivo: c.dataset.archivo, x: r.x + window.scrollX, y: r.y + window.scrollY, ancho: r.width, alto: r.height }; })()`);
-    const anchoMm = cartel.ancho / PX_POR_MM;
-    const altoMm = cartel.alto / PX_POR_MM;
+    const carteles = await evaluar(
+      `(() => [...document.querySelectorAll("[data-archivo]")].map((c) => { const r = c.getBoundingClientRect(); return { archivo: c.dataset.archivo, x: r.x + window.scrollX, y: r.y + window.scrollY, ancho: r.width, alto: r.height }; }))()`,
+    );
+    for (const cartel of carteles) {
+      const anchoMm = cartel.ancho / PX_POR_MM;
+      const altoMm = cartel.alto / PX_POR_MM;
 
-    // La vista previa.
-    const escala = ANCHO_PREVIA_PX / cartel.ancho;
-    const captura = await enviar("Page.captureScreenshot", { format: "png", clip: { x: cartel.x, y: cartel.y, width: cartel.ancho, height: cartel.alto, scale: escala }, captureBeyondViewport: true });
-    fs.writeFileSync(path.join(aqui, `${cartel.archivo}.png`), Buffer.from(captura.data, "base64"));
+      // La vista previa.
+      const escala = ANCHO_PREVIA_PX / cartel.ancho;
+      const captura = await enviar("Page.captureScreenshot", { format: "png", clip: { x: cartel.x, y: cartel.y, width: cartel.ancho, height: cartel.alto, scale: escala }, captureBeyondViewport: true });
+      fs.writeFileSync(path.join(aqui, `${cartel.archivo}.png`), Buffer.from(captura.data, "base64"));
 
-    // El PDF al tamaño real: vectorial, con las fuentes dentro.
-    const pdf = await enviar("Page.printToPDF", {
-      printBackground: true,
-      preferCSSPageSize: true,
-      paperWidth: anchoMm / MM_POR_PULGADA,
-      paperHeight: altoMm / MM_POR_PULGADA,
-      marginTop: 0,
-      marginBottom: 0,
-      marginLeft: 0,
-      marginRight: 0,
-    });
-    fs.writeFileSync(path.join(aqui, `${cartel.archivo}.pdf`), Buffer.from(pdf.data, "base64"));
-    console.log(`${cartel.archivo}: ${anchoMm.toFixed(0)} × ${altoMm.toFixed(0)} mm → PNG de vista previa y PDF`);
+      // El PDF al tamaño real: vectorial, con las fuentes dentro. Solo este cartel a la vista.
+      await evaluar(`(() => { document.querySelectorAll("[data-archivo]").forEach((c) => { c.style.display = c.dataset.archivo === ${JSON.stringify(cartel.archivo)} ? "" : "none"; }); return true; })()`);
+      const pdf = await enviar("Page.printToPDF", {
+        printBackground: true,
+        preferCSSPageSize: true,
+        paperWidth: anchoMm / MM_POR_PULGADA,
+        paperHeight: altoMm / MM_POR_PULGADA,
+        marginTop: 0,
+        marginBottom: 0,
+        marginLeft: 0,
+        marginRight: 0,
+      });
+      fs.writeFileSync(path.join(aqui, `${cartel.archivo}.pdf`), Buffer.from(pdf.data, "base64"));
+      await evaluar(`(() => { document.querySelectorAll("[data-archivo]").forEach((c) => { c.style.display = ""; }); return true; })()`);
+      console.log(`${cartel.archivo}: ${anchoMm.toFixed(0)} × ${altoMm.toFixed(0)} mm → PNG de vista previa y PDF`);
+    }
   }
 } finally {
   ws?.close();

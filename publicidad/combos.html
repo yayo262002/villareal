@@ -8,203 +8,189 @@
   @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
   @font-face { font-family: "Archivo"; src: url("../src/assets/fuentes/Archivo-Medium.ttf"); font-weight: 500; }
 
-  /* El cartel mide 60 × 90 cm (lona o papel); todo va en milímetros, al tamaño real. */
+  /* El cartel mide 60 × 90 cm (lona o papel); todo va en milímetros, al tamaño real.
+     Está dos veces, en dos colores (rojo sobre crema y negro con dorado): generar.mjs saca cada uno. */
   @page { size: 600mm 900mm; margin: 0; }
-  :root {
-    --verde: #0f2d1c;
-    --verde-claro: #1c4a30;
-    --oro: #e3a91f;
-    --crema: #f6efd9;
-    --crema-oscura: #e6dcbd;
-    --tinta: #10261a;
-    --tinta-suave: #4f6457;
-  }
   html, body { margin: 0; background: #888; }
-  body { font-family: "Archivo", Arial, sans-serif; }
+  body { font-family: "Archivo", Arial, sans-serif; display: grid; gap: 20mm; padding: 20mm; justify-content: start; }
+
+  .cartel--rojo {
+    --fondo: #f6ead3; --cabecera: #b3231d; --titulo: #f6ead3; --oro: #e9b13a;
+    --acento: #b3231d; --sobre-acento: #fff7e6;
+    --tarjeta: #ffffff; --borde-tarjeta: #e4d4b4; --tinta: #1d1a17; --tinta-suave: #6b625a;
+    --pie: #1d1a17; --pie-fuerte: #b3231d;
+  }
+  .cartel--negro {
+    --fondo: #171513; --cabecera: #171513; --titulo: #f6ead3; --oro: #e3a91f;
+    --acento: #e3a91f; --sobre-acento: #171513;
+    --tarjeta: #ffffff; --borde-tarjeta: transparent; --tinta: #1d1a17; --tinta-suave: #6b625a;
+    --pie: #f6ead3; --pie-fuerte: #e3a91f;
+  }
   .cartel {
     position: relative; box-sizing: border-box; width: 600mm; height: 900mm; overflow: hidden;
-    background: var(--verde); color: var(--crema);
-    padding: 26mm 30mm 24mm;
-    display: grid; grid-template-rows: auto 1fr auto; gap: 16mm;
+    background: var(--fondo); color: var(--tinta);
+    display: grid; grid-template-rows: auto 1fr auto; row-gap: 14mm; padding-bottom: 20mm;
   }
-  /* Un marco dorado fino, como el de un letrero. */
-  .cartel::before {
-    content: ""; position: absolute; inset: 12mm; border: 1.6mm solid var(--oro); border-radius: 10mm; pointer-events: none; opacity: 0.9;
-  }
-  .cabecera { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 22mm; padding: 6mm 8mm 0; }
-  .cabecera img { width: 92mm; height: 132mm; display: block; }
-  .marca { display: grid; gap: 4mm; }
-  .marca .charcuteria { font-family: "Archivo Black"; font-size: 15mm; letter-spacing: 0.14em; text-transform: uppercase; color: var(--oro); line-height: 1; }
-  .marca .nombre { font-family: "Archivo Black"; font-size: 44mm; line-height: 0.95; color: var(--crema); letter-spacing: -0.01em; }
-  .marca .combos { font-family: "Archivo Black"; font-size: 64mm; line-height: 0.9; color: var(--oro); letter-spacing: 0.02em; margin-top: 4mm; }
-  .marca .lema { font-size: 11mm; color: var(--crema-oscura); margin-top: 3mm; }
 
-  .lista { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 12mm; }
+  /* La cabecera: una franja de color de lado a lado, con el león y los títulos, y una raya dorada debajo. */
+  .cabecera {
+    background: var(--cabecera); color: var(--titulo); border-bottom: 3.5mm solid var(--oro);
+    display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 20mm; padding: 18mm 30mm 16mm;
+  }
+  .cabecera img { width: 78mm; height: 112mm; display: block; }
+  .marca { display: grid; gap: 3mm; }
+  .marca .charcuteria { font-family: "Archivo Black"; font-size: 13mm; letter-spacing: 0.16em; text-transform: uppercase; color: var(--oro); line-height: 1; }
+  .marca .nombre { font-family: "Archivo Black"; font-size: 38mm; line-height: 0.95; letter-spacing: -0.01em; }
+  .marca .combos { font-family: "Archivo Black"; font-size: 58mm; line-height: 0.9; color: var(--oro); letter-spacing: 0.02em; margin-top: 2mm; }
+  .marca .lema { font-size: 10.5mm; margin-top: 3mm; opacity: 0.9; }
+
+  .lista { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 12mm; padding: 0 30mm; }
   .combo {
-    background: var(--crema); color: var(--tinta); border-radius: 8mm;
-    display: grid; grid-template-columns: 34mm 1fr; column-gap: 9mm; align-items: center;
-    padding: 11mm 12mm 11mm 11mm;
+    position: relative; box-sizing: border-box; background: var(--tarjeta); border: 0.8mm solid var(--borde-tarjeta); border-radius: 8mm;
+    display: grid; grid-template-rows: 1fr auto; row-gap: 5mm; padding: 10mm 11mm 10mm;
   }
   .combo .numero {
-    width: 34mm; height: 34mm; border-radius: 50%; background: var(--oro); color: var(--tinta);
-    display: grid; place-items: center; font-family: "Archivo Black"; font-size: 19mm; line-height: 1; align-self: start;
+    position: absolute; top: 7mm; left: 7mm; z-index: 2;
+    width: 31mm; height: 31mm; border-radius: 50%; background: var(--acento); color: var(--sobre-acento);
+    display: grid; place-content: center; place-items: center; font-family: "Archivo Black"; font-size: 15mm; line-height: 1;
   }
-  .combo .numero small { font-size: 5.6mm; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: -2mm; }
-  .combo .que { display: grid; gap: 2mm; min-width: 0; }
-  .combo .producto { font-family: "Archivo Black"; font-size: 14.5mm; line-height: 1.02; text-transform: uppercase; }
-  .combo .mas { color: var(--oro); font-family: "Archivo Black"; font-size: 11mm; line-height: 1; margin: 0.5mm 0; }
-  .combo .detalle { font-size: 8mm; color: var(--tinta-suave); margin-top: 2mm; }
-  .combo .precio { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: flex-end; gap: 3mm; margin-top: 4mm; border-top: 0.8mm solid var(--crema-oscura); padding-top: 4mm; }
-  .combo .precio .bs { font-family: "Archivo Black"; font-size: 11mm; color: var(--tinta-suave); }
-  .combo .precio .monto { font-family: "Archivo Black"; font-size: 26mm; line-height: 1; color: var(--verde); font-variant-numeric: tabular-nums; }
+  .combo .numero small { font-size: 4.8mm; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: -1.5mm; }
 
-  /* La tarjeta con las fotos de los productos de fondo: las dos, una a cada lado, y abajo un
-     velo verde donde van los nombres y el precio. Las fotos son las de la web, sobre blanco. */
-  .combo--foto { display: block; position: relative; overflow: hidden; background: #fff; padding: 0; }
-  /* Las fotos ocupan lo alto de la tarjeta, enteras y arrimadas al «+» del centro; el velo cubre lo de abajo. */
-  .combo--foto .fotos { position: absolute; inset: 0 0 auto; height: 80%; display: grid; grid-template-columns: 1fr 1fr; }
-  .combo--foto .fotos img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: 84% top; }
-  .combo--foto .fotos img + img { object-position: 20% top; }
-  .combo--foto .velo { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(15, 45, 28, 0) 42%, rgba(15, 45, 28, 0.88) 70%, var(--verde) 100%); }
-  .combo--foto .numero { position: absolute; top: 7mm; left: 7mm; box-shadow: 0 1.5mm 4mm rgba(0, 0, 0, 0.25); }
-  .combo--foto .mas {
-    position: absolute; left: 50%; top: 36%; transform: translate(-50%, -50%); margin: 0;
-    width: 19mm; height: 19mm; border-radius: 50%; background: var(--oro); color: var(--tinta);
-    display: grid; place-items: center; font-size: 14mm; box-shadow: 0 1.5mm 4mm rgba(0, 0, 0, 0.25);
+  /* Los productos, juntos como en un anuncio: cada foto recortada al producto, a la misma altura, y el «+» entre los dos. */
+  .combo .fotos { display: flex; justify-content: center; align-items: flex-end; gap: 1mm; min-height: 0; padding: 4mm 0 0; }
+  .combo .fotos img { height: 92mm; width: auto; max-width: 112mm; object-fit: contain; display: block; }
+  .combo .fotos .mas {
+    align-self: center; flex: none; z-index: 1; margin: 0 -4mm;
+    width: 13mm; height: 13mm; border-radius: 50%; background: var(--acento); color: var(--sobre-acento);
+    display: grid; place-items: center; font-family: "Archivo Black"; font-size: 10mm; line-height: 1;
   }
-  .combo--foto .texto { position: absolute; left: 11mm; right: 11mm; bottom: 8mm; display: grid; grid-template-columns: 1fr auto; align-items: end; column-gap: 6mm; }
-  .combo--foto .que { color: var(--crema); }
-  .combo--foto .producto { color: var(--crema); font-size: 11.5mm; white-space: nowrap; }
-  .combo--foto .detalle { color: var(--crema-oscura); }
-  .combo--foto .precio { grid-column: auto; margin: 0; padding: 0; border: 0; }
-  .combo--foto .precio .bs { color: var(--crema-oscura); }
-  .combo--foto .precio .monto { color: var(--oro); }
+  /* Mientras falte la foto de un producto, un hueco que lo dice. */
+  .combo .fotos .falta {
+    box-sizing: border-box; width: 46mm; height: 92mm; border: 0.8mm dashed var(--tinta-suave); border-radius: 4mm;
+    display: grid; place-items: center; text-align: center; font-size: 6mm; color: var(--tinta-suave); padding: 4mm; opacity: 0.7;
+  }
 
-  .pie { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10mm; padding: 0 8mm 4mm; }
-  .pie .donde { font-size: 10.5mm; line-height: 1.35; color: var(--crema); }
-  .pie .donde strong { font-family: "Archivo Black"; color: var(--oro); }
-  .pie .pagos { font-size: 9mm; color: var(--crema-oscura); margin-top: 2mm; }
-  .pie .aviso { font-size: 7.5mm; color: var(--crema-oscura); text-align: right; max-width: 190mm; line-height: 1.3; }
+  .combo .pie { display: grid; grid-template-columns: 1fr auto; align-items: end; column-gap: 8mm; }
+  .combo .que { display: grid; gap: 1.5mm; min-width: 0; }
+  .combo .producto { font-family: "Archivo Black"; font-size: 10.5mm; line-height: 1.05; text-transform: uppercase; }
+  .combo .detalle { font-size: 7mm; color: var(--tinta-suave); margin-top: 1.5mm; }
+  /* La casilla del precio va en blanco: se escribe con marcador y se cambia cuando cambia la tasa. */
+  .combo .precio {
+    box-sizing: border-box; width: 84mm; height: 32mm; border: 1.3mm solid var(--acento); border-radius: 3.5mm; background: #fff;
+    display: flex; align-items: center; padding: 0 5mm; gap: 3mm;
+  }
+  .combo .precio .bs { font-family: "Archivo Black"; font-size: 10mm; color: var(--acento); line-height: 1; }
+
+  .pie-cartel { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10mm; padding: 0 30mm; color: var(--pie); }
+  .pie-cartel .donde { font-size: 10mm; line-height: 1.35; }
+  .pie-cartel strong { font-family: "Archivo Black"; color: var(--pie-fuerte); }
+  .pie-cartel .pagos { font-size: 9mm; text-align: right; line-height: 1.4; opacity: 0.9; }
 </style>
 </head>
 <body>
 
-<div class="cartel" data-archivo="combos-60x90">
-  <header class="cabecera">
-    <img src="../public/marca/leon.svg" alt="">
-    <div class="marca">
-      <div class="charcuteria">Charcutería</div>
-      <div class="nombre">Villa Real</div>
-      <div class="combos">Combos</div>
-      <div class="lema">Bandejas listas para la arepa, el sándwich y la pizza</div>
+<template id="tarjetas">
+  <article class="combo">
+    <div class="numero"><small>Combo</small>1</div>
+    <div class="fotos"><img src="fotos/jamon-de-espalda.png" alt=""><span class="mas">+</span><img src="fotos/queso-amarillo.png" alt=""></div>
+    <div class="pie">
+      <div class="que"><div class="producto">Jamón de espalda</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
+      <div class="precio"><span class="bs">Bs</span></div>
     </div>
-  </header>
+  </article>
 
-  <section class="lista">
-    <article class="combo combo--foto">
-      <div class="fotos">
-        <img src="fotos/jamon-de-espalda.jpg" alt="">
-        <img src="fotos/queso-amarillo.jpg" alt="">
-      </div>
-      <div class="velo"></div>
-      <div class="numero"><small>Combo</small>1</div>
-      <div class="mas">+</div>
-      <div class="texto">
-        <div class="que">
-          <div class="producto">Jamón de espalda</div>
-          <div class="producto">Queso amarillo</div>
-          <div class="detalle">Bandeja de 400 g</div>
-        </div>
-        <div class="precio"><span class="bs">Bs</span><span class="monto">3.020</span></div>
-      </div>
-    </article>
+  <article class="combo">
+    <div class="numero"><small>Combo</small>2</div>
+    <div class="fotos"><img src="fotos/jamon-arepero.png" alt=""><span class="mas">+</span><img src="fotos/mozzarella.png" alt=""></div>
+    <div class="pie">
+      <div class="que"><div class="producto">Jamón arepero</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
+      <div class="precio"><span class="bs">Bs</span></div>
+    </div>
+  </article>
 
-    <article class="combo">
-      <div class="numero"><small>Combo</small>2</div>
-      <div class="que">
-        <div class="producto">Jamón arepero</div>
-        <div class="mas">+</div>
-        <div class="producto">Mozzarella</div>
-        <div class="detalle">Bandeja de 400 g</div>
-      </div>
-      <div class="precio"><span class="bs">Bs</span><span class="monto">3.390</span></div>
-    </article>
+  <article class="combo">
+    <div class="numero"><small>Combo</small>3</div>
+    <div class="fotos"><span class="falta">Falta la foto de la mortadela</span><span class="mas">+</span><img src="fotos/queso-amarillo.png" alt=""></div>
+    <div class="pie">
+      <div class="que"><div class="producto">Mortadela de pollo</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
+      <div class="precio"><span class="bs">Bs</span></div>
+    </div>
+  </article>
 
-    <article class="combo">
-      <div class="numero"><small>Combo</small>3</div>
-      <div class="que">
-        <div class="producto">Mortadela de pollo</div>
-        <div class="mas">+</div>
-        <div class="producto">Queso amarillo</div>
-        <div class="detalle">Bandeja de 400 g</div>
-      </div>
-      <div class="precio"><span class="bs">Bs</span><span class="monto">2.750</span></div>
-    </article>
+  <article class="combo">
+    <div class="numero"><small>Combo</small>4</div>
+    <div class="fotos"><img src="fotos/queso-amarillo.png" alt=""><span class="mas">+</span><img src="fotos/jamon-arepero.png" alt=""></div>
+    <div class="pie">
+      <div class="que"><div class="producto">Queso amarillo</div><div class="producto">Jamón arepero</div><div class="detalle">Bandeja de 400 g</div></div>
+      <div class="precio"><span class="bs">Bs</span></div>
+    </div>
+  </article>
 
-    <article class="combo">
-      <div class="numero"><small>Combo</small>4</div>
-      <div class="que">
-        <div class="producto">Queso amarillo</div>
-        <div class="mas">+</div>
-        <div class="producto">Jamón arepero</div>
-        <div class="detalle">Bandeja de 400 g</div>
-      </div>
-      <div class="precio"><span class="bs">Bs</span><span class="monto">3.550</span></div>
-    </article>
+  <article class="combo">
+    <div class="numero"><small>Combo</small>6</div>
+    <div class="fotos"><span class="falta">Falta la foto de la boloña</span><span class="mas">+</span><span class="falta">Falta la foto del suero</span></div>
+    <div class="pie">
+      <div class="que"><div class="producto">Boloña de pollo</div><div class="producto">Suero San Pedro</div><div class="detalle">200 g de boloña y 1 bolsa de suero</div></div>
+      <div class="precio"><span class="bs">Bs</span></div>
+    </div>
+  </article>
 
-    <article class="combo">
-      <div class="numero"><small>Combo</small>6</div>
-      <div class="que">
-        <div class="producto">Boloña de pollo</div>
-        <div class="mas">+</div>
-        <div class="producto">Suero San Pedro</div>
-        <div class="detalle">200 g de boloña y 1 bolsa de suero</div>
-      </div>
-      <div class="precio"><span class="bs">Bs</span><span class="monto">1.870</span></div>
-    </article>
+  <article class="combo">
+    <div class="numero"><small>Combo</small>7</div>
+    <div class="fotos"><span class="falta">Falta la foto de la pechuga</span><span class="mas">+</span><img src="fotos/mozzarella.png" alt=""></div>
+    <div class="pie">
+      <div class="que"><div class="producto">Pechuga de pavo</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
+      <div class="precio"><span class="bs">Bs</span></div>
+    </div>
+  </article>
 
-    <article class="combo">
-      <div class="numero"><small>Combo</small>7</div>
-      <div class="que">
-        <div class="producto">Pechuga de pavo</div>
-        <div class="mas">+</div>
-        <div class="producto">Mozzarella</div>
-        <div class="detalle">Bandeja de 400 g</div>
-      </div>
-      <div class="precio"><span class="bs">Bs</span><span class="monto">2.930</span></div>
-    </article>
+  <article class="combo">
+    <div class="numero"><small>Combo</small>8</div>
+    <div class="fotos"><span class="falta">Falta la foto de la mortadela</span><span class="mas">+</span><span class="falta">Falta la foto de los huevos</span></div>
+    <div class="pie">
+      <div class="que"><div class="producto">Mortadela de pollo</div><div class="producto">6 huevos</div><div class="detalle">200 g de mortadela y media docena de huevos</div></div>
+      <div class="precio"><span class="bs">Bs</span></div>
+    </div>
+  </article>
 
-    <article class="combo">
-      <div class="numero"><small>Combo</small>8</div>
-      <div class="que">
-        <div class="producto">Mortadela de pollo</div>
-        <div class="mas">+</div>
-        <div class="producto">6 huevos</div>
-        <div class="detalle">200 g de mortadela y media docena de huevos</div>
-      </div>
-      <div class="precio"><span class="bs">Bs</span><span class="monto">1.980</span></div>
-    </article>
+  <article class="combo">
+    <div class="numero"><small>Combo</small>9</div>
+    <div class="fotos"><span class="falta">Falta la foto del jamón ahumado</span><span class="mas">+</span><img src="fotos/mozzarella.png" alt=""></div>
+    <div class="pie">
+      <div class="que"><div class="producto">Jamón ahumado</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
+      <div class="precio"><span class="bs">Bs</span></div>
+    </div>
+  </article>
+</template>
 
-    <article class="combo">
-      <div class="numero"><small>Combo</small>9</div>
-      <div class="que">
-        <div class="producto">Jamón ahumado</div>
-        <div class="mas">+</div>
-        <div class="producto">Mozzarella</div>
-        <div class="detalle">Bandeja de 400 g</div>
+<template id="cartel">
+  <div class="cartel">
+    <header class="cabecera">
+      <img src="../public/marca/leon.svg" alt="">
+      <div class="marca">
+        <div class="charcuteria">Charcutería</div>
+        <div class="nombre">Villa Real</div>
+        <div class="combos">Combos</div>
+        <div class="lema">Bandejas listas para la arepa, el sándwich y la pizza</div>
       </div>
-      <div class="precio"><span class="bs">Bs</span><span class="monto">2.880</span></div>
-    </article>
-  </section>
-
-  <footer class="pie">
-    <div>
+    </header>
+    <section class="lista"></section>
+    <footer class="pie-cartel">
       <div class="donde"><strong>Calle 38 entre carreras 30 y 31</strong>, sector Centro · Barquisimeto<br>WhatsApp <strong>0424-6343236</strong></div>
-      <div class="pagos">Pago móvil · Efectivo · Zelle · Al mayor y al detal</div>
-    </div>
-    <div class="aviso">Precios en bolívares. Pueden cambiar con la tasa del BCV; pregunta por el precio del día.</div>
-  </footer>
-</div>
+      <div class="pagos">Pago móvil · Efectivo · Zelle<br>Al mayor y al detal</div>
+    </footer>
+  </div>
+</template>
 
+<script>
+  // El mismo cartel en cada color: las tarjetas se escriben una sola vez, arriba.
+  for (const tema of ["rojo", "negro"]) {
+    const cartel = document.getElementById("cartel").content.firstElementChild.cloneNode(true);
+    cartel.classList.add("cartel--" + tema);
+    cartel.dataset.archivo = "combos-" + tema + "-60x90";
+    cartel.querySelector(".lista").append(document.getElementById("tarjetas").content.cloneNode(true));
+    document.body.append(cartel);
+  }
+</script>
 </body>
 </html>
