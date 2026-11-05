@@ -23,39 +23,39 @@
   .cartel {
     position: relative; box-sizing: border-box; width: 600mm; height: 900mm; overflow: hidden;
     background: var(--fondo); color: var(--tinta);
-    display: grid; grid-template-rows: auto 1fr auto; row-gap: 14mm; padding-bottom: 20mm;
+    display: grid; grid-template-rows: auto 1fr; row-gap: 12mm; padding-bottom: 18mm;
   }
 
   /* La cabecera: una franja de color de lado a lado, con el león y los títulos, y una raya dorada debajo. */
   .cabecera {
     background: var(--cabecera); color: var(--titulo); border-bottom: 3.5mm solid var(--oro);
-    display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 20mm; padding: 18mm 30mm 16mm;
+    display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 18mm; padding: 14mm 30mm 12mm;
   }
-  .cabecera img { width: 78mm; height: 112mm; display: block; }
+  .cabecera img { width: 60mm; height: 86mm; display: block; }
   .marca { display: grid; gap: 3mm; }
-  .marca .charcuteria { font-family: "Archivo Black"; font-size: 13mm; letter-spacing: 0.16em; text-transform: uppercase; color: var(--oro); line-height: 1; }
-  .marca .nombre { font-family: "Archivo Black"; font-size: 38mm; line-height: 0.95; letter-spacing: -0.01em; }
-  .marca .combos { font-family: "Archivo Black"; font-size: 58mm; line-height: 0.9; color: var(--oro); letter-spacing: 0.02em; margin-top: 2mm; }
-  .marca .lema { font-size: 10.5mm; margin-top: 3mm; opacity: 0.9; }
+  .marca .charcuteria { font-family: "Archivo Black"; font-size: 12mm; letter-spacing: 0.16em; text-transform: uppercase; color: var(--oro); line-height: 1; }
+  .marca .nombre { font-family: "Archivo Black"; font-size: 28mm; line-height: 0.95; letter-spacing: -0.01em; }
+  .marca .combos { font-family: "Archivo Black"; font-size: 44mm; line-height: 0.9; color: var(--oro); letter-spacing: 0.02em; margin-top: 2mm; }
+  .marca .lema { font-size: 9mm; margin-top: 1mm; opacity: 0.9; }
 
-  .lista { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 12mm; padding: 0 30mm; }
+  .lista { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 10mm; padding: 0 30mm; }
   .combo {
     position: relative; box-sizing: border-box; min-width: 0; background: var(--tarjeta); border: 0.8mm solid var(--borde-tarjeta); border-radius: 8mm;
-    display: grid; grid-template-rows: 1fr auto; row-gap: 6mm; padding: 10mm 10mm 9mm;
+    display: grid; grid-template-rows: 1fr auto; row-gap: 5mm; padding: 8mm 9mm 8mm;
   }
   .combo .numero {
-    position: absolute; top: 7mm; left: 7mm; z-index: 2;
-    width: 31mm; height: 31mm; border-radius: 50%; background: var(--acento); color: var(--sobre-acento);
-    display: grid; place-content: center; place-items: center; font-family: "Archivo Black"; font-size: 15mm; line-height: 1;
+    position: absolute; top: 6mm; left: 6mm; z-index: 2;
+    width: 27mm; height: 27mm; border-radius: 50%; background: var(--acento); color: var(--sobre-acento);
+    display: grid; place-content: center; place-items: center; font-family: "Archivo Black"; font-size: 13mm; line-height: 1;
   }
-  .combo .numero small { font-size: 4.8mm; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: -1.5mm; }
+  .combo .numero small { font-size: 4.2mm; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: -1.2mm; }
 
   /* Los productos, juntos como en una foto de producto: cada foto recortada al producto, todos a la misma
      escala (--cm es lo que mide de alto en la vida real; --mm-por-cm, la escala del cartel), apoyados en la
      misma línea y un poco solapados, el más pequeño delante. Si la pareja no cabe en la tarjeta, las fotos
      encogen sin estirar la tarjeta. */
-  .cartel { --mm-por-cm: 3.3; }
-  .combo .fotos { display: flex; justify-content: center; align-items: flex-end; gap: 0; min-height: 0; min-width: 0; padding: 4mm 0 0; }
+  .cartel { --mm-por-cm: 2.5; }
+  .combo .fotos { display: flex; justify-content: center; align-items: flex-end; gap: 0; min-height: 0; min-width: 0; padding: 2mm 0 0; }
   .combo .fotos img {
     height: calc(var(--cm, 30) * var(--mm-por-cm) * 1mm); width: auto; max-width: 104mm; min-width: 0;
     object-fit: contain; object-position: center bottom; display: block; position: relative; z-index: calc(100 - var(--cm, 30));
@@ -63,18 +63,18 @@
   .combo .fotos img + img, .combo .fotos img + .falta, .combo .fotos .falta + img { margin-left: -12mm; }
   /* En algún combo el dueño quiere los dos productos un poco separados. */
   .combo--separado .fotos img + img { margin-left: 3mm; }
-  /* El combo solidario lleva tres cosas y un solo título. */
-  .combo--solidario .fotos img + img, .combo--solidario .fotos img + .falta, .combo--solidario .fotos .falta + img { margin-left: -8mm; }
-  .combo--solidario .producto { font-size: 11.5mm; color: var(--acento); }
-  .combo--solidario .detalle { color: var(--tinta); }
-  /* El combo solidario lleva tres cosas y un solo título. */
-  .combo--solidario .fotos img + img, .combo--solidario .fotos img + .falta, .combo--solidario .fotos .falta + img { margin-left: -8mm; }
-  .combo--solidario .producto { font-size: 11.5mm; color: var(--acento); }
-  .combo--solidario .detalle { color: var(--tinta); }
-  /* El combo solidario lleva tres cosas y un solo título. */
-  .combo--solidario .fotos img + img, .combo--solidario .fotos img + .falta, .combo--solidario .fotos .falta + img { margin-left: -8mm; }
-  .combo--solidario .producto { font-size: 11.5mm; color: var(--acento); }
-  .combo--solidario .detalle { color: var(--tinta); }
+  /* Los combos con nombre propio (perrero, solidario) llevan tres cosas y un solo título. */
+  .combo--tres .fotos img + img { margin-left: -7mm; }
+  .combo--tres .producto { font-size: 11mm; color: var(--acento); }
+  .combo--tres .detalle { color: var(--tinta); }
+
+  /* Donde se pide y cómo se paga: la casilla que sobra en la última fila, en rojo. */
+  .contacto {
+    grid-column: span 2; box-sizing: border-box; min-width: 0; background: var(--acento); color: var(--sobre-acento); border-radius: 8mm;
+    padding: 12mm 14mm; display: grid; align-content: center; gap: 5mm;
+  }
+  .contacto .grande { font-family: "Archivo Black"; font-size: 15mm; line-height: 1.1; }
+  .contacto .linea { font-size: 9mm; line-height: 1.35; opacity: 0.95; }
   /* Mientras falte la foto de un producto, un hueco que lo dice. */
   .combo .fotos .falta {
     box-sizing: border-box; width: 40mm; height: 70mm; border: 0.8mm dashed var(--tinta-suave); border-radius: 4mm; background: var(--tarjeta); position: relative; z-index: 0;
@@ -83,19 +83,15 @@
 
   .combo .pie { display: grid; row-gap: 5mm; }
   .combo .que { display: grid; gap: 1.5mm; min-width: 0; }
-  .combo .producto { font-family: "Archivo Black"; font-size: 10mm; line-height: 1.05; text-transform: uppercase; }
-  .combo .detalle { font-size: 7mm; color: var(--tinta-suave); margin-top: 1.5mm; }
+  .combo .producto { font-family: "Archivo Black"; font-size: 9.5mm; line-height: 1.05; text-transform: uppercase; }
+  .combo .detalle { font-size: 6.5mm; color: var(--tinta-suave); margin-top: 1.5mm; line-height: 1.3; }
   /* La casilla del precio va en blanco: se escribe con marcador y se cambia cuando cambia la tasa. */
   .combo .precio {
-    box-sizing: border-box; width: 100%; height: 30mm; border: 1.3mm solid var(--acento); border-radius: 3.5mm; background: #fff;
+    box-sizing: border-box; width: 100%; height: 26mm; border: 1.3mm solid var(--acento); border-radius: 3.5mm; background: #fff;
     display: flex; align-items: center; padding: 0 5mm; gap: 3mm;
   }
-  .combo .precio .bs { font-family: "Archivo Black"; font-size: 10mm; color: var(--acento); line-height: 1; }
+  .combo .precio .bs { font-family: "Archivo Black"; font-size: 9mm; color: var(--acento); line-height: 1; }
 
-  .pie-cartel { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10mm; padding: 0 30mm; color: var(--pie); }
-  .pie-cartel .donde { font-size: 10mm; line-height: 1.35; }
-  .pie-cartel strong { font-family: "Archivo Black"; color: var(--pie-fuerte); }
-  .pie-cartel .pagos { font-size: 9mm; text-align: right; line-height: 1.4; opacity: 0.9; }
 </style>
 </head>
 <body>
@@ -140,7 +136,7 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>5</div>
-    <div class="fotos"><img src="fotos/jamon-de-pierna.png" style="--cm: 30" alt=""><img src="fotos/queso-amarillo-vallecito.png" style="--cm: 26" alt=""></div>
+    <div class="fotos"><img src="fotos/jamon-de-pierna.png" style="--cm: 30" alt=""><img src="fotos/queso-amarillo-vallecito.png" style="--cm: 32" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Jamón de pierna</div><div class="producto">Queso amarillo</div><div class="detalle">200 g de jamón de pierna y queso amarillo</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
@@ -158,15 +154,6 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>7</div>
-    <div class="fotos"><img src="fotos/mortadela-de-pollo.png" style="--cm: 12" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 26" alt=""></div>
-    <div class="pie">
-      <div class="que"><div class="producto">Mortadela de pollo</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
-      <div class="precio"><span class="bs">Bs</span></div>
-    </div>
-  </article>
-
-  <article class="combo">
-    <div class="numero"><small>Combo</small>8</div>
     <div class="fotos"><img src="fotos/pechuga-de-pavo.png" style="--cm: 28" alt=""><img src="fotos/mozzarella.png" style="--cm: 27" alt=""></div>
     <div class="pie">
       <div class="que"><div class="producto">Pechuga de pavo</div><div class="producto">Mozzarella</div><div class="detalle">Bandeja de 400 g</div></div>
@@ -174,7 +161,16 @@
     </div>
   </article>
 
-  <article class="combo combo--solidario">
+  <article class="combo combo--tres">
+    <div class="numero"><small>Combo</small>8</div>
+    <div class="fotos"><img src="fotos/queso-amarillo.png" style="--cm: 26" alt=""><img src="fotos/jamon-de-espalda.png" style="--cm: 28" alt=""><img src="fotos/salchichas.png" style="--cm: 17" alt=""></div>
+    <div class="pie">
+      <div class="que"><div class="producto">Combo perrero</div><div class="detalle">100 g de queso amarillo, 100 g de jamón<br>de espalda y 6 salchichas</div></div>
+      <div class="precio"><span class="bs">Bs</span></div>
+    </div>
+  </article>
+
+  <article class="combo combo--tres">
     <div class="numero"><small>Combo</small>9</div>
     <div class="fotos"><img src="fotos/suero-san-pedro.png" style="--cm: 18" alt=""><img src="fotos/huevos.png" style="--cm: 9" alt=""><img src="fotos/mortadela-extra.png" style="--cm: 30" alt=""></div>
     <div class="pie">
@@ -182,6 +178,21 @@
       <div class="precio"><span class="bs">Bs</span></div>
     </div>
   </article>
+
+  <article class="combo">
+    <div class="numero"><small>Combo</small>10</div>
+    <div class="fotos"><img src="fotos/mortadela-de-pollo.png" style="--cm: 20" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 26" alt=""></div>
+    <div class="pie">
+      <div class="que"><div class="producto">Mortadela de pollo</div><div class="producto">Queso amarillo</div><div class="detalle">Bandeja de 400 g</div></div>
+      <div class="precio"><span class="bs">Bs</span></div>
+    </div>
+  </article>
+
+  <aside class="contacto">
+    <div class="grande">Pedidos por WhatsApp<br>0424-6343236</div>
+    <div class="linea">Calle 38 entre carreras 30 y 31, sector Centro · Barquisimeto</div>
+    <div class="linea">Pago móvil · Efectivo · Zelle · Al mayor y al detal</div>
+  </aside>
 </template>
 
 <template id="cartel">
@@ -196,10 +207,6 @@
       </div>
     </header>
     <section class="lista"></section>
-    <footer class="pie-cartel">
-      <div class="donde"><strong>Calle 38 entre carreras 30 y 31</strong>, sector Centro · Barquisimeto<br>WhatsApp <strong>0424-6343236</strong></div>
-      <div class="pagos">Pago móvil · Efectivo · Zelle<br>Al mayor y al detal</div>
-    </footer>
   </div>
 </template>
 

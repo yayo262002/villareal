@@ -32,6 +32,13 @@ const CON_SU_RECORTE = new Set(["huevos"]);
  *  claros con más azul que rojo vuelven al color del envoltorio, con su misma luz; el azul oscuro de una
  *  etiqueta no se toca. El color es el del envoltorio de esa foto. */
 const SIN_TINTE_AZUL = new Map([["bolona-de-pollo", [232, 118, 66]]]);
+/** Fotos que se giran antes de nada (grados, a la derecha): la mortadela Alibal se fotografió acostada y en el cartel va de pie
+ *  (96 y no 90 porque en la foto está ladeada; con la perspectiva, el cálculo de abajo no la endereza bien). */
+const GIRAR_PRIMERO = new Map([["mortadela-de-pollo", 96]]);
+/** La regla de verticalidad: estos productos van derechos en el cartel. Se mide la inclinación de la pieza
+ *  (el eje largo de su silueta) y se endereza. Lo que no es alargado o va acostado (la mozzarella con sus
+ *  lonjas, la bolsa de suero, el cartón de huevos, el paquete de salchichas) no se toca. */
+const ENDEREZAR = new Set(["mortadela-extra", "queso-amarillo", "queso-amarillo-vallecito", "jamon-de-espalda", "jamon-ahumado", "jamon-de-pierna", "jamon-arepero", "bolona-de-pollo", "pechuga-de-pavo"]);
 
 if (argumentos[0] === "--recortar") {
   // El proceso hijo: solo el recorte, con el recortador y nada más.
@@ -53,7 +60,10 @@ for (const archivo of fs.readdirSync(origen).sort()) {
   // La foto original, aplanada sobre blanco (algunas ya vienen con transparencia).
   const plana = path.join(temporal, `${nombre}-plana.png`);
   const cortada = path.join(temporal, `${nombre}-cortada.png`);
-  await sharp(await descontaminar(path.join(origen, archivo))).flatten({ background: "#ffffff" }).png().toFile(plana);
+  // El giro va en un paso aparte: sharp aplana antes de girar, y las esquinas del giro quedarían transparentes.
+  let original = await descontaminar(path.join(origen, archivo));
+  if (GIRAR_PRIMERO.has(nombre)) original = await sharp(original).rotate(GIRAR_PRIMERO.get(nombre), { background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+  await sharp(original).flatten({ background: "#ffffff" }).png().toFile(plana);
 
   const { data: orig, info } = await sharp(plana).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   let data;
@@ -66,7 +76,9 @@ for (const archivo of fs.readdirSync(origen).sort()) {
     }
   } else if (CON_SU_RECORTE.has(nombre)) {
     // 1. El recorte que trae, descontaminado.
-    data = Buffer.from((await sharp(await descontaminar(path.join(origen, archivo))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })).data);
+    data = Buffer.from((await sharp(plana).ensureAlpha().raw().toBuffer({ resolveWithObject: true })).data);
+    const suya = await sharp(await descontaminar(path.join(origen, archivo))).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    if (suya.info.width === info.width && suya.info.height === info.height) for (let i = 3; i < data.length; i += 4) data[i] = suya.data[i];
   } else if (DESDE_LOS_BORDES.has(nombre)) {
     // 1. Desde los bordes hacia dentro, por los píxeles sin color (gris, blanco o negro): eso es fondo.
     data = Buffer.from(orig);
@@ -139,6 +151,12 @@ for (const archivo of fs.readdirSync(origen).sort()) {
   // 3. Las fotos pequeñas se agrandan con suavizado (no ganan detalle, pero no se ven los píxeles en el
   //    cartel); después, un poco más de viveza y nitidez, y el recorte al producto.
   let imagen = sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).linear(ganancias.concat([1]), [desplazamiento, desplazamiento, desplazamiento, 0]);
+  let giro = 0;
+  if (ENDEREZAR.has(nombre)) {
+    giro = inclinacion(data, info.width, info.height);
+    if (Math.abs(giro) >= 0.5) imagen = imagen.rotate(giro, { background: { r: 0, g: 0, b: 0, alpha: 0 } });
+    como += `; enderezada ${giro.toFixed(1)}°`;
+  }
   if (info.height < 700) imagen = imagen.resize({ height: 800, kernel: "lanczos3" });
   const corregida = await imagen.modulate({ saturation: 1.08 }).sharpen({ sigma: 0.7 }).png().toBuffer();
   const salida = await sharp(corregida).trim({ threshold: 6 }).png().toFile(path.join(destino, `${nombre}.png`));
@@ -224,4 +242,22 @@ function quitarTinteAzul(data, envoltorio) {
       data[i + 2] = Math.min(255, Math.round(envoltorio[2] * factor));
     }
   }
+}
+
+/**
+ * Cuántos grados hay que girar la pieza (a la derecha, positivo) para que su eje largo quede vertical:
+ * el eje sale de los momentos de la silueta (los píxeles con transparencia), como en estadística.
+ */
+function inclinacion(data, width, height) {
+  let n = 0, sx = 0, sy = 0;
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) if (data[(y * width + x) * 4 + 3] > 127) { n++; sx += x; sy += y; }
+  if (n === 0) return 0;
+  const cx = sx / n, cy = sy / n;
+  let sxx = 0, syy = 0, sxy = 0;
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) if (data[(y * width + x) * 4 + 3] > 127) { sxx += (x - cx) ** 2; syy += (y - cy) ** 2; sxy += (x - cx) * (y - cy); }
+  const angulo = (0.5 * Math.atan2(2 * sxy, sxx - syy) * 180) / Math.PI; // el eje largo, desde la horizontal
+  let giro = 90 - angulo;
+  while (giro > 90) giro -= 180;
+  while (giro <= -90) giro += 180;
+  return giro;
 }
