@@ -61,6 +61,12 @@
     object-fit: contain; object-position: center bottom; display: block; position: relative; z-index: calc(100 - var(--cm, 30));
   }
   .combo .fotos img + img, .combo .fotos img + .falta, .combo .fotos .falta + img { margin-left: -12mm; }
+  /* En algún combo el dueño quiere los dos productos un poco separados. */
+  .combo--separado .fotos img + img { margin-left: 3mm; }
+  /* El combo solidario lleva tres cosas y un solo título. */
+  .combo--solidario .fotos img + img, .combo--solidario .fotos img + .falta, .combo--solidario .fotos .falta + img { margin-left: -8mm; }
+  .combo--solidario .producto { font-size: 11.5mm; color: var(--acento); }
+  .combo--solidario .detalle { color: var(--tinta); }
   /* El combo solidario lleva tres cosas y un solo título. */
   .combo--solidario .fotos img + img, .combo--solidario .fotos img + .falta, .combo--solidario .fotos .falta + img { margin-left: -8mm; }
   .combo--solidario .producto { font-size: 11.5mm; color: var(--acento); }
@@ -114,7 +120,7 @@
     </div>
   </article>
 
-  <article class="combo">
+  <article class="combo combo--separado">
     <div class="numero"><small>Combo</small>3</div>
     <div class="fotos"><img src="fotos/jamon-arepero.png" style="--cm: 32" alt=""><img src="fotos/queso-amarillo.png" style="--cm: 26" alt=""></div>
     <div class="pie">
@@ -134,9 +140,9 @@
 
   <article class="combo">
     <div class="numero"><small>Combo</small>5</div>
-    <div class="fotos"><img src="fotos/jamon-de-pierna.png" style="--cm: 30" alt=""><img src="fotos/queso-gouda.png" style="--cm: 30" alt=""></div>
+    <div class="fotos"><img src="fotos/jamon-de-pierna.png" style="--cm: 30" alt=""><img src="fotos/queso-amarillo-vallecito.png" style="--cm: 26" alt=""></div>
     <div class="pie">
-      <div class="que"><div class="producto">Jamón de pierna</div><div class="producto">Queso gouda</div><div class="detalle">200 g de jamón de pierna y queso gouda</div></div>
+      <div class="que"><div class="producto">Jamón de pierna</div><div class="producto">Queso amarillo</div><div class="detalle">200 g de jamón de pierna y queso amarillo</div></div>
       <div class="precio"><span class="bs">Bs</span></div>
     </div>
   </article>
