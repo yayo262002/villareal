@@ -28,6 +28,10 @@ const SOLO_LO_BLANCO = new Set(["mozzarella"]);
 const DESDE_LOS_BORDES = new Set(["pechuga-de-pavo"]);
 /** Fotos que ya vienen bien recortadas (de un banco de fotos): se respeta su transparencia. */
 const CON_SU_RECORTE = new Set(["huevos"]);
+/** Fotos con un tinte azul o lila en el envoltorio (reflejos del fondo azul en que se fotografió): los píxeles
+ *  claros con más azul que rojo vuelven al color del envoltorio, con su misma luz; el azul oscuro de una
+ *  etiqueta no se toca. El color es el del envoltorio de esa foto. */
+const SIN_TINTE_AZUL = new Map([["bolona-de-pollo", [232, 118, 66]]]);
 
 if (argumentos[0] === "--recortar") {
   // El proceso hijo: solo el recorte, con el recortador y nada más.
@@ -90,6 +94,8 @@ for (const archivo of fs.readdirSync(origen).sort()) {
     if (hijo.status !== 0) throw new Error(`No se pudo recortar ${archivo}: ${String(hijo.stderr).split("\n").filter((l) => !l.includes("GLib")).join("\n")}`);
     data = (await sharp(cortada).ensureAlpha().raw().toBuffer({ resolveWithObject: true })).data;
   }
+
+  if (SIN_TINTE_AZUL.has(nombre)) quitarTinteAzul(data, SIN_TINTE_AZUL.get(nombre));
 
   // Un píxel menos de contorno: ahí es donde queda el color del fondo viejo (el «bordecito azul»).
   erosionar(data, info.width, info.height);
@@ -199,6 +205,23 @@ function erosionar(data, width, height) {
         }
       }
       data[(y * width + x) * 4 + 3] = menor;
+    }
+  }
+}
+
+/** Los píxeles claros en que el azul gana al rojo toman el color del envoltorio, con la luz que tenían. */
+function quitarTinteAzul(data, envoltorio) {
+  const luz = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+  const luzDelEnvoltorio = luz(...envoltorio);
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue;
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const l = luz(r, g, b);
+    if (b > r + 25 && l > 110) {
+      const factor = l / luzDelEnvoltorio;
+      data[i] = Math.min(255, Math.round(envoltorio[0] * factor));
+      data[i + 1] = Math.min(255, Math.round(envoltorio[1] * factor));
+      data[i + 2] = Math.min(255, Math.round(envoltorio[2] * factor));
     }
   }
 }
