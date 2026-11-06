@@ -2653,6 +2653,24 @@ async function probarListaDetal() {
     r.destino,
   );
 
+  // Una factura más vieja, cargada tarde: no pisa el costo de hoy; queda como la compra anterior y la lista dice cuánto cambió.
+  const haceDias = (n) => new Date(Date.parse(hoyVet) - n * 86400000).toISOString().slice(0, 10);
+  r = await enviar("/admin/detal", 'name="lineas"', { proveedor: "Cecosesola", fecha_compra: haceDias(10), tasa_compra: "896,12", categoria: "viveres", lineas: "12 x 400,00 Jugo Natulac Pera 200 ml (G)" });
+  const [conAnterior] = await consultar("select costo_bs, fecha_compra, costo_usd_anterior, fecha_compra_anterior from lista_detal where nombre = 'Jugo Natulac Pera 200 ml'");
+  comprobar(
+    "una factura más vieja no pisa el costo más nuevo: queda como la compra anterior",
+    r.destino.includes("compra más nueva") && conAnterior.costo_bs === 500 && conAnterior.fecha_compra === hoyVet && cerca(conAnterior.costo_usd_anterior, (400 * 1.16) / 896.12) && conAnterior.fecha_compra_anterior === haceDias(10),
+    `${r.destino} ${JSON.stringify(conAnterior)}`,
+  );
+  p = await pagina("/admin/detal");
+  comprobar("la lista avisa de lo que cambió más de un 10 % de costo, con cuánto", legible(p.html).includes("Un producto cambió de costo") && legible(p.html).includes("+25 %"), "");
+  r = await enviar("/admin/detal", 'name="lineas"', { proveedor: "Cecosesola", fecha_compra: haceDias(20), tasa_compra: "896,12", categoria: "viveres", lineas: "12 x 300,00 Jugo Natulac Pera 200 ml (G)" });
+  comprobar(
+    "una factura más vieja que las dos guardadas no cambia nada",
+    r.destino.includes("sin cambio") && cerca((await consultar("select costo_usd_anterior from lista_detal where nombre = 'Jugo Natulac Pera 200 ml'"))[0].costo_usd_anterior, (400 * 1.16) / 896.12),
+    r.destino,
+  );
+
   // Las reglas: margen, mayor y redondeo; después se dejan como estaban.
   r = await enviar("/admin/detal", 'name="redondeo_bs"', { margen_pct: "25", margen_mayor_pct: "10", redondeo_bs: "10" });
   const reglas = Object.fromEntries((await consultar("select clave, valor from ajustes where clave like 'detal_%'")).map((f) => [f.clave, f.valor]));

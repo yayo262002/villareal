@@ -79,6 +79,7 @@ import {
   ponerReglasDelDetal,
   ponerTasaAutomatica,
   quitarPreciosDeEjemplo,
+  reglasDelDetal,
   tasaEnFecha,
 } from "./ajustes";
 import {
@@ -2656,14 +2657,17 @@ export async function cargarFacturaDelDetal(datos: FormData): Promise<void> {
   const tasa = await tasaDeLaCompra(datos, fecha, (mensaje) => volverConError(ruta, mensaje));
   if (tasa === null) volverConError(ruta, "No hay tasa del BCV guardada para ese día: escríbela.");
   const categoria = texto(datos, "categoria");
-  const { nuevos, actualizados } = await cargarFacturaDetal({
+  const { nuevos, actualizados, anteriores, sinCambio } = await cargarFacturaDetal({
     lineas,
     categoria: esCategoriaDetal(categoria) ? categoria : "viveres",
     tasa,
     proveedor: texto(datos, "proveedor").slice(0, 80),
     fecha,
+    iva_pct: (await reglasDelDetal()).iva_pct,
   });
   const partes = [nuevos === 1 ? "1 producto nuevo" : `${nuevos} productos nuevos`, actualizados === 1 ? "1 con el costo al día" : `${actualizados} con el costo al día`];
+  if (anteriores > 0) partes.push(anteriores === 1 ? "1 ya tenía una compra más nueva (este costo queda de referencia)" : `${anteriores} ya tenían una compra más nueva (este costo queda de referencia)`);
+  if (sinCambio > 0) partes.push(sinCambio === 1 ? "1 sin cambio, por ser de una compra más vieja" : `${sinCambio} sin cambio, por ser de una compra más vieja`);
   const noEntendidas =
     sinEntender.length === 0
       ? ""
@@ -2671,7 +2675,8 @@ export async function cargarFacturaDelDetal(datos: FormData): Promise<void> {
           .slice(0, 5)
           .map((l) => `«${l.slice(0, 60)}»`)
           .join(", ")}${sinEntender.length > 5 ? "…" : ""}. Agrégalas a mano.`;
-  volverConExito(RUTA_DETAL, `Factura cargada a la tasa ${tasa.toLocaleString("es-VE")}: ${partes.join(" y ")}.${noEntendidas}`);
+  const resumen = partes.length > 1 ? `${partes.slice(0, -1).join(", ")} y ${partes.at(-1)}` : partes[0];
+  volverConExito(RUTA_DETAL, `Factura cargada a la tasa ${tasa.toLocaleString("es-VE")}: ${resumen}.${noEntendidas}`);
 }
 
 /** Crea (o renueva) el enlace con el que la familia ve la lista sin clave. */

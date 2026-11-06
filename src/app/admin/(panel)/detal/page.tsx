@@ -2,7 +2,7 @@ import Link from "next/link";
 import { conPrecios, contarArticulosDetal, listarArticulosDetal, type ArticuloConPrecio } from "@/lib/detal";
 import { enlaceDeLaLista, leerTasa, reglasDelDetal, tasaEnFecha } from "@/lib/ajustes";
 import { agregarArticuloDetal, cargarFacturaDelDetal, crearEnlaceDeLaLista, guardarReglasDelDetal } from "@/lib/acciones";
-import { CATEGORIAS_DETAL, costoConIva, type CategoriaDetal } from "@/lib/detal-calculo";
+import { CAMBIO_GRANDE_PCT, CATEGORIAS_DETAL, costoConIva, type CategoriaDetal } from "@/lib/detal-calculo";
 import { bs, bsRedondo, fechaCorta, fechaDeLaBase, hoy, tasaLegible, usd } from "@/lib/dinero";
 import { negocio } from "@/config/negocio";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
@@ -13,6 +13,12 @@ export const metadata = { title: "Lista del detal" };
 /** Un precio en dólares con sus centavos, como lo lleva la familia en su lista. */
 function dolares(n: number): string {
   return usd(n);
+}
+
+/** Un cambio en %, con su signo: «+12,5», «−3». */
+function signo(pct: number): string {
+  const texto = Math.abs(pct).toLocaleString("es-VE", { maximumFractionDigits: 1 });
+  return pct > 0 ? `+${texto}` : pct < 0 ? `−${texto}` : "0";
 }
 
 /**
@@ -35,6 +41,10 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
   ]);
   const lista = conPrecios(articulos, reglas, tasa?.valor ?? null);
   const hayMayor = lista.some((a) => a.mayor_usd !== null);
+  // Lo que cambió mucho de costo desde la compra anterior, lo que más primero.
+  const cambios = lista
+    .filter((a) => a.variacion_pct !== null && Math.abs(a.variacion_pct) >= CAMBIO_GRANDE_PCT)
+    .sort((a, b) => Math.abs(b.variacion_pct ?? 0) - Math.abs(a.variacion_pct ?? 0));
   const porCategoria = Object.keys(CATEGORIAS_DETAL)
     .map((c) => ({ categoria: c as CategoriaDetal, articulos: lista.filter((a) => a.categoria === c) }))
     .filter((g) => g.articulos.length > 0);
@@ -72,6 +82,23 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
         <p className="aviso aviso--aviso">
           Todavía no hay tasa del día: la lista enseña solo los dólares. Ponla en <Link href="/admin/productos">Productos</Link>.
         </p>
+      )}
+      {cambios.length > 0 && (
+        <div className="aviso aviso--aviso">
+          <strong>
+            {cambios.length === 1 ? "Un producto cambió" : `${cambios.length} productos cambiaron`} de costo más de un {CAMBIO_GRANDE_PCT} % desde la compra anterior
+          </strong>
+          , en dólares y con el IVA, cada compra a la tasa BCV de su día:
+          <ul style={{ margin: "var(--espacio-2) 0 0", paddingLeft: "1.2em" }}>
+            {cambios.map((a) => (
+              <li key={a.id}>
+                <Link href={`/admin/detal/${a.id}`}>{a.nombre}</Link>: {dolares(a.costo_usd_anterior ?? 0)}
+                {a.fecha_compra_anterior ? ` el ${fechaCorta(a.fecha_compra_anterior)}` : ""} → {dolares(a.costo_usd ?? 0)}
+                {a.fecha_compra ? ` el ${fechaCorta(a.fecha_compra)}` : ""} ({signo(a.variacion_pct ?? 0)} %)
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <section className="tarjeta">
@@ -322,6 +349,13 @@ function FilaDetal({ articulo: a, ivaPct, hayMayor }: { articulo: ArticuloConPre
           <>
             {bs(costoConIva(a.costo_bs, a.iva, ivaPct))}
             {a.costo_usd !== null && <span className="ayuda" style={{ display: "block" }}>{dolares(Math.round(a.costo_usd * 10000) / 10000)} a {tasaLegible(a.tasa_compra ?? 0)}</span>}
+            {a.variacion_pct !== null && (
+              <span className="ayuda" style={{ display: "block" }}>
+                antes {dolares(a.costo_usd_anterior ?? 0)}
+                {a.fecha_compra_anterior ? ` (${fechaCorta(a.fecha_compra_anterior)})` : ""} ·{" "}
+                {Math.abs(a.variacion_pct) >= CAMBIO_GRANDE_PCT ? <strong>{signo(a.variacion_pct)} %</strong> : `${signo(a.variacion_pct)} %`}
+              </span>
+            )}
           </>
         ) : (
           <span className="ayuda">precio a mano</span>

@@ -18,10 +18,18 @@ import type { TipoIva } from "./factura-calculo.ts";
 export const MARGEN_DETAL_POR_DEFECTO = 20;
 export const REDONDEO_BS_POR_DEFECTO = 5;
 
+/** Las categorías de la lista, en el orden en que salen. «Otros víveres» es donde cae lo que no se clasificó. */
 export const CATEGORIAS_DETAL = {
-  viveres: "Víveres",
-  limpieza: "Limpieza y cuidado personal",
   charcuteria: "Charcutería",
+  harinas: "Harinas, arroz y granos",
+  enlatados: "Enlatados y conservas",
+  salsas: "Salsas, aliños y condimentos",
+  despensa: "Azúcar, café y bebidas",
+  galletas: "Galletas, cereales y compotas",
+  lacteos: "Margarinas, untables y aceites",
+  viveres: "Otros víveres",
+  limpieza: "Limpieza",
+  cuidado: "Cuidado personal",
 } as const;
 export type CategoriaDetal = keyof typeof CATEGORIAS_DETAL;
 
@@ -98,6 +106,37 @@ export function precioMayorUsd(a: ArticuloParaPrecio, reglas: ReglasDelDetal): n
 export function enBolivares(usd: number | null, tasa: number | null, paso: number): number | null {
   if (usd === null || tasa === null || !(tasa > 0)) return null;
   return subirA(usd * tasa, paso);
+}
+
+// ---------- Una compra nueva o vieja de un producto que ya está ----------
+
+/** A partir de qué cambio del costo (en %) se avisa. */
+export const CAMBIO_GRANDE_PCT = 10;
+
+/** Las fechas de las dos últimas compras guardadas de un producto. */
+export type ComprasGuardadas = { fecha_compra: string | null; fecha_compra_anterior: string | null };
+
+/**
+ * Qué hace la compra de un día con un producto que ya está en la lista. La
+ * lista se queda con el costo de la compra más nueva y guarda el de la
+ * anterior, para decir cuánto cambió; así una factura vieja cargada tarde
+ * no pisa el costo de una más nueva.
+ * - «actual»: es la más nueva; la que había pasa a ser la anterior.
+ * - «mismo_dia»: es del mismo día que la que había; se corrige el costo.
+ * - «anterior»: es más vieja que la última pero más nueva que la anterior guardada; queda de referencia.
+ * - «nada»: es más vieja que las dos guardadas.
+ */
+export function decidirCarga(guardadas: ComprasGuardadas, fecha: string): "actual" | "mismo_dia" | "anterior" | "nada" {
+  if (guardadas.fecha_compra === null || fecha > guardadas.fecha_compra) return "actual";
+  if (fecha === guardadas.fecha_compra) return "mismo_dia";
+  if (guardadas.fecha_compra_anterior === null || fecha >= guardadas.fecha_compra_anterior) return "anterior";
+  return "nada";
+}
+
+/** Cuánto cambió el costo, en %, con un decimal; null si falta alguno. */
+export function variacionPct(actual: number | null, anterior: number | null): number | null {
+  if (actual === null || anterior === null || !(anterior > 0)) return null;
+  return Math.round(((actual - anterior) / anterior) * 1000) / 10;
 }
 
 // ---------- Leer las líneas de una factura ----------

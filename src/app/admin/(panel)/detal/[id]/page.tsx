@@ -60,6 +60,12 @@ export default async function PaginaArticuloDetal({ params, searchParams }: Para
                 {tasaLegible(a.tasa_compra ?? 0)}
                 {a.fecha_compra ? ` del ${fechaCorta(a.fecha_compra)}` : ""}
               </div>
+              {a.variacion_pct !== null && (
+                <div className={estilos.cifraNota}>
+                  La compra anterior{a.fecha_compra_anterior ? `, del ${fechaCorta(a.fecha_compra_anterior)}` : ""}, costó {usd(a.costo_usd_anterior ?? 0)}:{" "}
+                  {a.variacion_pct > 0 ? "subió" : a.variacion_pct < 0 ? "bajó" : "igual"} {Math.abs(a.variacion_pct).toLocaleString("es-VE")} %.
+                </div>
+              )}
             </div>
           )}
         </dl>

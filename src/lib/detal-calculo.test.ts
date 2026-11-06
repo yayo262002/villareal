@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  decidirCarga,
+  variacionPct,
   costoEnDolares,
   enBolivares,
   leerLineasDeFactura,
@@ -135,4 +137,24 @@ test("una unidad que termina en g minúscula no se toma por la marca de IVA", ()
   const { lineas, sinEntender } = leerLineasDeFactura("6 x 814,66 Jabón Protex Fresh 75 g");
   assert.equal(lineas.length, 0);
   assert.equal(sinEntender.length, 1);
+});
+
+test("una factura vieja cargada tarde no pisa el costo de una más nueva: queda de referencia", () => {
+  const guardadas = { fecha_compra: "2026-11-06", fecha_compra_anterior: "2026-10-22" };
+  assert.equal(decidirCarga(guardadas, "2026-11-10"), "actual");
+  assert.equal(decidirCarga(guardadas, "2026-11-06"), "mismo_dia");
+  assert.equal(decidirCarga(guardadas, "2026-10-30"), "anterior");
+  assert.equal(decidirCarga(guardadas, "2026-10-22"), "anterior");
+  assert.equal(decidirCarga(guardadas, "2026-10-16"), "nada");
+  // Un producto puesto a mano, sin compra: la primera compra es la actual; sin anterior, cualquiera más vieja queda de referencia.
+  assert.equal(decidirCarga({ fecha_compra: null, fecha_compra_anterior: null }, "2026-10-16"), "actual");
+  assert.equal(decidirCarga({ fecha_compra: "2026-11-06", fecha_compra_anterior: null }, "2026-10-16"), "anterior");
+});
+
+test("cuánto cambió el costo, en %", () => {
+  assert.equal(variacionPct(1.1, 1), 10);
+  assert.equal(variacionPct(0.9, 1), -10);
+  assert.equal(variacionPct(0.6798, 0.6612), 2.8);
+  assert.equal(variacionPct(1, null), null);
+  assert.equal(variacionPct(null, 1), null);
 });

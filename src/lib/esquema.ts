@@ -533,6 +533,9 @@ export const ESQUEMA = `
     precio_mayor_usd real,
     proveedor text not null default '',
     fecha_compra text,
+    -- El costo con IVA, en dólares, de la compra anterior a la última, y su fecha: para decir cuánto cambió.
+    costo_usd_anterior real,
+    fecha_compra_anterior text,
     activo integer not null default 1,
     creado_en text not null default (datetime('now')),
     actualizado_en text not null default (datetime('now'))
