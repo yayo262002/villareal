@@ -58,6 +58,9 @@
   .adorno--corazon { left: 3%; top: 1%; width: 36%; transform: rotate(-14deg); }
   .adorno--corazones { left: 30%; top: -50%; width: 46%; }
   .adorno--escarapela { right: -21%; bottom: 1%; width: 54%; transform: rotate(9deg); }
+  .adorno--cortapizza { left: -14%; top: -12%; width: 74%; transform: rotate(-28deg); }
+  .adorno--cocinero { left: 4%; top: -32%; width: 92%; transform: rotate(-6deg); }
+  .adorno--porcion { right: -8%; top: -27%; width: 60%; transform: rotate(24deg); }
   .hoja--separado .pieza + .pieza { margin-left: 3mm; }
   .hoja--tres .pieza + .pieza { margin-left: -7mm; }
 
@@ -68,7 +71,7 @@
     display: block; font-weight: 800; font-size: 16.5mm; line-height: 1.02; letter-spacing: -0.012em; text-transform: uppercase; white-space: nowrap;
     color: var(--rojo-oscuro); -webkit-text-stroke: 1.2mm #ffffff; paint-order: stroke fill;
   }
-  /* Los combos con nombre propio (perrero, solidario, navideño): la misma hoja, con el título en una placa roja y dorada. */
+  /* Los combos con nombre propio (perrero, solidario, navideño, pizzero): la misma hoja, con el título en una placa roja y dorada. */
   .hoja--especial .titulo { box-sizing: border-box; padding: 1.1mm 4mm 1.5mm; border: 0.8mm solid #e7b33f; border-radius: 4mm; background: linear-gradient(180deg, #bb1119, #8a090f); }
   .hoja--especial .linea { font-size: 18mm; line-height: 1.04; color: var(--crema); -webkit-text-stroke: 0; }
   .etiqueta { display: flex; align-items: center; justify-content: center; gap: 3mm; color: var(--oro); font-weight: 800; font-size: 6mm; line-height: 1.15; letter-spacing: 0.14em; text-transform: uppercase; }
@@ -127,12 +130,21 @@
     `<path transform="translate(${x} ${y}) rotate(${giro}) scale(${(r / 9).toFixed(3)})" d="M0,8C-11,0.5 -11,-8.5 -5.2,-8.5C-2.2,-8.5 0,-6.4 0,-4.6C0,-6.4 2.2,-8.5 5.2,-8.5C11,-8.5 11,0.5 0,8Z"
       fill="${i % 3 === 1 ? "#d3151e" : "#ffffff"}" fill-opacity="${i % 3 === 1 ? ".55" : ".85"}"/>`;
 
+  /** Una porción de pizza a trazo blanco, para el fondo del pizzero: el borde, la punta y tres rodajas encima. */
+  const pizzita = (x, y, r, giro) => `
+    <g transform="translate(${x} ${y}) rotate(${giro}) scale(${(r / 10).toFixed(3)})" fill="none" stroke="#ffffff" stroke-opacity=".85" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M-9,-6Q0,-11 9,-6L0.8,10.4Q0,11.6 -0.8,10.4Z"/>
+      <path d="M-10,-9Q0,-14.6 10,-9"/>
+      <circle cx="-2.8" cy="-2.6" r="1.7"/><circle cx="2.8" cy="-1.2" r="1.4"/><circle cx="-0.4" cy="3.8" r="1.2"/>
+    </g>`;
+
   /** Los dibujitos del fondo de cada especial, en los mismos sitios que los copos, girados para que no parezcan en fila. */
   const GIROS = [-18, 12, -6, 20, -14, 8, 16, -10, 4, -20, 10, -4];
   function fondo(tipo) {
     if (tipo === "copos") return COPOS.map(([x, y, r]) => copo(x, y, r)).join("");
     if (tipo === "perros") return COPOS.map(([x, y, r], i) => perrito(x, y, r * 1.15, GIROS[i])).join("");
     if (tipo === "corazones") return COPOS.map(([x, y, r], i) => corazon(x, y, r, GIROS[i], i)).join("");
+    if (tipo === "pizzas") return COPOS.map(([x, y, r], i) => pizzita(x, y, r * 1.1, GIROS[i] * 2)).join("");
     return "";
   }
 
@@ -162,7 +174,7 @@
   /** Un corazón grande, rojo y con borde dorado. */
   const CORAZON = "M50,86C10,58 4,34 12,20C20,6 40,6 50,22C60,6 80,6 88,20C96,34 90,58 50,86Z";
 
-  /** Los adornos de Navidad. Los colores, los de la hoja: rojo, oro, blanco y el verde del acebo. */
+  /** Los adornos de los especiales. Los colores, los de la hoja: rojo, oro y blanco, con el verde del acebo y de la bandera. */
   const ADORNOS = {
     gorro: `<svg class="adorno adorno--gorro" viewBox="0 0 100 80">
       <defs>
@@ -276,6 +288,55 @@
         <path d="${CORAZON}" fill="#ffffff" stroke="#f2c14e" stroke-width="5" stroke-linejoin="round"/>
       </g>
     </svg>`,
+
+    // El pizzero: un cortapizza en la tocineta, un gorro de cocinero con la bandera de Italia en el jamón y una porción
+    // de pizza con jamón y tocineta encima de la mozzarella, con el queso que chorrea.
+    cortapizza: `<svg class="adorno adorno--cortapizza" viewBox="0 0 120 70">
+      <defs>
+        <radialGradient id="cuchilla" cx=".38" cy=".34" r=".72"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#d9dde2"/><stop offset="1" stop-color="#868d95"/></radialGradient>
+        <linearGradient id="mango" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ec3a41"/><stop offset=".55" stop-color="#c3161d"/><stop offset="1" stop-color="#7f0a0f"/></linearGradient>
+      </defs>
+      <rect x="44" y="29" width="18" height="10" rx="2" fill="#b9bfc6" stroke="#6d747c" stroke-width="1"/>
+      <rect x="56" y="24" width="61" height="20" rx="10" fill="url(#mango)" stroke="#6e0a0e" stroke-width="1.2"/>
+      <path d="M64,29.5H110" stroke="#ff9a9a" stroke-opacity=".5" stroke-width="2.4" stroke-linecap="round"/>
+      <g stroke="#6e0a0e" stroke-opacity=".45" stroke-width="1.6" stroke-linecap="round"><path d="M76,27V41"/><path d="M84,27V41"/><path d="M92,27V41"/></g>
+      <circle cx="31" cy="34" r="28" fill="url(#cuchilla)" stroke="#6d747c" stroke-width="1.2"/>
+      <circle cx="31" cy="34" r="23.5" fill="none" stroke="#f7f8fa" stroke-opacity=".8" stroke-width="1.4"/>
+      <path d="M13,24C17,15 25,11 33,11" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="31" cy="34" r="8" fill="#5b6168" stroke="#3e434a" stroke-width="1"/>
+      <circle cx="31" cy="34" r="3.2" fill="#c9ced4"/>
+    </svg>`,
+    cocinero: `<svg class="adorno adorno--cocinero" viewBox="0 0 100 92">
+      <defs>
+        <radialGradient id="tela" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#f3f0ea"/><stop offset="1" stop-color="#d4cdc2"/></radialGradient>
+        <linearGradient id="cinta-gorro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e3ddd3"/></linearGradient>
+      </defs>
+      <path d="M20,60C6,58 2,36 16,30C14,14 32,6 44,14C50,2 72,2 76,16C90,10 102,26 92,38C102,48 94,62 80,60Z" fill="url(#tela)" stroke="#bdb5a8" stroke-width="1.2"/>
+      <g fill="none" stroke="#cfc7ba" stroke-width="1.8" stroke-linecap="round"><path d="M36,58C34,46 36,32 42,24"/><path d="M52,58C52,44 54,30 59,20"/><path d="M68,58C70,48 73,38 79,30"/></g>
+      <path d="M24,32C24,24 30,19 37,20" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+      <rect x="19" y="55" width="62" height="27" rx="4" fill="url(#cinta-gorro)" stroke="#bdb5a8" stroke-width="1.2"/>
+      <g stroke="#9f978a" stroke-width=".6"><rect x="39.5" y="62" width="7" height="13" fill="#1e8a3c"/><rect x="46.5" y="62" width="7" height="13" fill="#ffffff"/><rect x="53.5" y="62" width="7" height="13" fill="#cf1b22"/></g>
+    </svg>`,
+    porcion: `<svg class="adorno adorno--porcion" viewBox="0 0 100 104">
+      <defs>
+        <linearGradient id="queso-pizza" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0a8"/><stop offset=".5" stop-color="#f8cc52"/><stop offset="1" stop-color="#eaa72c"/></linearGradient>
+        <linearGradient id="borde-pizza" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6cf8c"/><stop offset=".6" stop-color="#d48b3c"/><stop offset="1" stop-color="#a65d22"/></linearGradient>
+      </defs>
+      <path d="M9,30Q50,11 91,30L56,96Q50,104 44,96Z" fill="url(#queso-pizza)" stroke="#c98a1c" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="M19,49C14,56 14,67 19,67C24,67 23,58 25.5,55Z" fill="#f4bd45" stroke="#c98a1c" stroke-width="1"/>
+      <path d="M77,57C81,65 81,74 76.5,74C72,74 72,67 71,63.5Z" fill="#f2b63f" stroke="#c98a1c" stroke-width="1"/>
+      <path d="M9,30Q50,11 91,30" fill="none" stroke="#c62a1b" stroke-width="3.6" stroke-linecap="round"/>
+      <path d="M3,22Q50,-2 97,22Q99,29 92,32Q50,11 8,32Q1,29 3,22Z" fill="url(#borde-pizza)" stroke="#8f4f1c" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="M18,17Q50,4 82,17" fill="none" stroke="#fff3d6" stroke-opacity=".6" stroke-width="2.4" stroke-linecap="round"/>
+      ${[[34, 40, 12], [60, 41, -10], [47, 64, 20]]
+        .map(([x, y, giro]) => `<rect x="${x - 6}" y="${y - 5}" width="12" height="10" rx="2.4" transform="rotate(${giro} ${x} ${y})" fill="#f4a7a3" stroke="#c76b6b" stroke-width="1"/>`)
+        .join("")}
+      ${[[24, 52, -8], [58, 55, 14], [44, 79, 4]]
+        .map(([x, y, giro]) => `<g transform="translate(${x} ${y}) rotate(${giro})"><path d="M-7,0q2.3,-3 4.6,0t4.6,0t4.6,0" fill="none" stroke="#8e2f1b" stroke-width="5" stroke-linecap="round"/><path d="M-7,0q2.3,-3 4.6,0t4.6,0t4.6,0" fill="none" stroke="#f1b98f" stroke-width="1.5" stroke-linecap="round"/></g>`)
+        .join("")}
+      <g fill="#3d7d2e">${[[28, 34], [44, 30], [70, 33], [40, 50], [66, 66], [52, 86], [30, 60], [54, 72]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.2"/>`).join("")}</g>
+      <path d="M22,36Q36,30 50,29" fill="none" stroke="#ffffff" stroke-opacity=".55" stroke-width="2.4" stroke-linecap="round"/>
+    </svg>`,
   };
 
   /** El fondo dibujado de la hoja: la cabecera roja con su onda dorada, los sándwiches, la franja de abajo y, en los especiales, sus dibujitos. */
@@ -314,8 +375,11 @@
       const r = R * (1 + 0.026 * Math.cos(PICOS * t));
       borde += `${i ? "L" : "M"}${(cx + r * Math.cos(t)).toFixed(2)},${(cy + r * Math.sin(t)).toFixed(2)}`;
     }
+    // Con dos cifras el número va más chico y las rayas de los lados, más cortas y más afuera, para que no lo toquen.
+    const dos = n >= 10;
+    const desde = dos ? 13.8 : 12.2;
     const rayas = (signo) =>
-      [[3.2, 5.4], [6.2, 7], [9.2, 5.4]].map(([dy, largo]) => `<line x1="${cx + signo * 12.2}" y1="${cy + dy}" x2="${cx + signo * (12.2 + largo)}" y2="${cy + dy}"/>`).join("");
+      [[3.2, 5.4], [6.2, 7], [9.2, 5.4]].map(([dy, largo]) => `<line x1="${cx + signo * desde}" y1="${cy + dy}" x2="${cx + signo * (desde + largo * (dos ? 0.6 : 1))}" y2="${cy + dy}"/>`).join("");
     return `<svg class="capa capa--sello" viewBox="0 0 216 279" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="oroSello-${n}" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".35" stop-color="#e8b43f"/><stop offset=".7" stop-color="#b98417"/><stop offset="1" stop-color="#f6d779"/></linearGradient>
@@ -325,13 +389,13 @@
       <path d="${borde}Z" fill="url(#oroSello-${n})"/>
       <circle cx="${cx}" cy="${cy}" r="${R - 2.7}" fill="url(#rojoSello-${n})" stroke="#fff1b8" stroke-width=".35"/>
       <text x="${cx}" y="${cy - 9.4}" text-anchor="middle" font-family="Open Sans" font-weight="800" font-size="7.2" fill="#ffffff">COMBO</text>
-      <text x="${cx}" y="${cy + 15}" text-anchor="middle" font-family="Open Sans" font-weight="800" font-size="28" fill="url(#oroNumero-${n})">${n}</text>
+      <text x="${cx}" y="${cy + (dos ? 12.6 : 15)}" text-anchor="middle" font-family="Open Sans" font-weight="800" font-size="${dos ? 20.5 : 28}" fill="url(#oroNumero-${n})">${n}</text>
       <g stroke="#f2c14e" stroke-width=".7" stroke-linecap="round">${rayas(1)}${rayas(-1)}</g>
     </svg>`;
   }
 
-  /** El peso o lo que lleva, en mayúsculas pero con los gramos y los mililitros como se escriben. */
-  const enMayusculas = (texto) => texto.toUpperCase().replace(/(\d) G\b/g, "$1 g").replace(/(\d) ML\b/g, "$1 ml");
+  /** El peso o lo que lleva, en mayúsculas pero con los gramos y los mililitros como se escriben; un número no se separa de lo que cuenta («6 huevos»). */
+  const enMayusculas = (texto) => texto.toUpperCase().replace(/(\d) G\b/g, "$1 g").replace(/(\d) ML\b/g, "$1 ml").replace(/(\d) /g, "$1 ");
   const clasePildora = (texto) => (texto.length <= 22 ? "" : texto.length <= 45 ? " pildora--media" : " pildora--larga");
 
   /** La frase, con la raya roja a mano debajo de las palabras que se destacan. */

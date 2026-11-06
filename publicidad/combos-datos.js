@@ -22,9 +22,10 @@ const CM = {
 
 // Cada producto: [foto, nombre, adorno]; el adorno es opcional y va dibujado encima de la foto: en el perrero, el
 // perro caliente, las salsas y el chorro; en el solidario, el corazón, los corazones y la escarapela; en el navideño,
-// el gorro, el moño y el acebo. `fondo` pone dibujitos detrás de los productos: perros, corazones o copos de nieve.
+// el gorro, el moño y el acebo; en el pizzero, el cortapizza, el gorro de cocinero y la porción. `fondo` pone
+// dibujitos detrás de los productos: perros, corazones, copos de nieve o pizzas.
 // La charcutería (el jamón, la boloña, la mortadela, el pavo) va siempre primero, a la izquierda; el queso
-// o lo que acompaña, después. Los combos con nombre propio (perrero, solidario, navideño) son los especiales y van al final.
+// o lo que acompaña, después. Los combos con nombre propio (perrero, solidario, navideño, pizzero) son los especiales y van al final.
 // COMBOS y fotoDe quedan en globalThis: los usan las páginas que cargan este archivo con <script>.
 globalThis.COMBOS = [
   { n: 1, productos: [["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "El clásico para la arepa y el sándwich", destacar: "la arepa" },
@@ -50,7 +51,7 @@ globalThis.COMBOS = [
     n: 8,
     titulo: "Combo solidario",
     productos: [["suero-san-pedro", "Suero San Pedro", "corazon"], ["huevos", "Huevos", "corazones"], ["mortadela-de-pollo", "Mortadela", "escarapela"]],
-    detalle: "1 suero San Pedro de 900 ml, 6 huevos y 5 salchichas o 100 g de mortadela extra",
+    detalle: "1 suero San Pedro de 900 ml, 6 huevos y 100 g de mortadela extra",
     lema: "Lo básico de la casa en un solo combo",
     destacar: "un solo combo",
     especial: true,
@@ -69,6 +70,19 @@ globalThis.COMBOS = [
     // Copos de nieve en el fondo, y los productos algo más bajos para que el gorro no llegue al nombre.
     fondo: "copos",
     alto: 86,
+  },
+  {
+    n: 10,
+    titulo: "Combo pizzero",
+    productos: [["tocineta", "Tocineta", "cortapizza"], ["jamon-de-espalda", "Jamón de espalda", "cocinero"], ["mozzarella", "Mozzarella", "porcion"]],
+    detalle: "100 g de tocineta, 200 g de jamón de espalda y 200 g de mozzarella",
+    lema: "Arma tu pizza en casa",
+    destacar: "tu pizza",
+    especial: true,
+    etiqueta: "Especial pizza",
+    // Porciones de pizza en el fondo, y los productos algo más bajos para que el gorro de cocinero no llegue a la onda.
+    fondo: "pizzas",
+    alto: 84,
   },
 ];
 
