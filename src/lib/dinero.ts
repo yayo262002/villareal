@@ -89,6 +89,13 @@ export function bs(n: number): string {
   return `Bs ${formatoBs.format(n)}`;
 }
 
+const formatoBsRedondo = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+/** Un precio en bolívares ya redondeado (725, 1.060): sin los «,00» que no dicen nada. */
+export function bsRedondo(n: number): string {
+  return `Bs ${formatoBsRedondo.format(n)}`;
+}
+
 export function formatearMonto(monto: number, moneda: Moneda): string {
   return moneda === "USD" ? usd(monto) : bs(monto);
 }

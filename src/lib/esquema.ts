@@ -515,6 +515,30 @@ export const ESQUEMA = `
   create index if not exists facturas_venta on facturas(venta_id);
   create index if not exists facturas_fecha on facturas(fecha);
 
+  -- La lista de precios del detal (la charcutería): cada producto con lo
+  -- que costó en la factura del proveedor (en bolívares, sin IVA, a la tasa
+  -- de ese día) o con su precio en dólares puesto a mano. El precio al
+  -- detal sale de ahí con el margen; los bolívares, con la tasa de hoy. No
+  -- es el catálogo de la web ni el inventario: es la lista del mostrador.
+  create table if not exists lista_detal (
+    id integer primary key autoincrement,
+    nombre text not null,
+    categoria text not null default 'viveres',
+    unidad text not null default 'unidad',
+    costo_bs real,
+    iva text not null default 'general' check (iva in ('general', 'exento')),
+    tasa_compra real,
+    margen_pct real,
+    precio_usd real,
+    precio_mayor_usd real,
+    proveedor text not null default '',
+    fecha_compra text,
+    activo integer not null default 1,
+    creado_en text not null default (datetime('now')),
+    actualizado_en text not null default (datetime('now'))
+  );
+  create unique index if not exists lista_detal_nombre on lista_detal(nombre collate nocase);
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (
@@ -571,6 +595,7 @@ export const TABLAS = [
   "contactos",
   "precios_especiales",
   "facturas",
+  "lista_detal",
 ] as const;
 
 /**

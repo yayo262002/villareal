@@ -26,7 +26,8 @@ Tiene dos partes:
   facturas con su IVA, sus notas de crédito y el libro de ventas; la foto de
   cada nota en papel, las reseñas de cada producto, los proveedores (a
   quién se le debe y los pagos que se les hacen), los días de crédito de
-  unos y otros, y un informe de cuánto se vende, de qué y a quién.
+  unos y otros, un informe de cuánto se vende, de qué y a quién, y la lista
+  de precios de la charcutería (el detal), al día con la tasa del BCV.
 
 ## Arrancar
 
@@ -262,6 +263,10 @@ src/lib/codigos.ts        Los códigos de barras y los SKU: quién tiene un cód
 src/lib/factura-calculo.ts  Las cuentas de la factura: lo exento, la base imponible, el IVA, el total en Bs; el libro de ventas (puro, con pruebas)
 src/lib/facturas.ts       Las facturas y las notas de crédito desde la base: emitir, numerar, el número de control, anular, listar
 src/app/admin/(panel)/facturas/  Facturas: la lista del mes, los ajustes, cada factura (carta y ticket), anular, y el libro de ventas para Excel
+src/lib/detal-calculo.ts  Las cuentas de la lista del detal: IVA, margen, dólares subidos al centavo, bolívares subidos de 5 en 5; leer las líneas de una factura (puro, con pruebas)
+src/lib/detal.ts          La lista del detal desde la base: listar, cargar una factura, agregar, cambiar, esconder, quitar
+src/app/admin/(panel)/detal/  La lista del detal en el panel: cargar facturas, agregar a mano, las reglas y el enlace para la familia
+src/app/lista/            La lista del detal para la familia, con su enlace y sin clave
 src/lib/precios-especiales.ts  El precio especial de un cliente para un artículo
 src/components/pos.tsx    Registrar venta, como una caja (con JavaScript: cliente con saldo, lector, carrito, pago, atajos)
 src/app/admin/(panel)/ventas/  Ventas: arriba la caja, debajo las últimas ventas; /clasica, el formulario de siempre, de respaldo
@@ -930,6 +935,40 @@ Binance y otro.
   en dólares. Es lo que el contador necesita para declarar el IVA.
 - **Lo que no hace el sistema**: renovar el RIF (venció en 2019), elegir
   la imprenta digital, ni declarar el IVA. Lo dice la propia pantalla.
+
+## La lista del detal
+
+- **Qué es.** La charcutería (el detal de la familia) tiene su propia lista
+  de precios, aparte del catálogo al mayor de la web y del inventario:
+  `/admin/detal`, en el menú «Lista del detal».
+- **De dónde sale cada precio.** Del costo de una unidad en la factura del
+  proveedor, en bolívares y sin IVA, como viene impreso encima del nombre.
+  Si el producto es gravado («(G)» en la factura) se le suma el IVA (16 %,
+  el de Facturas); si es exento («(E)»), no. Se pasa a dólares con la tasa
+  BCV del día de la compra (la que quedó guardada ese día, o la escrita) y
+  se le suma el margen: 20 % en los víveres. El precio en dólares se sube
+  al centavo y el de bolívares, a la tasa BCV de hoy, de 5 en 5: **siempre
+  hacia arriba**, nunca en contra del negocio (0,84 $ que dan Bs 723 se
+  cobran Bs 725). Los bolívares cambian solos cada mañana con la tasa.
+  Las cuentas, con pruebas, están en `src/lib/detal-calculo.ts`.
+- **Cargar una factura.** Se pegan sus líneas, una por producto:
+  «12 x 447,59 Jugo Natulac Pera 200 ml (G)». Vale también como sale en el
+  papel, con la cantidad y el precio en su propia línea encima del nombre.
+  Lo que ya está en la lista (por el nombre, sin mirar mayúsculas) toma el
+  costo nuevo; lo nuevo entra en la categoría elegida (Víveres, Limpieza y
+  cuidado personal, Charcutería). Lo que no se entiende (sin «(E)» o «(G)»,
+  sin precio) no se carga y se dice cuál es.
+- **A mano.** Un producto se agrega también con su precio al detal en
+  dólares (la charcutería, por kilo), o con su costo y su tasa. Cada uno
+  puede llevar su margen propio y un precio al mayor escrito a mano. En
+  «Las reglas» se cambian el margen, el redondeo y el **margen al mayor**:
+  vacío, la lista no enseña precio al mayor.
+- **Para la familia.** «Crear el enlace» da una dirección
+  (`/lista/abcdefghjkmnpq`) que se manda por WhatsApp: con ella se ve la
+  lista al día, en bolívares y en dólares, por categorías y con buscador,
+  sin clave y sin nada más del panel (ni costos ni proveedores). Fuera de
+  los buscadores; «Renovar el enlace» pone otro y el anterior deja de
+  funcionar. Un producto se puede esconder de esa lista sin perder su costo.
 
 ## Proveedores
 

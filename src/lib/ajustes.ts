@@ -3,6 +3,7 @@ import { ejecutar, fila, filas } from "./db";
 import { fechaCorta, hoy } from "./dinero";
 import { esFinDeSemana, lunesDespuesDe } from "./tasa";
 import { IVA_GENERAL_POR_DEFECTO } from "./factura-calculo";
+import { MARGEN_DETAL_POR_DEFECTO, REDONDEO_BS_POR_DEFECTO, type ReglasDelDetal } from "./detal-calculo";
 
 /**
  * Ajustes sueltos del negocio, guardados como clave y valor. La tasa del
@@ -205,4 +206,39 @@ export async function numeracionDeFacturasDesde(): Promise<number> {
 
 export async function ponerNumeracionDeFacturasDesde(numero: number): Promise<void> {
   await guardar("facturas_desde", String(numero));
+}
+
+/**
+ * Las reglas de la lista del detal: el margen sobre el costo (20 % si no se
+ * dijo otra cosa), el del mayor (sin poner, no hay precio al mayor salvo el
+ * escrito a mano), la alícuota del IVA (la de las facturas) y de cuánto en
+ * cuánto se suben los bolívares (5).
+ */
+export async function reglasDelDetal(): Promise<ReglasDelDetal> {
+  const [a, ivaPct] = await Promise.all([leer("detal_margen_pct", "detal_margen_mayor_pct", "detal_redondeo_bs"), alicuotaIva()]);
+  const margen = Number(a.get("detal_margen_pct")?.valor);
+  const mayor = Number(a.get("detal_margen_mayor_pct")?.valor);
+  const redondeo = Number(a.get("detal_redondeo_bs")?.valor);
+  return {
+    margen_pct: a.has("detal_margen_pct") && Number.isFinite(margen) && margen >= 0 ? margen : MARGEN_DETAL_POR_DEFECTO,
+    margen_mayor_pct: a.has("detal_margen_mayor_pct") && Number.isFinite(mayor) && mayor >= 0 ? mayor : null,
+    iva_pct: ivaPct,
+    redondeo_bs: a.has("detal_redondeo_bs") && Number.isFinite(redondeo) && redondeo > 0 ? redondeo : REDONDEO_BS_POR_DEFECTO,
+  };
+}
+
+export async function ponerReglasDelDetal(reglas: Pick<ReglasDelDetal, "margen_pct" | "margen_mayor_pct" | "redondeo_bs">): Promise<void> {
+  await guardar("detal_margen_pct", String(reglas.margen_pct));
+  await guardar("detal_redondeo_bs", String(reglas.redondeo_bs));
+  if (reglas.margen_mayor_pct === null) await quitar("detal_margen_mayor_pct");
+  else await guardar("detal_margen_mayor_pct", String(reglas.margen_mayor_pct));
+}
+
+/** El enlace con el que se ve la lista del detal sin clave (`/lista/abcdefghjkmnpq`), o null si no se ha creado. */
+export async function enlaceDeLaLista(): Promise<string | null> {
+  return (await leer("enlace_lista_detal")).get("enlace_lista_detal")?.valor ?? null;
+}
+
+export async function ponerEnlaceDeLaLista(enlace: string): Promise<void> {
+  await guardar("enlace_lista_detal", enlace);
 }

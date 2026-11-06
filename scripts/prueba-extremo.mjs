@@ -2096,6 +2096,7 @@ async function probarSinEscribir() {
     ["/admin/stickers", "Stickers para WhatsApp", "Cuando pagan"],
     ["/admin/proveedores", "Proveedores", "Proveedor nuevo"],
     ["/admin/facturas", "Facturas", "Libro de ventas"],
+    ["/admin/detal", "Lista del detal", "Cargar una factura de compra"],
     ["/admin/caja", "Cierre del día", "Descargar para Excel"],
     ["/admin/app", "Cómo ponerlo como app", "Añadir a pantalla de inicio"],
   ];
@@ -2610,6 +2611,113 @@ async function probarFacturas() {
   escribirEnLocal("update clientes set cedula_rif = '' where id = ?", [cliente.id]);
 }
 
+async function probarListaDetal() {
+  const formatoBs = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const subirA = (n, paso) => Math.round(Math.ceil(Math.round((n / paso) * 1e6) / 1e6) * paso * 100) / 100;
+  const tasaDeHoy = Number((await consultar("select valor from ajustes where clave = 'tasa_bs'"))[0]?.valor);
+  const hoyVet = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+
+  let p = await pagina("/admin/detal");
+  comprobar(
+    `la lista del detal tiene su pantalla, con cargar factura, agregar, reglas y el enlace (${p.ms} ms)`,
+    p.status === 200 && p.html.includes('name="lineas"') && p.html.includes('name="margen_mayor_pct"') && p.html.includes("Crear el enlace") && p.html.includes("Lista del detal"),
+    String(p.status),
+  );
+
+  // Una factura: dos líneas que se entienden (una gravada y otra exenta) y una sin (E) ni (G).
+  let r = await enviar("/admin/detal", 'name="lineas"', {
+    proveedor: "Cecosesola",
+    fecha_compra: hoyVet,
+    tasa_compra: "896,12",
+    categoria: "viveres",
+    lineas: "12 x 447,59 Jugo Natulac Pera 200 ml (G)\n6x Bs 875,00 Maíz de Cotufa El Maizalito 400 g (E)\n6 x 760,00 Sal Bahía 1 kg",
+  });
+  comprobar(
+    "una factura se carga: lo que entiende entra y lo que no, se dice",
+    r.destino.includes("Factura cargada") && r.destino.includes("2 productos nuevos") && r.destino.includes("No entendí esta línea") && r.destino.includes("Sal Bahía"),
+    r.destino,
+  );
+  const [jugo] = await consultar("select * from lista_detal where nombre = 'Jugo Natulac Pera 200 ml'");
+  comprobar("el producto guarda su costo sin IVA, que es gravado, la tasa y el proveedor", jugo?.costo_bs === 447.59 && jugo.iva === "general" && jugo.tasa_compra === 896.12 && jugo.proveedor === "Cecosesola", JSON.stringify(jugo));
+
+  // El jugo: 447,59 + 16 % = 519,20 Bs, a 896,12 son 0,5794 $, + 20 % = 0,6953 → 0,70 $; en Bs, a la tasa de hoy, de 5 en 5.
+  const jugoBs = `Bs ${formatoBs.format(subirA(0.7 * tasaDeHoy, 5))}`;
+  p = await pagina("/admin/detal");
+  comprobar("la lista dice el precio al detal en dólares (IVA y 20 %, subido al centavo) y en bolívares de hoy (de 5 en 5)", legible(p.html).includes("0,70") && legible(p.html).includes(jugoBs), jugoBs);
+
+  // La misma factura otra vez, con otro precio: no se duplica, toma el costo nuevo.
+  r = await enviar("/admin/detal", 'name="lineas"', { proveedor: "Cecosesola", fecha_compra: hoyVet, tasa_compra: "896,12", categoria: "viveres", lineas: "12 x 500,00 jugo natulac pera 200 ml (G)" });
+  comprobar(
+    "lo que ya está en la lista no se duplica: toma el costo nuevo",
+    r.destino.includes("1 con el costo al día") && (await consultar("select count(*) as n, max(costo_bs) as c from lista_detal where nombre = 'Jugo Natulac Pera 200 ml' collate nocase"))[0].c === 500,
+    r.destino,
+  );
+
+  // Las reglas: margen, mayor y redondeo; después se dejan como estaban.
+  r = await enviar("/admin/detal", 'name="redondeo_bs"', { margen_pct: "25", margen_mayor_pct: "10", redondeo_bs: "10" });
+  const reglas = Object.fromEntries((await consultar("select clave, valor from ajustes where clave like 'detal_%'")).map((f) => [f.clave, f.valor]));
+  comprobar("las reglas se guardan: margen al detal, al mayor y redondeo", r.destino.includes("Reglas guardadas") && reglas.detal_margen_pct === "25" && reglas.detal_margen_mayor_pct === "10" && reglas.detal_redondeo_bs === "10", JSON.stringify(reglas));
+  p = await pagina("/admin/detal");
+  comprobar("con margen al mayor, la lista enseña el precio al mayor", p.html.includes(">Al mayor<"));
+  r = await enviar("/admin/detal", 'name="redondeo_bs"', { margen_pct: "20", margen_mayor_pct: "", redondeo_bs: "5" });
+  comprobar("sin margen al mayor no hay precio al mayor", (await consultar("select count(*) as n from ajustes where clave = 'detal_margen_mayor_pct'"))[0].n === 0 && !(await pagina("/admin/detal")).html.includes(">Al mayor<"));
+
+  // A mano, con su precio en dólares (la charcutería); y el mismo nombre otra vez manda a su ficha.
+  r = await enviar("/admin/detal", 'name="precio_mayor_usd"', { nombre: "Queso amarillo de prueba", categoria: "charcuteria", unidad: "kg", precio_usd: "7,70", precio_mayor_usd: "", costo_bs: "", iva: "general", tasa_compra: "", margen_pct: "" });
+  const [queso] = await consultar("select * from lista_detal where nombre = 'Queso amarillo de prueba'");
+  comprobar("un producto se agrega a mano con su precio en dólares, por kilo", r.destino.includes("agregado a la lista") && queso?.precio_usd === 7.7 && queso.unidad === "kg" && queso.costo_bs === null, r.destino);
+  r = await enviar("/admin/detal", 'name="precio_mayor_usd"', { nombre: "queso AMARILLO de prueba", categoria: "charcuteria", unidad: "kg", precio_usd: "8" });
+  comprobar("el mismo nombre otra vez no se duplica: lleva a su ficha", r.destino.startsWith(`/admin/detal/${queso.id}?error=`), r.destino);
+  r = await enviar("/admin/detal", 'name="precio_mayor_usd"', { nombre: "Sin precio", categoria: "viveres", unidad: "unidad" });
+  comprobar("sin costo ni precio no se agrega", r.destino.includes("error=") && (await consultar("select count(*) as n from lista_detal where nombre = 'Sin precio'"))[0].n === 0, r.destino);
+
+  // La ficha: sus cuentas de hoy y cambiar el margen propio.
+  p = await pagina(`/admin/detal/${jugo.id}`);
+  comprobar("cada producto tiene su ficha con su precio de hoy", p.status === 200 && p.html.includes("Su precio de hoy") && p.html.includes('name="margen_pct"'));
+  r = await enviar(`/admin/detal/${jugo.id}`, 'name="precio_mayor_usd"', {
+    id: String(jugo.id),
+    nombre: "Jugo Natulac Pera 200 ml",
+    categoria: "viveres",
+    unidad: "unidad",
+    costo_bs: "447,59",
+    iva: "general",
+    tasa_compra: "896,12",
+    fecha_compra: hoyVet,
+    margen_pct: "30",
+    precio_usd: "",
+    precio_mayor_usd: "",
+    proveedor: "Cecosesola",
+  });
+  comprobar("la ficha guarda un margen propio y el costo", r.destino.includes("Guardado") && (await consultar("select margen_pct, costo_bs from lista_detal where id = ?", [jugo.id]))[0].margen_pct === 30, r.destino);
+
+  // El enlace de la familia: sin clave, solo la lista, con los bolívares de hoy y sin costos.
+  r = await enviar("/admin/detal", ">Crear el enlace<", {});
+  const enlace = (await consultar("select valor from ajustes where clave = 'enlace_lista_detal'"))[0]?.valor;
+  comprobar("se crea el enlace de la lista", r.destino.includes("Enlace creado") && /^[a-z2-9]{14}$/.test(enlace ?? ""), r.destino);
+  // Con 30 %: 0,5794 × 1,3 = 0,7532 → 0,76 $.
+  const jugoBs30 = `Bs ${formatoBs.format(subirA(0.76 * tasaDeHoy, 5))}`;
+  let lista = await pagina(`/lista/${enlace}`, "");
+  comprobar(
+    "con el enlace, sin sesión, se ve la lista en bolívares de hoy y en dólares",
+    lista.status === 200 && legible(lista.html).includes("Lista de precios") && legible(lista.html).includes(jugoBs30) && legible(lista.html).includes("0,76") && legible(lista.html).includes("Queso amarillo de prueba"),
+    `${lista.status} ${jugoBs30}`,
+  );
+  comprobar("la lista de la familia no enseña costos ni proveedores", !lista.html.includes("447,59") && !lista.html.includes("Cecosesola") && lista.html.includes("noindex"));
+  lista = await pagina(`/lista/${enlace}?q=jugo`, "");
+  comprobar("en la lista de la familia se busca sin tildes", legible(lista.html).includes("Jugo Natulac") && !legible(lista.html).includes("Maíz de Cotufa"));
+  comprobar("un enlace que no es el de la lista da 404", (await pagina("/lista/abcdefghjkmnpq", "")).status === 404 && (await pagina("/lista/nada", "")).status === 404);
+
+  // Esconder, quitar (con confirmación) y renovar el enlace.
+  r = await enviar(`/admin/detal/${jugo.id}`, 'name="mostrar"', { id: String(jugo.id), mostrar: "0" });
+  comprobar("un producto escondido no sale en la lista de la familia", r.destino.includes("Escondido") && !legible((await pagina(`/lista/${enlace}`, "")).html).includes("Jugo Natulac"), r.destino);
+  r = await enviar(`/admin/detal/${jugo.id}`, 'name="confirmar"', { id: String(jugo.id) });
+  comprobar("quitar sin marcar la casilla no quita nada", r.destino.includes("error=") && (await consultar("select count(*) as n from lista_detal where id = ?", [jugo.id]))[0].n === 1, r.destino);
+  for (const f of await consultar("select id from lista_detal")) await enviar(`/admin/detal/${f.id}`, 'name="confirmar"', { id: String(f.id), confirmar: "si" });
+  comprobar("con la casilla marcada, se quita", (await consultar("select count(*) as n from lista_detal"))[0].n === 0);
+  r = await enviar("/admin/detal", 'name="renovar"', { renovar: "1" });
+  comprobar("al renovar el enlace, el anterior deja de funcionar", r.destino.includes("Enlace renovado") && (await pagina(`/lista/${enlace}`, "")).status === 404, r.destino);
+}
+
 async function probarRecuperacion() {
   const olvide = await pagina("/admin/entrar/olvide", "");
   comprobar("«He olvidado la clave» tiene su pantalla, sin sesión", olvide.status === 200 && olvide.html.includes("Mandarme el enlace"));
@@ -2717,6 +2825,7 @@ try {
     await probarAvisos();
     await probarCaja();
     await probarFacturas();
+    await probarListaDetal();
     await probarVitrina();
     await probarTareaDiaria();
     await probarRecuperacion();

@@ -31,6 +31,7 @@ const SECCIONES = [
   { ruta: "/admin/estadisticas", nombre: "Estadísticas" },
   { ruta: "/admin/productos", nombre: "Productos" },
   { ruta: "/admin/inventario", nombre: "Inventario" },
+  { ruta: "/admin/detal", nombre: "Lista del detal" },
   { ruta: "/admin/resenas", nombre: "Reseñas" },
   { ruta: "/admin/proveedores", nombre: "Proveedores" },
 ] as const;

@@ -69,7 +69,29 @@ import {
 import { actualizarOferta, buscarOferta, crearOferta, eliminarOferta, esEstadoDeOferta, listarOfertas } from "./ofertas";
 import { prepararCatalogoInicial } from "./preparar-catalogo";
 import { esIcono } from "./iconos";
-import { describirFuenteDeTasa, guardarTasa, ponerAlicuotaIva, ponerAvisoTasa, ponerNumeracionDeFacturasDesde, ponerTasaAutomatica, quitarPreciosDeEjemplo, tasaEnFecha } from "./ajustes";
+import {
+  describirFuenteDeTasa,
+  guardarTasa,
+  ponerAlicuotaIva,
+  ponerAvisoTasa,
+  ponerEnlaceDeLaLista,
+  ponerNumeracionDeFacturasDesde,
+  ponerReglasDelDetal,
+  ponerTasaAutomatica,
+  quitarPreciosDeEjemplo,
+  tasaEnFecha,
+} from "./ajustes";
+import {
+  actualizarArticuloDetal,
+  buscarArticuloDetal,
+  buscarArticuloDetalPorNombre,
+  cambiarActivoDetal,
+  cargarFacturaDetal,
+  crearArticuloDetal,
+  quitarArticuloDetal,
+  type DatosArticuloDetal,
+} from "./detal";
+import { esCategoriaDetal, esUnidadDetal, leerLineasDeFactura, leerMonto } from "./detal-calculo";
 import { actualizarTasaOficial } from "./tasa-oficial";
 import {
   VENTANA_MINUTOS,
@@ -2492,4 +2514,173 @@ export async function guardarAjustesDeFacturacion(datos: FormData): Promise<void
     await ponerNumeracionDeFacturasDesde(desde);
   }
   volverConExito("/admin/facturas", "Ajustes guardados.");
+}
+
+// ---------- La lista del detal ----------
+
+const RUTA_DETAL = "/admin/detal";
+
+/** Un monto escrito como se escribe aquí («1.378,88», «447,59», «0.70»); vacío es null. */
+function monto(datos: FormData, campo: string): number | null {
+  const valor = texto(datos, campo);
+  return valor === "" ? null : leerMonto(valor);
+}
+
+/** Una fecha del formulario que no sea de mañana; vacía o rara, hoy. */
+function fechaDeCompra(datos: FormData): string {
+  const fecha = texto(datos, "fecha_compra");
+  return /^\d{4}-\d{2}-\d{2}$/.test(fecha) && fecha <= hoy() ? fecha : hoy();
+}
+
+/** La tasa escrita, o la del BCV de ese día si se dejó vacía. */
+async function tasaDeLaCompra(datos: FormData, fecha: string, volver: (mensaje: string) => never): Promise<number | null> {
+  const escrita = monto(datos, "tasa_compra");
+  if (texto(datos, "tasa_compra") !== "" && (escrita === null || !(escrita > 0))) volver("La tasa no es un número: escríbela como 896,12.");
+  if (escrita !== null) return escrita;
+  return (await tasaEnFecha(fecha))?.valor ?? null;
+}
+
+async function leerArticuloDetal(datos: FormData, volver: (mensaje: string) => never): Promise<DatosArticuloDetal> {
+  const nombre = texto(datos, "nombre").replace(/\s+/g, " ").slice(0, 120);
+  if (!nombre) volver("Falta el nombre del producto.");
+  const categoria = texto(datos, "categoria");
+  const unidad = texto(datos, "unidad");
+  const iva = texto(datos, "iva");
+  const numeros: Record<string, number | null> = {};
+  for (const campo of ["costo_bs", "margen_pct", "precio_usd", "precio_mayor_usd"]) {
+    const n = monto(datos, campo);
+    if (texto(datos, campo) !== "" && (n === null || n < 0)) volver("Revisa los números: uno no se entiende.");
+    numeros[campo] = n;
+  }
+  if (numeros.margen_pct !== null && numeros.margen_pct > 300) volver("Un margen de más del 300 % no tiene sentido: revísalo.");
+  const fecha = fechaDeCompra(datos);
+  const costo = numeros.costo_bs && numeros.costo_bs > 0 ? numeros.costo_bs : null;
+  const tasa = costo !== null ? await tasaDeLaCompra(datos, fecha, volver) : null;
+  const precio = numeros.precio_usd && numeros.precio_usd > 0 ? numeros.precio_usd : null;
+  if (precio === null && (costo === null || tasa === null)) {
+    volver(costo !== null ? "No hay tasa del BCV guardada para ese día: escríbela." : "Pon lo que costó en la factura (en bolívares) o el precio al detal en dólares.");
+  }
+  return {
+    nombre,
+    categoria: esCategoriaDetal(categoria) ? categoria : "viveres",
+    unidad: esUnidadDetal(unidad) ? unidad : "unidad",
+    costo_bs: costo,
+    iva: iva === "exento" ? "exento" : "general",
+    tasa_compra: tasa,
+    margen_pct: numeros.margen_pct,
+    precio_usd: precio,
+    precio_mayor_usd: numeros.precio_mayor_usd && numeros.precio_mayor_usd > 0 ? numeros.precio_mayor_usd : null,
+    proveedor: texto(datos, "proveedor").slice(0, 80),
+    fecha_compra: costo !== null ? fecha : null,
+  };
+}
+
+/** El margen del detal, el del mayor (vacío: no hay precio al mayor) y de cuánto en cuánto se suben los bolívares. */
+export async function guardarReglasDelDetal(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const margen = monto(datos, "margen_pct");
+  if (margen === null || margen < 0 || margen > 300) volverConError(RUTA_DETAL, "El margen del detal es un porcentaje entre 0 y 300.");
+  const mayorTexto = texto(datos, "margen_mayor_pct");
+  const mayor = mayorTexto === "" ? null : leerMonto(mayorTexto);
+  if (mayorTexto !== "" && (mayor === null || mayor < 0 || mayor > 300)) volverConError(RUTA_DETAL, "El margen al mayor es un porcentaje entre 0 y 300, o vacío.");
+  const redondeo = monto(datos, "redondeo_bs");
+  if (redondeo === null || !(redondeo >= 1 && redondeo <= 1000)) volverConError(RUTA_DETAL, "El redondeo es de cuántos en cuántos bolívares se sube: 5, 10…");
+  await ponerReglasDelDetal({ margen_pct: margen, margen_mayor_pct: mayor, redondeo_bs: redondeo });
+  volverConExito(`${RUTA_DETAL}#reglas`, "Reglas guardadas: los precios de la lista ya las usan.");
+}
+
+/** Un producto nuevo en la lista: con lo que costó en la factura o con su precio en dólares. */
+export async function agregarArticuloDetal(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const volver = (mensaje: string): never => volverConError(`${RUTA_DETAL}#agregar`, mensaje);
+  const articulo = await leerArticuloDetal(datos, volver);
+  const yaEsta = await buscarArticuloDetalPorNombre(articulo.nombre);
+  if (yaEsta) volverConError(`${RUTA_DETAL}/${yaEsta.id}`, `«${yaEsta.nombre}» ya está en la lista: cámbialo aquí.`);
+  await crearArticuloDetal(articulo);
+  volverConExito(RUTA_DETAL, `«${articulo.nombre}» agregado a la lista.`);
+}
+
+export async function guardarArticuloDetal(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const actual = id ? await buscarArticuloDetal(id) : null;
+  if (!id || !actual) volverConError(RUTA_DETAL, "No se encontró ese producto.");
+  const ruta = `${RUTA_DETAL}/${id}`;
+  const articulo = await leerArticuloDetal(datos, (mensaje) => volverConError(ruta, mensaje));
+  const otro = await buscarArticuloDetalPorNombre(articulo.nombre);
+  if (otro && otro.id !== id) volverConError(ruta, `Ya hay otro producto que se llama «${otro.nombre}».`);
+  await actualizarArticuloDetal(id, articulo);
+  volverConExito(ruta, "Guardado: el precio de la lista ya es el nuevo.");
+}
+
+/** Esconde un producto de la lista que ve la familia, o lo vuelve a enseñar, sin perder su costo. */
+export async function esconderArticuloDetal(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const actual = id ? await buscarArticuloDetal(id) : null;
+  if (!id || !actual) volverConError(RUTA_DETAL, "No se encontró ese producto.");
+  const mostrar = texto(datos, "mostrar") === "1";
+  await cambiarActivoDetal(id, mostrar);
+  volverConExito(`${RUTA_DETAL}/${id}`, mostrar ? "Vuelve a salir en la lista." : "Escondido: ya no sale en la lista. Su costo se guarda.");
+}
+
+/** Quita un producto de la lista; hay que marcar la casilla de confirmar. */
+export async function quitarArticuloDetalAccion(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const actual = id ? await buscarArticuloDetal(id) : null;
+  if (!id || !actual) volverConError(RUTA_DETAL, "No se encontró ese producto.");
+  if (texto(datos, "confirmar") !== "si") volverConError(`${RUTA_DETAL}/${id}#quitar`, "Marca la casilla para confirmar que lo quitas de la lista.");
+  await quitarArticuloDetal(id);
+  volverConExito(RUTA_DETAL, `«${actual.nombre}» quitado de la lista.`);
+}
+
+/**
+ * Carga las líneas de una factura de compra en la lista: lo nuevo entra,
+ * lo que ya estaba toma el costo nuevo. Sin tasa escrita, la del BCV del
+ * día de la compra. Lo que no se entiende no se carga y se dice cuál es.
+ */
+export async function cargarFacturaDelDetal(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const ruta = `${RUTA_DETAL}#cargar`;
+  const { lineas, sinEntender } = leerLineasDeFactura(texto(datos, "lineas"));
+  if (lineas.length === 0) {
+    volverConError(
+      ruta,
+      sinEntender.length > 0
+        ? `No entendí ninguna línea. Cada una así: «12 x 447,59 Jugo Natulac Pera 200 ml (G)». La primera que no entendí: «${sinEntender[0].slice(0, 80)}».`
+        : "Pega las líneas de la factura, una por producto.",
+    );
+  }
+  const fecha = fechaDeCompra(datos);
+  const tasa = await tasaDeLaCompra(datos, fecha, (mensaje) => volverConError(ruta, mensaje));
+  if (tasa === null) volverConError(ruta, "No hay tasa del BCV guardada para ese día: escríbela.");
+  const categoria = texto(datos, "categoria");
+  const { nuevos, actualizados } = await cargarFacturaDetal({
+    lineas,
+    categoria: esCategoriaDetal(categoria) ? categoria : "viveres",
+    tasa,
+    proveedor: texto(datos, "proveedor").slice(0, 80),
+    fecha,
+  });
+  const partes = [nuevos === 1 ? "1 producto nuevo" : `${nuevos} productos nuevos`, actualizados === 1 ? "1 con el costo al día" : `${actualizados} con el costo al día`];
+  const noEntendidas =
+    sinEntender.length === 0
+      ? ""
+      : ` No entendí ${sinEntender.length === 1 ? "esta línea" : `estas ${sinEntender.length} líneas`}: ${sinEntender
+          .slice(0, 5)
+          .map((l) => `«${l.slice(0, 60)}»`)
+          .join(", ")}${sinEntender.length > 5 ? "…" : ""}. Agrégalas a mano.`;
+  volverConExito(RUTA_DETAL, `Factura cargada a la tasa ${tasa.toLocaleString("es-VE")}: ${partes.join(" y ")}.${noEntendidas}`);
+}
+
+/** Crea (o renueva) el enlace con el que la familia ve la lista sin clave. */
+export async function crearEnlaceDeLaLista(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const renovar = texto(datos, "renovar") === "1";
+  await ponerEnlaceDeLaLista(nuevoEnlace());
+  volverConExito(
+    `${RUTA_DETAL}#enlace`,
+    renovar ? "Enlace renovado: el anterior ya no funciona. Manda el nuevo." : "Enlace creado. Mándaselo por WhatsApp: con él ve la lista al día, sin clave.",
+  );
 }
