@@ -83,6 +83,8 @@ globalThis.COMBOS = [
     // Porciones de pizza en el fondo, y los productos algo más bajos para que el gorro de cocinero no llegue a la onda.
     fondo: "pizzas",
     alto: 84,
+    // El cartel grande es de 3 × 3: este va solo en su hoja.
+    cartel: false,
   },
 ];
 

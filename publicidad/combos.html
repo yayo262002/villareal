@@ -128,7 +128,7 @@
 
 <script src="combos-datos.js"></script>
 <script>
-  // El cartel se arma con los combos de combos-datos.js (los mismos de las hojas de cada combo).
+  // El cartel se arma con los combos de combos-datos.js (los mismos de las hojas de cada combo), menos los que van solo en su hoja.
   const tarjetaDe = (combo) => {
     const clases = ["combo", combo.productos.length > 2 ? "combo--tres" : "", combo.separado ? "combo--separado" : ""].filter(Boolean).join(" ");
     const nombres = combo.titulo ? `<div class="producto">${combo.titulo}</div>` : combo.productos.map(([, nombre]) => `<div class="producto">${nombre}</div>`).join("");
@@ -136,14 +136,14 @@
       <div class="numero"><small>Combo</small>${combo.n}</div>
       <div class="fotos">${combo.productos.map(([foto]) => fotoDe(foto)).join("")}</div>
       <div class="pie">
-        <div class="que">${nombres}<div class="detalle">${combo.detalle}</div></div>
+        <div class="que">${nombres}<div class="detalle">${combo.detalle.replace(/(\d) /g, "$1\u00a0")}</div></div>
         <div class="precio"><span class="bs">Bs</span></div>
       </div>
     </article>`;
   };
   const cartel = document.getElementById("cartel").content.firstElementChild.cloneNode(true);
   cartel.dataset.archivo = "combos-60x90";
-  cartel.querySelector(".lista").innerHTML = COMBOS.map(tarjetaDe).join("");
+  cartel.querySelector(".lista").innerHTML = COMBOS.filter((combo) => combo.cartel !== false).map(tarjetaDe).join("");
   document.body.append(cartel);
 </script>
 </body>
