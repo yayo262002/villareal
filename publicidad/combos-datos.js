@@ -20,7 +20,9 @@ const CM = {
   tocineta: 28,
 };
 
-// Cada producto: [foto, nombre, adorno]; el adorno es opcional (gorro, moño o acebo, en el navideño).
+// Cada producto: [foto, nombre, adorno]; el adorno es opcional y va dibujado encima de la foto: en el perrero, el
+// perro caliente, las salsas y el chorro; en el solidario, el corazón, los corazones y la escarapela; en el navideño,
+// el gorro, el moño y el acebo. `fondo` pone dibujitos detrás de los productos: perros, corazones o copos de nieve.
 // La charcutería (el jamón, la boloña, la mortadela, el pavo) va siempre primero, a la izquierda; el queso
 // o lo que acompaña, después. Los combos con nombre propio (perrero, solidario, navideño) son los especiales y van al final.
 // COMBOS y fotoDe quedan en globalThis: los usan las páginas que cargan este archivo con <script>.
@@ -34,20 +36,26 @@ globalThis.COMBOS = [
   {
     n: 7,
     titulo: "Combo perrero",
-    productos: [["queso-amarillo", "Queso amarillo"], ["jamon-de-espalda", "Jamón de espalda"], ["salchichas", "Salchichas"]],
+    productos: [["queso-amarillo", "Queso amarillo", "chorro"], ["jamon-de-espalda", "Jamón de espalda", "perro"], ["salchichas", "Salchichas", "salsas"]],
     detalle: "100 g de queso amarillo, 100 g de jamón de espalda y 6 salchichas",
     lema: "Todo para los perros calientes de la casa",
     destacar: "perros calientes",
     especial: true,
+    etiqueta: "Especial perros calientes",
+    fondo: "perros",
+    // Algo más bajos, para que el perro caliente de encima del jamón no llegue a la onda.
+    alto: 88,
   },
   {
     n: 8,
     titulo: "Combo solidario",
-    productos: [["suero-san-pedro", "Suero San Pedro"], ["huevos", "Huevos"], ["mortadela-de-pollo", "Mortadela"]],
+    productos: [["suero-san-pedro", "Suero San Pedro", "corazon"], ["huevos", "Huevos", "corazones"], ["mortadela-de-pollo", "Mortadela", "escarapela"]],
     detalle: "1 suero San Pedro de 900 ml, 6 huevos y 5 salchichas o 100 g de mortadela extra",
     lema: "Lo básico de la casa en un solo combo",
     destacar: "un solo combo",
     especial: true,
+    etiqueta: "Especial solidario",
+    fondo: "corazones",
   },
   {
     n: 9,
@@ -59,7 +67,7 @@ globalThis.COMBOS = [
     especial: true,
     etiqueta: "Especial de Navidad",
     // Copos de nieve en el fondo, y los productos algo más bajos para que el gorro no llegue al nombre.
-    navidad: true,
+    fondo: "copos",
     alto: 86,
   },
 ];

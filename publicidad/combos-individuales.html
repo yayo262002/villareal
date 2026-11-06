@@ -47,11 +47,17 @@
     background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(70, 35, 10, 0.55), rgba(70, 35, 10, 0));
   }
   .pieza + .pieza { margin-left: -10mm; }
-  /* Los adornos de Navidad, dibujados encima de la foto de cada producto. */
-  .adorno { position: absolute; display: block; pointer-events: none; filter: drop-shadow(0 0.6mm 0.9mm rgba(40, 10, 0, 0.35)); }
+  /* Los adornos de los especiales, dibujados encima de la foto de cada producto. */
+  .adorno { position: absolute; display: block; overflow: visible; pointer-events: none; filter: drop-shadow(0 0.6mm 0.9mm rgba(40, 10, 0, 0.35)); }
   .adorno--gorro { left: 2%; top: -27%; width: 96%; transform: rotate(-9deg); }
   .adorno--moño { left: -12%; top: -6%; width: 64%; transform: rotate(-16deg); }
   .adorno--acebo { right: 0; top: -9%; width: 52%; transform: rotate(12deg); }
+  .adorno--perro { left: -4%; top: -15%; width: 108%; transform: rotate(-7deg); }
+  .adorno--salsas { right: -4%; top: -66%; width: 50%; }
+  .adorno--chorro { left: -4%; top: -3%; width: 112%; transform: rotate(-5deg); }
+  .adorno--corazon { left: 3%; top: 1%; width: 36%; transform: rotate(-14deg); }
+  .adorno--corazones { left: 30%; top: -50%; width: 46%; }
+  .adorno--escarapela { right: -21%; bottom: 1%; width: 54%; transform: rotate(9deg); }
   .hoja--separado .pieza + .pieza { margin-left: 3mm; }
   .hoja--tres .pieza + .pieza { margin-left: -7mm; }
 
@@ -107,6 +113,55 @@
       .join("")}</g>`;
   const COPOS = [[14, 70, 4.2], [36, 98, 3], [58, 64, 2.4], [150, 66, 3.4], [178, 98, 4.4], [202, 70, 3], [24, 128, 3.2], [196, 128, 3.6], [100, 62, 2], [128, 92, 2.6], [8, 100, 2.4], [206, 104, 2.2]];
 
+  /** Un perro caliente a trazo blanco, para el fondo del perrero: el pan, la salchicha y la mostaza. */
+  const perrito = (x, y, r, giro) => `
+    <g transform="translate(${x} ${y}) rotate(${giro}) scale(${(r / 10).toFixed(3)})" fill="none" stroke="#ffffff" stroke-opacity=".85" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M-8,-1.6C-8,-5.6 -4,-6.6 0,-6.6C4,-6.6 8,-5.6 8,-1.6"/>
+      <rect x="-11" y="-2.4" width="22" height="4.8" rx="2.4"/>
+      <path d="M-7.5,0q1,-1.6 2,0t2,0t2,0t2,0t2,0t2,0t2,0t2,0" stroke-width="1"/>
+      <path d="M-8,2.4C-8,6.2 -4,7.2 0,7.2C4,7.2 8,6.2 8,2.4"/>
+    </g>`;
+
+  /** Un corazón para el fondo del solidario: unos blancos y otros rojos, suaves. */
+  const corazon = (x, y, r, giro, i) =>
+    `<path transform="translate(${x} ${y}) rotate(${giro}) scale(${(r / 9).toFixed(3)})" d="M0,8C-11,0.5 -11,-8.5 -5.2,-8.5C-2.2,-8.5 0,-6.4 0,-4.6C0,-6.4 2.2,-8.5 5.2,-8.5C11,-8.5 11,0.5 0,8Z"
+      fill="${i % 3 === 1 ? "#d3151e" : "#ffffff"}" fill-opacity="${i % 3 === 1 ? ".55" : ".85"}"/>`;
+
+  /** Los dibujitos del fondo de cada especial, en los mismos sitios que los copos, girados para que no parezcan en fila. */
+  const GIROS = [-18, 12, -6, 20, -14, 8, 16, -10, 4, -20, 10, -4];
+  function fondo(tipo) {
+    if (tipo === "copos") return COPOS.map(([x, y, r]) => copo(x, y, r)).join("");
+    if (tipo === "perros") return COPOS.map(([x, y, r], i) => perrito(x, y, r * 1.15, GIROS[i])).join("");
+    if (tipo === "corazones") return COPOS.map(([x, y, r], i) => corazon(x, y, r, GIROS[i], i)).join("");
+    return "";
+  }
+
+  /** Una botella de salsa de las de apretar: el pico, la tapa blanca, el cuerpo con su color y su etiqueta. */
+  const botella = (x, giro, id, oscuro, dibujo) => `
+    <g transform="rotate(${giro} ${x + 13} 104)">
+      <path d="M${x + 10.5},15L${x + 13},2.5L${x + 15.5},15Z" fill="#f4efe6" stroke="#a9a196" stroke-width="1"/>
+      <rect x="${x + 6}" y="13" width="14" height="12" rx="2.6" fill="#f4efe6" stroke="#a9a196" stroke-width="1"/>
+      <path d="M${x + 2},36Q${x + 2},24 ${x + 8},24H${x + 18}Q${x + 24},24 ${x + 24},36Z" fill="${oscuro}"/>
+      <rect x="${x}" y="31" width="26" height="73" rx="8" fill="url(#${id})" stroke="${oscuro}" stroke-width="1.2"/>
+      <rect x="${x + 4}" y="54" width="18" height="24" rx="3.5" fill="#fff8e6"/>
+      ${dibujo(x + 13, 66)}
+      <path d="M${x + 5},38V96" stroke="#ffffff" stroke-opacity=".35" stroke-width="3" stroke-linecap="round"/>
+    </g>`;
+
+  /** El sello redondo y ondulado de la escarapela, como el del número del combo. */
+  function ondulado(cx, cy, R, picos, hondo) {
+    let d = "";
+    for (let i = 0; i <= 360; i++) {
+      const t = (i / 360) * 2 * Math.PI;
+      const r = R * (1 + hondo * Math.cos(picos * t));
+      d += `${i ? "L" : "M"}${(cx + r * Math.cos(t)).toFixed(2)},${(cy + r * Math.sin(t)).toFixed(2)}`;
+    }
+    return `${d}Z`;
+  }
+
+  /** Un corazón grande, rojo y con borde dorado. */
+  const CORAZON = "M50,86C10,58 4,34 12,20C20,6 40,6 50,22C60,6 80,6 88,20C96,34 90,58 50,86Z";
+
   /** Los adornos de Navidad. Los colores, los de la hoja: rojo, oro, blanco y el verde del acebo. */
   const ADORNOS = {
     gorro: `<svg class="adorno adorno--gorro" viewBox="0 0 100 80">
@@ -149,10 +204,82 @@
         .join("")}
       <g>${[[43, 46], [57, 46], [50, 36]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="7.4" fill="url(#baya)"/><circle cx="${x - 2.4}" cy="${y - 2.6}" r="1.9" fill="#ffffff" fill-opacity=".75"/>`).join("")}</g>
     </svg>`,
+
+    // El perrero: un perro caliente encima del jamón, las salsas junto a las salchichas y un chorro de salsa sobre el queso.
+    perro: `<svg class="adorno adorno--perro" viewBox="0 0 120 64">
+      <defs>
+        <linearGradient id="panPerro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8d390"/><stop offset=".5" stop-color="#e3a24f"/><stop offset="1" stop-color="#b5672a"/></linearGradient>
+        <linearGradient id="salchichaPerro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ec7b5c"/><stop offset=".5" stop-color="#c24b30"/><stop offset="1" stop-color="#7f2617"/></linearGradient>
+      </defs>
+      <path d="M12,32C12,17 32,11 60,11C88,11 108,17 108,32Z" fill="url(#panPerro)" stroke="#9a5420" stroke-width="1.2"/>
+      <path d="M26,18C40,14 80,14 94,18" fill="none" stroke="#fff3d6" stroke-opacity=".6" stroke-width="2.6" stroke-linecap="round"/>
+      <rect x="2" y="25" width="116" height="17" rx="8.5" fill="url(#salchichaPerro)" stroke="#6a1e12" stroke-width="1.2"/>
+      <path d="M9,29.4H111" stroke="#ffb59e" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M13,34q4,-6.5 8,0t8,0t8,0t8,0t8,0t8,0t8,0t8,0t8,0t8,0t8,0t8,0" fill="none" stroke="#b88705" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M13,34q4,-6.5 8,0t8,0t8,0t8,0t8,0t8,0t8,0t8,0t8,0t8,0t8,0t8,0" fill="none" stroke="#fbd22a" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10,37C10,53 30,59 60,59C90,59 110,53 110,37C98,43 80,45 60,45C40,45 22,43 10,37Z" fill="url(#panPerro)" stroke="#9a5420" stroke-width="1.2"/>
+      <path d="M24,52C40,56 80,56 96,52" fill="none" stroke="#fff3d6" stroke-opacity=".45" stroke-width="2" stroke-linecap="round"/>
+    </svg>`,
+    salsas: `<svg class="adorno adorno--salsas" viewBox="0 0 100 112">
+      <defs>
+        <linearGradient id="ketchup" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ef4a3a"/><stop offset=".6" stop-color="#c81d12"/><stop offset="1" stop-color="#8e120b"/></linearGradient>
+        <linearGradient id="mostaza" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe066"/><stop offset=".6" stop-color="#f3bf17"/><stop offset="1" stop-color="#c38f04"/></linearGradient>
+      </defs>
+      ${botella(18, -13, "ketchup", "#8e120b", (cx, cy) => `<circle cx="${cx}" cy="${cy + 1}" r="6" fill="#d3241a"/><path d="M${cx - 2.5},${cy - 4.6}Q${cx},${cy - 7.5} ${cx + 2.5},${cy - 4.6}" fill="none" stroke="#2f8a3a" stroke-width="2" stroke-linecap="round"/>`)}
+      ${botella(56, 11, "mostaza", "#a77a03", (cx, cy) => `<path d="M${cx - 6},${cy}q1.5,-3 3,0t3,0t3,0t3,0" fill="none" stroke="#e0a800" stroke-width="2.4" stroke-linecap="round"/>`)}
+    </svg>`,
+    chorro: `<svg class="adorno adorno--chorro" viewBox="0 0 120 36">
+      <path d="M4,11q7,-9 14,0t14,0t14,0t14,0t14,0t14,0t14,0t14,0" fill="none" stroke="#7f160e" stroke-width="6.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4,11q7,-9 14,0t14,0t14,0t14,0t14,0t14,0t14,0t14,0" fill="none" stroke="#dc2a1d" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M9,25q7,-9 14,0t14,0t14,0t14,0t14,0t14,0t14,0t14,0" fill="none" stroke="#a87a05" stroke-width="6.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M9,25q7,-9 14,0t14,0t14,0t14,0t14,0t14,0t14,0t14,0" fill="none" stroke="#fbd22a" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M8,9q5,-5.5 10,-1" fill="none" stroke="#ff9a8c" stroke-opacity=".7" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M13,23q5,-5.5 10,-1" fill="none" stroke="#fff3b0" stroke-opacity=".8" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>`,
+
+    // El solidario: un corazón grande en el suero, corazoncitos sobre los huevos y una escarapela con su corazón en la mortadela.
+    corazon: `<svg class="adorno adorno--corazon" viewBox="0 0 100 92">
+      <defs><radialGradient id="rojoCorazon" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ff6b70"/><stop offset=".5" stop-color="#d3151e"/><stop offset="1" stop-color="#840a10"/></radialGradient></defs>
+      <path d="${CORAZON}" fill="url(#rojoCorazon)" stroke="#e7b33f" stroke-width="3.2" stroke-linejoin="round"/>
+      <path d="M21,25C25,16 35,14.5 41,21" fill="none" stroke="#ffffff" stroke-opacity=".75" stroke-width="4.2" stroke-linecap="round"/>
+      <circle cx="24" cy="36" r="2.4" fill="#ffffff" fill-opacity=".6"/>
+    </svg>`,
+    corazones: `<svg class="adorno adorno--corazones" viewBox="0 0 100 80">
+      <defs><radialGradient id="rojoCorazones" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ff6b70"/><stop offset=".5" stop-color="#d3151e"/><stop offset="1" stop-color="#840a10"/></radialGradient></defs>
+      ${[
+        [2, 34, 0.42, -16],
+        [32, 4, 0.52, 8],
+        [62, 30, 0.36, 18],
+      ]
+        .map(
+          ([x, y, s, giro]) => `<g transform="translate(${x} ${y}) rotate(${giro} 50 46) scale(${s})">
+            <path d="${CORAZON}" fill="url(#rojoCorazones)" stroke="#e7b33f" stroke-width="${(2.6 / s).toFixed(1)}" stroke-linejoin="round"/>
+            <path d="M21,25C25,16 35,14.5 41,21" fill="none" stroke="#ffffff" stroke-opacity=".75" stroke-width="${(2.6 / s).toFixed(1)}" stroke-linecap="round"/>
+          </g>`,
+        )
+        .join("")}
+    </svg>`,
+    escarapela: `<svg class="adorno adorno--escarapela" viewBox="0 0 100 124">
+      <defs>
+        <linearGradient id="cinta" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d3151e"/><stop offset="1" stop-color="#8a090f"/></linearGradient>
+        <linearGradient id="oroEscarapela" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".35" stop-color="#e8b43f"/><stop offset=".7" stop-color="#b98417"/><stop offset="1" stop-color="#f6d779"/></linearGradient>
+        <radialGradient id="rojoEscarapela" cx=".5" cy=".42" r=".65"><stop offset="0" stop-color="#bd1019"/><stop offset="1" stop-color="#7a070c"/></radialGradient>
+      </defs>
+      <g stroke="#e7b33f" stroke-width="1.6" stroke-linejoin="round">
+        <path d="M34,56L20,120L31,111L39,121L50,62Z" fill="url(#cinta)"/>
+        <path d="M66,56L80,120L69,111L61,121L50,62Z" fill="url(#cinta)"/>
+      </g>
+      <path d="${ondulado(50, 44, 40, 18, 0.05)}" fill="url(#oroEscarapela)"/>
+      <circle cx="50" cy="44" r="31" fill="url(#rojoEscarapela)" stroke="#fff1b8" stroke-width="1"/>
+      <circle cx="50" cy="44" r="27" fill="none" stroke="#f2c14e" stroke-width="1" stroke-dasharray="2 2.2"/>
+      <g transform="translate(50 46) scale(0.36) translate(-50 -46)">
+        <path d="${CORAZON}" fill="#ffffff" stroke="#f2c14e" stroke-width="5" stroke-linejoin="round"/>
+      </g>
+    </svg>`,
   };
 
-  /** El fondo dibujado de la hoja: la cabecera roja con su onda dorada, los sándwiches, la franja de abajo y, en Navidad, los copos. */
-  function arte(n, navidad = false) {
+  /** El fondo dibujado de la hoja: la cabecera roja con su onda dorada, los sándwiches, la franja de abajo y, en los especiales, sus dibujitos. */
+  function arte(n, dibujitos = "") {
     const oroH = `url(#oroH-${n})`;
     return `<svg class="capa capa--arte" viewBox="0 0 216 279" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -164,7 +291,7 @@
       </defs>
 
       ${sandwich(3, 138, 1.15)}${sandwich(186, 142, 1.15, 4)}${sandwich(-12, 190, 1.1, -6)}${sandwich(198, 204, 1.1, 8)}${sandwich(-10, 236, 1, 6)}${sandwich(196, 244, 1, -4)}
-      ${navidad ? COPOS.map(([x, y, r]) => copo(x, y, r)).join("") : ""}
+      ${fondo(dibujitos)}
 
       <!-- La cabecera -->
       <path d="M0,0H216V49C178,47 146,37.5 100,38C58,38.5 28,47 0,51Z" fill="url(#rojoCabecera-${n})"/>
@@ -229,7 +356,7 @@
       <img class="estante" src="fondos/estante.jpg" alt="">
       <img class="madera" src="fondos/madera.jpg" alt="">
       <div class="luz"></div><div class="canto"></div>
-      ${arte(combo.n, combo.navidad)}
+      ${arte(combo.n, combo.fondo)}
       <img class="leon" src="../public/marca/leon.svg" alt="">
       <div class="raya"></div>
       <div class="charcuteria">CHARCUTERÍA</div>
