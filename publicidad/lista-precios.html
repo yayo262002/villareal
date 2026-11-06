@@ -115,7 +115,9 @@
         const cuerpo = p.querySelector(".cuerpo");
         if (!titulo) {
           // Una categoría no empieza al pie de una pantalla con una sola fila: si queda poco sitio, pasa a la siguiente.
-          if (cuerpo.children.length > 0 && cuerpo.clientHeight - cuerpo.scrollHeight < 150) {
+          // (El sitio libre se mide hasta el pie de la última fila: scrollHeight nunca baja del alto de la caja.)
+          const usado = cuerpo.lastElementChild ? cuerpo.lastElementChild.getBoundingClientRect().bottom - cuerpo.getBoundingClientRect().top : 0;
+          if (cuerpo.children.length > 0 && cuerpo.clientHeight - usado < 150) {
             p = nuevaPantalla(++n);
             titulo = null;
           }
