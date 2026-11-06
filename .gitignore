@@ -55,3 +55,5 @@ next-env.d.ts
 /publicidad/lista-precios-datos.js
 /publicidad/lista-precios*.pdf
 /publicidad/lista-precios*.jpg
+/publicidad/lista-mayor*.pdf
+/publicidad/lista-mayor*.jpg

@@ -5,18 +5,24 @@ import {
   variacionPct,
   costoEnDolares,
   enBolivares,
+  leerDivisor,
+  leerLineasDeCostos,
   leerLineasDeFactura,
   leerMonto,
   precioDetalUsd,
   precioMayorUsd,
+  reglaDelDetal,
+  reglasDesdeAjustes,
   subirA,
   type ArticuloParaPrecio,
   type ReglasDelDetal,
 } from "./detal-calculo.ts";
 
-const REGLAS: ReglasDelDetal = { margen_pct: 20, margen_mayor_pct: null, iva_pct: 16, redondeo_bs: 5 };
+const REGLAS: ReglasDelDetal = { margen_pct: 20, margen_mayor_pct: null, charcuteria_divisor: 0.8, charcuteria_mayor_pct: 10, iva_pct: 16, redondeo_bs: 5 };
 const articulo = (cambios: Partial<ArticuloParaPrecio>): ArticuloParaPrecio => ({
+  categoria: "viveres",
   costo_bs: null,
+  costo_usd: null,
   iva: "general",
   tasa_compra: null,
   margen_pct: null,
@@ -70,6 +76,83 @@ test("un precio escrito a mano en dólares manda sobre el costo; sin costo ni pr
   assert.equal(precioDetalUsd(articulo({ costo_bs: 100, iva: "exento", tasa_compra: 100, precio_usd: 7.7 }), REGLAS), 7.7);
   assert.equal(precioDetalUsd(articulo({}), REGLAS), null);
   assert.equal(precioDetalUsd(articulo({ costo_bs: 100, iva: "exento" }), REGLAS), null);
+});
+
+test("la charcutería: al detal el costo entre 0,80 y al mayor el costo más un 10 %, del costo en dólares tal cual", () => {
+  // Lo que cobra el proveedor, en dólares: no se le suma IVA.
+  const jamon = articulo({ categoria: "charcuteria", costo_usd: 6, iva: "exento" });
+  assert.equal(costoEnDolares(jamon, 16), 6);
+  assert.equal(precioDetalUsd(jamon, REGLAS), 7.5);
+  assert.equal(precioMayorUsd(jamon, REGLAS), 6.6);
+  // 5,37 entre 0,80 = 6,7125 → 6,72; más un 10 % = 5,907 → 5,91. Siempre hacia arriba.
+  const queso = articulo({ categoria: "charcuteria", costo_usd: 5.37, iva: "exento" });
+  assert.equal(precioDetalUsd(queso, REGLAS), 6.72);
+  assert.equal(precioMayorUsd(queso, REGLAS), 5.91);
+  // En bolívares, a la tasa de hoy y de 5 en 5: 7,50 × 896,1225 = 6.720,92 → 6.725.
+  assert.equal(enBolivares(7.5, 896.1225, 5), 6725);
+  // El mismo costo en víveres sigue con el 20 % y sin precio al mayor.
+  assert.equal(precioDetalUsd({ ...jamon, categoria: "viveres" }, REGLAS), 7.2);
+  assert.equal(precioMayorUsd({ ...jamon, categoria: "viveres" }, REGLAS), null);
+  // Con (G), al costo en dólares se le suma el IVA: 5 × 1,16 = 5,80 → 7,25.
+  assert.equal(precioDetalUsd(articulo({ categoria: "charcuteria", costo_usd: 5, iva: "general" }), REGLAS), 7.25);
+  // Un margen propio manda también en la charcutería; un precio a mano, sobre todo.
+  assert.deepEqual(reglaDelDetal({ ...jamon, margen_pct: 30 }, REGLAS), { forma: "margen", pct: 30, propio: true });
+  assert.equal(precioDetalUsd({ ...jamon, margen_pct: 30 }, REGLAS), 7.8);
+  assert.equal(precioDetalUsd({ ...jamon, precio_usd: 8 }, REGLAS), 8);
+  assert.deepEqual(reglaDelDetal(jamon, REGLAS), { forma: "entre", divisor: 0.8 });
+  // Sin margen al mayor de la charcutería, no hay precio al mayor.
+  assert.equal(precioMayorUsd(jamon, { ...REGLAS, charcuteria_mayor_pct: null }), null);
+  // Un costo de factura en bolívares de un producto de la charcutería sigue su regla: 896,12 Bs exento a 896,12 = 1 $ → 1,25.
+  assert.equal(precioDetalUsd(articulo({ categoria: "charcuteria", costo_bs: 896.12, iva: "exento", tasa_compra: 896.12 }), REGLAS), 1.25);
+});
+
+test("las reglas guardadas: lo que falta vale lo de por defecto, y el mayor de la charcutería se apaga dejándolo vacío", () => {
+  const de = (guardado: Record<string, string>) => reglasDesdeAjustes((clave) => guardado[clave], 16);
+  assert.deepEqual(de({}), REGLAS);
+  assert.equal(de({ detal_charcuteria_mayor_pct: "" }).charcuteria_mayor_pct, null);
+  assert.equal(de({ detal_charcuteria_mayor_pct: "12" }).charcuteria_mayor_pct, 12);
+  assert.equal(de({ detal_charcuteria_divisor: "0.75" }).charcuteria_divisor, 0.75);
+  // Un divisor que no tiene sentido vale el de por defecto.
+  assert.equal(de({ detal_charcuteria_divisor: "3" }).charcuteria_divisor, 0.8);
+  assert.equal(de({ detal_margen_mayor_pct: "8", detal_margen_pct: "abc" }).margen_mayor_pct, 8);
+  assert.equal(de({ detal_margen_pct: "abc" }).margen_pct, 20);
+});
+
+test("el divisor se escribe como lo dice el dueño: 0,80, 0.8 u 80", () => {
+  assert.equal(leerDivisor("0,80"), 0.8);
+  assert.equal(leerDivisor("0.8"), 0.8);
+  assert.equal(leerDivisor("80"), 0.8);
+  assert.equal(leerDivisor("1"), 1);
+  assert.equal(leerDivisor("0,2"), null);
+  assert.equal(leerDivisor("150"), null);
+  assert.equal(leerDivisor("ochenta"), null);
+});
+
+test("una lista de costos en dólares: el nombre y el costo al final, con su unidad si la dice", () => {
+  const { lineas, sinEntender } = leerLineasDeCostos(
+    [
+      "Jamón de espalda 5,20",
+      "Queso amarillo: $6,80 el kilo",
+      "Mozzarella 5.5 kg",
+      "Salchichas 1 kg 3,10 c/u",
+      "Pechuga de pavo - 7,30$",
+      "Tocineta 8 $/kg",
+      "Queso de año (G) 9,00",
+      "",
+      "Lista del 06/11",
+      "Sin precio",
+    ].join("\n"),
+  );
+  assert.deepEqual(lineas, [
+    { nombre: "Jamón de espalda", costo_usd: 5.2, unidad: null, iva: "exento" },
+    { nombre: "Queso amarillo", costo_usd: 6.8, unidad: "kg", iva: "exento" },
+    { nombre: "Mozzarella", costo_usd: 5.5, unidad: "kg", iva: "exento" },
+    { nombre: "Salchichas 1 kg", costo_usd: 3.1, unidad: "unidad", iva: "exento" },
+    { nombre: "Pechuga de pavo", costo_usd: 7.3, unidad: null, iva: "exento" },
+    { nombre: "Tocineta", costo_usd: 8, unidad: "kg", iva: "exento" },
+    { nombre: "Queso de año", costo_usd: 9, unidad: null, iva: "general" },
+  ]);
+  assert.deepEqual(sinEntender, ["Lista del 06/11", "Sin precio"]);
 });
 
 test("el precio al mayor: sin margen del mayor no hay, salvo el escrito a mano", () => {

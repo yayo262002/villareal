@@ -45,6 +45,39 @@
   color: var(--color-dorado);
 }
 
+/* La del mayor lleva la cabecera dorada: que no se confunda con la del detal. */
+.alMayor .cabecera {
+  background: var(--color-dorado);
+  color: var(--color-acento-texto);
+  border-bottom-color: var(--color-verde-profundo);
+}
+
+.alMayor .antetitulo,
+.alMayor .tasa strong {
+  color: var(--color-verde-profundo);
+}
+
+.pestanas {
+  display: flex;
+  gap: var(--espacio-2);
+}
+
+.pestanas a {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  padding: var(--espacio-2) var(--espacio-3);
+  border: 2px solid var(--color-verde-boton);
+  border-radius: var(--radio);
+  color: var(--color-marca);
+  text-decoration: none;
+}
+
+.pestanas a[aria-current="page"] {
+  background: var(--color-verde-boton);
+  color: var(--color-marca-texto);
+}
+
 .buscador {
   display: flex;
   gap: var(--espacio-2);
@@ -148,11 +181,6 @@
   white-space: nowrap;
 }
 
-.mayor {
-  color: var(--color-dorado-texto);
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
 
 .vacio,
 .nota {
@@ -164,7 +192,8 @@
 }
 
 @media print {
-  .buscador {
+  .buscador,
+  .pestanas {
     display: none;
   }
   .cabecera {

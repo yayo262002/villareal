@@ -117,7 +117,8 @@ export default function PaginaAyuda() {
           <li>
             La <Link href="/admin/detal">Lista del detal</Link> es la de la charcutería: se carga cada factura de compra (cantidad, precio y (E) o (G)
             por línea) y sale el precio de cada producto en dólares, con su IVA y el 20 %, y en bolívares a la tasa BCV de hoy, subidos de 5 en 5. La
-            familia la ve con su enlace, sin clave.
+            charcutería se carga con lo que cobra el proveedor en dólares («Jamón de espalda 5,20»): al detal, el costo entre 0,80; al mayor, más un
+            10 %. La familia la ve con su enlace, sin clave, con una pestaña para cada precio.
           </li>
         </ol>
       </section>

@@ -2620,12 +2620,17 @@ async function probarListaDetal() {
   let p = await pagina("/admin/detal");
   comprobar(
     `la lista del detal tiene su pantalla, con cargar factura, agregar, reglas y el enlace (${p.ms} ms)`,
-    p.status === 200 && p.html.includes('name="lineas"') && p.html.includes('name="margen_mayor_pct"') && p.html.includes("Crear el enlace") && p.html.includes("Lista del detal"),
+    p.status === 200 &&
+      p.html.includes('id="lineas"') &&
+      p.html.includes('id="costos_lineas"') &&
+      p.html.includes('name="margen_mayor_pct"') &&
+      p.html.includes("Crear el enlace") &&
+      p.html.includes("Lista del detal"),
     String(p.status),
   );
 
   // Una factura: dos líneas que se entienden (una gravada y otra exenta) y una sin (E) ni (G).
-  let r = await enviar("/admin/detal", 'name="lineas"', {
+  let r = await enviar("/admin/detal", 'id="lineas"', {
     proveedor: "Cecosesola",
     fecha_compra: hoyVet,
     tasa_compra: "896,12",
@@ -2646,7 +2651,7 @@ async function probarListaDetal() {
   comprobar("la lista dice el precio al detal en dólares (IVA y 20 %, subido al centavo) y en bolívares de hoy (de 5 en 5)", legible(p.html).includes("0,70") && legible(p.html).includes(jugoBs), jugoBs);
 
   // La misma factura otra vez, con otro precio: no se duplica, toma el costo nuevo.
-  r = await enviar("/admin/detal", 'name="lineas"', { proveedor: "Cecosesola", fecha_compra: hoyVet, tasa_compra: "896,12", categoria: "viveres", lineas: "12 x 500,00 jugo natulac pera 200 ml (G)" });
+  r = await enviar("/admin/detal", 'id="lineas"', { proveedor: "Cecosesola", fecha_compra: hoyVet, tasa_compra: "896,12", categoria: "viveres", lineas: "12 x 500,00 jugo natulac pera 200 ml (G)" });
   comprobar(
     "lo que ya está en la lista no se duplica: toma el costo nuevo",
     r.destino.includes("1 con el costo al día") && (await consultar("select count(*) as n, max(costo_bs) as c from lista_detal where nombre = 'Jugo Natulac Pera 200 ml' collate nocase"))[0].c === 500,
@@ -2655,7 +2660,7 @@ async function probarListaDetal() {
 
   // Una factura más vieja, cargada tarde: no pisa el costo de hoy; queda como la compra anterior y la lista dice cuánto cambió.
   const haceDias = (n) => new Date(Date.parse(hoyVet) - n * 86400000).toISOString().slice(0, 10);
-  r = await enviar("/admin/detal", 'name="lineas"', { proveedor: "Cecosesola", fecha_compra: haceDias(10), tasa_compra: "896,12", categoria: "viveres", lineas: "12 x 400,00 Jugo Natulac Pera 200 ml (G)" });
+  r = await enviar("/admin/detal", 'id="lineas"', { proveedor: "Cecosesola", fecha_compra: haceDias(10), tasa_compra: "896,12", categoria: "viveres", lineas: "12 x 400,00 Jugo Natulac Pera 200 ml (G)" });
   const [conAnterior] = await consultar("select costo_bs, fecha_compra, costo_usd_anterior, fecha_compra_anterior from lista_detal where nombre = 'Jugo Natulac Pera 200 ml'");
   comprobar(
     "una factura más vieja no pisa el costo más nuevo: queda como la compra anterior",
@@ -2664,7 +2669,7 @@ async function probarListaDetal() {
   );
   p = await pagina("/admin/detal");
   comprobar("la lista avisa de lo que cambió más de un 10 % de costo, con cuánto", legible(p.html).includes("Un producto cambió de costo") && legible(p.html).includes("+25 %"), "");
-  r = await enviar("/admin/detal", 'name="lineas"', { proveedor: "Cecosesola", fecha_compra: haceDias(20), tasa_compra: "896,12", categoria: "viveres", lineas: "12 x 300,00 Jugo Natulac Pera 200 ml (G)" });
+  r = await enviar("/admin/detal", 'id="lineas"', { proveedor: "Cecosesola", fecha_compra: haceDias(20), tasa_compra: "896,12", categoria: "viveres", lineas: "12 x 300,00 Jugo Natulac Pera 200 ml (G)" });
   comprobar(
     "una factura más vieja que las dos guardadas no cambia nada",
     r.destino.includes("sin cambio") && cerca((await consultar("select costo_usd_anterior from lista_detal where nombre = 'Jugo Natulac Pera 200 ml'"))[0].costo_usd_anterior, (400 * 1.16) / 896.12),
@@ -2688,6 +2693,76 @@ async function probarListaDetal() {
   comprobar("el mismo nombre otra vez no se duplica: lleva a su ficha", r.destino.startsWith(`/admin/detal/${queso.id}?error=`), r.destino);
   r = await enviar("/admin/detal", 'name="precio_mayor_usd"', { nombre: "Sin precio", categoria: "viveres", unidad: "unidad" });
   comprobar("sin costo ni precio no se agrega", r.destino.includes("error=") && (await consultar("select count(*) as n from lista_detal where nombre = 'Sin precio'"))[0].n === 0, r.destino);
+  r = await enviar("/admin/detal", 'name="precio_mayor_usd"', { nombre: "Costo sin IVA elegido", categoria: "charcuteria", unidad: "kg", costo_usd: "5", iva: "" });
+  comprobar("con costo hay que decir si se le suma el IVA", r.destino.includes("error=") && r.destino.includes("IVA"), r.destino);
+  r = await enviar("/admin/detal", 'name="precio_mayor_usd"', { nombre: "Dos costos", categoria: "charcuteria", unidad: "kg", costo_usd: "5", costo_bs: "4000", iva: "exento" });
+  comprobar("el costo va en dólares o en bolívares, no en los dos", r.destino.includes("error=") && r.destino.includes("no los dos"), r.destino);
+
+  // La charcutería: los costos en dólares, como los cobra el proveedor; al detal el costo entre 0,80 y al mayor, más un 10 %.
+  p = await pagina("/admin/detal");
+  comprobar(
+    "las reglas de la charcutería salen puestas: el costo entre 0,80 al detal y más un 10 % al mayor",
+    p.html.includes('name="charcuteria_divisor"') && p.html.includes('value="0,80"') && /name="charcuteria_mayor_pct"[^>]*value="10"|value="10"[^>]*name="charcuteria_mayor_pct"/.test(p.html),
+    "",
+  );
+  r = await enviar("/admin/detal", 'id="costos_lineas"', {
+    proveedor: "El Drago",
+    fecha_compra: haceDias(5),
+    categoria: "charcuteria",
+    unidad: "kg",
+    lineas: "Jamón de espalda de prueba 4,00\nSalchichas de prueba 1 kg 3,10 c/u\nEsto no tiene costo",
+  });
+  const [jamon] = await consultar("select * from lista_detal where nombre = 'Jamón de espalda de prueba'");
+  const [salchichas] = await consultar("select * from lista_detal where nombre = 'Salchichas de prueba 1 kg'");
+  comprobar(
+    "los costos en dólares se cargan por kilo o por unidad, sin tasa; lo que no se entiende, se dice",
+    r.destino.includes("Costos cargados") &&
+      r.destino.includes("2 productos nuevos") &&
+      r.destino.includes("Esto no tiene costo") &&
+      jamon?.costo_usd === 4 &&
+      jamon.costo_bs === null &&
+      jamon.tasa_compra === null &&
+      jamon.iva === "exento" &&
+      jamon.unidad === "kg" &&
+      jamon.categoria === "charcuteria" &&
+      salchichas?.unidad === "unidad",
+    `${r.destino} ${JSON.stringify(jamon)}`,
+  );
+  r = await enviar("/admin/detal", 'id="costos_lineas"', { proveedor: "El Drago", fecha_compra: hoyVet, categoria: "charcuteria", unidad: "kg", lineas: "jamón de espalda de prueba $5,20" });
+  const [jamonHoy] = await consultar("select costo_usd, costo_usd_anterior, fecha_compra_anterior from lista_detal where id = ?", [jamon.id]);
+  comprobar(
+    "un costo nuevo en dólares pone al día el que había y guarda el anterior",
+    r.destino.includes("1 con el costo al día") && jamonHoy.costo_usd === 5.2 && jamonHoy.costo_usd_anterior === 4 && jamonHoy.fecha_compra_anterior === haceDias(5),
+    `${r.destino} ${JSON.stringify(jamonHoy)}`,
+  );
+  // 5,20 entre 0,80 = 6,50 al detal; 5,20 más un 10 % = 5,72 al mayor.
+  const jamonBs = `Bs ${formatoBs.format(subirA(6.5 * tasaDeHoy, 5))}`;
+  const jamonMayorBs = `Bs ${formatoBs.format(subirA(5.72 * tasaDeHoy, 5))}`;
+  p = await pagina("/admin/detal");
+  comprobar(
+    "la charcutería: al detal el costo entre 0,80 y al mayor el costo más un 10 %, y avisa de lo que subió",
+    legible(p.html).includes("6,50") && legible(p.html).includes(jamonBs) && legible(p.html).includes("5,72") && p.html.includes(">Al mayor<") && legible(p.html).includes("+30 %"),
+    `${jamonBs} ${jamonMayorBs}`,
+  );
+  p = await pagina(`/admin/detal/${jamon.id}`);
+  comprobar("la ficha de la charcutería dice de dónde sale cada precio", legible(p.html).includes("entre 0,80") && legible(p.html).includes("más el 10 %") && p.html.includes('name="costo_usd"'));
+  r = await enviar("/admin/detal", 'name="redondeo_bs"', { margen_pct: "20", margen_mayor_pct: "", charcuteria_divisor: "3", charcuteria_mayor_pct: "10", redondeo_bs: "5" });
+  comprobar("un divisor que no tiene sentido no se guarda", r.destino.includes("error=") && r.destino.includes("0,80"), r.destino);
+  r = await enviar("/admin/detal", 'name="redondeo_bs"', { margen_pct: "20", margen_mayor_pct: "", charcuteria_divisor: "0,75", charcuteria_mayor_pct: "", redondeo_bs: "5" });
+  let reglasCharcuteria = Object.fromEntries((await consultar("select clave, valor from ajustes where clave like 'detal_charcuteria%'")).map((f) => [f.clave, f.valor]));
+  p = await pagina("/admin/detal");
+  comprobar(
+    "las reglas de la charcutería se cambian: otro divisor y, vacío, sin precio al mayor",
+    r.destino.includes("Reglas guardadas") &&
+      reglasCharcuteria.detal_charcuteria_divisor === "0.75" &&
+      reglasCharcuteria.detal_charcuteria_mayor_pct === "" &&
+      legible(p.html).includes("6,94") &&
+      !p.html.includes(">Al mayor<"),
+    JSON.stringify(reglasCharcuteria),
+  );
+  r = await enviar("/admin/detal", 'name="redondeo_bs"', { margen_pct: "20", margen_mayor_pct: "", charcuteria_divisor: "80", charcuteria_mayor_pct: "10", redondeo_bs: "5" });
+  reglasCharcuteria = Object.fromEntries((await consultar("select clave, valor from ajustes where clave like 'detal_charcuteria%'")).map((f) => [f.clave, f.valor]));
+  comprobar("el divisor se puede escribir como 80 y queda 0,80", reglasCharcuteria.detal_charcuteria_divisor === "0.8" && reglasCharcuteria.detal_charcuteria_mayor_pct === "10", JSON.stringify(reglasCharcuteria));
 
   // La ficha: sus cuentas de hoy y cambiar el margen propio.
   p = await pagina(`/admin/detal/${jugo.id}`);
@@ -2720,7 +2795,19 @@ async function probarListaDetal() {
     lista.status === 200 && legible(lista.html).includes("Lista de precios") && legible(lista.html).includes(jugoBs30) && legible(lista.html).includes("0,76") && legible(lista.html).includes("Queso amarillo de prueba"),
     `${lista.status} ${jugoBs30}`,
   );
-  comprobar("la lista de la familia no enseña costos ni proveedores", !lista.html.includes("447,59") && !lista.html.includes("Cecosesola") && lista.html.includes("noindex"));
+  comprobar(
+    "la lista de la familia no enseña costos ni proveedores",
+    !lista.html.includes("447,59") && !lista.html.includes("Cecosesola") && !lista.html.includes("El Drago") && !legible(lista.html).includes("5,20") && lista.html.includes("noindex"),
+  );
+  comprobar(
+    "la lista de la familia enseña la charcutería al detal, sin el precio al mayor, y la pestaña del mayor",
+    legible(lista.html).includes(jamonBs) && /USD\s6,50/.test(legible(lista.html)) && !/USD\s5,72/.test(legible(lista.html)) && lista.html.includes("precio=mayor"),
+    jamonBs,
+  );
+  lista = await pagina(`/lista/${enlace}?precio=mayor`, "");
+  // (Los dólares van con su «USD»: la tasa de la prueba, 36,50, también dice «6,50».)
+  const enLaDelMayor = ["Precios al mayor", /USD\s5,72/, jamonMayorBs, /USD\s6,50/, "Jugo Natulac"].map((t) => (typeof t === "string" ? legible(lista.html).includes(t) : t.test(legible(lista.html))));
+  comprobar("la lista al mayor enseña solo lo que tiene precio al mayor, con ese precio", enLaDelMayor.join() === "true,true,true,false,false", `${jamonMayorBs} ${enLaDelMayor.join()}`);
   lista = await pagina(`/lista/${enlace}?q=jugo`, "");
   comprobar("en la lista de la familia se busca sin tildes", legible(lista.html).includes("Jugo Natulac") && !legible(lista.html).includes("Maíz de Cotufa"));
   comprobar("un enlace que no es el de la lista da 404", (await pagina("/lista/abcdefghjkmnpq", "")).status === 404 && (await pagina("/lista/nada", "")).status === 404);

@@ -526,6 +526,8 @@ export const ESQUEMA = `
     categoria text not null default 'viveres',
     unidad text not null default 'unidad',
     costo_bs real,
+    -- El costo en dólares, como lo cobra el proveedor (la charcutería): manda sobre el de bolívares.
+    costo_usd real,
     iva text not null default 'general' check (iva in ('general', 'exento')),
     tasa_compra real,
     margen_pct real,

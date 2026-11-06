@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { buscarArticuloDetal, conPrecios } from "@/lib/detal";
 import { leerTasa, reglasDelDetal } from "@/lib/ajustes";
 import { esconderArticuloDetal, guardarArticuloDetal, quitarArticuloDetalAccion } from "@/lib/acciones";
-import { CATEGORIAS_DETAL, costoConIva } from "@/lib/detal-calculo";
+import { CATEGORIAS_DETAL, costoConIva, margenDelMayor, reglaDelDetal } from "@/lib/detal-calculo";
 import { bs, bsRedondo, fechaCorta, hoy, tasaLegible, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../../panel.module.css";
@@ -24,6 +24,10 @@ export default async function PaginaArticuloDetal({ params, searchParams }: Para
   const [reglas, tasa] = await Promise.all([reglasDelDetal(), leerTasa()]);
   const [a] = conPrecios([articulo], reglas, tasa?.valor ?? null);
   const porKilo = a.unidad === "kg" ? " el kilo" : "";
+  const regla = reglaDelDetal(a, reglas);
+  const margenMayor = margenDelMayor(a.categoria, reglas);
+  const divisor = (n: number) => n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  const costo = a.costo_usd !== null ? "El costo" : "El costo con IVA";
 
   return (
     <>
@@ -51,15 +55,22 @@ export default async function PaginaArticuloDetal({ params, searchParams }: Para
               {a.mayor_bs !== null && <div className={estilos.cifraNota}>{bsRedondo(a.mayor_bs)}{porKilo}</div>}
             </div>
           )}
-          {a.costo_bs !== null && a.costo_usd !== null && (
+          {a.costo_en_dolares !== null && (
             <div className={estilos.cifra}>
               <dt>Costo</dt>
-              <dd>{usd(Math.round(a.costo_usd * 10000) / 10000)}</dd>
-              <div className={estilos.cifraNota}>
-                {bs(a.costo_bs)} {a.iva === "exento" ? "exento" : `+ IVA ${reglas.iva_pct} % = ${bs(costoConIva(a.costo_bs, a.iva, reglas.iva_pct))}`}, a la tasa{" "}
-                {tasaLegible(a.tasa_compra ?? 0)}
-                {a.fecha_compra ? ` del ${fechaCorta(a.fecha_compra)}` : ""}
-              </div>
+              <dd>{usd(Math.round(a.costo_en_dolares * 10000) / 10000)}</dd>
+              {a.costo_usd !== null ? (
+                <div className={estilos.cifraNota}>
+                  En dólares, como lo cobra el proveedor{a.iva === "general" ? ` (${usd(a.costo_usd)} + IVA ${reglas.iva_pct} %)` : ""}
+                  {a.fecha_compra ? `, del ${fechaCorta(a.fecha_compra)}` : ""}
+                </div>
+              ) : (
+                <div className={estilos.cifraNota}>
+                  {bs(a.costo_bs ?? 0)} {a.iva === "exento" ? "exento" : `+ IVA ${reglas.iva_pct} % = ${bs(costoConIva(a.costo_bs ?? 0, a.iva, reglas.iva_pct))}`}, a la tasa{" "}
+                  {tasaLegible(a.tasa_compra ?? 0)}
+                  {a.fecha_compra ? ` del ${fechaCorta(a.fecha_compra)}` : ""}
+                </div>
+              )}
               {a.variacion_pct !== null && (
                 <div className={estilos.cifraNota}>
                   La compra anterior{a.fecha_compra_anterior ? `, del ${fechaCorta(a.fecha_compra_anterior)}` : ""}, costó {usd(a.costo_usd_anterior ?? 0)}:{" "}
@@ -69,14 +80,19 @@ export default async function PaginaArticuloDetal({ params, searchParams }: Para
             </div>
           )}
         </dl>
-        {a.precio_usd !== null ? (
-          <p className="ayuda">El precio al detal está escrito a mano: no sale del costo.</p>
-        ) : (
-          <p className="ayuda">
-            Costo con IVA más el {a.margen_pct ?? reglas.margen_pct} %{a.margen_pct !== null ? " (su margen propio)" : ""}, subido al centavo; los bolívares, a la tasa de hoy y
-            subidos de {reglas.redondeo_bs} en {reglas.redondeo_bs}.
-          </p>
-        )}
+        <p className="ayuda">
+          {regla.forma === "a_mano"
+            ? "El precio al detal está escrito a mano: no sale del costo."
+            : regla.forma === "entre"
+              ? `Al detal: ${costo.toLowerCase()} entre ${divisor(regla.divisor)} (la regla de la charcutería: cubre la merma, las bolsas y el papel), subido al centavo.`
+              : `Al detal: ${costo.toLowerCase()} más el ${regla.pct.toLocaleString("es-VE")} %${regla.propio ? " (su margen propio)" : ""}, subido al centavo.`}{" "}
+          {a.precio_mayor_usd !== null
+            ? "El precio al mayor está escrito a mano."
+            : a.mayor_usd !== null && margenMayor !== null
+              ? `Al mayor: ${costo.toLowerCase()} más el ${margenMayor.toLocaleString("es-VE")} %, subido al centavo.`
+              : ""}{" "}
+          Los bolívares, a la tasa de hoy y subidos de {reglas.redondeo_bs} en {reglas.redondeo_bs}.
+        </p>
       </section>
 
       <section className="tarjeta" style={{ marginTop: "var(--espacio-4)" }}>
@@ -108,18 +124,22 @@ export default async function PaginaArticuloDetal({ params, searchParams }: Para
           </div>
           <div className="formulario__fila">
             <div className="campo">
-              <label htmlFor="costo_bs">Costo de una unidad en Bs (sin IVA)</label>
+              <label htmlFor="costo_usd">Costo en dólares (lo que cobra el proveedor)</label>
+              <input id="costo_usd" name="costo_usd" type="text" inputMode="decimal" defaultValue={enCampo(a.costo_usd)} />
+            </div>
+            <div className="campo">
+              <label htmlFor="costo_bs">O el costo de la factura en Bs (sin IVA)</label>
               <input id="costo_bs" name="costo_bs" type="text" inputMode="decimal" defaultValue={enCampo(a.costo_bs)} />
             </div>
             <div className="campo">
               <label htmlFor="iva">IVA</label>
               <select id="iva" name="iva" defaultValue={a.iva}>
-                <option value="general">Gravado (G)</option>
-                <option value="exento">Exento (E)</option>
+                <option value="exento">No se le suma: es lo que pago, o exento (E)</option>
+                <option value="general">Se le suma el {reglas.iva_pct} %: gravado (G)</option>
               </select>
             </div>
             <div className="campo">
-              <label htmlFor="tasa_compra">Tasa BCV de la compra</label>
+              <label htmlFor="tasa_compra">Tasa BCV de la compra (si es en Bs)</label>
               <input id="tasa_compra" name="tasa_compra" type="text" inputMode="decimal" defaultValue={enCampo(a.tasa_compra)} />
             </div>
             <div className="campo">
@@ -129,8 +149,8 @@ export default async function PaginaArticuloDetal({ params, searchParams }: Para
           </div>
           <div className="formulario__fila">
             <div className="campo">
-              <label htmlFor="margen_pct">Margen propio (%)</label>
-              <input id="margen_pct" name="margen_pct" type="text" inputMode="decimal" defaultValue={enCampo(a.margen_pct)} placeholder={`Vacío: ${reglas.margen_pct} %`} />
+              <label htmlFor="margen_pct">Margen propio (% sobre el costo)</label>
+              <input id="margen_pct" name="margen_pct" type="text" inputMode="decimal" defaultValue={enCampo(a.margen_pct)} placeholder="Vacío: el de su categoría" />
             </div>
             <div className="campo">
               <label htmlFor="precio_usd">Precio al detal a mano ($)</label>

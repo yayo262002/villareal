@@ -7,8 +7,9 @@
   /* Open Sans (OFL, en fuentes/), como las hojas de los combos. */
   @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
 
-  /* La lista de precios del detal para mostrarla en el teléfono. Los datos los escribe `npm run lista`
-     en lista-precios-datos.js (no va al repositorio: cambia cada día). Salen dos cosas:
+  /* Las listas de precios del detal para mostrarlas en el teléfono. Los datos los escribe `npm run lista`
+     en lista-precios-datos.js (no va al repositorio: cambia cada día). Hay dos listas: la del detal (roja) y la
+     del mayor (verde, solo lo que tiene precio al mayor). De cada una salen dos cosas:
      - un PDF de una sola página larga, del ancho de un teléfono (data-solo="pdf");
      - las mismas filas repartidas en pantallas de 9:16, en JPG, para mandarlas como fotos (data-solo="imagen"). */
   @page { margin: 0; }
@@ -19,11 +20,13 @@
     --rojo: #b3231d; --rojo-oscuro: #7c0a10; --oro: #e9b13a; --crema: #fbf3e2; --crema-fila: #f6ead3; --tinta: #1f1612; --tinta-suave: #6b5d55;
     box-sizing: border-box; width: 360px; background: var(--crema); color: var(--tinta); overflow: hidden;
   }
+  /* La del mayor, en verde: que no se confunda con la del detal. */
+  .lista--mayor { --rojo: #1d5135; --rojo-oscuro: #123a25; }
   .pantalla { height: 640px; display: flex; flex-direction: column; }
 
   .cabecera { background: var(--rojo); color: var(--crema); border-bottom: 4px solid var(--oro); padding: 14px 16px 12px; display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; }
   .cabecera img { width: 46px; height: 66px; display: block; }
-  .cabecera .charcuteria { font-weight: 800; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--oro); }
+  .cabecera .antetitulo { font-weight: 800; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--oro); }
   .cabecera h1 { margin: 2px 0 0; font-weight: 800; font-size: 25px; line-height: 1.05; }
   .cabecera .fecha { margin: 4px 0 0; font-size: 12.5px; font-weight: 600; text-transform: capitalize; }
   .cabecera .tasa { margin: 2px 0 0; font-size: 12.5px; }
@@ -44,7 +47,6 @@
   .precios { text-align: right; flex: none; }
   .bs { font-weight: 800; font-size: 16px; line-height: 1.1; white-space: nowrap; color: var(--rojo-oscuro); }
   .usd { font-size: 12.5px; font-weight: 600; line-height: 1.15; white-space: nowrap; color: var(--tinta-suave); }
-  .mayor { font-size: 11px; white-space: nowrap; color: var(--tinta-suave); }
 
   .nota { margin: 10px 4px 2px; font-size: 11px; line-height: 1.35; color: var(--tinta-suave); }
   .pantalla .nota { margin: 0; padding: 6px 14px 10px; background: var(--crema); }
@@ -54,59 +56,61 @@
 <script>window.listo = false;</script>
 <script src="lista-precios-datos.js"></script>
 <script>
-  const L = globalThis.LISTA;
   const bs = (n) => "Bs " + n.toLocaleString("es-VE", { maximumFractionDigits: 2 });
   const usd = (n) => "$" + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const tasa = L.tasa ? L.tasa.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
-
-  const cabecera = (extra = "") => `
-    <header class="cabecera">
-      <img src="../public/marca/leon.svg" alt="">
-      <div>
-        <div class="charcuteria">Charcutería Villa Real ${extra}</div>
-        <h1>Lista de precios</h1>
-        <p class="fecha">${L.fechaLarga}</p>
-        <p class="tasa">${tasa ? `Tasa BCV: <b>${tasa}</b> Bs por dólar` : "Sin tasa: precios en dólares"}</p>
-      </div>
-    </header>`;
   // «397 g», «1 l», «×10»: el número y su unidad no se separan al partir la línea.
-  const pegarUnidad = (nombre) => nombre.replace(/(\d) (?=(g|kg|ml|l|cm)\b)/g, "$1\u00a0").replace(/ ×/g, "\u00a0×");
-  const nota = `<p class="nota">Bolívares a la tasa del BCV de este día, subidos de ${L.redondeo} en ${L.redondeo}. Cambian cada día con la tasa.</p>`;
-  const fila = (a) => `
-    <div class="fila">
-      <div class="nombre">${pegarUnidad(a.nombre)}${a.unidad === "kg" ? " <small>· el kilo</small>" : ""}</div>
-      <div class="precios">
-        <div class="bs">${a.bs !== null ? bs(a.bs) : usd(a.usd)}</div>
-        ${a.bs !== null ? `<div class="usd">${usd(a.usd)}</div>` : ""}
-        ${a.mayor_usd !== null ? `<div class="mayor">Mayor ${a.mayor_bs !== null ? bs(a.mayor_bs) + " · " : ""}${usd(a.mayor_usd)}</div>` : ""}
-      </div>
-    </div>`;
+  const pegarUnidad = (nombre) => nombre.replace(/(\d) (?=(g|kg|ml|l|cm)\b)/g, "$1 ").replace(/ ×/g, " ×");
 
-  // El PDF: todo en una página larga.
-  const larga = document.createElement("article");
-  larga.className = "lista";
-  larga.dataset.archivo = "lista-precios";
-  larga.dataset.solo = "pdf";
-  larga.innerHTML = cabecera() + `<div class="cuerpo">${L.grupos.map((g) => `<h2 class="categoria">${g.nombre}</h2>${g.articulos.map(fila).join("")}`).join("")}${nota}</div>`;
-  document.body.append(larga);
+  /** Dibuja una lista (la del detal o la del mayor): la página larga del PDF y las pantallas de las fotos. */
+  function dibujar(L) {
+    const tasa = L.tasa ? L.tasa.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
+    const clase = L.mayor ? "lista lista--mayor" : "lista";
+    const cabecera = (extra = "") => `
+      <header class="cabecera">
+        <img src="../public/marca/leon.svg" alt="">
+        <div>
+          <div class="antetitulo">${L.antetitulo} ${extra}</div>
+          <h1>${L.titulo}</h1>
+          <p class="fecha">${L.fechaLarga}</p>
+          <p class="tasa">${tasa ? `Tasa BCV: <b>${tasa}</b> Bs por dólar` : "Sin tasa: precios en dólares"}</p>
+        </div>
+      </header>`;
+    const nota = `<p class="nota">${L.mayor ? "Precios al mayor. " : ""}Bolívares a la tasa del BCV de este día, subidos de ${L.redondeo} en ${L.redondeo}. Cambian cada día con la tasa.</p>`;
+    const fila = (a) => `
+      <div class="fila">
+        <div class="nombre">${pegarUnidad(a.nombre)}${a.unidad === "kg" ? " <small>· el kilo</small>" : ""}</div>
+        <div class="precios">
+          <div class="bs">${a.bs !== null ? bs(a.bs) : usd(a.usd)}</div>
+          ${a.bs !== null ? `<div class="usd">${usd(a.usd)}</div>` : ""}
+        </div>
+      </div>`;
 
-  // Las pantallas: se llenan fila a fila y, cuando una ya no cabe, sigue en la siguiente (con su categoría repetida).
-  function nuevaPantalla(n) {
-    const p = document.createElement("article");
-    p.className = "lista pantalla";
-    p.dataset.archivo = `lista-precios-${n}`;
-    p.dataset.solo = "imagen";
-    p.dataset.formato = "jpeg";
-    p.dataset.ppp = "288";
-    p.innerHTML = cabecera(`<span class="pagina-n">· ${n}/__TOTAL__</span>`) + `<div class="cuerpo"></div>` + nota;
-    document.body.append(p);
-    return p;
-  }
-  const cabe = (p) => {
-    const c = p.querySelector(".cuerpo");
-    return c.scrollHeight <= c.clientHeight + 1;
-  };
-  function paginar() {
+    // El PDF: todo en una página larga.
+    const larga = document.createElement("article");
+    larga.className = clase;
+    larga.dataset.archivo = L.prefijo;
+    larga.dataset.solo = "pdf";
+    larga.innerHTML = cabecera() + `<div class="cuerpo">${L.grupos.map((g) => `<h2 class="categoria">${g.nombre}</h2>${g.articulos.map(fila).join("")}`).join("")}${nota}</div>`;
+    document.body.append(larga);
+
+    // Las pantallas: se llenan fila a fila y, cuando una ya no cabe, sigue en la siguiente (con su categoría repetida).
+    const pantallas = [];
+    function nuevaPantalla(n) {
+      const p = document.createElement("article");
+      p.className = `${clase} pantalla`;
+      p.dataset.archivo = `${L.prefijo}-${n}`;
+      p.dataset.solo = "imagen";
+      p.dataset.formato = "jpeg";
+      p.dataset.ppp = "288";
+      p.innerHTML = cabecera(`<span class="pagina-n">· ${n}/__TOTAL__</span>`) + `<div class="cuerpo"></div>` + nota;
+      document.body.append(p);
+      pantallas.push(p);
+      return p;
+    }
+    const cabe = (p) => {
+      const c = p.querySelector(".cuerpo");
+      return c.scrollHeight <= c.clientHeight + 1;
+    };
     let n = 1;
     let p = nuevaPantalla(n);
     for (const g of L.grupos) {
@@ -119,13 +123,11 @@
           const usado = cuerpo.lastElementChild ? cuerpo.lastElementChild.getBoundingClientRect().bottom - cuerpo.getBoundingClientRect().top : 0;
           if (cuerpo.children.length > 0 && cuerpo.clientHeight - usado < 150) {
             p = nuevaPantalla(++n);
-            titulo = null;
           }
-          const destino = p.querySelector(".cuerpo");
           titulo = document.createElement("h2");
           titulo.className = "categoria";
           titulo.textContent = g.nombre;
-          destino.append(titulo);
+          p.querySelector(".cuerpo").append(titulo);
         }
         const plantilla = document.createElement("template");
         plantilla.innerHTML = fila(a).trim();
@@ -144,12 +146,15 @@
         }
       }
     }
-    for (const pantalla of document.querySelectorAll(".pantalla")) pantalla.innerHTML = pantalla.innerHTML.replace("__TOTAL__", String(n));
+    for (const pantalla of pantallas) pantalla.innerHTML = pantalla.innerHTML.replace("__TOTAL__", String(n));
     // La página larga, a un alto entero y con un poco de aire: si el PDF mide una fracción menos que la lista, sale una segunda página en blanco.
     larga.style.height = Math.ceil(larga.getBoundingClientRect().height) + 8 + "px";
-    window.listo = true;
   }
-  document.fonts.ready.then(paginar);
+
+  document.fonts.ready.then(() => {
+    for (const L of globalThis.LISTAS) dibujar(L);
+    window.listo = true;
+  });
 </script>
 </body>
 </html>

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { conPrecios, listarArticulosDetal } from "@/lib/detal";
 import { enlaceDeLaLista, leerTasa, reglasDelDetal } from "@/lib/ajustes";
 import { esEnlaceValido } from "@/lib/enlace-cuenta";
+import { textoCoincide } from "@/lib/buscar";
 import { CATEGORIAS_DETAL, type CategoriaDetal } from "@/lib/detal-calculo";
 import { bsRedondo, diaDeLaSemana, fechaCorta, fechaDeLaBase, hoy, tasaLegible, usd } from "@/lib/dinero";
 import estilos from "./lista.module.css";
@@ -10,11 +11,21 @@ type Parametros = { params: Promise<{ enlace: string }>; searchParams: Promise<R
 
 export const metadata = { title: "Lista de precios" };
 
+/** La dirección de una de las dos listas, con lo que se esté buscando. */
+function enlaceA(mayor: boolean, busqueda: string): string {
+  const parametros = new URLSearchParams();
+  if (mayor) parametros.set("precio", "mayor");
+  if (busqueda) parametros.set("q", busqueda);
+  return `?${parametros.toString()}`;
+}
+
 /**
  * La lista de precios de la charcutería, para la familia: con el enlace,
  * sin clave, cada producto en bolívares a la tasa BCV de hoy (subidos a
- * favor del negocio) y en dólares. Se busca escribiendo, sin JavaScript.
- * Solo enseña la lista: ni costos, ni clientes, ni nada del panel.
+ * favor del negocio) y en dólares. Dos listas: la del detal y, si algo
+ * tiene precio al mayor (la charcutería), la del mayor (`?precio=mayor`).
+ * Se busca escribiendo, sin JavaScript. Solo enseña la lista: ni costos,
+ * ni proveedores, ni nada del panel.
  */
 export default async function PaginaLista({ params, searchParams }: Parametros) {
   const { enlace } = await params;
@@ -22,9 +33,13 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
   if (!esEnlaceValido(enlace) || enlace !== guardado) notFound();
   const parametros = await searchParams;
   const busqueda = typeof parametros.q === "string" ? parametros.q.slice(0, 80) : "";
-  const [articulos, reglas, tasa] = await Promise.all([listarArticulosDetal(busqueda, true), reglasDelDetal(), leerTasa()]);
-  const lista = conPrecios(articulos, reglas, tasa?.valor ?? null).filter((a) => a.detal_usd !== null);
-  const hayMayor = lista.some((a) => a.mayor_usd !== null);
+  const [articulos, reglas, tasa] = await Promise.all([listarArticulosDetal("", true), reglasDelDetal(), leerTasa()]);
+  const todos = conPrecios(articulos, reglas, tasa?.valor ?? null);
+  const hayMayor = todos.some((a) => a.mayor_usd !== null);
+  const alMayor = hayMayor && parametros.precio === "mayor";
+  const lista = todos
+    .map((a) => ({ ...a, usd: alMayor ? a.mayor_usd : a.detal_usd, bs: alMayor ? a.mayor_bs : a.detal_bs }))
+    .filter((a) => a.usd !== null && textoCoincide([a.nombre, CATEGORIAS_DETAL[a.categoria] ?? ""], busqueda));
   const grupos = Object.keys(CATEGORIAS_DETAL)
     .map((c) => ({ categoria: c as CategoriaDetal, articulos: lista.filter((a) => a.categoria === c) }))
     .filter((g) => g.articulos.length > 0);
@@ -32,10 +47,10 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
   const fechaTasa = tasa ? (tasa.fecha_valor ?? fechaDeLaBase(tasa.actualizada_en)) : null;
 
   return (
-    <main className={estilos.pagina}>
+    <main className={`${estilos.pagina} ${alMayor ? estilos.alMayor : ""}`}>
       <header className={estilos.cabecera}>
-        <p className={estilos.antetitulo}>Charcutería Villa Real</p>
-        <h1 className={estilos.titulo}>Lista de precios</h1>
+        <p className={estilos.antetitulo}>{alMayor ? "Villa Real · al mayor" : "Charcutería Villa Real"}</p>
+        <h1 className={estilos.titulo}>{alMayor ? "Precios al mayor" : "Lista de precios"}</h1>
         <p className={estilos.fecha}>
           {diaDeLaSemana(dia)} {fechaCorta(dia)}
         </p>
@@ -49,13 +64,25 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
         )}
       </header>
 
+      {hayMayor && (
+        <nav className={estilos.pestanas} aria-label="Qué precios ver">
+          <a href={enlaceA(false, busqueda)} aria-current={alMayor ? undefined : "page"}>
+            Al detal
+          </a>
+          <a href={enlaceA(true, busqueda)} aria-current={alMayor ? "page" : undefined}>
+            Al mayor
+          </a>
+        </nav>
+      )}
+
       <form method="get" className={estilos.buscador} role="search">
+        {alMayor && <input type="hidden" name="precio" value="mayor" />}
         <label htmlFor="q" className={estilos.oculto}>
           Buscar un producto
         </label>
-        <input id="q" name="q" type="search" defaultValue={busqueda} placeholder="Buscar: harina, mavesa, jabón…" />
+        <input id="q" name="q" type="search" defaultValue={busqueda} placeholder="Buscar: jamón, harina, jabón…" />
         <button type="submit">Buscar</button>
-        {busqueda && <a href="?">Todos</a>}
+        {busqueda && <a href={enlaceA(alMayor, "")}>Todos</a>}
       </form>
 
       {lista.length === 0 ? (
@@ -72,13 +99,8 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
                     {a.unidad === "kg" && <span className={estilos.unidad}> · el kilo</span>}
                   </span>
                   <span className={estilos.precios}>
-                    <span className={estilos.bs}>{a.detal_bs !== null ? bsRedondo(a.detal_bs) : usd(a.detal_usd ?? 0)}</span>
-                    {a.detal_bs !== null && <span className={estilos.usd}>{usd(a.detal_usd ?? 0)}</span>}
-                    {hayMayor && a.mayor_usd !== null && (
-                      <span className={estilos.mayor}>
-                        Al mayor {a.mayor_bs !== null ? bsRedondo(a.mayor_bs) : ""} · {usd(a.mayor_usd)}
-                      </span>
-                    )}
+                    <span className={estilos.bs}>{a.bs !== null ? bsRedondo(a.bs) : usd(a.usd ?? 0)}</span>
+                    {a.bs !== null && <span className={estilos.usd}>{usd(a.usd ?? 0)}</span>}
                   </span>
                 </li>
               ))}
@@ -88,7 +110,8 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
       )}
 
       <p className={estilos.nota}>
-        Los bolívares salen del precio en dólares por la tasa del BCV de hoy, subidos de {reglas.redondeo_bs} en {reglas.redondeo_bs}. Cambian solos cada mañana.
+        {alMayor ? "Precios al mayor. " : ""}Los bolívares salen del precio en dólares por la tasa del BCV de hoy, subidos de {reglas.redondeo_bs} en {reglas.redondeo_bs}.
+        Cambian solos cada mañana.
       </p>
     </main>
   );

@@ -50,7 +50,7 @@ npm run verificar    typecheck + lint + pruebas unitarias
 npm run build        que compila
 npm run prueba:local   la web entera con una base temporal (después de build)
 npm run prueba:web     la web publicada, solo mirando: no crea ni borra nada
-npm run lista          la lista del detal de hoy en PDF y en pantallas JPG para el teléfono (en listas/)
+npm run lista          las listas del detal y del mayor de hoy en PDF y en pantallas JPG para el teléfono (en listas/)
 ```
 
 La web publicada tiene los datos de verdad del negocio. Por eso
@@ -264,11 +264,11 @@ src/lib/codigos.ts        Los códigos de barras y los SKU: quién tiene un cód
 src/lib/factura-calculo.ts  Las cuentas de la factura: lo exento, la base imponible, el IVA, el total en Bs; el libro de ventas (puro, con pruebas)
 src/lib/facturas.ts       Las facturas y las notas de crédito desde la base: emitir, numerar, el número de control, anular, listar
 src/app/admin/(panel)/facturas/  Facturas: la lista del mes, los ajustes, cada factura (carta y ticket), anular, y el libro de ventas para Excel
-src/lib/detal-calculo.ts  Las cuentas de la lista del detal: IVA, margen, dólares subidos al centavo, bolívares subidos de 5 en 5; leer las líneas de una factura (puro, con pruebas)
-src/lib/detal.ts          La lista del detal desde la base: listar, cargar una factura, agregar, cambiar, esconder, quitar
+src/lib/detal-calculo.ts  Las cuentas de la lista del detal: IVA, margen, la charcutería (entre 0,80 y más un 10 % al mayor), dólares subidos al centavo, bolívares subidos de 5 en 5; las reglas guardadas; leer las líneas de una factura y una lista de costos en dólares (puro, con pruebas)
+src/lib/detal.ts          La lista del detal desde la base: listar, cargar una factura o unos costos en dólares, agregar, cambiar, esconder, quitar
 src/app/admin/(panel)/detal/  La lista del detal en el panel: cargar facturas, agregar a mano, las reglas y el enlace para la familia
 src/app/lista/            La lista del detal para la familia, con su enlace y sin clave
-scripts/lista-detal.ts    npm run lista: la lista del detal de hoy en archivos para el teléfono (diseño en publicidad/lista-precios.html)
+scripts/lista-detal.ts    npm run lista: las listas del detal y del mayor de hoy en archivos para el teléfono (diseño en publicidad/lista-precios.html)
 src/lib/precios-especiales.ts  El precio especial de un cliente para un artículo
 src/components/pos.tsx    Registrar venta, como una caja (con JavaScript: cliente con saldo, lector, carrito, pago, atajos)
 src/app/admin/(panel)/ventas/  Ventas: arriba la caja, debajo las últimas ventas; /clasica, el formulario de siempre, de respaldo
@@ -953,6 +953,22 @@ Binance y otro.
   hacia arriba**, nunca en contra del negocio (0,84 $ que dan Bs 723 se
   cobran Bs 725). Los bolívares cambian solos cada mañana con la tasa.
   Las cuentas, con pruebas, están en `src/lib/detal-calculo.ts`.
+- **La charcutería** tiene sus propias reglas. Su costo es el que cobra el
+  proveedor, **en dólares** y por kilo (`lista_detal.costo_usd`): es lo que
+  se paga, así que no se le suma IVA, salvo que se marque gravado. Hay dos
+  precios: **al detal, el costo entre 0,80** (un 25 % más, porque la
+  mercancía merma y se gasta en bolsas y papel: 5,20 $ dan 6,50 $) y **al
+  mayor, el costo más un 10 %** (5,72 $). Los dos se suben al centavo y en
+  bolívares de 5 en 5, como lo demás. Las dos cifras se cambian en «Las
+  reglas» (el divisor se escribe «0,80» o «80»; el mayor vacío, sin precio
+  al mayor). Un producto con su margen propio o su precio a mano no sigue
+  la regla.
+- **Cargar costos de la charcutería.** Se pegan los costos que manda el
+  proveedor, uno por línea, con el nombre y el costo al final: «Jamón de
+  espalda 5,20», «Queso amarillo $6,80 el kilo». Lo nuevo entra en
+  Charcutería y por kilo; «c/u» después del costo dice que se vende por
+  unidad, y «(G)» que se le suma el IVA. Lo que ya estaba toma el costo
+  nuevo y guarda el anterior, igual que con las facturas.
 - **Cargar una factura.** Se pegan sus líneas, una por producto:
   «12 x 447,59 Jugo Natulac Pera 200 ml (G)». Vale también como sale en el
   papel, con la cantidad y el precio en su propia línea encima del nombre.
@@ -960,22 +976,29 @@ Binance y otro.
   costo nuevo; lo nuevo entra en la categoría elegida (Víveres, Limpieza y
   cuidado personal, Charcutería). Lo que no se entiende (sin «(E)» o «(G)»,
   sin precio) no se carga y se dice cuál es.
-- **A mano.** Un producto se agrega también con su precio al detal en
-  dólares (la charcutería, por kilo), o con su costo y su tasa. Cada uno
-  puede llevar su margen propio y un precio al mayor escrito a mano. En
-  «Las reglas» se cambian el margen, el redondeo y el **margen al mayor**:
-  vacío, la lista no enseña precio al mayor.
+- **A mano.** Un producto se agrega también con su costo en dólares, con
+  el de la factura en bolívares y su tasa, o con su precio al detal en
+  dólares. Con un costo hay que decir si se le suma el IVA. Cada uno puede
+  llevar su margen propio y un precio al mayor escrito a mano. En «Las
+  reglas» se cambian el margen de los víveres, el redondeo, la charcutería
+  y el **margen al mayor de los víveres**: vacío (como está), los víveres
+  no tienen precio al mayor.
 - **Para la familia.** «Crear el enlace» da una dirección
   (`/lista/abcdefghjkmnpq`) que se manda por WhatsApp: con ella se ve la
   lista al día, en bolívares y en dólares, por categorías y con buscador,
-  sin clave y sin nada más del panel (ni costos ni proveedores). Fuera de
-  los buscadores; «Renovar el enlace» pone otro y el anterior deja de
-  funcionar. Un producto se puede esconder de esa lista sin perder su costo.
+  sin clave y sin nada más del panel (ni costos ni proveedores). Si algo
+  tiene precio al mayor, arriba hay dos pestañas: «Al detal» y «Al mayor»
+  (`?precio=mayor`, con la cabecera dorada, solo lo que tiene precio al
+  mayor). Fuera de los buscadores; «Renovar el enlace» pone otro y el
+  anterior deja de funcionar. Un producto se puede esconder de esa lista
+  sin perder su costo.
 - **En un archivo.** `npm run lista` deja en `listas/` (en OneDrive, fuera
   del repositorio) la lista de hoy en un PDF de una página larga, del ancho
   de un teléfono, y en pantallas JPG de 1080 × 1920 para mandarlas como
-  fotos. Solo lee la base y usa las mismas cuentas que el panel; como los
-  bolívares cambian con la tasa, el archivo vale para ese día.
+  fotos; y, si algo tiene precio al mayor, la del mayor aparte
+  (`lista-al-mayor-…`, en verde). Solo lee la base y usa las mismas cuentas
+  que el panel; como los bolívares cambian con la tasa, el archivo vale
+  para ese día.
 
 ## Proveedores
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { conPrecios, contarArticulosDetal, listarArticulosDetal, type ArticuloConPrecio } from "@/lib/detal";
 import { enlaceDeLaLista, leerTasa, reglasDelDetal, tasaEnFecha } from "@/lib/ajustes";
-import { agregarArticuloDetal, cargarFacturaDelDetal, crearEnlaceDeLaLista, guardarReglasDelDetal } from "@/lib/acciones";
+import { agregarArticuloDetal, cargarCostosDelDetal, cargarFacturaDelDetal, crearEnlaceDeLaLista, guardarReglasDelDetal } from "@/lib/acciones";
 import { CAMBIO_GRANDE_PCT, CATEGORIAS_DETAL, costoConIva, type CategoriaDetal } from "@/lib/detal-calculo";
 import { bs, bsRedondo, fechaCorta, fechaDeLaBase, hoy, tasaLegible, usd } from "@/lib/dinero";
 import { negocio } from "@/config/negocio";
@@ -15,6 +15,11 @@ function dolares(n: number): string {
   return usd(n);
 }
 
+/** El divisor de la charcutería como lo dice el dueño: «0,80». */
+function divisorLegible(n: number): string {
+  return n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+
 /** Un cambio en %, con su signo: «+12,5», «−3». */
 function signo(pct: number): string {
   const texto = Math.abs(pct).toLocaleString("es-VE", { maximumFractionDigits: 1 });
@@ -23,10 +28,10 @@ function signo(pct: number): string {
 
 /**
  * La lista de precios de la charcutería (el detal): cada producto con lo
- * que costó en la factura, su precio en dólares y en bolívares a la tasa
- * BCV de hoy, subidos siempre a favor del negocio. Aquí se cargan las
- * facturas de compra y se ponen las reglas; la familia la ve con su enlace,
- * sin clave, en /lista.
+ * que costó, su precio en dólares y en bolívares a la tasa BCV de hoy,
+ * subidos siempre a favor del negocio; la charcutería, también al mayor.
+ * Aquí se cargan las facturas de compra y los costos en dólares y se ponen
+ * las reglas; la familia la ve con su enlace, sin clave, en /lista.
  */
 export default async function PaginaDetal({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
@@ -61,6 +66,9 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
               Verla como la familia
             </a>
           )}
+          <a href="#costos" className="boton">
+            Cargar costos de la charcutería
+          </a>
           <a href="#cargar" className="boton">
             Cargar una factura
           </a>
@@ -68,11 +76,23 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
       </div>
       <Avisos parametros={parametros} />
 
-      <p className="ayuda">
-        Los precios de la charcutería: lo que costó cada producto en la factura, con su IVA si es gravado, pasado a dólares con la tasa BCV del día de la compra; más el
-        margen (hoy {reglas.margen_pct} %), en dólares subidos al centavo; y en bolívares a la tasa BCV de hoy, subidos de {reglas.redondeo_bs} en {reglas.redondeo_bs}.
-        Siempre hacia arriba: nunca en contra del negocio.
-      </p>
+      <div className="ayuda">
+        Cada precio sale de lo que costó el producto:
+        <ul style={{ margin: "var(--espacio-1) 0", paddingLeft: "1.2em" }}>
+          <li>
+            <strong>Charcutería</strong>: lo que cobra el proveedor, en dólares. Al detal, el costo entre {divisorLegible(reglas.charcuteria_divisor)} (cubre la merma, las bolsas
+            y el papel); al mayor,{" "}
+            {reglas.charcuteria_mayor_pct === null ? "sin precio (no está puesto)" : `el costo más un ${reglas.charcuteria_mayor_pct.toLocaleString("es-VE")} %`}.
+          </li>
+          <li>
+            <strong>Víveres y lo demás</strong>: el costo de la factura con su IVA si es gravado, a la tasa BCV del día de la compra, más un{" "}
+            {reglas.margen_pct.toLocaleString("es-VE")} %
+            {reglas.margen_mayor_pct !== null ? `; al mayor, más un ${reglas.margen_mayor_pct.toLocaleString("es-VE")} %` : ""}.
+          </li>
+        </ul>
+        Los dólares se suben al centavo y los bolívares, a la tasa BCV de hoy, de {reglas.redondeo_bs} en {reglas.redondeo_bs}. Siempre hacia arriba: nunca en contra del
+        negocio.
+      </div>
       {tasa ? (
         <p className="aviso aviso--exito">
           Tasa {tasa.origen === "bcv" ? "BCV" : "escrita a mano"} de hoy: <strong>{tasaLegible(tasa.valor)}</strong> bolívares por dólar ·{" "}
@@ -93,7 +113,7 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
             {cambios.map((a) => (
               <li key={a.id}>
                 <Link href={`/admin/detal/${a.id}`}>{a.nombre}</Link>: {dolares(a.costo_usd_anterior ?? 0)}
-                {a.fecha_compra_anterior ? ` el ${fechaCorta(a.fecha_compra_anterior)}` : ""} → {dolares(a.costo_usd ?? 0)}
+                {a.fecha_compra_anterior ? ` el ${fechaCorta(a.fecha_compra_anterior)}` : ""} → {dolares(a.costo_en_dolares ?? 0)}
                 {a.fecha_compra ? ` el ${fechaCorta(a.fecha_compra)}` : ""} ({signo(a.variacion_pct ?? 0)} %)
               </li>
             ))}
@@ -148,6 +168,51 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
         )}
       </section>
 
+      <section className="tarjeta" id="costos" style={{ marginTop: "var(--espacio-4)" }}>
+        <h2 className={estilos.subtitulo}>Cargar costos de la charcutería</h2>
+        <p className="ayuda">
+          Lo que te cobra el proveedor, en dólares, una línea por producto: el nombre y el costo al final («Jamón de espalda 5,20»). Es lo que pagas: no se le suma IVA, salvo
+          que la línea diga <strong>(G)</strong>. Si un producto se vende por unidad y no por kilo, ponle «c/u» después del costo. Lo que ya está en la lista toma el costo
+          nuevo y guarda el anterior.
+        </p>
+        <form action={cargarCostosDelDetal} className="formulario">
+          <div className="formulario__fila">
+            <div className="campo">
+              <label htmlFor="costos_proveedor">Proveedor</label>
+              <input id="costos_proveedor" name="proveedor" type="text" maxLength={80} placeholder="El Drago" />
+            </div>
+            <div className="campo">
+              <label htmlFor="costos_fecha">Fecha de los costos</label>
+              <input id="costos_fecha" name="fecha_compra" type="date" max={hoy()} defaultValue={hoy()} />
+            </div>
+            <div className="campo">
+              <label htmlFor="costos_categoria">Categoría de lo nuevo</label>
+              <select id="costos_categoria" name="categoria" defaultValue="charcuteria">
+                {Object.entries(CATEGORIAS_DETAL).map(([valor, nombre]) => (
+                  <option key={valor} value={valor}>
+                    {nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="campo">
+              <label htmlFor="costos_unidad">Lo nuevo se vende por</label>
+              <select id="costos_unidad" name="unidad" defaultValue="kg">
+                <option value="kg">Kilo</option>
+                <option value="unidad">Unidad</option>
+              </select>
+            </div>
+          </div>
+          <div className="campo">
+            <label htmlFor="costos_lineas">Costos en dólares</label>
+            <textarea id="costos_lineas" name="lineas" rows={8} required placeholder={"Jamón de espalda 5,20\nQueso amarillo 6,80\nSalchichas paquete 1 kg 3,10 c/u"} />
+          </div>
+          <button type="submit" className="boton">
+            Cargar costos
+          </button>
+        </form>
+      </section>
+
       <section className="tarjeta" id="cargar" style={{ marginTop: "var(--espacio-4)" }}>
         <h2 className={estilos.subtitulo}>Cargar una factura de compra</h2>
         <p className="ayuda">
@@ -193,7 +258,8 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
       <section className="tarjeta" id="agregar" style={{ marginTop: "var(--espacio-4)" }}>
         <h2 className={estilos.subtitulo}>Agregar un producto</h2>
         <p className="ayuda">
-          Con lo que costó en la factura (el precio sale solo con el margen) o, para la charcutería, con su precio al detal en dólares escrito a mano.
+          Con lo que costó (el precio sale solo, con la regla de su categoría): en dólares, como lo cobra el proveedor, o en bolívares, como viene en la factura. O con su precio
+          al detal en dólares escrito a mano.
         </p>
         <form action={agregarArticuloDetal} className="formulario">
           <div className="formulario__fila">
@@ -213,12 +279,39 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
             </div>
             <div className="campo">
               <label htmlFor="unidad">Se vende por</label>
-              <select id="unidad" name="unidad" defaultValue="unidad">
-                <option value="unidad">Unidad</option>
+              <select id="unidad" name="unidad" defaultValue="kg">
                 <option value="kg">Kilo</option>
+                <option value="unidad">Unidad</option>
               </select>
             </div>
           </div>
+          <div className="formulario__fila">
+            <div className="campo">
+              <label htmlFor="costo_usd">Costo en dólares (lo que cobra el proveedor)</label>
+              <input id="costo_usd" name="costo_usd" type="text" inputMode="decimal" placeholder="5,20" />
+            </div>
+            <div className="campo">
+              <label htmlFor="costo_bs">O el costo de la factura en Bs (sin IVA)</label>
+              <input id="costo_bs" name="costo_bs" type="text" inputMode="decimal" placeholder="447,59" />
+            </div>
+            <div className="campo">
+              <label htmlFor="iva">IVA</label>
+              <select id="iva" name="iva" defaultValue="">
+                <option value="">Elige si hay costo…</option>
+                <option value="exento">No se le suma: es lo que pago, o exento (E)</option>
+                <option value="general">Se le suma el {reglas.iva_pct} %: gravado (G)</option>
+              </select>
+            </div>
+            <div className="campo">
+              <label htmlFor="tasa_compra_uno">Tasa BCV de la compra (si es en Bs)</label>
+              <input id="tasa_compra_uno" name="tasa_compra" type="text" inputMode="decimal" placeholder="Vacía: la de hoy" />
+            </div>
+            <div className="campo">
+              <label htmlFor="margen_pct">Margen propio (% sobre el costo)</label>
+              <input id="margen_pct" name="margen_pct" type="text" inputMode="decimal" placeholder="Vacío: el de su categoría" />
+            </div>
+          </div>
+          <p className="ayuda">O con su precio escrito a mano:</p>
           <div className="formulario__fila">
             <div className="campo">
               <label htmlFor="precio_usd">Precio al detal en dólares</label>
@@ -227,28 +320,6 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
             <div className="campo">
               <label htmlFor="precio_mayor_usd">Precio al mayor en dólares (si tiene)</label>
               <input id="precio_mayor_usd" name="precio_mayor_usd" type="text" inputMode="decimal" />
-            </div>
-          </div>
-          <p className="ayuda">O, si sale de una factura:</p>
-          <div className="formulario__fila">
-            <div className="campo">
-              <label htmlFor="costo_bs">Costo de una unidad en Bs (sin IVA)</label>
-              <input id="costo_bs" name="costo_bs" type="text" inputMode="decimal" placeholder="447,59" />
-            </div>
-            <div className="campo">
-              <label htmlFor="iva">IVA</label>
-              <select id="iva" name="iva" defaultValue="general">
-                <option value="general">Gravado (G): se le suma el {reglas.iva_pct} %</option>
-                <option value="exento">Exento (E)</option>
-              </select>
-            </div>
-            <div className="campo">
-              <label htmlFor="tasa_compra_uno">Tasa BCV del día de la compra</label>
-              <input id="tasa_compra_uno" name="tasa_compra" type="text" inputMode="decimal" placeholder="Vacía: la de hoy" />
-            </div>
-            <div className="campo">
-              <label htmlFor="margen_pct">Margen propio (%)</label>
-              <input id="margen_pct" name="margen_pct" type="text" inputMode="decimal" placeholder={`Vacío: ${reglas.margen_pct} %`} />
             </div>
           </div>
           <button type="submit" className="boton">
@@ -262,12 +333,31 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
         <form action={guardarReglasDelDetal} className="formulario">
           <div className="formulario__fila">
             <div className="campo">
-              <label htmlFor="regla_margen">Margen al detal (%)</label>
-              <input id="regla_margen" name="margen_pct" type="text" inputMode="decimal" defaultValue={String(reglas.margen_pct).replace(".", ",")} required />
-              <span className="ayuda">Lo que se le suma al costo con IVA. En los víveres, 20 %.</span>
+              <label htmlFor="regla_divisor">Charcutería al detal: el costo entre</label>
+              <input id="regla_divisor" name="charcuteria_divisor" type="text" inputMode="decimal" defaultValue={divisorLegible(reglas.charcuteria_divisor)} required />
+              <span className="ayuda">0,80: un 25 % más, que cubre la merma, las bolsas y el papel.</span>
             </div>
             <div className="campo">
-              <label htmlFor="regla_mayor">Margen al mayor (%)</label>
+              <label htmlFor="regla_mayor_charcuteria">Charcutería al mayor (%)</label>
+              <input
+                id="regla_mayor_charcuteria"
+                name="charcuteria_mayor_pct"
+                type="text"
+                inputMode="decimal"
+                defaultValue={reglas.charcuteria_mayor_pct === null ? "" : String(reglas.charcuteria_mayor_pct).replace(".", ",")}
+                placeholder="Sin poner"
+              />
+              <span className="ayuda">Lo que se le suma al costo: 10 %. Vacío, sin precio al mayor.</span>
+            </div>
+          </div>
+          <div className="formulario__fila">
+            <div className="campo">
+              <label htmlFor="regla_margen">Víveres al detal (%)</label>
+              <input id="regla_margen" name="margen_pct" type="text" inputMode="decimal" defaultValue={String(reglas.margen_pct).replace(".", ",")} required />
+              <span className="ayuda">Lo que se le suma al costo con IVA: 20 %. Vale para todo lo que no es charcutería.</span>
+            </div>
+            <div className="campo">
+              <label htmlFor="regla_mayor">Víveres al mayor (%)</label>
               <input
                 id="regla_mayor"
                 name="margen_mayor_pct"
@@ -333,22 +423,35 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
 
 function FilaDetal({ articulo: a, ivaPct, hayMayor }: { articulo: ArticuloConPrecio; ivaPct: number; hayMayor: boolean }) {
   const porKilo = a.unidad === "kg" ? " /kg" : "";
+  const iva =
+    a.costo_usd !== null ? (a.iva === "general" ? `+ IVA ${ivaPct} %` : null) : a.costo_bs !== null ? (a.iva === "exento" ? "Exento" : `Gravado ${ivaPct} %`) : null;
   return (
     <tr>
       <td data-label="Producto">
         <Link href={`/admin/detal/${a.id}`}>{a.nombre}</Link>
         {!a.activo && <span className={estilos.sinNombre}> · escondido</span>}
         <span className="ayuda" style={{ display: "block" }}>
-          {[a.costo_bs !== null ? (a.iva === "exento" ? "Exento" : `Gravado ${ivaPct} %`) : null, a.proveedor || null, a.fecha_compra ? fechaCorta(a.fecha_compra) : null]
-            .filter(Boolean)
-            .join(" · ")}
+          {[iva, a.proveedor || null, a.fecha_compra ? fechaCorta(a.fecha_compra) : null].filter(Boolean).join(" · ")}
         </span>
       </td>
       <td data-label="Costo" className="numero">
-        {a.costo_bs !== null ? (
+        {a.costo_usd !== null || a.costo_bs !== null ? (
           <>
-            {bs(costoConIva(a.costo_bs, a.iva, ivaPct))}
-            {a.costo_usd !== null && <span className="ayuda" style={{ display: "block" }}>{dolares(Math.round(a.costo_usd * 10000) / 10000)} a {tasaLegible(a.tasa_compra ?? 0)}</span>}
+            {a.costo_usd !== null ? (
+              <>
+                {dolares(Math.round((a.costo_en_dolares ?? 0) * 10000) / 10000)}
+                {porKilo}
+              </>
+            ) : (
+              <>
+                {bs(costoConIva(a.costo_bs ?? 0, a.iva, ivaPct))}
+                {a.costo_en_dolares !== null && (
+                  <span className="ayuda" style={{ display: "block" }}>
+                    {dolares(Math.round(a.costo_en_dolares * 10000) / 10000)} a {tasaLegible(a.tasa_compra ?? 0)}
+                  </span>
+                )}
+              </>
+            )}
             {a.variacion_pct !== null && (
               <span className="ayuda" style={{ display: "block" }}>
                 antes {dolares(a.costo_usd_anterior ?? 0)}

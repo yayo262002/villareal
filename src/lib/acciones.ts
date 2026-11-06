@@ -87,12 +87,15 @@ import {
   buscarArticuloDetal,
   buscarArticuloDetalPorNombre,
   cambiarActivoDetal,
-  cargarFacturaDetal,
+  cargarCompraDetal,
   crearArticuloDetal,
+  lineasDeCostos,
+  lineasDeFactura,
   quitarArticuloDetal,
   type DatosArticuloDetal,
+  type ResultadoDeCarga,
 } from "./detal";
-import { esCategoriaDetal, esUnidadDetal, leerLineasDeFactura, leerMonto } from "./detal-calculo";
+import { esCategoriaDetal, esUnidadDetal, leerDivisor, leerLineasDeCostos, leerLineasDeFactura, leerMonto } from "./detal-calculo";
 import { actualizarTasaOficial } from "./tasa-oficial";
 import {
   VENTANA_MINUTOS,
@@ -2548,46 +2551,86 @@ async function leerArticuloDetal(datos: FormData, volver: (mensaje: string) => n
   const unidad = texto(datos, "unidad");
   const iva = texto(datos, "iva");
   const numeros: Record<string, number | null> = {};
-  for (const campo of ["costo_bs", "margen_pct", "precio_usd", "precio_mayor_usd"]) {
+  for (const campo of ["costo_bs", "costo_usd", "margen_pct", "precio_usd", "precio_mayor_usd"]) {
     const n = monto(datos, campo);
     if (texto(datos, campo) !== "" && (n === null || n < 0)) volver("Revisa los números: uno no se entiende.");
     numeros[campo] = n;
   }
   if (numeros.margen_pct !== null && numeros.margen_pct > 300) volver("Un margen de más del 300 % no tiene sentido: revísalo.");
   const fecha = fechaDeCompra(datos);
-  const costo = numeros.costo_bs && numeros.costo_bs > 0 ? numeros.costo_bs : null;
-  const tasa = costo !== null ? await tasaDeLaCompra(datos, fecha, volver) : null;
+  const costoBs = numeros.costo_bs && numeros.costo_bs > 0 ? numeros.costo_bs : null;
+  const costoUsd = numeros.costo_usd && numeros.costo_usd > 0 ? numeros.costo_usd : null;
+  if (costoBs !== null && costoUsd !== null) volver("Pon el costo en dólares o el de la factura en bolívares, no los dos: deja vacío el otro.");
+  if ((costoBs !== null || costoUsd !== null) && iva !== "general" && iva !== "exento") volver("Elige en «IVA» si a ese costo se le suma o no.");
+  const tasa = costoBs !== null ? await tasaDeLaCompra(datos, fecha, volver) : null;
   const precio = numeros.precio_usd && numeros.precio_usd > 0 ? numeros.precio_usd : null;
-  if (precio === null && (costo === null || tasa === null)) {
-    volver(costo !== null ? "No hay tasa del BCV guardada para ese día: escríbela." : "Pon lo que costó en la factura (en bolívares) o el precio al detal en dólares.");
+  if (precio === null && costoUsd === null && (costoBs === null || tasa === null)) {
+    volver(costoBs !== null ? "No hay tasa del BCV guardada para ese día: escríbela." : "Pon lo que costó (en dólares, o en bolívares de la factura) o el precio al detal en dólares.");
   }
   return {
     nombre,
     categoria: esCategoriaDetal(categoria) ? categoria : "viveres",
     unidad: esUnidadDetal(unidad) ? unidad : "unidad",
-    costo_bs: costo,
-    iva: iva === "exento" ? "exento" : "general",
+    costo_bs: costoBs,
+    costo_usd: costoUsd,
+    iva: iva === "general" ? "general" : "exento",
     tasa_compra: tasa,
     margen_pct: numeros.margen_pct,
     precio_usd: precio,
     precio_mayor_usd: numeros.precio_mayor_usd && numeros.precio_mayor_usd > 0 ? numeros.precio_mayor_usd : null,
     proveedor: texto(datos, "proveedor").slice(0, 80),
-    fecha_compra: costo !== null ? fecha : null,
+    fecha_compra: costoBs !== null || costoUsd !== null ? fecha : null,
   };
 }
 
-/** El margen del detal, el del mayor (vacío: no hay precio al mayor) y de cuánto en cuánto se suben los bolívares. */
+/**
+ * Las reglas: el margen de los víveres al detal y al mayor (vacío: no hay
+ * precio al mayor), la charcutería (el costo entre 0,80 al detal y más un
+ * 10 % al mayor) y de cuánto en cuánto se suben los bolívares. Lo que el
+ * formulario no trae se queda como estaba.
+ */
 export async function guardarReglasDelDetal(datos: FormData): Promise<void> {
   await exigirSesion();
+  const ruta = `${RUTA_DETAL}#reglas`;
+  const actuales = await reglasDelDetal();
   const margen = monto(datos, "margen_pct");
-  if (margen === null || margen < 0 || margen > 300) volverConError(RUTA_DETAL, "El margen del detal es un porcentaje entre 0 y 300.");
+  if (margen === null || margen < 0 || margen > 300) volverConError(ruta, "El margen de los víveres es un porcentaje entre 0 y 300.");
   const mayorTexto = texto(datos, "margen_mayor_pct");
   const mayor = mayorTexto === "" ? null : leerMonto(mayorTexto);
-  if (mayorTexto !== "" && (mayor === null || mayor < 0 || mayor > 300)) volverConError(RUTA_DETAL, "El margen al mayor es un porcentaje entre 0 y 300, o vacío.");
+  if (mayorTexto !== "" && (mayor === null || mayor < 0 || mayor > 300)) volverConError(ruta, "El margen al mayor de los víveres es un porcentaje entre 0 y 300, o vacío.");
+  let divisor = actuales.charcuteria_divisor;
+  if (datos.has("charcuteria_divisor")) {
+    const leido = leerDivisor(texto(datos, "charcuteria_divisor"));
+    if (leido === null) volverConError(ruta, "La charcutería al detal es el costo entre un número de 0,50 a 1: por ejemplo, 0,80.");
+    divisor = leido;
+  }
+  let mayorCharcuteria = actuales.charcuteria_mayor_pct;
+  if (datos.has("charcuteria_mayor_pct")) {
+    const escrito = texto(datos, "charcuteria_mayor_pct");
+    const leido = escrito === "" ? null : leerMonto(escrito);
+    if (escrito !== "" && (leido === null || leido < 0 || leido > 300)) volverConError(ruta, "El margen al mayor de la charcutería es un porcentaje entre 0 y 300, o vacío.");
+    mayorCharcuteria = leido;
+  }
   const redondeo = monto(datos, "redondeo_bs");
-  if (redondeo === null || !(redondeo >= 1 && redondeo <= 1000)) volverConError(RUTA_DETAL, "El redondeo es de cuántos en cuántos bolívares se sube: 5, 10…");
-  await ponerReglasDelDetal({ margen_pct: margen, margen_mayor_pct: mayor, redondeo_bs: redondeo });
-  volverConExito(`${RUTA_DETAL}#reglas`, "Reglas guardadas: los precios de la lista ya las usan.");
+  if (redondeo === null || !(redondeo >= 1 && redondeo <= 1000)) volverConError(ruta, "El redondeo es de cuántos en cuántos bolívares se sube: 5, 10…");
+  await ponerReglasDelDetal({ margen_pct: margen, margen_mayor_pct: mayor, charcuteria_divisor: divisor, charcuteria_mayor_pct: mayorCharcuteria, redondeo_bs: redondeo });
+  volverConExito(ruta, "Reglas guardadas: los precios de la lista ya las usan.");
+}
+
+/** Lo que dejó una carga, dicho en una frase: lo nuevo, lo puesto al día, lo de referencia y lo que no se entendió. */
+function resumenDeCarga({ nuevos, actualizados, anteriores, sinCambio }: ResultadoDeCarga, sinEntender: string[]): string {
+  const partes = [nuevos === 1 ? "1 producto nuevo" : `${nuevos} productos nuevos`, actualizados === 1 ? "1 con el costo al día" : `${actualizados} con el costo al día`];
+  if (anteriores > 0) partes.push(anteriores === 1 ? "1 ya tenía una compra más nueva (este costo queda de referencia)" : `${anteriores} ya tenían una compra más nueva (este costo queda de referencia)`);
+  if (sinCambio > 0) partes.push(sinCambio === 1 ? "1 sin cambio, por ser de una compra más vieja" : `${sinCambio} sin cambio, por ser de una compra más vieja`);
+  const noEntendidas =
+    sinEntender.length === 0
+      ? ""
+      : ` No entendí ${sinEntender.length === 1 ? "esta línea" : `estas ${sinEntender.length} líneas`}: ${sinEntender
+          .slice(0, 5)
+          .map((l) => `«${l.slice(0, 60)}»`)
+          .join(", ")}${sinEntender.length > 5 ? "…" : ""}. Agrégalas a mano.`;
+  const resumen = partes.length > 1 ? `${partes.slice(0, -1).join(", ")} y ${partes.at(-1)}` : partes[0];
+  return `${resumen}.${noEntendidas}`;
 }
 
 /** Un producto nuevo en la lista: con lo que costó en la factura o con su precio en dólares. */
@@ -2657,26 +2700,49 @@ export async function cargarFacturaDelDetal(datos: FormData): Promise<void> {
   const tasa = await tasaDeLaCompra(datos, fecha, (mensaje) => volverConError(ruta, mensaje));
   if (tasa === null) volverConError(ruta, "No hay tasa del BCV guardada para ese día: escríbela.");
   const categoria = texto(datos, "categoria");
-  const { nuevos, actualizados, anteriores, sinCambio } = await cargarFacturaDetal({
-    lineas,
+  const resultado = await cargarCompraDetal({
+    lineas: lineasDeFactura(lineas),
     categoria: esCategoriaDetal(categoria) ? categoria : "viveres",
+    unidad: "unidad",
     tasa,
     proveedor: texto(datos, "proveedor").slice(0, 80),
     fecha,
     iva_pct: (await reglasDelDetal()).iva_pct,
   });
-  const partes = [nuevos === 1 ? "1 producto nuevo" : `${nuevos} productos nuevos`, actualizados === 1 ? "1 con el costo al día" : `${actualizados} con el costo al día`];
-  if (anteriores > 0) partes.push(anteriores === 1 ? "1 ya tenía una compra más nueva (este costo queda de referencia)" : `${anteriores} ya tenían una compra más nueva (este costo queda de referencia)`);
-  if (sinCambio > 0) partes.push(sinCambio === 1 ? "1 sin cambio, por ser de una compra más vieja" : `${sinCambio} sin cambio, por ser de una compra más vieja`);
-  const noEntendidas =
-    sinEntender.length === 0
-      ? ""
-      : ` No entendí ${sinEntender.length === 1 ? "esta línea" : `estas ${sinEntender.length} líneas`}: ${sinEntender
-          .slice(0, 5)
-          .map((l) => `«${l.slice(0, 60)}»`)
-          .join(", ")}${sinEntender.length > 5 ? "…" : ""}. Agrégalas a mano.`;
-  const resumen = partes.length > 1 ? `${partes.slice(0, -1).join(", ")} y ${partes.at(-1)}` : partes[0];
-  volverConExito(RUTA_DETAL, `Factura cargada a la tasa ${tasa.toLocaleString("es-VE")}: ${resumen}.${noEntendidas}`);
+  volverConExito(RUTA_DETAL, `Factura cargada a la tasa ${tasa.toLocaleString("es-VE")}: ${resumenDeCarga(resultado, sinEntender)}`);
+}
+
+/**
+ * Carga una lista de costos en dólares (la charcutería): el nombre y lo que
+ * cobra el proveedor, una línea por producto. Lo nuevo entra en la
+ * categoría y la unidad elegidas (la charcutería, por kilo); lo que ya
+ * estaba toma el costo nuevo y guarda el anterior. Lo que no se entiende no
+ * se carga y se dice cuál es.
+ */
+export async function cargarCostosDelDetal(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const ruta = `${RUTA_DETAL}#costos`;
+  const { lineas, sinEntender } = leerLineasDeCostos(texto(datos, "lineas"));
+  if (lineas.length === 0) {
+    volverConError(
+      ruta,
+      sinEntender.length > 0
+        ? `No entendí ninguna línea. Cada una así: «Jamón de espalda 5,20». La primera que no entendí: «${sinEntender[0].slice(0, 80)}».`
+        : "Pega los costos, uno por línea: el nombre y lo que cuesta en dólares.",
+    );
+  }
+  const categoria = texto(datos, "categoria");
+  const unidad = texto(datos, "unidad");
+  const resultado = await cargarCompraDetal({
+    lineas: lineasDeCostos(lineas),
+    categoria: esCategoriaDetal(categoria) ? categoria : "charcuteria",
+    unidad: esUnidadDetal(unidad) ? unidad : "kg",
+    tasa: null,
+    proveedor: texto(datos, "proveedor").slice(0, 80),
+    fecha: fechaDeCompra(datos),
+    iva_pct: (await reglasDelDetal()).iva_pct,
+  });
+  volverConExito(RUTA_DETAL, `Costos cargados: ${resumenDeCarga(resultado, sinEntender)}`);
 }
 
 /** Crea (o renueva) el enlace con el que la familia ve la lista sin clave. */

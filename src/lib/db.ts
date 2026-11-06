@@ -191,6 +191,10 @@ async function migrar(cliente: Client): Promise<void> {
     await añadirColumna(cliente, "lista_detal", "costo_usd_anterior real");
     await añadirColumna(cliente, "lista_detal", "fecha_compra_anterior text");
   }
+  // La charcutería trae su costo en dólares, como lo cobra el proveedor.
+  if (!/\bcosto_usd\b/.test(await definicionDe(cliente, "lista_detal"))) {
+    await añadirColumna(cliente, "lista_detal", "costo_usd real");
+  }
   // Antes, quien se registraba sin nombre llevaba el teléfono como nombre; ahora el nombre queda vacío y las
   // pantallas enseñan el teléfono cuando no hay otra cosa. Una sola vez, y no hace nada si ya no queda ninguno.
   await cliente.execute("update clientes set nombre = '' where nombre <> '' and nombre = telefono");
