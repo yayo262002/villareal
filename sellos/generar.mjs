@@ -47,7 +47,8 @@ try {
     if (d.id && pendientes.has(d.id)) {
       const { r, f } = pendientes.get(d.id);
       pendientes.delete(d.id);
-      d.error ? f(new Error(d.error.message)) : r(d.result);
+      if (d.error) f(new Error(d.error.message));
+      else r(d.result);
     }
   };
   const enviar = (method, params = {}) =>

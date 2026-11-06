@@ -20,15 +20,17 @@ const CM = {
   tocineta: 28,
 };
 
+// Cada producto: [foto, nombre, adorno]; el adorno es opcional (gorro, moño o acebo, en el navideño).
 // La charcutería (el jamón, la boloña, la mortadela, el pavo) va siempre primero, a la izquierda; el queso
 // o lo que acompaña, después. Los combos con nombre propio (perrero, solidario, navideño) son los especiales y van al final.
-const COMBOS = [
-  { n: 1, productos: [["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo"]], detalle: "Bandeja de 400 g", lema: "El clásico para la arepa y el sándwich", destacar: "la arepa" },
-  { n: 2, productos: [["jamon-arepero", "Jamón arepero"], ["mozzarella", "Mozzarella"]], detalle: "Bandeja de 400 g", lema: "Para la arepa, el sándwich y la pizza", destacar: "la pizza" },
-  { n: 3, productos: [["jamon-ahumado", "Jamón ahumado"], ["mozzarella", "Mozzarella"]], detalle: "Bandeja de 400 g", lema: "Sabor ahumado para la pizza y el sándwich", destacar: "Sabor ahumado" },
-  { n: 4, productos: [["jamon-de-pierna", "Jamón de pierna"], ["queso-amarillo-vallecito", "Queso amarillo"]], detalle: "200 g de jamón de pierna y queso amarillo", lema: "Para el sándwich y la arepa", destacar: "el sándwich" },
+// COMBOS y fotoDe quedan en globalThis: los usan las páginas que cargan este archivo con <script>.
+globalThis.COMBOS = [
+  { n: 1, productos: [["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "El clásico para la arepa y el sándwich", destacar: "la arepa" },
+  { n: 2, productos: [["jamon-arepero", "Jamón arepero"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para la arepa, el sándwich y la pizza", destacar: "la pizza" },
+  { n: 3, productos: [["jamon-ahumado", "Jamón ahumado"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Sabor ahumado para la pizza y el sándwich", destacar: "Sabor ahumado" },
+  { n: 4, productos: [["jamon-de-pierna", "Jamón de pierna"], ["queso-amarillo-vallecito", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para el sándwich y la arepa", destacar: "el sándwich" },
   { n: 5, productos: [["bolona-de-pollo", "Boloña de pollo"], ["suero-san-pedro", "Suero San Pedro"]], detalle: "200 g de boloña y 1 bolsa de suero", lema: "Desayuno completo: boloña y suero", destacar: "Desayuno completo" },
-  { n: 6, productos: [["pechuga-de-pavo", "Pechuga de pavo"], ["mozzarella", "Mozzarella"]], detalle: "Bandeja de 400 g", lema: "Para un sándwich diferente", destacar: "diferente" },
+  { n: 6, productos: [["pechuga-de-pavo", "Pechuga de pavo"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para un sándwich diferente", destacar: "diferente" },
   {
     n: 7,
     titulo: "Combo perrero",
@@ -50,16 +52,19 @@ const COMBOS = [
   {
     n: 9,
     titulo: "Combo navideño",
-    productos: [["tocineta", "Tocineta"], ["jamon-de-pierna", "Jamón"], ["mozzarella", "Mozzarella"]],
-    detalle: "200 g de tocineta, 200 g de jamón y 200 g de mozzarella",
+    productos: [["tocineta", "Tocineta", "moño"], ["jamon-ahumado", "Jamón ahumado", "gorro"], ["mozzarella", "Mozzarella", "acebo"]],
+    detalle: "200 g de tocineta, 200 g de jamón ahumado y 200 g de mozzarella",
     lema: "Para tu mesa de Navidad",
     destacar: "Navidad",
     especial: true,
     etiqueta: "Especial de Navidad",
+    // Copos de nieve en el fondo, y los productos algo más bajos para que el gorro no llegue al nombre.
+    navidad: true,
+    alto: 86,
   },
 ];
 
 /** La foto de un producto, con su tamaño real, para que salga a escala. */
-function fotoDe(nombre) {
+globalThis.fotoDe = function fotoDe(nombre) {
   return `<img src="fotos/${nombre}.png" style="--cm: ${CM[nombre]}" alt="">`;
-}
+};
