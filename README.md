@@ -50,6 +50,7 @@ npm run verificar    typecheck + lint + pruebas unitarias
 npm run build        que compila
 npm run prueba:local   la web entera con una base temporal (después de build)
 npm run prueba:web     la web publicada, solo mirando: no crea ni borra nada
+npm run lista          la lista del detal de hoy en PDF y en pantallas JPG para el teléfono (en listas/)
 ```
 
 La web publicada tiene los datos de verdad del negocio. Por eso
@@ -267,6 +268,7 @@ src/lib/detal-calculo.ts  Las cuentas de la lista del detal: IVA, margen, dólar
 src/lib/detal.ts          La lista del detal desde la base: listar, cargar una factura, agregar, cambiar, esconder, quitar
 src/app/admin/(panel)/detal/  La lista del detal en el panel: cargar facturas, agregar a mano, las reglas y el enlace para la familia
 src/app/lista/            La lista del detal para la familia, con su enlace y sin clave
+scripts/lista-detal.ts    npm run lista: la lista del detal de hoy en archivos para el teléfono (diseño en publicidad/lista-precios.html)
 src/lib/precios-especiales.ts  El precio especial de un cliente para un artículo
 src/components/pos.tsx    Registrar venta, como una caja (con JavaScript: cliente con saldo, lector, carrito, pago, atajos)
 src/app/admin/(panel)/ventas/  Ventas: arriba la caja, debajo las últimas ventas; /clasica, el formulario de siempre, de respaldo
@@ -969,6 +971,11 @@ Binance y otro.
   sin clave y sin nada más del panel (ni costos ni proveedores). Fuera de
   los buscadores; «Renovar el enlace» pone otro y el anterior deja de
   funcionar. Un producto se puede esconder de esa lista sin perder su costo.
+- **En un archivo.** `npm run lista` deja en `listas/` (en OneDrive, fuera
+  del repositorio) la lista de hoy en un PDF de una página larga, del ancho
+  de un teléfono, y en pantallas JPG de 1080 × 1920 para mandarlas como
+  fotos. Solo lee la base y usa las mismas cuentas que el panel; como los
+  bolívares cambian con la tasa, el archivo vale para ese día.
 
 ## Proveedores
 

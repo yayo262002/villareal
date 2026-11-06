@@ -49,3 +49,9 @@ next-env.d.ts
 
 # los Excel que deja npm run copia cada noche
 /exportaciones/
+
+# la lista de precios del detal de cada día (npm run lista): cambia con la tasa
+/listas/
+/publicidad/lista-precios-datos.js
+/publicidad/lista-precios*.pdf
+/publicidad/lista-precios*.jpg

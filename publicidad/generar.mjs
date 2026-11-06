@@ -30,7 +30,17 @@ if (paginas.length === 0) throw new Error("No hay ningún cartel que dibujar.");
 const perfil = fs.mkdtempSync(path.join(os.tmpdir(), "carteles-chrome-"));
 const chrome = spawn(
   CHROME,
-  ["--headless=new", `--remote-debugging-port=${PUERTO}`, `--user-data-dir=${perfil}`, "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--hide-scrollbars", "--allow-file-access-from-files", "about:blank"],
+  [
+    "--headless=new",
+    `--remote-debugging-port=${PUERTO}`,
+    `--user-data-dir=${perfil}`,
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-gpu",
+    "--hide-scrollbars",
+    "--allow-file-access-from-files",
+    "about:blank",
+  ],
   { stdio: "ignore" },
 );
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -79,12 +89,18 @@ try {
       await espera(250);
     }
     await evaluar("document.fonts.ready.then(() => true)");
+    // Una página que se arma sola después de cargar (la lista de precios reparte sus filas en pantallas) avisa con window.listo.
+    await evaluar(
+      "new Promise((r) => { const t = Date.now(); (function mirar() { if (window.listo !== false || Date.now() - t > 8000) r(true); else setTimeout(mirar, 50); })(); })",
+    );
     await espera(400);
 
     // Al imprimir, la página es solo el cartel: sin el margen gris que lo rodea en pantalla (se comía el borde y sacaba una segunda página).
-    await evaluar(`(() => { const e = document.createElement("style"); e.textContent = "@media print { html, body { margin: 0 !important; padding: 0 !important; background: none !important; display: block !important; } }"; document.head.append(e); return true; })()`);
+    await evaluar(
+      `(() => { const e = document.createElement("style"); e.textContent = "@media print { html, body { margin: 0 !important; padding: 0 !important; background: none !important; display: block !important; } }"; document.head.append(e); return true; })()`,
+    );
     const carteles = await evaluar(
-      `(() => [...document.querySelectorAll("[data-archivo]")].map((c) => { const r = c.getBoundingClientRect(); return { archivo: c.dataset.archivo, ppp: Number(c.dataset.ppp) || 0, formato: c.dataset.formato === "jpeg" ? "jpeg" : "png", x: r.x + window.scrollX, y: r.y + window.scrollY, ancho: r.width, alto: r.height }; }))()`,
+      `(() => [...document.querySelectorAll("[data-archivo]")].map((c) => { const r = c.getBoundingClientRect(); return { archivo: c.dataset.archivo, solo: c.dataset.solo ?? "", ppp: Number(c.dataset.ppp) || 0, formato: c.dataset.formato === "jpeg" ? "jpeg" : "png", x: r.x + window.scrollX, y: r.y + window.scrollY, ancho: r.width, alto: r.height }; }))()`,
     );
     // Lo escrito o los productos no pueden salirse de su sitio: mejor un error aquí que una hoja mal impresa.
     // Se miden las piezas de verdad, una a una: la sombra de un producto o el subrayado de la frase pueden salirse, y no pasa nada.
@@ -113,17 +129,26 @@ try {
 
       // La vista previa: unos 1500 px de ancho, o a los puntos por pulgada que pida la pieza (data-ppp) si va a imprimirse tal cual.
       const escala = cartel.ppp ? cartel.ppp / 96 : ANCHO_PREVIA_PX / cartel.ancho;
-      // Con fondo de foto, mejor JPG (data-formato="jpeg"): en PNG cada hoja pesaría diez veces más.
-      const captura = await enviar("Page.captureScreenshot", {
-        format: cartel.formato,
-        ...(cartel.formato === "jpeg" ? { quality: 94 } : {}),
-        clip: { x: cartel.x, y: cartel.y, width: cartel.ancho, height: cartel.alto, scale: escala },
-        captureBeyondViewport: true,
-      });
-      fs.writeFileSync(path.join(aqui, `${cartel.archivo}.${cartel.formato === "jpeg" ? "jpg" : "png"}`), Buffer.from(captura.data, "base64"));
+      // Con fondo de foto, mejor JPG (data-formato="jpeg"): en PNG cada hoja pesaría diez veces más. Con data-solo="pdf", sin imagen.
+      if (cartel.solo !== "pdf") {
+        const captura = await enviar("Page.captureScreenshot", {
+          format: cartel.formato,
+          ...(cartel.formato === "jpeg" ? { quality: 94 } : {}),
+          clip: { x: cartel.x, y: cartel.y, width: cartel.ancho, height: cartel.alto, scale: escala },
+          captureBeyondViewport: true,
+        });
+        fs.writeFileSync(path.join(aqui, `${cartel.archivo}.${cartel.formato === "jpeg" ? "jpg" : "png"}`), Buffer.from(captura.data, "base64"));
+      }
+      // Con data-solo="imagen", sin PDF.
+      if (cartel.solo === "imagen") {
+        console.log(`${cartel.archivo}: imagen`);
+        continue;
+      }
 
       // El PDF al tamaño real: vectorial, con las fuentes dentro. Solo este cartel a la vista.
-      await evaluar(`(() => { document.querySelectorAll("[data-archivo]").forEach((c) => { c.style.display = c.dataset.archivo === ${JSON.stringify(cartel.archivo)} ? "" : "none"; }); return true; })()`);
+      await evaluar(
+        `(() => { document.querySelectorAll("[data-archivo]").forEach((c) => { c.style.display = c.dataset.archivo === ${JSON.stringify(cartel.archivo)} ? "" : "none"; }); return true; })()`,
+      );
       const pdf = await enviar("Page.printToPDF", {
         printBackground: true,
         preferCSSPageSize: true,
