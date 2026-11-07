@@ -120,9 +120,20 @@
   white-space: nowrap;
 }
 
+.productos {
+  display: grid;
+  gap: var(--espacio-4);
+}
+
 .grupo {
   display: grid;
   gap: var(--espacio-2);
+}
+
+/* Lo que el buscador deja fuera mientras se escribe (sin esto, el «display» de la fila le gana al «hidden»). */
+.grupo[hidden],
+.fila[hidden] {
+  display: none;
 }
 
 .categoria {

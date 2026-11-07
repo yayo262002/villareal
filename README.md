@@ -985,7 +985,9 @@ Binance y otro.
   no tienen precio al mayor.
 - **Para la familia.** «Crear el enlace» da una dirección
   (`/lista/abcdefghjkmnpq`) que se manda por WhatsApp: con ella se ve la
-  lista al día, en bolívares y en dólares, por categorías y con buscador,
+  lista al día, en bolívares y en dólares, por categorías y con buscador
+  (con JavaScript filtra con cada letra, también «parecido»; sin él, el
+  botón «Buscar»),
   sin clave y sin nada más del panel (ni costos ni proveedores). Arriba,
   las pestañas: «Al detal» (todo), «Charcutería» (`?precio=charcuteria`:
   la charcutería aparte, cada producto con su precio al detal y al mayor

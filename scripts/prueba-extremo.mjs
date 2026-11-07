@@ -2808,6 +2808,10 @@ async function probarListaDetal() {
       lista.html.includes('name="apple-mobile-web-app-title" content="Precios"'),
     `${r.status} ${JSON.stringify(manifiestoLista).slice(0, 120)}`,
   );
+  comprobar(
+    "la lista se filtra mientras se escribe: cada fila lleva su texto y cada categoría se puede esconder",
+    lista.html.includes('id="productos"') && /data-busca="Jugo Natulac[^"]*"/.test(lista.html) && lista.html.includes("data-grupo"),
+  );
   comprobar("con un enlace que no es el de la lista no hay manifiesto", (await fetch(`${base}/lista/abcdefghjkmnpq/manifest.webmanifest`)).status === 404);
   comprobar(
     "la lista de la familia no enseña costos ni proveedores",

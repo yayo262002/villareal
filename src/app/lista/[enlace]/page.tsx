@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { conPrecios, listarArticulosDetal } from "@/lib/detal";
 import { enlaceDeLaLista, leerTasa, reglasDelDetal } from "@/lib/ajustes";
 import { esEnlaceValido } from "@/lib/enlace-cuenta";
+import { FiltroEnVivo } from "@/components/filtro-en-vivo";
 import { textoCoincide } from "@/lib/buscar";
 import { CATEGORIAS_DETAL, type CategoriaDetal } from "@/lib/detal-calculo";
 import { bsRedondo, diaDeLaSemana, fechaCorta, fechaDeLaBase, hoy, tasaLegible, usd } from "@/lib/dinero";
@@ -107,16 +108,19 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
         <label htmlFor="q" className={estilos.oculto}>
           Buscar un producto
         </label>
-        <input id="q" name="q" type="search" defaultValue={busqueda} placeholder="Buscar: jamón, harina, jabón…" />
+        <input id="q" name="q" type="search" defaultValue={busqueda} placeholder="Buscar: jamón, harina, jabón…" autoComplete="off" />
         <button type="submit">Buscar</button>
         {busqueda && <a href={enlaceA(vista, "")}>Todos</a>}
       </form>
+      {/* Con JavaScript, la lista se filtra con cada letra; sin él, «Buscar» lo hace desde el servidor. */}
+      <FiltroEnVivo entrada="q" lista="productos" clase={estilos.vacio} />
 
       {lista.length === 0 ? (
         <p className={estilos.vacio}>{busqueda ? `Nada responde a «${busqueda}».` : "La lista todavía está vacía."}</p>
       ) : (
-        grupos.map((g) => (
-          <section key={g.categoria} className={estilos.grupo}>
+        <div id="productos" className={estilos.productos}>
+        {grupos.map((g) => (
+          <section key={g.categoria} className={estilos.grupo} data-grupo>
             <h2 className={estilos.categoria}>
               {CATEGORIAS_DETAL[g.categoria]}
               {vista === "charcuteria" && (
@@ -128,7 +132,7 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
             </h2>
             <ul className={estilos.filas}>
               {g.articulos.map((a) => (
-                <li key={a.id} className={estilos.fila}>
+                <li key={a.id} className={estilos.fila} data-busca={`${a.nombre} ${CATEGORIAS_DETAL[a.categoria] ?? ""}`}>
                   <span className={estilos.nombre}>
                     {pegarUnidad(a.nombre)}
                     {a.unidad === "kg" && <span className={estilos.unidad}>{" · el kilo"}</span>}
@@ -145,7 +149,8 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
               ))}
             </ul>
           </section>
-        ))
+        ))}
+        </div>
       )}
 
       <p className={estilos.nota}>
