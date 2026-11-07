@@ -32,6 +32,7 @@ export const CATEGORIAS_DETAL = {
   enlatados: "Enlatados y conservas",
   salsas: "Salsas, aliños y condimentos",
   despensa: "Azúcar, café y bebidas",
+  pan: "Pan y tostadas",
   galletas: "Galletas, cereales y compotas",
   lacteos: "Margarinas, untables y aceites",
   viveres: "Otros víveres",
