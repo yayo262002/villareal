@@ -93,7 +93,7 @@
         </div>`;
     const fila = (a) => `
       <div class="fila">
-        <div class="nombre">${pegarUnidad(a.nombre)}${a.unidad === "kg" ? " <small>· el kilo</small>" : ""}</div>
+        <div class="nombre">${pegarUnidad(a.nombre)}${a.unidad === "kg" ? " <small>· el&nbsp;kilo</small>" : ""}</div>
         ${L.doble ? `<div class="dos">${precio(a.detal)}${precio(a.mayor)}</div>` : precio(a)}
       </div>`;
     // El título de una categoría; en la charcutería, con el nombre de las dos columnas.
