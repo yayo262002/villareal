@@ -2795,6 +2795,20 @@ async function probarListaDetal() {
     lista.status === 200 && legible(lista.html).includes("Lista de precios") && legible(lista.html).includes(jugoBs30) && legible(lista.html).includes("0,76") && legible(lista.html).includes("Queso amarillo de prueba"),
     `${lista.status} ${jugoBs30}`,
   );
+  r = await fetch(`${base}/lista/${enlace}/manifest.webmanifest`);
+  const manifiestoLista = r.status === 200 ? await r.json().catch(() => ({})) : {};
+  comprobar(
+    "la lista es su propia app: su manifiesto abre en la lista, no en la portada, y la página lo enlaza",
+    manifiestoLista.short_name === "Precios" &&
+      manifiestoLista.start_url === `/lista/${enlace}` &&
+      manifiestoLista.scope === `/lista/${enlace}` &&
+      manifiestoLista.display === "standalone" &&
+      lista.html.includes(`href="/lista/${enlace}/manifest.webmanifest"`) &&
+      !lista.html.includes('href="/manifest.webmanifest"') &&
+      lista.html.includes('name="apple-mobile-web-app-title" content="Precios"'),
+    `${r.status} ${JSON.stringify(manifiestoLista).slice(0, 120)}`,
+  );
+  comprobar("con un enlace que no es el de la lista no hay manifiesto", (await fetch(`${base}/lista/abcdefghjkmnpq/manifest.webmanifest`)).status === 404);
   comprobar(
     "la lista de la familia no enseña costos ni proveedores",
     !lista.html.includes("447,59") && !lista.html.includes("Cecosesola") && !lista.html.includes("El Drago") && !legible(lista.html).includes("5,20") && lista.html.includes("noindex"),
@@ -2833,7 +2847,11 @@ async function probarListaDetal() {
   for (const f of await consultar("select id from lista_detal")) await enviar(`/admin/detal/${f.id}`, 'name="confirmar"', { id: String(f.id), confirmar: "si" });
   comprobar("con la casilla marcada, se quita", (await consultar("select count(*) as n from lista_detal"))[0].n === 0);
   r = await enviar("/admin/detal", 'name="renovar"', { renovar: "1" });
-  comprobar("al renovar el enlace, el anterior deja de funcionar", r.destino.includes("Enlace renovado") && (await pagina(`/lista/${enlace}`, "")).status === 404, r.destino);
+  comprobar(
+    "al renovar el enlace, el anterior deja de funcionar, también su app",
+    r.destino.includes("Enlace renovado") && (await pagina(`/lista/${enlace}`, "")).status === 404 && (await fetch(`${base}/lista/${enlace}/manifest.webmanifest`)).status === 404,
+    r.destino,
+  );
 }
 
 async function probarRecuperacion() {

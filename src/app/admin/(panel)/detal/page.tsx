@@ -54,7 +54,9 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
     .map((c) => ({ categoria: c as CategoriaDetal, articulos: lista.filter((a) => a.categoria === c) }))
     .filter((g) => g.articulos.length > 0);
   const direccion = enlace ? `${negocio.web}/lista/${enlace}` : null;
-  const mensaje = direccion ? `Esta es la lista de precios de la charcutería, al día con la tasa del BCV:\n${direccion}` : "";
+  const mensaje = direccion
+    ? `Esta es la lista de precios de la charcutería, al día con la tasa del BCV:\n${direccion}\n\nPara tenerla como app: ábrela y ponla en la pantalla de inicio (en el iPhone, en Safari: Compartir → «Agregar a pantalla de inicio»). El icono abre directo la lista.`
+    : "";
 
   return (
     <>
@@ -406,7 +408,10 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
                 </button>
               </form>
             </div>
-            <p className="ayuda">Si se compartió de más, «Renovar» pone otro y el anterior deja de funcionar.</p>
+            <p className="ayuda">
+              Puesta en la pantalla de inicio del teléfono es una app, «Precios», que abre directo en la lista. Si se compartió de más, «Renovar» pone otro y el anterior
+              deja de funcionar (también el icono: hay que ponerlo otra vez con el enlace nuevo).
+            </p>
           </>
         ) : (
           <form action={crearEnlaceDeLaLista}>

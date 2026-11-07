@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { conPrecios, listarArticulosDetal } from "@/lib/detal";
 import { enlaceDeLaLista, leerTasa, reglasDelDetal } from "@/lib/ajustes";
@@ -9,7 +10,15 @@ import estilos from "./lista.module.css";
 
 type Parametros = { params: Promise<{ enlace: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
-export const metadata = { title: "Lista de precios" };
+/** Puesta en la pantalla de inicio, es su propia app, «Precios», que abre en esta lista (su manifiesto, al lado). */
+export async function generateMetadata({ params }: Parametros): Promise<Metadata> {
+  const { enlace } = await params;
+  return {
+    title: "Lista de precios",
+    manifest: `/lista/${enlace}/manifest.webmanifest`,
+    appleWebApp: { capable: true, title: "Precios", statusBarStyle: "default" },
+  };
+}
 
 /** «500 g», «1 kg»: el número y su unidad no se separan al partir la línea (como en la lista del teléfono). */
 const pegarUnidad = (nombre: string) => nombre.replace(/(\d) (?=(g|kg|ml|l|cm)\b)/g, "$1 ");

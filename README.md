@@ -990,7 +990,11 @@ Binance y otro.
   las pestañas: «Al detal» (todo), «Charcutería» (`?precio=charcuteria`:
   la charcutería aparte, cada producto con su precio al detal y al mayor
   uno al lado del otro) y «Al mayor» (`?precio=mayor`, con la cabecera
-  dorada, solo lo que tiene precio al mayor). Fuera de los buscadores; «Renovar el enlace» pone otro y el
+  dorada, solo lo que tiene precio al mayor). Puesta en la pantalla de
+  inicio del teléfono es su propia app, «Precios», que abre directo en la
+  lista y no en la portada de la web: tiene su manifiesto
+  (`/lista/<enlace>/manifest.webmanifest`, solo con el enlace vigente), como
+  el panel. Fuera de los buscadores; «Renovar el enlace» pone otro y el
   anterior deja de funcionar. Un producto se puede esconder de esa lista
   sin perder su costo.
 - **En un archivo.** `npm run lista` deja en `listas/` (en OneDrive, fuera
