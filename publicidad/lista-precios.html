@@ -8,8 +8,9 @@
   @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
 
   /* Las listas de precios del detal para mostrarlas en el teléfono. Los datos los escribe `npm run lista`
-     en lista-precios-datos.js (no va al repositorio: cambia cada día). Hay dos listas: la del detal (roja) y la
-     del mayor (verde, solo lo que tiene precio al mayor). De cada una salen dos cosas:
+     en lista-precios-datos.js (no va al repositorio: cambia cada día). Hay hasta tres listas: la del detal (roja),
+     la de la charcutería aparte (roja, con dos precios por fila: al detal y al mayor) y la del mayor (verde, solo lo
+     que tiene precio al mayor). De cada una salen dos cosas:
      - un PDF de una sola página larga, del ancho de un teléfono (data-solo="pdf");
      - las mismas filas repartidas en pantallas de 9:16, en JPG, para mandarlas como fotos (data-solo="imagen"). */
   @page { margin: 0; }
@@ -48,6 +49,13 @@
   .bs { font-weight: 800; font-size: 16px; line-height: 1.1; white-space: nowrap; color: var(--rojo-oscuro); }
   .usd { font-size: 12.5px; font-weight: 600; line-height: 1.15; white-space: nowrap; color: var(--tinta-suave); }
 
+  /* La charcutería: los dos precios en columnas del mismo ancho, con su nombre junto al de la categoría; el del mayor, en verde. */
+  .dos { display: grid; grid-template-columns: repeat(2, 78px); column-gap: 8px; flex: none; }
+  .dos .bs { font-size: 15px; }
+  .dos .precios + .precios .bs { color: #1d5135; }
+  .categoria .columnas { float: right; display: grid; grid-template-columns: repeat(2, 78px); column-gap: 8px; margin-right: 6px; font-size: 10.5px; letter-spacing: 0.08em; text-align: right; color: var(--rojo-oscuro); }
+  .categoria .columnas span + span { color: #1d5135; }
+
   .nota { margin: 10px 4px 2px; font-size: 11px; line-height: 1.35; color: var(--tinta-suave); }
   .pantalla .nota { margin: 0; padding: 6px 14px 10px; background: var(--crema); }
 </style>
@@ -75,22 +83,33 @@
           <p class="tasa">${tasa ? `Tasa BCV: <b>${tasa}</b> Bs por dólar` : "Sin tasa: precios en dólares"}</p>
         </div>
       </header>`;
-    const nota = `<p class="nota">${L.mayor ? "Precios al mayor. " : ""}Bolívares a la tasa del BCV de este día, subidos de ${L.redondeo} en ${L.redondeo}. Cambian cada día con la tasa.</p>`;
+    const nota = `<p class="nota">${L.mayor ? "Precios al mayor. " : L.doble ? "Cada producto con su precio al detal y al mayor. " : ""}Bolívares a la tasa del BCV de este día, subidos de ${L.redondeo} en ${L.redondeo}. Cambian cada día con la tasa.</p>`;
+    const precio = (p) =>
+      p.usd === null
+        ? `<div class="precios"><div class="usd">—</div></div>`
+        : `<div class="precios">
+          <div class="bs">${p.bs !== null ? bs(p.bs) : usd(p.usd)}</div>
+          ${p.bs !== null ? `<div class="usd">${usd(p.usd)}</div>` : ""}
+        </div>`;
     const fila = (a) => `
       <div class="fila">
         <div class="nombre">${pegarUnidad(a.nombre)}${a.unidad === "kg" ? " <small>· el kilo</small>" : ""}</div>
-        <div class="precios">
-          <div class="bs">${a.bs !== null ? bs(a.bs) : usd(a.usd)}</div>
-          ${a.bs !== null ? `<div class="usd">${usd(a.usd)}</div>` : ""}
-        </div>
+        ${L.doble ? `<div class="dos">${precio(a.detal)}${precio(a.mayor)}</div>` : precio(a)}
       </div>`;
+    // El título de una categoría; en la charcutería, con el nombre de las dos columnas.
+    const tituloDe = (g) => `<h2 class="categoria">${L.doble ? `<span class="columnas"><span>Detal</span><span>Mayor</span></span>` : ""}${g.nombre}</h2>`;
+    const elemento = (html) => {
+      const plantilla = document.createElement("template");
+      plantilla.innerHTML = html.trim();
+      return plantilla.content.firstElementChild;
+    };
 
     // El PDF: todo en una página larga.
     const larga = document.createElement("article");
     larga.className = clase;
     larga.dataset.archivo = L.prefijo;
     larga.dataset.solo = "pdf";
-    larga.innerHTML = cabecera() + `<div class="cuerpo">${L.grupos.map((g) => `<h2 class="categoria">${g.nombre}</h2>${g.articulos.map(fila).join("")}`).join("")}${nota}</div>`;
+    larga.innerHTML = cabecera() + `<div class="cuerpo">${L.grupos.map((g) => `${tituloDe(g)}${g.articulos.map(fila).join("")}`).join("")}${nota}</div>`;
     document.body.append(larga);
 
     // Las pantallas: se llenan fila a fila y, cuando una ya no cabe, sigue en la siguiente (con su categoría repetida).
@@ -124,23 +143,17 @@
           if (cuerpo.children.length > 0 && cuerpo.clientHeight - usado < 150) {
             p = nuevaPantalla(++n);
           }
-          titulo = document.createElement("h2");
-          titulo.className = "categoria";
-          titulo.textContent = g.nombre;
+          titulo = elemento(tituloDe(g));
           p.querySelector(".cuerpo").append(titulo);
         }
-        const plantilla = document.createElement("template");
-        plantilla.innerHTML = fila(a).trim();
-        const nodo = plantilla.content.firstElementChild;
+        const nodo = elemento(fila(a));
         const aqui = p.querySelector(".cuerpo");
         aqui.append(nodo);
         if (!cabe(p)) {
           nodo.remove();
           if (aqui.lastElementChild === titulo) titulo.remove();
           p = nuevaPantalla(++n);
-          const sigue = document.createElement("h2");
-          sigue.className = "categoria";
-          sigue.textContent = g.nombre;
+          const sigue = elemento(tituloDe(g));
           p.querySelector(".cuerpo").append(sigue, nodo);
           titulo = sigue;
         }

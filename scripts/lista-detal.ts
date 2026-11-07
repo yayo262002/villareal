@@ -24,6 +24,7 @@ import { diaDeLaSemana, fechaCorta, hoy } from "../src/lib/dinero.ts";
  *
  *   lista-de-precios-AAAA-MM-DD.pdf      la del detal: una página larga, del ancho de un teléfono
  *   lista-de-precios-AAAA-MM-DD-1.jpg…   la misma en pantallas, para mandarla como fotos
+ *   lista-charcuteria-AAAA-MM-DD.pdf, -1.jpg…  la charcutería aparte, cada producto con su precio al detal y al mayor
  *   lista-al-mayor-AAAA-MM-DD.pdf, -1.jpg…  la del mayor (lo que tiene precio al mayor: la charcutería)
  *
  * Solo lee la base. Hace falta Chrome (lo usa publicidad/generar.mjs).
@@ -74,15 +75,33 @@ const comun = { fecha: dia, fechaLarga: `${diaDeLaSemana(dia)} ${fechaCorta(dia)
 const detal = { ...comun, prefijo: "lista-precios", destino: "lista-de-precios", mayor: false, antetitulo: "Charcutería Villa Real", titulo: "Lista de precios", grupos: agrupar((f) => precioDetalUsd(f, reglas)) };
 const mayor = { ...comun, prefijo: "lista-mayor", destino: "lista-al-mayor", mayor: true, antetitulo: "Villa Real · al mayor", titulo: "Precios al mayor", grupos: agrupar((f) => precioMayorUsd(f, reglas)) };
 if (contar(detal.grupos) === 0) throw new Error("La lista del detal está vacía: no hay nada que enseñar.");
-// La del mayor sale solo si algo tiene precio al mayor.
-const listas = contar(mayor.grupos) > 0 ? [detal, mayor] : [detal];
+
+/** La charcutería aparte: cada producto con sus dos precios, al detal y al mayor. */
+const precioDe = (usd: number | null) => ({ usd, bs: enBolivares(usd, tasa, reglas.redondeo_bs) });
+const deCharcuteria = filas
+  .filter((f) => f.categoria === "charcuteria")
+  .map((f) => ({ nombre: f.nombre, unidad: f.unidad, detal: precioDe(precioDetalUsd(f, reglas)), mayor: precioDe(precioMayorUsd(f, reglas)) }))
+  .filter((a) => a.detal.usd !== null)
+  .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+const charcuteria = {
+  ...comun,
+  prefijo: "lista-charcuteria",
+  destino: "lista-charcuteria",
+  mayor: false,
+  doble: true,
+  antetitulo: "Villa Real · al detal y al mayor",
+  titulo: "Charcutería",
+  grupos: [{ nombre: CATEGORIAS_DETAL.charcuteria, articulos: deCharcuteria }],
+};
+// La de la charcutería sale si hay charcutería con precio; la del mayor, si algo tiene precio al mayor.
+const listas = [detal, ...(deCharcuteria.length > 0 ? [charcuteria] : []), ...(contar(mayor.grupos) > 0 ? [mayor] : [])];
 fs.writeFileSync(
   path.join(carpetaPublicidad, "lista-precios-datos.js"),
   `// Lo escribe npm run lista (scripts/lista-detal.ts). No va al repositorio.\nglobalThis.LISTAS = ${JSON.stringify(listas, null, 1)};\n`,
 );
 
 // Se dibuja con el mismo guion que los carteles, y lo que sale pasa a listas/ con la fecha.
-const DIBUJOS = /^lista-(precios|mayor)(-\d+)?\.(pdf|jpg|png)$/;
+const DIBUJOS = /^lista-(precios|charcuteria|mayor)(-\d+)?\.(pdf|jpg|png)$/;
 for (const viejo of fs.readdirSync(carpetaPublicidad).filter((f) => DIBUJOS.test(f))) fs.rmSync(path.join(carpetaPublicidad, viejo));
 const dibujo = spawnSync(process.execPath, [path.join(carpetaPublicidad, "generar.mjs"), "lista-precios"], { stdio: "inherit" });
 if (dibujo.status !== 0) throw new Error("No se pudo dibujar la lista.");
@@ -99,5 +118,5 @@ for (const lista of listas) {
   }
 }
 console.log(
-  `\n${contar(detal.grupos)} productos al detal${listas.length > 1 ? ` y ${contar(mayor.grupos)} al mayor` : ""} a la tasa ${tasa ?? "(sin tasa)"} en ${carpetaListas}:\n  ${hechos.join("\n  ")}`,
+  `\n${contar(detal.grupos)} productos al detal${deCharcuteria.length > 0 ? `, ${deCharcuteria.length} de charcutería` : ""}${listas.includes(mayor) ? ` y ${contar(mayor.grupos)} al mayor` : ""} a la tasa ${tasa ?? "(sin tasa)"} en ${carpetaListas}:\n  ${hechos.join("\n  ")}`,
 );

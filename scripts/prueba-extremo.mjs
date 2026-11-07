@@ -2800,14 +2800,27 @@ async function probarListaDetal() {
     !lista.html.includes("447,59") && !lista.html.includes("Cecosesola") && !lista.html.includes("El Drago") && !legible(lista.html).includes("5,20") && lista.html.includes("noindex"),
   );
   comprobar(
-    "la lista de la familia enseña la charcutería al detal, sin el precio al mayor, y la pestaña del mayor",
-    legible(lista.html).includes(jamonBs) && /USD\s6,50/.test(legible(lista.html)) && !/USD\s5,72/.test(legible(lista.html)) && lista.html.includes("precio=mayor"),
+    "la lista de la familia enseña la charcutería al detal, sin el precio al mayor, y las pestañas de la charcutería y del mayor",
+    legible(lista.html).includes(jamonBs) &&
+      /USD\s6,50/.test(legible(lista.html)) &&
+      !/USD\s5,72/.test(legible(lista.html)) &&
+      lista.html.includes("precio=mayor") &&
+      lista.html.includes("precio=charcuteria"),
     jamonBs,
   );
   lista = await pagina(`/lista/${enlace}?precio=mayor`, "");
   // (Los dólares van con su «USD»: la tasa de la prueba, 36,50, también dice «6,50».)
   const enLaDelMayor = ["Precios al mayor", /USD\s5,72/, jamonMayorBs, /USD\s6,50/, "Jugo Natulac"].map((t) => (typeof t === "string" ? legible(lista.html).includes(t) : t.test(legible(lista.html))));
   comprobar("la lista al mayor enseña solo lo que tiene precio al mayor, con ese precio", enLaDelMayor.join() === "true,true,true,false,false", `${jamonMayorBs} ${enLaDelMayor.join()}`);
+  lista = await pagina(`/lista/${enlace}?precio=charcuteria`, "");
+  const enLaCharcuteria = [/<h1[^>]*>Charcutería<\/h1>/, jamonBs, /USD\s6,50/, jamonMayorBs, /USD\s5,72/, "Jugo Natulac", 'name="precio" value="charcuteria"'].map((t) =>
+    typeof t === "string" ? legible(lista.html).includes(t) || lista.html.includes(t) : t.test(legible(lista.html)) || t.test(lista.html),
+  );
+  comprobar(
+    "la charcutería aparte enseña cada producto con su precio al detal y al mayor, y nada más; el buscador se queda en ella",
+    enLaCharcuteria.join() === "true,true,true,true,true,false,true",
+    enLaCharcuteria.join(),
+  );
   lista = await pagina(`/lista/${enlace}?q=jugo`, "");
   comprobar("en la lista de la familia se busca sin tildes", legible(lista.html).includes("Jugo Natulac") && !legible(lista.html).includes("Maíz de Cotufa"));
   comprobar("un enlace que no es el de la lista da 404", (await pagina("/lista/abcdefghjkmnpq", "")).status === 404 && (await pagina("/lista/nada", "")).status === 404);

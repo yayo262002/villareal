@@ -986,16 +986,18 @@ Binance y otro.
 - **Para la familia.** «Crear el enlace» da una dirección
   (`/lista/abcdefghjkmnpq`) que se manda por WhatsApp: con ella se ve la
   lista al día, en bolívares y en dólares, por categorías y con buscador,
-  sin clave y sin nada más del panel (ni costos ni proveedores). Si algo
-  tiene precio al mayor, arriba hay dos pestañas: «Al detal» y «Al mayor»
-  (`?precio=mayor`, con la cabecera dorada, solo lo que tiene precio al
-  mayor). Fuera de los buscadores; «Renovar el enlace» pone otro y el
+  sin clave y sin nada más del panel (ni costos ni proveedores). Arriba,
+  las pestañas: «Al detal» (todo), «Charcutería» (`?precio=charcuteria`:
+  la charcutería aparte, cada producto con su precio al detal y al mayor
+  uno al lado del otro) y «Al mayor» (`?precio=mayor`, con la cabecera
+  dorada, solo lo que tiene precio al mayor). Fuera de los buscadores; «Renovar el enlace» pone otro y el
   anterior deja de funcionar. Un producto se puede esconder de esa lista
   sin perder su costo.
 - **En un archivo.** `npm run lista` deja en `listas/` (en OneDrive, fuera
   del repositorio) la lista de hoy en un PDF de una página larga, del ancho
   de un teléfono, y en pantallas JPG de 1080 × 1920 para mandarlas como
-  fotos; y, si algo tiene precio al mayor, la del mayor aparte
+  fotos; la de la charcutería aparte, con las columnas «Detal» y «Mayor»
+  (`lista-charcuteria-…`); y, si algo tiene precio al mayor, la del mayor
   (`lista-al-mayor-…`, en verde). Solo lee la base y usa las mismas cuentas
   que el panel; como los bolívares cambian con la tasa, el archivo vale
   para ese día.
