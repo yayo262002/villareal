@@ -46,6 +46,18 @@ globalThis.COMBOS = [
   { n: 7, productos: [["mortadela-punta-de-monte", "Mortadela"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para la arepa de todos los días", destacar: "todos los días" },
   {
     n: 8,
+    titulo: "Combo solidario",
+    productos: [["suero-san-pedro", "Suero San Pedro"], ["huevos", "Huevos"], ["mortadela-de-pollo", "Mortadela"]],
+    detalle: "1 suero San Pedro de 900 ml, 6 huevos y 1 mortadela de 500 g",
+    lema: "Lo básico de la casa en un solo combo",
+    destacar: "un solo combo",
+    especial: true,
+    etiqueta: "Especial solidario",
+    // Sin corazones: al dueño no le gustaban.
+    estilo: "solidario",
+  },
+  {
+    n: 9,
     titulo: "Combo perrero",
     productos: [["queso-amarillo", "Queso amarillo", "chorro"], ["jamon-de-espalda", "Jamón de espalda", "perro"], ["salchichas", "Salchichas", "salsas"]],
     detalle: "100 g de queso amarillo, 100 g de jamón de espalda y 6 salchichas",
@@ -56,18 +68,6 @@ globalThis.COMBOS = [
     fondo: "perros",
     // Algo más bajos, para que el perro caliente de encima del jamón no llegue a la onda.
     alto: 88,
-  },
-  {
-    n: 9,
-    titulo: "Combo solidario",
-    productos: [["suero-san-pedro", "Suero San Pedro"], ["huevos", "Huevos"], ["mortadela-de-pollo", "Mortadela"]],
-    detalle: "1 suero San Pedro de 900 ml, 6 huevos y 1 mortadela de 500 g",
-    lema: "Lo básico de la casa en un solo combo",
-    destacar: "un solo combo",
-    especial: true,
-    etiqueta: "Especial solidario",
-    // Sin corazones: al dueño no le gustaban.
-    estilo: "solidario",
   },
   {
     n: 10,
