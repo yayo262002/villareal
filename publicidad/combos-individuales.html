@@ -552,14 +552,15 @@
     return `<g transform="translate(${x} ${y}) rotate(${giro}) scale(${escala})"><path d="M0,4V-24" stroke="#2d7a26" stroke-width="1.1" stroke-linecap="round"/>${hojas}</g>`;
   };
 
-  /** Las luces de fondo, desenfocadas: el verde de los árboles detrás y encima luces doradas, blancas y algunas rojas y verdes. */
-  function luces(n, semilla) {
+  /** Las luces de fondo, desenfocadas. En el navideño, el verde de los árboles detrás y luces doradas, blancas y algunas rojas y
+   *  verdes; en el pizzero, sin nada de Navidad: sombras cálidas y luces doradas y blancas, como las de un local. */
+  function luces(n, semilla, navidad = true) {
     const r = azar(semilla);
     let arboles = "", grandes = "", chicas = "";
     for (const [x, y, rx, ry] of [[4, 72, 22, 42], [212, 78, 22, 44], [44, 22, 32, 18], [172, 20, 32, 16], [108, 112, 46, 16]]) {
-      arboles += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#0f4220" fill-opacity=".6"/>`;
+      arboles += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${navidad ? "#0f4220" : "#4a2a10"}" fill-opacity=".6"/>`;
     }
-    const tonos = ["#ffd77a", "#ffd77a", "#ffe9a8", "#fff4d6", "#ffc04d", "#ff6b5a", "#9fe08c"];
+    const tonos = navidad ? ["#ffd77a", "#ffd77a", "#ffe9a8", "#fff4d6", "#ffc04d", "#ff6b5a", "#9fe08c"] : ["#ffd77a", "#ffd77a", "#ffe9a8", "#fff4d6", "#ffc04d", "#ffb347"];
     const tono = () => tonos[Math.floor(r() * tonos.length)];
     for (let i = 0; i < 26; i++) grandes += `<circle cx="${(r() * 216).toFixed(1)}" cy="${(r() * 132).toFixed(1)}" r="${(5 + r() * 7).toFixed(1)}" fill="${tono()}" fill-opacity="${(0.12 + r() * 0.16).toFixed(2)}"/>`;
     for (let i = 0; i < 90; i++) chicas += `<circle cx="${(r() * 216).toFixed(1)}" cy="${(r() * 132).toFixed(1)}" r="${(0.8 + r() * 2.6).toFixed(1)}" fill="${tono()}" fill-opacity="${(0.35 + r() * 0.5).toFixed(2)}"/>`;
@@ -606,12 +607,13 @@
       abanico += `<path d="M108,150L${(108 + Math.cos(a1) * 260).toFixed(1)},${(150 + Math.sin(a1) * 260).toFixed(1)}L${(108 + Math.cos(a2) * 260).toFixed(1)},${(150 + Math.sin(a2) * 260).toFixed(1)}Z"/>`;
     }
     const PANEL = "M0,170C60,164.5 156,164.5 216,170V279H0Z";
-    // Arriba, a los dos lados: ramas de pino, con bolas en el navideño y con un tomate en el pizzero.
-    const arribaIzquierda = ramo(-8, -6, [[40, 58], [62, 66], [86, 84, 1.1], [18, 46, 0.9]], 11);
-    const arribaDerecha = ramo(224, -6, [[140, 58], [118, 66], [94, 86, 1.1], [162, 46, 0.9]], 23);
+    // Arriba, a los dos lados: en el navideño, ramas de pino con bolas; en el pizzero, que no lleva nada de Navidad (lo pidió
+    // el dueño), una ramita de albahaca y un tomate.
+    const arribaIzquierda = navidad ? ramo(-8, -6, [[40, 58], [62, 66], [86, 84, 1.1], [18, 46, 0.9]], 11) : "";
+    const arribaDerecha = navidad ? ramo(224, -6, [[140, 58], [118, 66], [94, 86, 1.1], [162, 46, 0.9]], 23) : "";
     const colgantes = navidad
       ? `${bola(n, 9, 66, 5.2, "roja", 7)}${bola(n, 20, 55, 3.6, "oro", 5)}${bola(n, 207, 66, 4.6, "oro", 6)}${bola(n, 197, 57, 3.1, "roja", 4)}`
-      : `${tomate(n, 11, 62, 6.2, -12)}${tomate(n, 205, 64, 5.2, 14)}`;
+      : `${albahaca(n, 5, 40, 1, 158)}${tomate(n, 10, 70, 6, -12)}${albahaca(n, 211, 42, 1, -158)}${tomate(n, 206, 73, 5.2, 14)}`;
     // En el pizzero, como en su imagen, albahaca junto a la tocineta y un tomate junto al queso, en el mostrador.
     const mostrador = navidad ? "" : `${albahaca(n, 13, 160, 0.85, -40)}${tomate(n, 201, 152, 6.4, 8)}`;
     return `<svg class="capa capa--arte" viewBox="0 0 216 279" xmlns="http://www.w3.org/2000/svg">
@@ -624,7 +626,7 @@
       </defs>
 
       <rect x="0" y="0" width="216" height="136" fill="url(#oscuro-${n})"/>
-      ${luces(n, navidad ? 9 : 31)}
+      ${luces(n, navidad ? 9 : 31, navidad)}
       ${fondo(combo.fondo)}
       ${arribaIzquierda}${arribaDerecha}${colgantes}
       ${mostrador}
@@ -708,7 +710,7 @@
         <div class="frase">${festiva ? `${rayos(1)}<span>${combo.lema}</span>${rayos(-1)}` : frase(combo)}</div>
         <div class="precio"><span>Bs</span><div class="casilla"></div></div>
       </section>
-      ${festiva ? esquinasFestivas(combo.n, combo) + ramitasDeArriba() : ""}
+      ${festiva ? esquinasFestivas(combo.n, combo) : ""}${combo.estilo === "navidad" ? ramitasDeArriba() : ""}
 `;
     document.body.append(hoja);
   }
