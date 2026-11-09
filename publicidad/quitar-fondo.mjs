@@ -38,7 +38,7 @@ const GIRAR_PRIMERO = new Map([["mortadela-de-pollo", 104], ["mortadela-punta-de
 /** La regla de verticalidad: estos productos van derechos en el cartel. Se mide la inclinación de la pieza
  *  (el eje largo de su silueta) y se endereza. Lo que no es alargado o va acostado (la mozzarella con sus
  *  lonjas, la bolsa de suero, el cartón de huevos, el paquete de salchichas) no se toca. */
-const ENDEREZAR = new Set(["mortadela-extra", "queso-paisa", "queso-amarillo", "queso-amarillo-vallecito", "jamon-de-espalda", "jamon-ahumado", "jamon-de-pierna", "jamon-arepero", "bolona-de-pollo", "pechuga-de-pavo"]);
+const ENDEREZAR = new Set(["mortadela-extra", "queso-amarillo", "queso-amarillo-vallecito", "jamon-de-espalda", "jamon-ahumado", "jamon-de-pierna", "jamon-arepero", "bolona-de-pollo", "pechuga-de-pavo"]);
 
 if (argumentos[0] === "--recortar") {
   // El proceso hijo: solo el recorte, con el recortador y nada más.

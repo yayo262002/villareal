@@ -100,8 +100,8 @@ globalThis.COMBOS = [
   {
     n: 12,
     titulo: "Combo sandwichero",
-    productos: [["pan-de-sandwich", "Pan de sándwich"], ["pechuga-de-pavo", "Jamón de pavo"], ["queso-paisa", "Queso paisa"], ["mozzarella", "Mozzarella", "sandwich"]],
-    detalle: "1 pan de sándwich, 200 g de queso paisa, 200 g de jamón de pavo y 200 g de mozzarella",
+    productos: [["pan-de-sandwich", "Pan de sándwich"], ["pechuga-de-pavo", "Jamón de pavo"], ["queso-paisa", "Queso paisa", "sandwich"]],
+    detalle: "1 pan de sándwich, 200 g de queso paisa y 200 g de jamón de pavo",
     lema: "Todo para tus sándwiches",
     destacar: "tus sándwiches",
     especial: true,
