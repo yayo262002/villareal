@@ -18,12 +18,15 @@ const CM = {
   huevos: 9,
   salchichas: 17,
   tocineta: 28,
+  "mortadela-punta-de-monte": 30,
 };
 
 // Cada producto: [foto, nombre, adorno]; el adorno es opcional y va dibujado encima de la foto: en el perrero, el
-// perro caliente, las salsas y el chorro; en el solidario, el corazón, los corazones y la escarapela; en el navideño,
-// el gorro, el moño y el acebo; en el pizzero, el cortapizza, el gorro de cocinero y la porción. `fondo` pone
-// dibujitos detrás de los productos: perros, corazones, copos de nieve o pizzas.
+// perro caliente, las salsas y el chorro; en el navideño, el gorro, el moño y el acebo; en el pizzero, el cortapizza,
+// el gorro de cocinero y la porción. `fondo` pone dibujitos detrás de los productos: perros o pizzas.
+// `estilo` es el de las imágenes que trajo el dueño (fondos/referencia-*.png|jpg): «navidad» y «pizza», con la cabecera
+// en una placa verde, luces de fondo y la mitad de abajo roja; «solidario», la hoja roja de siempre, sin corazones, con
+// estrellas en el sello, el título en relieve y hojas verdes a los lados.
 // La charcutería (el jamón, la boloña, la mortadela, el pavo) va siempre primero, a la izquierda; el queso
 // o lo que acompaña, después. Los combos con nombre propio (perrero, solidario, navideño, pizzero) son los especiales y van al final.
 // COMBOS y fotoDe quedan en globalThis: los usan las páginas que cargan este archivo con <script>.
@@ -50,13 +53,14 @@ globalThis.COMBOS = [
   {
     n: 8,
     titulo: "Combo solidario",
-    productos: [["suero-san-pedro", "Suero San Pedro", "corazon"], ["huevos", "Huevos", "corazones"], ["mortadela-de-pollo", "Mortadela", "escarapela"]],
+    productos: [["suero-san-pedro", "Suero San Pedro"], ["huevos", "Huevos"], ["mortadela-de-pollo", "Mortadela"]],
     detalle: "1 suero San Pedro de 900 ml, 6 huevos y 1 mortadela de 500 g",
     lema: "Lo básico de la casa en un solo combo",
     destacar: "un solo combo",
     especial: true,
     etiqueta: "Especial solidario",
-    fondo: "corazones",
+    // Sin corazones: al dueño no le gustaban.
+    estilo: "solidario",
   },
   {
     n: 9,
@@ -67,8 +71,8 @@ globalThis.COMBOS = [
     destacar: "Navidad",
     especial: true,
     etiqueta: "Especial de Navidad",
-    // Copos de nieve en el fondo, y los productos algo más bajos para que el gorro no llegue al nombre.
-    fondo: "copos",
+    // Luces de Navidad en el fondo, y los productos algo más bajos para que el gorro no llegue a la cabecera.
+    estilo: "navidad",
     alto: 86,
   },
   {
@@ -82,10 +86,14 @@ globalThis.COMBOS = [
     etiqueta: "Especial pizza",
     // Porciones de pizza en el fondo, y los productos algo más bajos para que el gorro de cocinero no llegue a la onda.
     fondo: "pizzas",
+    estilo: "pizza",
     alto: 84,
     // El cartel grande es de 3 × 3: este va solo en su hoja.
     cartel: false,
   },
+  // Llegó después de los especiales: va al final para no cambiarles el número a las hojas ya impresas. El cartel grande
+  // es de 3 × 3, así que también va solo en su hoja.
+  { n: 11, productos: [["mortadela-punta-de-monte", "Mortadela"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para la arepa de todos los días", destacar: "todos los días", cartel: false },
 ];
 
 /** La foto de un producto, con su tamaño real, para que salga a escala. */

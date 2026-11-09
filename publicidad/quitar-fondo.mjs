@@ -32,9 +32,9 @@ const CON_SU_RECORTE = new Set(["huevos"]);
  *  claros con más azul que rojo vuelven al color del envoltorio, con su misma luz; el azul oscuro de una
  *  etiqueta no se toca. El color es el del envoltorio de esa foto. */
 const SIN_TINTE_AZUL = new Map([["bolona-de-pollo", [232, 118, 66]]]);
-/** Fotos que se giran antes de nada (grados, a la derecha): la mortadela Alibal se fotografió acostada y en el cartel va de pie
+/** Fotos que se giran antes de nada (grados, a la derecha): las mortadelas (Alibal, Punta de Monte) se fotografiaron acostadas y en el cartel van de pie
  *  (104 y no 90 porque en la foto está ladeada; con la perspectiva, el cálculo de abajo no la endereza bien). */
-const GIRAR_PRIMERO = new Map([["mortadela-de-pollo", 104]]);
+const GIRAR_PRIMERO = new Map([["mortadela-de-pollo", 104], ["mortadela-punta-de-monte", 90]]);
 /** La regla de verticalidad: estos productos van derechos en el cartel. Se mide la inclinación de la pieza
  *  (el eje largo de su silueta) y se endereza. Lo que no es alargado o va acostado (la mozzarella con sus
  *  lonjas, la bolsa de suero, el cartón de huevos, el paquete de salchichas) no se toca. */

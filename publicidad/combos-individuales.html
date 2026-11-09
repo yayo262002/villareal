@@ -7,6 +7,8 @@
   /* Open Sans (OFL, en fuentes/): las letras del diseño que eligió el dueño. */
   @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
   @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans-Italic.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: italic; }
+  /* Kaushan Script (OFL, en fuentes/): la letra de mano de la frase del navideño y del pizzero. */
+  @font-face { font-family: "Kaushan Script"; src: url("fuentes/KaushanScript-Regular.ttf"); }
 
   /* Cada combo en su propia hoja, tamaño carta (216 × 279 mm), para imprimir y plastificar una a una.
      Todo va en milímetros, al tamaño real. generar.mjs saca cada hoja en PDF y en JPG a 300 ppp.
@@ -96,6 +98,55 @@
     border: 1.6mm solid var(--rojo); border-radius: 5mm; background: #fff9ec; box-shadow: inset 0 0 0 0.5mm #f0d9a8;
   }
   .precio span { font-weight: 800; font-size: 24mm; line-height: 1; letter-spacing: -0.01em; color: var(--rojo-oscuro); }
+
+  /* El navideño y el pizzero, con el estilo de las imágenes que trajo el dueño (fondos/referencia-navidad.png y
+     fondos/referencia-pizza.jpg): la cabecera en una placa verde con borde dorado sobre luces desenfocadas, la mitad de
+     abajo roja con rayos de luz, el título con estrellas, la frase en letra de mano y la casilla del precio con su marco
+     dorado; en las esquinas, ramas de pino con bolas, o tomates y albahaca. Los productos siguen siendo las fotos de verdad. */
+  .hoja--festiva { background: #2b1408; }
+  .hoja--festiva .estante { top: 0; height: 140mm; filter: brightness(0.6) saturate(1.3) sepia(0.25); }
+  .hoja--festiva .madera { filter: sepia(0.45) saturate(1.5) brightness(0.88); }
+  .hoja--festiva .nombre { color: #ffffff; text-shadow: 0 0.7mm 0 #06301a, 0 1.3mm 1.6mm rgba(0, 0, 0, 0.5); }
+  .hoja--festiva .charcuteria { text-shadow: 0 0.5mm 0.8mm rgba(0, 0, 0, 0.45); }
+  .capa--encima { z-index: 7; }
+  .hoja--festiva .titulo {
+    position: relative; padding: 0 14mm 1.8mm; border: 1mm solid #f0c24f; border-radius: 6mm;
+    background: linear-gradient(180deg, #d81c24 0%, #a50d14 55%, #77070c 100%);
+    box-shadow: 0 0 0 0.5mm #8a5a08, 0 1.6mm 2.6mm rgba(50, 8, 0, 0.5), inset 0 0.9mm 0 rgba(255, 255, 255, 0.22);
+  }
+  .hoja--festiva .linea { font-size: 16.5mm; color: #ffffff; text-shadow: 0 0.8mm 0 #7c0a10, 0 1.5mm 1.8mm rgba(0, 0, 0, 0.4); }
+  .hoja--festiva .etiqueta {
+    width: fit-content; margin: -5.2mm auto 0.2mm; padding: 0.5mm 7mm 0.7mm; border: 0.8mm solid #f0c24f; border-radius: 99mm;
+    background: linear-gradient(180deg, #c8161e, #7f0a10); box-shadow: 0 0.6mm 1.2mm rgba(50, 8, 0, 0.45);
+    font-size: 6.4mm; letter-spacing: 0.06em; color: #f8d466;
+  }
+  .hoja--festiva .etiqueta::before, .hoja--festiva .etiqueta::after { display: none; }
+  .estrella { position: absolute; bottom: 5.4mm; width: 8.5mm; height: 8.5mm; display: block; filter: drop-shadow(0 0.5mm 0.6mm rgba(60, 10, 0, 0.5)); }
+  .estrella--izquierda { left: 3.2mm; }
+  .estrella--derecha { right: 3.2mm; }
+  .hoja--festiva .pildora { border-radius: 5mm; box-shadow: 0 1.2mm 2mm rgba(50, 8, 0, 0.45), inset 0 0.7mm 0 rgba(255, 255, 255, 0.45); }
+  .hoja--festiva .frase {
+    display: flex; align-items: center; justify-content: center; gap: 3mm;
+    font-family: "Kaushan Script", "Open Sans", cursive; font-style: normal; font-weight: 400; font-size: 12.5mm; line-height: 1.05;
+    color: #ffffff; text-shadow: 0 0.7mm 0 #6a060b, 0 1.2mm 2mm rgba(0, 0, 0, 0.45);
+  }
+  .rayos { flex: none; width: 10mm; height: 9mm; display: block; }
+  .hoja--festiva .precio { border-color: #c3161d; box-shadow: 0 0 0 1mm #f0c24f, 0 0 0 1.4mm #8a5a08, 0 2mm 3.2mm rgba(40, 5, 0, 0.5), inset 0 0 0 0.5mm #f0d9a8; }
+  /* En el navideño la casilla es roja con «Bs» en blanco, y se escribe en el recuadro blanco de dentro. */
+  .casilla { display: none; }
+  .hoja--navidad .precio {
+    gap: 5mm; padding: 0 5mm 0 6mm; border-color: #f0c24f; background: linear-gradient(180deg, #cf161e, #7d080d);
+    box-shadow: 0 0 0 0.6mm #8a5a08, 0 2mm 3.2mm rgba(40, 5, 0, 0.5), inset 0 0.8mm 0 rgba(255, 255, 255, 0.2);
+  }
+  .hoja--navidad .precio span { color: #ffffff; font-style: italic; text-shadow: 0 0.9mm 0 #5e050a; }
+  .hoja--navidad .casilla { display: block; flex: 1; align-self: stretch; margin: 4.5mm 0; border-radius: 4mm; background: #fffdf6; box-shadow: inset 0 0.8mm 1.4mm rgba(0, 0, 0, 0.3); }
+
+  /* El solidario, como la imagen que trajo el dueño (fondos/referencia-solidario.jpg): la hoja roja de siempre, sin corazones,
+     con el nombre y el título en relieve y unas hojas verdes a los lados de los productos. */
+  .hoja--solidario .nombre { color: #ffffff; text-shadow: 0 0.7mm 0 #6a060b, 0 1.3mm 1.6mm rgba(0, 0, 0, 0.4); }
+  .hoja--solidario .linea { color: #ffffff; text-shadow: 0 0.8mm 0 #6a060b, 0 1.5mm 1.8mm rgba(0, 0, 0, 0.35); }
+  .hoja--solidario .titulo { box-shadow: 0 1.6mm 2.6mm rgba(50, 8, 0, 0.4), inset 0 0.9mm 0 rgba(255, 255, 255, 0.2); }
+  .hoja--solidario .pildora { box-shadow: 0 1.2mm 2mm rgba(50, 8, 0, 0.35), inset 0 0.7mm 0 rgba(255, 255, 255, 0.45); }
 </style>
 </head>
 <body>
@@ -367,7 +418,7 @@
   }
 
   /** El sello dorado con el número del combo. */
-  function sello(n) {
+  function sello(n, estrellas = false) {
     const cx = 186.4, cy = 27, R = 23.4, PICOS = 26;
     let borde = "";
     for (let i = 0; i <= 720; i++) {
@@ -390,7 +441,11 @@
       <circle cx="${cx}" cy="${cy}" r="${R - 2.7}" fill="url(#rojoSello-${n})" stroke="#fff1b8" stroke-width=".35"/>
       <text x="${cx}" y="${cy - 9.4}" text-anchor="middle" font-family="Open Sans" font-weight="800" font-size="7.2" fill="#ffffff">COMBO</text>
       <text x="${cx}" y="${cy + (dos ? 12.6 : 15)}" text-anchor="middle" font-family="Open Sans" font-weight="800" font-size="${dos ? 20.5 : 28}" fill="url(#oroNumero-${n})">${n}</text>
-      <g stroke="#f2c14e" stroke-width=".7" stroke-linecap="round">${rayas(1)}${rayas(-1)}</g>
+      ${
+        estrellas
+          ? [1, -1].map((signo) => `<path d="${estrella5(cx + signo * (dos ? 16.6 : 14.2), cy + 5.6, dos ? 2.2 : 2.8)}" fill="url(#oroNumero-${n})" stroke="#8a5a08" stroke-width=".25" stroke-linejoin="round"/>`).join("")
+          : `<g stroke="#f2c14e" stroke-width=".7" stroke-linecap="round">${rayas(1)}${rayas(-1)}</g>`
+      }
     </svg>`;
   }
 
@@ -405,14 +460,233 @@
     return combo.lema.replace(combo.destacar, `<span class="subrayado">${combo.destacar}${raya}</span>`);
   }
 
+  // ——— El estilo de las imágenes del dueño: el navideño y el pizzero ———
+
+  /** Números al azar, pero siempre los mismos: la hoja sale igual cada vez que se dibuja. */
+  function azar(semilla) {
+    let s = semilla % 2147483647;
+    return () => (s = (s * 16807) % 2147483647) / 2147483647;
+  }
+
+  /** Una estrella de cinco puntas. */
+  function estrella5(cx, cy, r) {
+    let d = "";
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const rr = i % 2 ? r * 0.45 : r;
+      d += `${i ? "L" : "M"}${(cx + rr * Math.cos(a)).toFixed(2)},${(cy + rr * Math.sin(a)).toFixed(2)}`;
+    }
+    return `${d}Z`;
+  }
+
+  /** Una rama de pino: el tallo y sus agujas en cinco verdes, de las oscuras (atrás) a las claras, más cortas hacia la punta. */
+  function rama(x, y, largo, angulo, semilla, grosor = 1) {
+    const r = azar(semilla);
+    const a = (angulo * Math.PI) / 180;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    const CAPAS = [["#05261a", 1.25, 0.62], ["#0b4224", 1.1, 0.56], ["#135a2f", 0.95, 0.5], ["#1f7a41", 0.8, 0.44], ["#43a35c", 0.58, 0.38]];
+    const pasos = Math.round(largo * 2);
+    let capas = "";
+    for (const [verde, largoCapa, ancho] of CAPAS) {
+      let agujas = "";
+      for (let i = 0; i < pasos; i++) {
+        const t = i / pasos;
+        const px = x + dx * largo * t + (r() - 0.5) * 0.6;
+        const py = y + dy * largo * t + (r() - 0.5) * 0.6;
+        const l = (10 - 5.5 * t) * grosor * largoCapa * (0.8 + r() * 0.4);
+        for (const lado of [-1, 1]) {
+          const b = a + lado * (0.42 + r() * 0.45);
+          agujas += `<line x1="${px.toFixed(2)}" y1="${py.toFixed(2)}" x2="${(px + Math.cos(b) * l).toFixed(2)}" y2="${(py + Math.sin(b) * l).toFixed(2)}"/>`;
+        }
+      }
+      capas += `<g stroke="${verde}" stroke-width="${(ancho * grosor).toFixed(2)}">${agujas}</g>`;
+    }
+    const tallo = `<line x1="${x}" y1="${y}" x2="${(x + dx * largo).toFixed(2)}" y2="${(y + dy * largo).toFixed(2)}" stroke="#4a2c14" stroke-width="${(1.2 * grosor).toFixed(2)}"/>`;
+    return `<g stroke-linecap="round">${tallo}${capas}</g>`;
+  }
+  /** Unas ramas de pino que salen del mismo sitio, abiertas en abanico ([ángulo, largo, grosor]), cada una con dos ramitas. */
+  function ramo(x, y, ramas, semilla) {
+    return ramas
+      .map(([angulo, largo, grosor = 1], i) => {
+        const a = (angulo * Math.PI) / 180;
+        const ramitas = [[0.34, 32], [0.6, -30]]
+          .map(([t, abre], k) => rama(x + Math.cos(a) * largo * t, y + Math.sin(a) * largo * t, largo * 0.42, angulo + abre * (i % 2 ? -1 : 1), semilla + i * 97 + k * 13 + 5, grosor * 0.78))
+          .join("");
+        return ramitas + rama(x, y, largo, angulo, semilla + i * 97, grosor);
+      })
+      .join("");
+  }
+
+  /** Una bola de Navidad, roja o dorada, con su brillo, su tapita y el hilo de donde cuelga. */
+  const bola = (n, x, y, r, tono, hilo = 0) => `
+    ${hilo ? `<line x1="${x}" y1="${y - r - hilo}" x2="${x}" y2="${y - r}" stroke="#e7b33f" stroke-width="0.35"/>` : ""}
+    <circle cx="${x}" cy="${y}" r="${r}" fill="url(#bola-${tono}-${n})"/>
+    <ellipse cx="${x - r * 0.35}" cy="${y - r * 0.38}" rx="${r * 0.28}" ry="${r * 0.17}" transform="rotate(-35 ${x - r * 0.35} ${y - r * 0.38})" fill="#ffffff" fill-opacity=".75"/>
+    <rect x="${x - r * 0.26}" y="${y - r * 1.14}" width="${r * 0.52}" height="${r * 0.3}" rx="${r * 0.06}" fill="url(#oroH-${n})" stroke="#8a5a08" stroke-width="0.2"/>`;
+
+  /** Un tomate, con su brillo y su estrella verde arriba. */
+  function tomate(n, x, y, r, giro = 0) {
+    let caliz = "";
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const rr = i % 2 ? r * 0.1 : r * 0.48;
+      caliz += `${i ? "L" : "M"}${(rr * Math.cos(a)).toFixed(2)},${(-r * 0.78 + rr * Math.sin(a) * 0.55).toFixed(2)}`;
+    }
+    return `<g transform="translate(${x} ${y}) rotate(${giro})">
+      <ellipse cx="0" cy="0" rx="${r}" ry="${r * 0.88}" fill="url(#tomate-${n})"/>
+      <ellipse cx="${-r * 0.4}" cy="${-r * 0.38}" rx="${r * 0.26}" ry="${r * 0.15}" transform="rotate(-30 ${-r * 0.4} ${-r * 0.38})" fill="#ffffff" fill-opacity=".7"/>
+      <path d="${caliz}Z" fill="#2f8a2a" stroke="#1d5e1c" stroke-width="0.25" stroke-linejoin="round"/>
+      <path d="M0,${-r * 0.78}Q${r * 0.06},${-r * 1.02} ${r * 0.2},${-r * 1.1}" fill="none" stroke="#2f7a24" stroke-width="${(r * 0.12).toFixed(2)}" stroke-linecap="round"/>
+    </g>`;
+  }
+
+  /** Una hoja de albahaca, verde brillante, con su nervio; y un manojo de ellas abiertas desde el mismo tallo. */
+  const hojaAlbahaca = (n, x, y, largo, giro) => `<g transform="translate(${x} ${y}) rotate(${giro}) scale(${(largo / 24).toFixed(3)})">
+      <path d="M0,0C5,-7.5 15,-9.5 24,0C15,9.5 5,7.5 0,0Z" fill="url(#albahaca-${n})" stroke="#1d5e1c" stroke-width="0.5"/>
+      <path d="M1,0Q12,-1 22,0" fill="none" stroke="#b5eb9c" stroke-opacity=".7" stroke-width="0.8" stroke-linecap="round"/>
+      <path d="M6,-0.5L9,-4.2M11,-0.6L14,-4.8M16,-0.4L18.5,-3.4M6,0.5L9,4.2M11,0.6L14,4.8M16,0.4L18.5,3.4" fill="none" stroke="#b5eb9c" stroke-opacity=".35" stroke-width="0.45" stroke-linecap="round"/>
+    </g>`;
+  const albahaca = (n, x, y, escala, giro = 0) => {
+    const PARES = [[-24, [[-90, 10]]], [-17, [[-138, 11], [-42, 11]]], [-9, [[-158, 12.5], [-22, 12.5]]], [-1.5, [[-172, 11], [-8, 11]]]];
+    const hojas = PARES.map(([alto, lados]) => lados.map(([g, l]) => hojaAlbahaca(n, 0, alto, l, g)).join("")).join("");
+    return `<g transform="translate(${x} ${y}) rotate(${giro}) scale(${escala})"><path d="M0,4V-24" stroke="#2d7a26" stroke-width="1.1" stroke-linecap="round"/>${hojas}</g>`;
+  };
+
+  /** Las luces de fondo, desenfocadas: el verde de los árboles detrás y encima luces doradas, blancas y algunas rojas y verdes. */
+  function luces(n, semilla) {
+    const r = azar(semilla);
+    let arboles = "", grandes = "", chicas = "";
+    for (const [x, y, rx, ry] of [[4, 72, 22, 42], [212, 78, 22, 44], [44, 22, 32, 18], [172, 20, 32, 16], [108, 112, 46, 16]]) {
+      arboles += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#0f4220" fill-opacity=".6"/>`;
+    }
+    const tonos = ["#ffd77a", "#ffd77a", "#ffe9a8", "#fff4d6", "#ffc04d", "#ff6b5a", "#9fe08c"];
+    const tono = () => tonos[Math.floor(r() * tonos.length)];
+    for (let i = 0; i < 26; i++) grandes += `<circle cx="${(r() * 216).toFixed(1)}" cy="${(r() * 132).toFixed(1)}" r="${(5 + r() * 7).toFixed(1)}" fill="${tono()}" fill-opacity="${(0.12 + r() * 0.16).toFixed(2)}"/>`;
+    for (let i = 0; i < 90; i++) chicas += `<circle cx="${(r() * 216).toFixed(1)}" cy="${(r() * 132).toFixed(1)}" r="${(0.8 + r() * 2.6).toFixed(1)}" fill="${tono()}" fill-opacity="${(0.35 + r() * 0.5).toFixed(2)}"/>`;
+    return `<g filter="url(#desenfoque-grande-${n})">${arboles}</g>
+      <g filter="url(#desenfoque-${n})" style="mix-blend-mode: screen">${grandes}</g>
+      <g filter="url(#desenfoque-chico-${n})" style="mix-blend-mode: screen">${chicas}</g>`;
+  }
+
+  /** Un destello dorado de cuatro puntas. */
+  const destello = (x, y, r) =>
+    `<path d="M${x},${y - r}Q${x + r * 0.16},${y - r * 0.16} ${x + r},${y}Q${x + r * 0.16},${y + r * 0.16} ${x},${y + r}Q${x - r * 0.16},${y + r * 0.16} ${x - r},${y}Q${x - r * 0.16},${y - r * 0.16} ${x},${y - r}Z" fill="#ffe7a0"/>`;
+
+  /** Las rayitas doradas a cada lado de la frase, como un destello; la de la derecha, en espejo. */
+  const rayos = (lado) =>
+    `<svg class="rayos" viewBox="0 0 10 9" style="transform: scaleX(${lado})"><g stroke="#f2c14e" stroke-width="1" stroke-linecap="round"><path d="M1.5,1.4L6.2,3.5"/><path d="M1,4.6H7.2"/><path d="M1.5,7.8L6.2,5.7"/></g></svg>`;
+
+  /** Las estrellas doradas a los lados del título. */
+  const estrellaTitulo = (n, lado) => `<svg class="estrella estrella--${lado}" viewBox="-10 -10 20 20">
+      <defs><linearGradient id="oroEstrella-${n}-${lado}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".5" stop-color="#f2c94c"/><stop offset="1" stop-color="#c58a14"/></linearGradient></defs>
+      <path d="${estrella5(0, 0.6, 9.4)}" fill="url(#oroEstrella-${n}-${lado})" stroke="#8a5a08" stroke-width=".6" stroke-linejoin="round"/>
+    </svg>`;
+
+  /** El oro de los bordes (el de la onda de las otras hojas), los colores de las bolas, el tomate y la albahaca, y los desenfoques. */
+  const defsFestivas = (id) => `
+    <linearGradient id="oroH-${id}" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#b07c14"/><stop offset=".2" stop-color="#f6d779"/><stop offset=".42" stop-color="#fff1b8"/><stop offset=".62" stop-color="#e0ad3b"/><stop offset=".82" stop-color="#a8740f"/><stop offset="1" stop-color="#f0c95f"/>
+    </linearGradient>
+    <radialGradient id="bola-roja-${id}" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#ff8a80"/><stop offset=".35" stop-color="#e0212a"/><stop offset=".75" stop-color="#9c0d13"/><stop offset="1" stop-color="#5a0508"/></radialGradient>
+    <radialGradient id="bola-oro-${id}" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff6c8"/><stop offset=".35" stop-color="#f2c94c"/><stop offset=".75" stop-color="#b98417"/><stop offset="1" stop-color="#6e4706"/></radialGradient>
+    <radialGradient id="tomate-${id}" cx=".35" cy=".32" r=".8"><stop offset="0" stop-color="#ff8a66"/><stop offset=".45" stop-color="#e3261a"/><stop offset="1" stop-color="#8f0f08"/></radialGradient>
+    <linearGradient id="albahaca-${id}" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#7fd65e"/><stop offset=".5" stop-color="#3a9a32"/><stop offset="1" stop-color="#1f6a20"/></linearGradient>
+    <filter id="desenfoque-grande-${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+    <filter id="desenfoque-${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6"/></filter>
+    <filter id="desenfoque-chico-${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="0.35"/></filter>
+    <filter id="sombra-${id}" x="-10%" y="-30%" width="120%" height="170%"><feGaussianBlur stdDeviation="1.4"/></filter>`;
+
+  /** El fondo de las hojas con este estilo: luces, las ramas de arriba, la placa verde de la cabecera y la mitad de abajo roja. */
+  function arteFestivo(n, combo) {
+    const oroH = `url(#oroH-${n})`;
+    const navidad = combo.estilo === "navidad";
+    let abanico = "";
+    for (let i = 0; i < 26; i += 2) {
+      const a1 = ((8 + i * 6.5) * Math.PI) / 180, a2 = ((8 + (i + 1) * 6.5) * Math.PI) / 180;
+      abanico += `<path d="M108,150L${(108 + Math.cos(a1) * 260).toFixed(1)},${(150 + Math.sin(a1) * 260).toFixed(1)}L${(108 + Math.cos(a2) * 260).toFixed(1)},${(150 + Math.sin(a2) * 260).toFixed(1)}Z"/>`;
+    }
+    const PANEL = "M0,170C60,164.5 156,164.5 216,170V279H0Z";
+    // Arriba, a los dos lados: ramas de pino, con bolas en el navideño y con un tomate en el pizzero.
+    const arribaIzquierda = ramo(-8, -6, [[40, 58], [62, 66], [86, 84, 1.1], [18, 46, 0.9]], 11);
+    const arribaDerecha = ramo(224, -6, [[140, 58], [118, 66], [94, 86, 1.1], [162, 46, 0.9]], 23);
+    const colgantes = navidad
+      ? `${bola(n, 9, 66, 5.2, "roja", 7)}${bola(n, 20, 55, 3.6, "oro", 5)}${bola(n, 207, 66, 4.6, "oro", 6)}${bola(n, 197, 57, 3.1, "roja", 4)}`
+      : `${tomate(n, 11, 62, 6.2, -12)}${tomate(n, 205, 64, 5.2, 14)}`;
+    // En el pizzero, como en su imagen, albahaca junto a la tocineta y un tomate junto al queso, en el mostrador.
+    const mostrador = navidad ? "" : `${albahaca(n, 13, 160, 0.85, -40)}${tomate(n, 201, 152, 6.4, 8)}`;
+    return `<svg class="capa capa--arte" viewBox="0 0 216 279" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        ${defsFestivas(n)}
+        <linearGradient id="oscuro-${n}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#230c03" stop-opacity=".55"/><stop offset=".85" stop-color="#230c03" stop-opacity=".12"/><stop offset="1" stop-color="#230c03" stop-opacity="0"/></linearGradient>
+        <linearGradient id="verdePlaca-${n}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#17703a"/><stop offset=".5" stop-color="#0d4a26"/><stop offset="1" stop-color="#072f17"/></linearGradient>
+        <radialGradient id="rojoPanel-${n}" cx=".5" cy=".15" r=".95"><stop offset="0" stop-color="#d01820"/><stop offset=".55" stop-color="#a50d14"/><stop offset="1" stop-color="#6a060b"/></radialGradient>
+        <clipPath id="recortePanel-${n}"><path d="${PANEL}"/></clipPath>
+      </defs>
+
+      <rect x="0" y="0" width="216" height="136" fill="url(#oscuro-${n})"/>
+      ${luces(n, navidad ? 9 : 31)}
+      ${fondo(combo.fondo)}
+      ${arribaIzquierda}${arribaDerecha}${colgantes}
+      ${mostrador}
+
+      <!-- La placa verde de la cabecera, con su sombra y su borde dorado -->
+      <rect x="4" y="5.5" width="168" height="43" rx="8" fill="#000000" fill-opacity=".55" filter="url(#sombra-${n})"/>
+      <rect x="3" y="2.5" width="168" height="43" rx="8" fill="url(#verdePlaca-${n})" stroke="${oroH}" stroke-width="1.6"/>
+      <path d="M6,6Q87,1 168,6V19Q87,14 6,21Z" fill="#ffffff" fill-opacity=".05"/>
+      <rect x="5.3" y="4.8" width="163.4" height="38.4" rx="6" fill="none" stroke="#fff1b8" stroke-opacity=".45" stroke-width=".3"/>
+
+      <!-- La mitad de abajo, roja, con rayos de luz y unos destellos a los lados -->
+      <path d="${PANEL}" fill="url(#rojoPanel-${n})"/>
+      <g clip-path="url(#recortePanel-${n})" fill="#ffffff" fill-opacity=".045">${abanico}</g>
+      ${[[5, 196, 1.6], [211, 204, 1.9], [4, 214, 1.1], [212, 190, 1.2], [6, 182, 1.2], [210, 218, 1.3]].map(([x, y, r]) => destello(x, y, r)).join("")}
+      <path d="M0,170C60,164.5 156,164.5 216,170" fill="none" stroke="${oroH}" stroke-width="1.4"/>
+    </svg>`;
+  }
+
+  /** Unas hojas verdes a los dos lados de los productos, sobre el mostrador: las del solidario. */
+  const hojasALosLados = (n) => `<svg class="capa capa--arte" viewBox="0 0 216 279" xmlns="http://www.w3.org/2000/svg">
+      <defs>${defsFestivas(`${n}-hojas`)}</defs>
+      ${albahaca(`${n}-hojas`, 5, 158, 0.85, 24)}${albahaca(`${n}-hojas`, 211, 158, 0.85, -24)}
+    </svg>`;
+
+  /** Las ramitas de pino que asoman por encima de las esquinas de arriba, como en las imágenes del dueño. */
+  const ramitasDeArriba = () => `<svg class="capa capa--encima" viewBox="0 0 216 279" xmlns="http://www.w3.org/2000/svg">
+      ${ramo(-6, -6, [[28, 14, 0.75], [58, 15, 0.75]], 61)}${ramo(222, -6, [[122, 15, 0.75], [152, 14, 0.75]], 71)}
+    </svg>`;
+
+  /** Lo que va encima de todo, en las esquinas de abajo: ramas, una bola y un lazo en el navideño; tomates y albahaca en el pizzero. */
+  function esquinasFestivas(n, combo) {
+    const id = `${n}-encima`;
+    const contenido =
+      combo.estilo === "navidad"
+        ? `${ramo(-8, 288, [[-82, 34], [-58, 32], [-34, 30], [-12, 28, 0.9]], 41)}
+           ${bola(id, 12, 271, 4.6, "oro")}
+           ${ramo(224, 288, [[-98, 34], [-122, 32], [-146, 30], [-168, 28, 0.9]], 53)}
+           ${ADORNOS.acebo.replace('class="adorno adorno--acebo"', 'x="177" y="264" width="20" height="14"')}
+           ${ADORNOS.moño.replace('class="adorno adorno--moño"', 'x="192" y="255" width="25" height="20"')}`
+        : `${tomate(id, 5, 236, 9, -10)}${albahaca(id, 3, 281, 0.8, 18)}${albahaca(id, 213, 281, 0.8, -18)}${tomate(id, 211, 273, 7.2, 12)}`;
+    return `<svg class="capa capa--encima" viewBox="0 0 216 279" xmlns="http://www.w3.org/2000/svg"><defs>${defsFestivas(id)}</defs>${contenido}</svg>`;
+  }
+
   for (const combo of COMBOS) {
     const hoja = document.createElement("article");
-    hoja.className = ["hoja", combo.especial ? "hoja--especial" : "", combo.productos.length > 2 ? "hoja--tres" : "", combo.separado ? "hoja--separado" : ""].filter(Boolean).join(" ");
+    // navidad y pizza: el estilo de las imágenes del dueño (placa verde, mitad de abajo roja); solidario: la hoja roja, pulida.
+    const festiva = combo.estilo === "navidad" || combo.estilo === "pizza";
+    hoja.className = [
+      "hoja",
+      combo.especial ? "hoja--especial" : "",
+      combo.productos.length > 2 ? "hoja--tres" : "",
+      combo.separado ? "hoja--separado" : "",
+      festiva ? "hoja--festiva" : "",
+      combo.estilo ? `hoja--${combo.estilo}` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     hoja.dataset.archivo = `combo-${combo.n}-carta`;
     hoja.dataset.ppp = "300";
     hoja.dataset.formato = "jpeg";
     const lineas = combo.titulo
-      ? `<div class="etiqueta">${combo.etiqueta ?? "Combo especial"}</div><span class="linea">${combo.titulo}</span>`
+      ? `<div class="etiqueta">${combo.etiqueta ?? "Combo especial"}</div><span class="linea">${combo.titulo}</span>${festiva ? estrellaTitulo(combo.n, "izquierda") + estrellaTitulo(combo.n, "derecha") : ""}`
       : combo.productos.map(([, nombre], i) => `<span class="linea">${nombre}${i < combo.productos.length - 1 ? " +" : ""}</span>`).join("");
     const piezas = combo.productos.map(([foto, , adorno]) => `<span class="pieza" style="--cm: ${CM[foto]}"><img src="fotos/${foto}.png" alt="">${adorno ? ADORNOS[adorno] : ""}</span>`).join("");
     if (combo.alto) hoja.dataset.alto = combo.alto;
@@ -420,19 +694,21 @@
       <img class="estante" src="fondos/estante.jpg" alt="">
       <img class="madera" src="fondos/madera.jpg" alt="">
       <div class="luz"></div><div class="canto"></div>
-      ${arte(combo.n, combo.fondo)}
+      ${festiva ? arteFestivo(combo.n, combo) : arte(combo.n, combo.fondo)}
+      ${combo.estilo === "solidario" ? hojasALosLados(combo.n) : ""}
       <img class="leon" src="../public/marca/leon.svg" alt="">
       <div class="raya"></div>
       <div class="charcuteria">CHARCUTERÍA</div>
       <div class="nombre">Villa Real</div>
-      ${sello(combo.n)}
+      ${sello(combo.n, Boolean(combo.estilo))}
       <div class="productos">${piezas}</div>
       <section class="contenido">
         <div class="titulo">${lineas}</div>
         <div class="fila-pildora"><div class="pildora${clasePildora(combo.detalle)}">${enMayusculas(combo.detalle)}</div></div>
-        <div class="frase">${frase(combo)}</div>
-        <div class="precio"><span>Bs</span></div>
+        <div class="frase">${festiva ? `${rayos(1)}<span>${combo.lema}</span>${rayos(-1)}` : frase(combo)}</div>
+        <div class="precio"><span>Bs</span><div class="casilla"></div></div>
       </section>
+      ${festiva ? esquinasFestivas(combo.n, combo) + ramitasDeArriba() : ""}
 `;
     document.body.append(hoja);
   }
