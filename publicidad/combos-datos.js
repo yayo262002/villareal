@@ -51,7 +51,7 @@ globalThis.COMBOS = [
     n: 8,
     titulo: "Combo solidario",
     productos: [["suero-san-pedro", "Suero San Pedro", "corazon"], ["huevos", "Huevos", "corazones"], ["mortadela-de-pollo", "Mortadela", "escarapela"]],
-    detalle: "1 suero San Pedro de 900 ml, 6 huevos y 100 g de mortadela extra",
+    detalle: "1 suero San Pedro de 900 ml, 6 huevos y 1 mortadela de 500 g",
     lema: "Lo básico de la casa en un solo combo",
     destacar: "un solo combo",
     especial: true,
