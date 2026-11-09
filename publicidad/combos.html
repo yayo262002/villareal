@@ -96,12 +96,13 @@
   .combo .que { display: grid; gap: 1.5mm; min-width: 0; }
   .combo .producto { font-family: "Archivo Black"; font-size: 10mm; line-height: 1.05; text-transform: uppercase; }
   .combo .detalle { font-size: 6.2mm; color: var(--tinta-suave); margin-top: 1.5mm; line-height: 1.3; }
-  /* La casilla del precio, en dólares, va en blanco: se escribe con marcador al lado del «$». Pequeña, como pidió el dueño. */
+  /* La casilla del precio, en dólares, va en blanco: se escribe con marcador al lado del «$». Una etiqueta pequeña a la
+     derecha, como en las hojas. */
   .combo .precio {
-    box-sizing: border-box; width: 62%; height: 22mm; border: 1.3mm solid var(--acento); border-radius: 3.5mm; background: #fff;
+    box-sizing: border-box; width: 46%; height: 18mm; justify-self: end; border: 1.3mm solid var(--acento); border-radius: 3.5mm; background: #fff;
     display: flex; align-items: center; padding: 0 5mm; gap: 3mm;
   }
-  .combo .precio .moneda { font-family: "Archivo Black"; font-size: 10mm; color: var(--acento); line-height: 1; }
+  .combo .precio .moneda { font-family: "Archivo Black"; font-size: 9mm; color: var(--acento); line-height: 1; }
 
 </style>
 </head>

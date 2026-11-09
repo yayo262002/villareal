@@ -94,12 +94,14 @@
   .subrayado svg { position: absolute; left: -2%; width: 104%; bottom: -1.3mm; height: 2.6mm; display: block; }
 
   /* La casilla del precio, en dólares, va en blanco: se escribe con marcador sobre el plástico al lado del «$».
-     Pequeña y centrada, como pidió el dueño. */
+     Una etiqueta pequeña abajo a la derecha, como las de precio de un supermercado: la que eligió el dueño entre cuatro
+     tamaños. Su tamaño y su sitio (center, flex-end) van en las tres variables de .hoja. */
+  .hoja { --precio-ancho: 56mm; --precio-alto: 15mm; --precio-lado: flex-end; }
   .precio {
-    flex: none; align-self: center; width: 118mm; height: 25mm; box-sizing: border-box; display: flex; align-items: center; padding: 0 6mm;
-    border: 1.4mm solid var(--rojo); border-radius: 4mm; background: #fff9ec; box-shadow: inset 0 0 0 0.5mm #f0d9a8;
+    flex: none; align-self: var(--precio-lado); width: var(--precio-ancho); height: var(--precio-alto); box-sizing: border-box; display: flex; align-items: center;
+    padding: 0 calc(var(--precio-alto) * 0.24); border: 1.4mm solid var(--rojo); border-radius: 4mm; background: #fff9ec; box-shadow: inset 0 0 0 0.5mm #f0d9a8;
   }
-  .precio span { font-weight: 800; font-size: 17mm; line-height: 1; color: var(--rojo-oscuro); }
+  .precio span { font-weight: 800; font-size: calc(var(--precio-alto) * 0.68); line-height: 1; color: var(--rojo-oscuro); }
 
   /* El navideño y el pizzero, con el estilo de las imágenes que trajo el dueño (fondos/referencia-navidad.png y
      fondos/referencia-pizza.jpg): la cabecera en una placa verde con borde dorado sobre luces desenfocadas, la mitad de
@@ -134,14 +136,6 @@
   }
   .rayos { flex: none; width: 10mm; height: 9mm; display: block; }
   .hoja--festiva .precio { border-color: #c3161d; box-shadow: 0 0 0 1mm #f0c24f, 0 0 0 1.4mm #8a5a08, 0 2mm 3.2mm rgba(40, 5, 0, 0.5), inset 0 0 0 0.5mm #f0d9a8; }
-  /* En el navideño la casilla es roja con el «$» en blanco, y se escribe en el recuadro blanco de dentro. */
-  .casilla { display: none; }
-  .hoja--navidad .precio {
-    gap: 4mm; padding: 0 4mm 0 6mm; border-color: #f0c24f; background: linear-gradient(180deg, #cf161e, #7d080d);
-    box-shadow: 0 0 0 0.6mm #8a5a08, 0 2mm 3.2mm rgba(40, 5, 0, 0.5), inset 0 0.8mm 0 rgba(255, 255, 255, 0.2);
-  }
-  .hoja--navidad .precio span { color: #ffffff; font-style: italic; text-shadow: 0 0.9mm 0 #5e050a; }
-  .hoja--navidad .casilla { display: block; flex: 1; align-self: stretch; margin: 3.5mm 0; border-radius: 3mm; background: #fffdf6; box-shadow: inset 0 0.8mm 1.4mm rgba(0, 0, 0, 0.3); }
 
   /* El solidario, como la imagen que trajo el dueño (fondos/referencia-solidario.jpg): la hoja roja de siempre, sin corazones,
      con el nombre y el título en relieve y unas hojas verdes a los lados de los productos. */
@@ -688,17 +682,17 @@
       ${ramo(-6, -6, [[28, 14, 0.75], [58, 15, 0.75]], 61)}${ramo(222, -6, [[122, 15, 0.75], [152, 14, 0.75]], 71)}
     </svg>`;
 
-  /** Lo que va encima de todo, en las esquinas de abajo: ramas, una bola y un lazo en el navideño; tomates y albahaca en el pizzero. */
+  /** Lo que va encima de todo, en la esquina de abajo a la izquierda (la de la derecha es de la etiqueta del precio): ramas,
+   *  una bola, el acebo y el lazo en el navideño; tomates y albahaca en el pizzero y el sandwichero. */
   function esquinasFestivas(n, combo) {
     const id = `${n}-encima`;
     const contenido =
       combo.estilo === "navidad"
         ? `${ramo(-8, 288, [[-82, 34], [-58, 32], [-34, 30], [-12, 28, 0.9]], 41)}
            ${bola(id, 12, 271, 4.6, "oro")}
-           ${ramo(224, 288, [[-98, 34], [-122, 32], [-146, 30], [-168, 28, 0.9]], 53)}
-           ${ADORNOS.acebo.replace('class="adorno adorno--acebo"', 'x="177" y="264" width="20" height="14"')}
-           ${ADORNOS.moño.replace('class="adorno adorno--moño"', 'x="192" y="255" width="25" height="20"')}`
-        : `${tomate(id, 5, 236, 9, -10)}${albahaca(id, 3, 281, 0.8, 18)}${albahaca(id, 213, 281, 0.8, -18)}${tomate(id, 211, 273, 7.2, 12)}`;
+           ${ADORNOS.acebo.replace('class="adorno adorno--acebo"', 'x="22" y="264" width="20" height="14"')}
+           ${ADORNOS.moño.replace('class="adorno adorno--moño"', 'x="0" y="238" width="25" height="20"')}`
+        : `${tomate(id, 5, 236, 9, -10)}${albahaca(id, 3, 281, 0.8, 18)}${tomate(id, 24, 273, 6.4, 12)}`;
     return `<svg class="capa capa--encima" viewBox="0 0 216 279" xmlns="http://www.w3.org/2000/svg"><defs>${defsFestivas(id)}</defs>${contenido}</svg>`;
   }
 
@@ -740,7 +734,7 @@
         <div class="titulo">${lineas}</div>
         <div class="fila-pildora"><div class="pildora${clasePildora(combo.detalle)}">${enMayusculas(combo.detalle)}</div></div>
         <div class="frase">${festiva ? `${rayos(1)}<span>${combo.lema}</span>${rayos(-1)}` : frase(combo)}</div>
-        <div class="precio"><span>$</span><div class="casilla"></div></div>
+        <div class="precio"><span>$</span></div>
       </section>
       ${festiva ? esquinasFestivas(combo.n, combo) : ""}${combo.estilo === "navidad" ? ramitasDeArriba() : ""}
 `;
