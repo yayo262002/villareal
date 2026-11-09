@@ -21,6 +21,7 @@ const CM = {
   "mortadela-punta-de-monte": 30,
   "pan-de-sandwich": 34,
   "mortadela-extra": 30,
+  "queso-paisa": 30,
 };
 
 // Cada producto: [foto, nombre, adorno]; el adorno es opcional y va dibujado encima de la foto: en el perrero, el
@@ -99,8 +100,8 @@ globalThis.COMBOS = [
   {
     n: 12,
     titulo: "Combo sandwichero",
-    productos: [["pan-de-sandwich", "Pan de sándwich"], ["mortadela-extra", "Mortadela extra"], ["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo tipo cheddar", "sandwich"]],
-    detalle: "1 pan de sándwich, 200 g de mortadela extra, 200 g de queso amarillo tipo cheddar y 200 g de jamón de espalda",
+    productos: [["pan-de-sandwich", "Pan de sándwich"], ["pechuga-de-pavo", "Jamón de pavo"], ["queso-paisa", "Queso paisa"], ["mozzarella", "Mozzarella", "sandwich"]],
+    detalle: "1 pan de sándwich, 200 g de queso paisa, 200 g de jamón de pavo y 200 g de mozzarella",
     lema: "Todo para tus sándwiches",
     destacar: "tus sándwiches",
     especial: true,

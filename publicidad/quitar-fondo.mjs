@@ -26,8 +26,8 @@ const SOLO_LO_BLANCO = new Set(["mozzarella"]);
 /** Fotos en que el recortador toma el envoltorio por fondo (un paquete rosado, translúcido): el fondo es lo que
  *  se toca desde los bordes de la foto y no tiene color (gris, blanco o negro); lo demás es producto. */
 const DESDE_LOS_BORDES = new Set(["pechuga-de-pavo"]);
-/** Fotos que ya vienen bien recortadas (de un banco de fotos, o el pan y la mortadela extra, que el dueño mandó sin fondo): se respeta su transparencia. */
-const CON_SU_RECORTE = new Set(["huevos", "pan-de-sandwich", "mortadela-extra"]);
+/** Fotos que ya vienen bien recortadas (de un banco de fotos, o el pan, la mortadela extra y el queso paisa, que el dueño mandó sin fondo): se respeta su transparencia. */
+const CON_SU_RECORTE = new Set(["huevos", "pan-de-sandwich", "mortadela-extra", "queso-paisa"]);
 /** Fotos con un tinte azul o lila en el envoltorio (reflejos del fondo azul en que se fotografió): los píxeles
  *  claros con más azul que rojo vuelven al color del envoltorio, con su misma luz; el azul oscuro de una
  *  etiqueta no se toca. El color es el del envoltorio de esa foto. */
@@ -38,7 +38,7 @@ const GIRAR_PRIMERO = new Map([["mortadela-de-pollo", 104], ["mortadela-punta-de
 /** La regla de verticalidad: estos productos van derechos en el cartel. Se mide la inclinación de la pieza
  *  (el eje largo de su silueta) y se endereza. Lo que no es alargado o va acostado (la mozzarella con sus
  *  lonjas, la bolsa de suero, el cartón de huevos, el paquete de salchichas) no se toca. */
-const ENDEREZAR = new Set(["mortadela-extra", "queso-amarillo", "queso-amarillo-vallecito", "jamon-de-espalda", "jamon-ahumado", "jamon-de-pierna", "jamon-arepero", "bolona-de-pollo", "pechuga-de-pavo"]);
+const ENDEREZAR = new Set(["mortadela-extra", "queso-paisa", "queso-amarillo", "queso-amarillo-vallecito", "jamon-de-espalda", "jamon-ahumado", "jamon-de-pierna", "jamon-arepero", "bolona-de-pollo", "pechuga-de-pavo"]);
 
 if (argumentos[0] === "--recortar") {
   // El proceso hijo: solo el recorte, con el recortador y nada más.
