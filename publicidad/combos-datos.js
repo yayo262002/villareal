@@ -20,6 +20,7 @@ const CM = {
   tocineta: 28,
   "mortadela-punta-de-monte": 30,
   "pan-de-sandwich": 34,
+  "mortadela-extra": 30,
 };
 
 // Cada producto: [foto, nombre, adorno]; el adorno es opcional y va dibujado encima de la foto: en el perrero, el
@@ -36,13 +37,13 @@ const CM = {
 // sitio y los que vienen detrás se corren un número (y se vuelven a imprimir sus hojas y el cartel).
 // COMBOS y fotoDe quedan en globalThis: los usan las páginas que cargan este archivo con <script>.
 globalThis.COMBOS = [
-  { n: 1, productos: [["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "El clásico para la arepa y el sándwich", destacar: "la arepa" },
-  { n: 2, productos: [["jamon-arepero", "Jamón arepero"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para la arepa, el sándwich y la pizza", destacar: "la pizza" },
+  { n: 1, productos: [["jamon-de-pierna", "Jamón de pierna"], ["queso-amarillo-vallecito", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para el sándwich y la arepa", destacar: "el sándwich" },
+  { n: 2, productos: [["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "El clásico para la arepa y el sándwich", destacar: "la arepa" },
   { n: 3, productos: [["jamon-ahumado", "Jamón ahumado"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Sabor ahumado para la pizza y el sándwich", destacar: "Sabor ahumado" },
-  { n: 4, productos: [["jamon-de-pierna", "Jamón de pierna"], ["queso-amarillo-vallecito", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para el sándwich y la arepa", destacar: "el sándwich" },
-  { n: 5, productos: [["bolona-de-pollo", "Boloña de pollo"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Desayuno completo: boloña y queso", destacar: "Desayuno completo" },
-  { n: 6, productos: [["mortadela-punta-de-monte", "Mortadela"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para la arepa de todos los días", destacar: "todos los días" },
-  { n: 7, productos: [["pechuga-de-pavo", "Pechuga de pavo"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para un sándwich diferente", destacar: "diferente" },
+  { n: 4, productos: [["jamon-arepero", "Jamón arepero"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para la arepa, el sándwich y la pizza", destacar: "la pizza" },
+  { n: 5, productos: [["pechuga-de-pavo", "Pechuga de pavo"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para un sándwich diferente", destacar: "diferente" },
+  { n: 6, productos: [["bolona-de-pollo", "Boloña de pollo"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Desayuno completo: boloña y queso", destacar: "Desayuno completo" },
+  { n: 7, productos: [["mortadela-punta-de-monte", "Mortadela"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para la arepa de todos los días", destacar: "todos los días" },
   {
     n: 8,
     titulo: "Combo perrero",
@@ -98,8 +99,7 @@ globalThis.COMBOS = [
   {
     n: 12,
     titulo: "Combo sandwichero",
-    // La mortadela, con la foto de la Punta de Monte mientras el dueño no mande la de la mortadela extra.
-    productos: [["pan-de-sandwich", "Pan de sándwich"], ["mortadela-punta-de-monte", "Mortadela extra"], ["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo", "sandwich"]],
+    productos: [["pan-de-sandwich", "Pan de sándwich"], ["mortadela-extra", "Mortadela extra"], ["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo", "sandwich"]],
     detalle: "1 pan de sándwich, 200 g de mortadela extra, 200 g de queso amarillo y 200 g de jamón de espalda",
     lema: "Todo para tus sándwiches",
     destacar: "tus sándwiches",
