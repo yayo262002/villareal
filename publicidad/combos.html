@@ -135,7 +135,7 @@
   // hoja; en tres columnas.
   const tarjetaDe = (combo) => {
     const clases = ["combo", combo.productos.length > 2 ? "combo--tres" : "", combo.separado ? "combo--separado" : ""].filter(Boolean).join(" ");
-    const nombres = combo.titulo ? `<div class="producto">${combo.titulo}</div>` : combo.productos.map(([, nombre]) => `<div class="producto">${nombre}</div>`).join("");
+    const nombres = combo.titulo ? `<div class="producto">${combo.titulo}</div>` : combo.productos.map(([, nombre]) => `<div class="producto">${nombre.replace(" tipo ", " tipo\u00a0")}</div>`).join("");
     return `<article class="${clases}">
       <div class="numero"><small>Combo</small>${combo.n}</div>
       <div class="fotos">${combo.productos.map(([foto]) => fotoDe(foto)).join("")}</div>
