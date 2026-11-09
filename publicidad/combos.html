@@ -96,12 +96,12 @@
   .combo .que { display: grid; gap: 1.5mm; min-width: 0; }
   .combo .producto { font-family: "Archivo Black"; font-size: 10mm; line-height: 1.05; text-transform: uppercase; }
   .combo .detalle { font-size: 6.2mm; color: var(--tinta-suave); margin-top: 1.5mm; line-height: 1.3; }
-  /* La casilla del precio va en blanco: se escribe con marcador y se cambia cuando cambia la tasa. */
+  /* La casilla del precio, en dólares, va en blanco: se escribe con marcador al lado del «$». Pequeña, como pidió el dueño. */
   .combo .precio {
-    box-sizing: border-box; width: 100%; height: 26mm; border: 1.3mm solid var(--acento); border-radius: 3.5mm; background: #fff;
+    box-sizing: border-box; width: 62%; height: 22mm; border: 1.3mm solid var(--acento); border-radius: 3.5mm; background: #fff;
     display: flex; align-items: center; padding: 0 5mm; gap: 3mm;
   }
-  .combo .precio .bs { font-family: "Archivo Black"; font-size: 10mm; color: var(--acento); line-height: 1; }
+  .combo .precio .moneda { font-family: "Archivo Black"; font-size: 10mm; color: var(--acento); line-height: 1; }
 
 </style>
 </head>
@@ -134,14 +134,14 @@
   // El cartel se arma con los combos de combos-datos.js (los mismos de las hojas de cada combo), menos los que van solo en su
   // hoja; en tres columnas.
   const tarjetaDe = (combo) => {
-    const clases = ["combo", combo.productos.length > 2 ? "combo--tres" : "", combo.separado ? "combo--separado" : ""].filter(Boolean).join(" ");
+    const clases = ["combo", combo.especial ? "combo--tres" : "", combo.separado ? "combo--separado" : ""].filter(Boolean).join(" ");
     const nombres = combo.titulo ? `<div class="producto">${combo.titulo}</div>` : combo.productos.map(([, nombre]) => `<div class="producto">${nombre.replace(" tipo ", " tipo\u00a0")}</div>`).join("");
     return `<article class="${clases}">
       <div class="numero"><small>Combo</small>${combo.n}</div>
       <div class="fotos">${combo.productos.map(([foto]) => fotoDe(foto)).join("")}</div>
       <div class="pie">
         <div class="que">${nombres}<div class="detalle">${combo.detalle.replace(/(\d) /g, "$1\u00a0")}</div></div>
-        <div class="precio"><span class="bs">Bs</span></div>
+        <div class="precio"><span class="moneda">$</span></div>
       </div>
     </article>`;
   };

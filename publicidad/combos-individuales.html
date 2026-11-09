@@ -86,19 +86,20 @@
     box-sizing: border-box; padding: 1.4mm 10mm; border-radius: 3mm; border: 0.35mm solid #a8740f; text-align: center;
     background: linear-gradient(180deg, #f9dd86 0%, #edbb49 55%, #cf961f 100%); color: #5e0a0c; font-weight: 800; font-size: 10mm; line-height: 1.2;
   }
-  .pildora--media { font-size: 8.2mm; padding: 1.4mm 7mm; }
+  .pildora--media { font-size: 8.2mm; padding: 1.4mm 7mm; text-wrap: balance; }
   .pildora--larga { font-size: 7.2mm; line-height: 1.15; padding: 1.2mm 7mm; text-wrap: balance; }
 
   .frase { text-align: center; font-style: italic; font-weight: 600; font-size: 9.6mm; line-height: 1.15; color: var(--tinta); }
   .subrayado { position: relative; display: inline-block; }
   .subrayado svg { position: absolute; left: -2%; width: 104%; bottom: -1.3mm; height: 2.6mm; display: block; }
 
-  /* La casilla del precio va en blanco: se escribe con marcador sobre el plástico y se cambia cuando cambia la tasa. */
+  /* La casilla del precio, en dólares, va en blanco: se escribe con marcador sobre el plástico al lado del «$».
+     Pequeña y centrada, como pidió el dueño. */
   .precio {
-    flex: 1; min-height: 28mm; box-sizing: border-box; display: flex; align-items: center; padding: 0 7mm;
-    border: 1.6mm solid var(--rojo); border-radius: 5mm; background: #fff9ec; box-shadow: inset 0 0 0 0.5mm #f0d9a8;
+    flex: none; align-self: center; width: 118mm; height: 25mm; box-sizing: border-box; display: flex; align-items: center; padding: 0 6mm;
+    border: 1.4mm solid var(--rojo); border-radius: 4mm; background: #fff9ec; box-shadow: inset 0 0 0 0.5mm #f0d9a8;
   }
-  .precio span { font-weight: 800; font-size: 24mm; line-height: 1; letter-spacing: -0.01em; color: var(--rojo-oscuro); }
+  .precio span { font-weight: 800; font-size: 17mm; line-height: 1; color: var(--rojo-oscuro); }
 
   /* El navideño y el pizzero, con el estilo de las imágenes que trajo el dueño (fondos/referencia-navidad.png y
      fondos/referencia-pizza.jpg): la cabecera en una placa verde con borde dorado sobre luces desenfocadas, la mitad de
@@ -133,14 +134,14 @@
   }
   .rayos { flex: none; width: 10mm; height: 9mm; display: block; }
   .hoja--festiva .precio { border-color: #c3161d; box-shadow: 0 0 0 1mm #f0c24f, 0 0 0 1.4mm #8a5a08, 0 2mm 3.2mm rgba(40, 5, 0, 0.5), inset 0 0 0 0.5mm #f0d9a8; }
-  /* En el navideño la casilla es roja con «Bs» en blanco, y se escribe en el recuadro blanco de dentro. */
+  /* En el navideño la casilla es roja con el «$» en blanco, y se escribe en el recuadro blanco de dentro. */
   .casilla { display: none; }
   .hoja--navidad .precio {
-    gap: 5mm; padding: 0 5mm 0 6mm; border-color: #f0c24f; background: linear-gradient(180deg, #cf161e, #7d080d);
+    gap: 4mm; padding: 0 4mm 0 6mm; border-color: #f0c24f; background: linear-gradient(180deg, #cf161e, #7d080d);
     box-shadow: 0 0 0 0.6mm #8a5a08, 0 2mm 3.2mm rgba(40, 5, 0, 0.5), inset 0 0.8mm 0 rgba(255, 255, 255, 0.2);
   }
   .hoja--navidad .precio span { color: #ffffff; font-style: italic; text-shadow: 0 0.9mm 0 #5e050a; }
-  .hoja--navidad .casilla { display: block; flex: 1; align-self: stretch; margin: 4.5mm 0; border-radius: 4mm; background: #fffdf6; box-shadow: inset 0 0.8mm 1.4mm rgba(0, 0, 0, 0.3); }
+  .hoja--navidad .casilla { display: block; flex: 1; align-self: stretch; margin: 3.5mm 0; border-radius: 3mm; background: #fffdf6; box-shadow: inset 0 0.8mm 1.4mm rgba(0, 0, 0, 0.3); }
 
   /* El solidario, como la imagen que trajo el dueño (fondos/referencia-solidario.jpg): la hoja roja de siempre, sin corazones,
      con el nombre y el título en relieve y unas hojas verdes a los lados de los productos. */
@@ -739,7 +740,7 @@
         <div class="titulo">${lineas}</div>
         <div class="fila-pildora"><div class="pildora${clasePildora(combo.detalle)}">${enMayusculas(combo.detalle)}</div></div>
         <div class="frase">${festiva ? `${rayos(1)}<span>${combo.lema}</span>${rayos(-1)}` : frase(combo)}</div>
-        <div class="precio"><span>Bs</span><div class="casilla"></div></div>
+        <div class="precio"><span>$</span><div class="casilla"></div></div>
       </section>
       ${festiva ? esquinasFestivas(combo.n, combo) : ""}${combo.estilo === "navidad" ? ramitasDeArriba() : ""}
 `;

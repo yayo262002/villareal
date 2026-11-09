@@ -24,7 +24,7 @@ const CM = {
 };
 
 // Cada producto: [foto, nombre, adorno]; el adorno es opcional y va dibujado encima de la foto: en el perrero, el
-// perro caliente, las salsas y el chorro; en el navideño, el gorro, el moño y el acebo; en el pizzero, el cortapizza,
+// perro caliente, las salsas y el chorro; en el navideño, el gorro y el moño; en el pizzero, el cortapizza,
 // el gorro de cocinero y la porción; en el sandwichero, un sándwich. `fondo` pone dibujitos detrás de los productos: perros,
 // pizzas o sándwiches.
 // `estilo` es el de las imágenes que trajo el dueño (fondos/referencia-*.png|jpg): «navidad» y «pizza», con la cabecera
@@ -43,7 +43,7 @@ globalThis.COMBOS = [
   { n: 4, productos: [["jamon-arepero", "Jamón arepero"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para la arepa, el sándwich y la pizza", destacar: "la pizza" },
   { n: 5, productos: [["pechuga-de-pavo", "Jamón de pavo"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para un sándwich diferente", destacar: "diferente" },
   { n: 6, productos: [["bolona-de-pollo", "Boloña de pollo"], ["queso-amarillo", "Queso amarillo tipo cheddar"]], detalle: "200 g de cada producto", lema: "Desayuno completo: boloña y queso", destacar: "Desayuno completo" },
-  { n: 7, productos: [["mortadela-punta-de-monte", "Mortadela"], ["queso-amarillo", "Queso amarillo tipo cheddar"]], detalle: "200 g de cada producto", lema: "Para la arepa de todos los días", destacar: "todos los días" },
+  { n: 7, productos: [["mortadela-punta-de-monte", "Mortadela especial"], ["queso-amarillo", "Queso amarillo tipo cheddar"]], detalle: "200 g de cada producto", lema: "Para la arepa de todos los días", destacar: "todos los días" },
   {
     n: 8,
     titulo: "Combo solidario",
@@ -72,8 +72,8 @@ globalThis.COMBOS = [
   {
     n: 10,
     titulo: "Combo navideño",
-    productos: [["tocineta", "Tocineta", "moño"], ["jamon-ahumado", "Jamón ahumado", "gorro"], ["mozzarella", "Mozzarella", "acebo"]],
-    detalle: "200 g de tocineta, 200 g de jamón ahumado y 200 g de mozzarella",
+    productos: [["tocineta", "Tocineta", "moño"], ["jamon-ahumado", "Jamón ahumado", "gorro"]],
+    detalle: "200 g de tocineta y 200 g de jamón ahumado",
     lema: "Para tu mesa de Navidad",
     destacar: "Navidad",
     especial: true,
