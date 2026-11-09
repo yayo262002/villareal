@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "sh scripts/desplegar-o-no.sh",
   "crons": [
     {
       "path": "/api/tarea-diaria",

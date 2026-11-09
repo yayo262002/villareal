@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/producto/**/opengraph-image*": ["./public/productos/**/*"],
   },
+  // Lo que no es de la web (los carteles, los sellos, los guiones, la base y las copias del ordenador) no viaja nunca con
+  // las funciones: Vercel guarda las funciones de cada versión publicada y el plan gratuito tiene 10 GB para eso.
+  outputFileTracingExcludes: {
+    "*": ["./publicidad/**/*", "./sellos/**/*", "./scripts/**/*", "./datos/**/*", "./copias/**/*", "./listas/**/*", "./exportaciones/**/*", "./material/**/*"],
+  },
   experimental: {
     serverActions: {
       // Las fotos de las notas suben por una acción del servidor. El

@@ -133,6 +133,20 @@ la nube, no hace falta nada.
 Con las mismas dos variables en `.env.local`, `npm run dev` y `npm run copia`
 trabajan contra Turso desde tu ordenador.
 
+**El espacio de las versiones.** Vercel guarda las funciones de cada versión
+publicada, y el plan gratuito tiene 10 GB para eso (*Functions Storage*; avisa
+al 75 %). Para no llenarlo:
+
+- Un cambio que solo toca lo que no es de la web (`publicidad/`, `sellos/`,
+  `scripts/` y los textos) no se publica: antes de cada despliegue Vercel
+  corre `scripts/desplegar-o-no.sh` (`ignoreCommand` en `vercel.json`).
+- Las funciones no se llevan esas carpetas (`outputFileTracingExcludes` en
+  `next.config.ts`). Antes, una ruta armada a trozos con `public` arrastraba
+  también `publicidad/`: 60 MB más en cada página de cada versión.
+- En Vercel, Settings → Build and Deployment → Deployment Retention Policy:
+  las versiones viejas se guardan poco tiempo. La que está publicada no se
+  borra nunca.
+
 ## Dónde está cada cosa
 
 ```
@@ -221,6 +235,7 @@ src/lib/acciones.ts       Lo que hacen los formularios del panel
 src/lib/copias.ts         Copias de seguridad de la base de datos
 scripts/copia.ts          npm run copia
 scripts/prueba-extremo.mjs  La prueba de extremo a extremo, en local o contra la web
+scripts/desplegar-o-no.sh  Lo que Vercel pregunta antes de publicar: si solo cambió lo que no es de la web, no publica
 src/lib/sesion.ts         La cookie de sesión, firmada con la clave del panel
 src/lib/clave.ts          La clave del panel: la de .env.local o la que el dueño puso con «He olvidado la clave»; el enlace de un solo uso
 src/lib/correo.ts         Mandar un correo al dueño (Resend): hoy, el enlace de la clave nueva

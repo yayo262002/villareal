@@ -51,13 +51,17 @@ async function leon(): Promise<string> {
  * la que subió el dueño (los bytes de la base) o la de referencia (de
  * `public/productos/`). Va en JPEG, que es lo que entiende `next/og`. Si
  * no hay ninguna o no se puede leer, null: entonces sale el león.
+ *
+ * La carpeta va escrita entera (`public/productos`) y no armada con la
+ * ruta: así Vercel solo empaqueta esas fotos con la función. Con la ruta a
+ * trozos se llevaba también `publicidad/` (60 MB) a cada página.
  */
 export async function fotoParaCompartir(origen: { datos?: ArrayBuffer | null; ruta?: string | null }): Promise<string | null> {
   try {
     const entrada = origen.datos
       ? Buffer.from(origen.datos)
       : origen.ruta
-        ? await readFile(path.join(process.cwd(), "public", ...origen.ruta.split("?")[0].split("/").filter(Boolean)))
+        ? await readFile(path.join(process.cwd(), "public", "productos", path.basename(origen.ruta.split("?")[0])))
         : null;
     if (!entrada) return null;
     const jpeg = await sharp(entrada).resize(680, 680, { fit: "cover" }).flatten({ background: "#ffffff" }).jpeg({ quality: 82 }).toBuffer();
