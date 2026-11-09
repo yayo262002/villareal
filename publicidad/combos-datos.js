@@ -29,6 +29,8 @@ const CM = {
 // estrellas en el sello, el título en relieve y hojas verdes a los lados.
 // La charcutería (el jamón, la boloña, la mortadela, el pavo) va siempre primero, a la izquierda; el queso
 // o lo que acompaña, después. Los combos con nombre propio (perrero, solidario, navideño, pizzero) son los especiales y van al final.
+// Van en secuencia, como pidió el dueño: primero los de todos los días y al final los especiales. Un combo nuevo entra en su
+// sitio y los que vienen detrás se corren un número (y se vuelven a imprimir sus hojas y el cartel).
 // COMBOS y fotoDe quedan en globalThis: los usan las páginas que cargan este archivo con <script>.
 globalThis.COMBOS = [
   { n: 1, productos: [["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "El clásico para la arepa y el sándwich", destacar: "la arepa" },
@@ -36,9 +38,10 @@ globalThis.COMBOS = [
   { n: 3, productos: [["jamon-ahumado", "Jamón ahumado"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Sabor ahumado para la pizza y el sándwich", destacar: "Sabor ahumado" },
   { n: 4, productos: [["jamon-de-pierna", "Jamón de pierna"], ["queso-amarillo-vallecito", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para el sándwich y la arepa", destacar: "el sándwich" },
   { n: 5, productos: [["bolona-de-pollo", "Boloña de pollo"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Desayuno completo: boloña y queso", destacar: "Desayuno completo" },
-  { n: 6, productos: [["pechuga-de-pavo", "Pechuga de pavo"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para un sándwich diferente", destacar: "diferente" },
+  { n: 6, productos: [["mortadela-punta-de-monte", "Mortadela"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para la arepa de todos los días", destacar: "todos los días" },
+  { n: 7, productos: [["pechuga-de-pavo", "Pechuga de pavo"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para un sándwich diferente", destacar: "diferente" },
   {
-    n: 7,
+    n: 8,
     titulo: "Combo perrero",
     productos: [["queso-amarillo", "Queso amarillo", "chorro"], ["jamon-de-espalda", "Jamón de espalda", "perro"], ["salchichas", "Salchichas", "salsas"]],
     detalle: "100 g de queso amarillo, 100 g de jamón de espalda y 6 salchichas",
@@ -51,7 +54,7 @@ globalThis.COMBOS = [
     alto: 88,
   },
   {
-    n: 8,
+    n: 9,
     titulo: "Combo solidario",
     productos: [["suero-san-pedro", "Suero San Pedro"], ["huevos", "Huevos"], ["mortadela-de-pollo", "Mortadela"]],
     detalle: "1 suero San Pedro de 900 ml, 6 huevos y 1 mortadela de 500 g",
@@ -63,7 +66,7 @@ globalThis.COMBOS = [
     estilo: "solidario",
   },
   {
-    n: 9,
+    n: 10,
     titulo: "Combo navideño",
     productos: [["tocineta", "Tocineta", "moño"], ["jamon-ahumado", "Jamón ahumado", "gorro"], ["mozzarella", "Mozzarella", "acebo"]],
     detalle: "200 g de tocineta, 200 g de jamón ahumado y 200 g de mozzarella",
@@ -76,7 +79,7 @@ globalThis.COMBOS = [
     alto: 86,
   },
   {
-    n: 10,
+    n: 11,
     titulo: "Combo pizzero",
     productos: [["tocineta", "Tocineta", "cortapizza"], ["jamon-de-espalda", "Jamón de espalda", "cocinero"], ["mozzarella", "Mozzarella", "porcion"]],
     detalle: "100 g de tocineta, 200 g de jamón de espalda y 200 g de mozzarella",
@@ -88,12 +91,7 @@ globalThis.COMBOS = [
     fondo: "pizzas",
     estilo: "pizza",
     alto: 84,
-    // El cartel grande es de 3 × 3: este va solo en su hoja.
-    cartel: false,
   },
-  // Llegó después de los especiales: va al final para no cambiarles el número a las hojas ya impresas. El cartel grande
-  // es de 3 × 3, así que también va solo en su hoja.
-  { n: 11, productos: [["mortadela-punta-de-monte", "Mortadela"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para la arepa de todos los días", destacar: "todos los días", cartel: false },
 ];
 
 /** La foto de un producto, con su tamaño real, para que salga a escala. */

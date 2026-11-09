@@ -23,19 +23,19 @@
   .cartel {
     position: relative; box-sizing: border-box; width: 600mm; height: 900mm; overflow: hidden;
     background: var(--fondo); color: var(--tinta);
-    display: grid; grid-template-rows: auto 1fr auto; row-gap: 14mm; padding-bottom: 20mm;
+    display: grid; grid-template-rows: auto 1fr; row-gap: 14mm; padding-bottom: 24mm;
   }
 
   /* La cabecera: una franja de color de lado a lado, con el león y los títulos, y una raya dorada debajo. */
   .cabecera {
     background: var(--cabecera); color: var(--titulo); border-bottom: 3.5mm solid var(--oro);
-    display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 20mm; padding: 18mm 30mm 16mm;
+    display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 18mm; padding: 13mm 30mm 12mm;
   }
-  .cabecera img { width: 78mm; height: 112mm; display: block; }
+  .cabecera img { width: 66mm; height: 95mm; display: block; }
   .marca { display: grid; gap: 3mm; }
   .marca .charcuteria { font-family: "Archivo Black"; font-size: 13mm; letter-spacing: 0.16em; text-transform: uppercase; color: var(--oro); line-height: 1; }
-  .marca .nombre { font-family: "Archivo Black"; font-size: 38mm; line-height: 0.95; letter-spacing: -0.01em; }
-  .marca .combos { font-family: "Archivo Black"; font-size: 58mm; line-height: 0.9; color: var(--oro); letter-spacing: 0.02em; margin-top: 2mm; }
+  .marca .nombre { font-family: "Archivo Black"; font-size: 34mm; line-height: 0.95; letter-spacing: -0.01em; }
+  .marca .combos { font-family: "Archivo Black"; font-size: 50mm; line-height: 0.9; color: var(--oro); letter-spacing: 0.02em; margin-top: 2mm; }
   .marca .lema { font-size: 10.5mm; margin-top: 3mm; opacity: 0.9; }
 
   .lista { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 12mm; padding: 0 30mm; }
@@ -53,8 +53,8 @@
   /* Los productos, juntos como en una foto de producto: cada foto recortada al producto, todos a la misma
      escala (--cm es lo que mide de alto en la vida real; --mm-por-cm, la escala del cartel), apoyados en la
      misma línea y un poco solapados, el más pequeño delante. Si la pareja no cabe en la tarjeta, las fotos
-     encogen sin estirar la tarjeta. */
-  .cartel { --mm-por-cm: 3.3; }
+     encogen sin estirar la tarjeta. Con los once combos en cuatro filas, la escala es menor que con nueve. */
+  .cartel { --mm-por-cm: 2.2; }
   .combo .fotos { display: flex; justify-content: center; align-items: flex-end; gap: 0; min-height: 0; min-width: 0; padding: 4mm 0 0; }
   .combo .fotos img {
     height: calc(var(--cm, 30) * var(--mm-por-cm) * 1mm); width: auto; max-width: 104mm; min-width: 0;
@@ -80,11 +80,16 @@
     padding: 2.5mm 7mm 2.5mm 8mm; border-radius: 3mm 0 0 3mm;
   }
 
-  /* El pie: dónde se pide y cómo se paga. */
-  .pie-cartel { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10mm; padding: 0 30mm; color: var(--pie); }
-  .pie-cartel .donde { font-size: 10mm; line-height: 1.35; }
-  .pie-cartel strong { font-family: "Archivo Black"; color: var(--pie-fuerte); }
-  .pie-cartel .pagos { font-size: 9mm; text-align: right; line-height: 1.4; opacity: 0.9; }
+  /* La casilla doce, después del último combo: dónde se pide y cómo se paga, en rojo con el león. */
+  .pedidos {
+    box-sizing: border-box; min-width: 0; border-radius: 8mm; background: var(--cabecera); color: var(--titulo); border: 1.2mm solid var(--oro);
+    display: grid; align-content: center; justify-items: center; gap: 4mm; padding: 10mm 12mm; text-align: center;
+  }
+  .pedidos img { width: 34mm; height: 49mm; display: block; }
+  .pedidos .titulo { font-family: "Archivo Black"; font-size: 8mm; letter-spacing: 0.08em; text-transform: uppercase; color: var(--oro); line-height: 1.1; }
+  .pedidos .numero-whatsapp { font-family: "Archivo Black"; font-size: 13mm; line-height: 1; }
+  .pedidos .donde { font-size: 6.6mm; line-height: 1.3; }
+  .pedidos .pagos { font-size: 6.6mm; line-height: 1.35; opacity: 0.9; }
   /* Mientras falte la foto de un producto, un hueco que lo dice. */
   .combo .fotos .falta {
     box-sizing: border-box; width: 40mm; height: 70mm; border: 0.8mm dashed var(--tinta-suave); border-radius: 4mm; background: var(--tarjeta); position: relative; z-index: 0;
@@ -119,16 +124,13 @@
       </div>
     </header>
     <section class="lista"></section>
-    <footer class="pie-cartel">
-      <div class="donde"><strong>Pedidos por WhatsApp 0424-6343236</strong><br>Calle 38 entre carreras 30 y 31, sector Centro · Barquisimeto</div>
-      <div class="pagos">Pago móvil · Efectivo · Zelle<br>Al mayor y al detal</div>
-    </footer>
   </div>
 </template>
 
 <script src="combos-datos.js"></script>
 <script>
-  // El cartel se arma con los combos de combos-datos.js (los mismos de las hojas de cada combo), menos los que van solo en su hoja.
+  // El cartel se arma con los combos de combos-datos.js (los mismos de las hojas de cada combo), menos los que van solo en su
+  // hoja; en tres columnas, y detrás del último, la casilla de los pedidos.
   const tarjetaDe = (combo) => {
     const clases = ["combo", combo.productos.length > 2 ? "combo--tres" : "", combo.separado ? "combo--separado" : ""].filter(Boolean).join(" ");
     const nombres = combo.titulo ? `<div class="producto">${combo.titulo}</div>` : combo.productos.map(([, nombre]) => `<div class="producto">${nombre}</div>`).join("");
@@ -143,7 +145,14 @@
   };
   const cartel = document.getElementById("cartel").content.firstElementChild.cloneNode(true);
   cartel.dataset.archivo = "combos-60x90";
-  cartel.querySelector(".lista").innerHTML = COMBOS.filter((combo) => combo.cartel !== false).map(tarjetaDe).join("");
+  const pedidos = `<aside class="pedidos">
+      <img src="../public/marca/leon.svg" alt="">
+      <div class="titulo">Pedidos por WhatsApp</div>
+      <div class="numero-whatsapp">0424-6343236</div>
+      <div class="donde">Calle 38 entre carreras 30 y 31, sector Centro · Barquisimeto</div>
+      <div class="pagos">Pago móvil · Efectivo · Zelle<br>Al mayor y al detal</div>
+    </aside>`;
+  cartel.querySelector(".lista").innerHTML = COMBOS.filter((combo) => combo.cartel !== false).map(tarjetaDe).join("") + pedidos;
   document.body.append(cartel);
 </script>
 </body>
