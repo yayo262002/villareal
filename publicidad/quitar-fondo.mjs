@@ -26,8 +26,8 @@ const SOLO_LO_BLANCO = new Set(["mozzarella"]);
 /** Fotos en que el recortador toma el envoltorio por fondo (un paquete rosado, translúcido): el fondo es lo que
  *  se toca desde los bordes de la foto y no tiene color (gris, blanco o negro); lo demás es producto. */
 const DESDE_LOS_BORDES = new Set(["pechuga-de-pavo"]);
-/** Fotos que ya vienen bien recortadas (de un banco de fotos): se respeta su transparencia. */
-const CON_SU_RECORTE = new Set(["huevos"]);
+/** Fotos que ya vienen bien recortadas (de un banco de fotos, o la del pan, que el dueño mandó sin fondo): se respeta su transparencia. */
+const CON_SU_RECORTE = new Set(["huevos", "pan-de-sandwich"]);
 /** Fotos con un tinte azul o lila en el envoltorio (reflejos del fondo azul en que se fotografió): los píxeles
  *  claros con más azul que rojo vuelven al color del envoltorio, con su misma luz; el azul oscuro de una
  *  etiqueta no se toca. El color es el del envoltorio de esa foto. */

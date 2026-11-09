@@ -19,13 +19,16 @@ const CM = {
   salchichas: 17,
   tocineta: 28,
   "mortadela-punta-de-monte": 30,
+  "pan-de-sandwich": 34,
 };
 
 // Cada producto: [foto, nombre, adorno]; el adorno es opcional y va dibujado encima de la foto: en el perrero, el
 // perro caliente, las salsas y el chorro; en el navideño, el gorro, el moño y el acebo; en el pizzero, el cortapizza,
-// el gorro de cocinero y la porción. `fondo` pone dibujitos detrás de los productos: perros o pizzas.
+// el gorro de cocinero y la porción; en el sandwichero, un sándwich. `fondo` pone dibujitos detrás de los productos: perros,
+// pizzas o sándwiches.
 // `estilo` es el de las imágenes que trajo el dueño (fondos/referencia-*.png|jpg): «navidad» y «pizza», con la cabecera
-// en una placa verde, luces de fondo y la mitad de abajo roja; «solidario», la hoja roja de siempre, sin corazones, con
+// en una placa verde, luces de fondo y la mitad de abajo roja («sandwich», como «pizza», sin nada de Navidad); «solidario»,
+// la hoja roja de siempre, sin corazones, con
 // estrellas en el sello, el título en relieve y hojas verdes a los lados.
 // La charcutería (el jamón, la boloña, la mortadela, el pavo) va siempre primero, a la izquierda; el queso
 // o lo que acompaña, después. Los combos con nombre propio (perrero, solidario, navideño, pizzero) son los especiales y van al final.
@@ -91,6 +94,21 @@ globalThis.COMBOS = [
     fondo: "pizzas",
     estilo: "pizza",
     alto: 84,
+  },
+  {
+    n: 12,
+    titulo: "Combo sandwichero",
+    // La mortadela, con la foto de la Punta de Monte mientras el dueño no mande la de la mortadela extra.
+    productos: [["pan-de-sandwich", "Pan de sándwich"], ["mortadela-punta-de-monte", "Mortadela extra"], ["jamon-de-espalda", "Jamón de espalda"], ["queso-amarillo", "Queso amarillo", "sandwich"]],
+    detalle: "1 pan de sándwich, 200 g de mortadela extra, 200 g de queso amarillo y 200 g de jamón de espalda",
+    lema: "Todo para tus sándwiches",
+    destacar: "tus sándwiches",
+    especial: true,
+    etiqueta: "Especial sándwich",
+    fondo: "sandwiches",
+    estilo: "sandwich",
+    // Algo más bajos, para que el sándwich de encima del queso no llegue a la cabecera.
+    alto: 86,
   },
 ];
 
