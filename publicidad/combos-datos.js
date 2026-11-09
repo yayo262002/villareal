@@ -32,7 +32,7 @@ globalThis.COMBOS = [
   { n: 2, productos: [["jamon-arepero", "Jamón arepero"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para la arepa, el sándwich y la pizza", destacar: "la pizza" },
   { n: 3, productos: [["jamon-ahumado", "Jamón ahumado"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Sabor ahumado para la pizza y el sándwich", destacar: "Sabor ahumado" },
   { n: 4, productos: [["jamon-de-pierna", "Jamón de pierna"], ["queso-amarillo-vallecito", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para el sándwich y la arepa", destacar: "el sándwich" },
-  { n: 5, productos: [["bolona-de-pollo", "Boloña de pollo"], ["suero-san-pedro", "Suero San Pedro"]], detalle: "200 g de boloña y 1 bolsa de suero", lema: "Desayuno completo: boloña y suero", destacar: "Desayuno completo" },
+  { n: 5, productos: [["bolona-de-pollo", "Boloña de pollo"], ["queso-amarillo", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Desayuno completo: boloña y queso", destacar: "Desayuno completo" },
   { n: 6, productos: [["pechuga-de-pavo", "Pechuga de pavo"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para un sándwich diferente", destacar: "diferente" },
   {
     n: 7,
