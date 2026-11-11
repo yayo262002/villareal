@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cambioDe, cuentaDespues, describirSaldo, faltaPorPagar, revisarVentaPos, skuPropuesto, totalesDe } from "./pos-calculo.ts";
+import { cajeroDeLaVenta, cambioDe, cuentaDespues, describirSaldo, faltaPorPagar, precioDeContado, precioEnElLocal, revisarVentaPos, skuPropuesto, totalesDe } from "./pos-calculo.ts";
 import { usd } from "./dinero.ts";
 
 const mozzarella = { clave: "2", producto_id: 2, variante_id: null, nombre: "Mozzarella", unidad: "kg" as const, cantidad: 10, precio_usd: 7.7 };
@@ -73,4 +73,37 @@ test("el SKU propuesto sale del tipo, la marca y el contenido, sin tildes", () =
   assert.equal(skuPropuesto("Queso amarillo / Cheddar", "El Legado", ""), "QUE-ELL");
   assert.equal(skuPropuesto("Huevos", "", ""), "HUE");
   assert.equal(skuPropuesto("Pecorino", "Sortilegio", "500 g"), "PEC-SOR-500G");
+});
+
+test("el precio de contado en el local: el costo más un 10 %, subido al centavo; sin costo, no hay", () => {
+  assert.equal(precioDeContado(7.6), 8.36);
+  assert.equal(precioDeContado(7.9), 8.69);
+  assert.equal(precioDeContado(4.7), 5.17);
+  assert.equal(precioDeContado(8.9), 9.79);
+  assert.equal(precioDeContado(11.5), 12.65);
+  assert.equal(precioDeContado(1.255), 1.39);
+  assert.equal(precioDeContado(null), null);
+  assert.equal(precioDeContado(0), null);
+  assert.equal(precioDeContado(7.6, 12), 8.52);
+});
+
+test("en el local se paga el de contado, salvo que el de siempre sea más bajo; sin costo, el de siempre", () => {
+  assert.equal(precioEnElLocal(8.52, 8.36), 8.36);
+  assert.equal(precioEnElLocal(7.7, 8.36), 7.7);
+  assert.equal(precioEnElLocal(null, 8.36), 8.36);
+  assert.equal(precioEnElLocal(8.52, null), 8.52);
+  assert.equal(precioEnElLocal(null, null), null);
+});
+
+test("la venta de contado en el local lleva «Local» en el cajero, una sola vez", () => {
+  assert.equal(cajeroDeLaVenta("Ana", true), "Local · Ana");
+  assert.equal(cajeroDeLaVenta("", true), "Local");
+  assert.equal(cajeroDeLaVenta("Local · Ana", true), "Local · Ana");
+  assert.equal(cajeroDeLaVenta(" Ana ", false), "Ana");
+});
+
+test("el contado en el local se paga entero en el momento", () => {
+  assert.deepEqual(revisarVentaPos({ ...base, enElLocal: true, modo: "ahora", pagos: [{ metodo: "efectivo_usd", monto_usd: 77 }] }), []);
+  assert.ok(revisarVentaPos({ ...base, enElLocal: true, modo: "credito", pagos: [] }).some((m) => m.includes("Contado en el local")));
+  assert.ok(revisarVentaPos({ ...base, enElLocal: true, modo: "parte", pagos: [{ metodo: "efectivo_usd", monto_usd: 20 }] }).some((m) => m.includes("Contado en el local")));
 });

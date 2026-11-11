@@ -2291,6 +2291,7 @@ async function probarCaja() {
     `Registrar venta es la caja: buscador de cliente, escáner, catálogo y la forma de guardar (${caja.ms} ms)`,
     caja.status === 200 && caja.html.includes('id="pos-cliente-buscar"') && caja.html.includes('id="pos-buscar"') && caja.html.includes("Mozzarella") && caja.html.includes('name="venta"') && caja.html.includes("saldo_usd"),
   );
+  comprobar("la caja ofrece «Contado en el local» (costo + 10 %)", caja.html.includes("Contado en el local") && caja.html.includes("precio_contado"));
   const [mostrador] = await consultar("select id from clientes where nombre = 'Mostrador' and telefono = ''");
   comprobar("la caja crea el cliente de mostrador para las ventas sin cliente", Boolean(mostrador));
   const viejo = await pagina("/admin/pos");
@@ -2458,6 +2459,17 @@ async function probarCaja() {
   comprobar("vender más de lo que hay no se guarda, y dice qué hacer", r.destino.includes("la venta lleva 999 kg") && r.destino.includes("Permitir vender sin existencia"), r.destino);
   r = await enviar("/admin/inventario", 'name="permitir"', { permitir: "1" });
   comprobar("en Inventario se puede permitir vender sin existencia", r.destino.includes("puede vender aunque el inventario diga que no hay"), r.destino);
+  // De contado en el local: no se deja nada pendiente, y la venta se guarda con «Local» delante del cajero.
+  r = await mandar({ clave_pos: clave + "-local-credito", local: true, lineas: [mozzarella(2), huevos], modo: "credito", pagos: [] });
+  comprobar("el contado en el local no se deja pendiente", r.destino.includes("Contado en el local") && !idDe(r.destino), r.destino);
+  r = await mandar({ clave_pos: clave + "-local", local: true, descuento_usd: 0, lineas: [mozzarella(3.5)], pagos: [{ metodo: "efectivo_usd", monto_usd: 26.95 }] });
+  const deLocal = idDe(r.destino);
+  comprobar(
+    "el contado en el local se guarda con «Local» delante del cajero",
+    Boolean(deLocal) && (await consultar("select cajero from ventas where id = ?", [deLocal]))[0].cajero === "Local · Carlos (prueba)",
+    r.destino,
+  );
+
   r = await mandar(muchos);
   const sinTope = idDe(r.destino);
   comprobar("permitido, se guarda igual", Boolean(sinTope) && r.destino.includes("Venta registrada"), r.destino);

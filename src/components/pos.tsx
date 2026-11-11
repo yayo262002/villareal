@@ -5,10 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type InputHTMLAttrib
 import { METODOS_PAGO, METODOS_EN_BOLIVARES, bs, cantidad, fechaCorta, usd, type MetodoPago, type Unidad } from "@/lib/dinero";
 import {
   NOMBRE_MODO,
+  RECARGO_DE_CONTADO_EN_EL_LOCAL,
   cambioDe,
   cuentaDespues,
   describirSaldo,
   faltaPorPagar,
+  precioEnElLocal,
   revisarVentaPos,
   totalesDe,
   type LineaDelPos,
@@ -49,6 +51,8 @@ export type ArticuloParaLaCaja = {
   estado: "sin_seguir" | "sin" | "poco" | "bien";
   /** Lo que suele pesar una pieza, si se sabe. */
   pesoTipico: number | null;
+  /** El precio de contado en el local (el costo más el 10 %), o null si no tiene costo en Productos. */
+  precio_contado: number | null;
 };
 
 export type ClienteParaLaCaja = {
@@ -157,6 +161,7 @@ type Guardado = {
   entregaPrevista: string;
   diasCredito: string;
   facturar: boolean;
+  local?: boolean;
 };
 
 export function Pos({
@@ -204,6 +209,8 @@ export function Pos({
   const [diasCredito, setDiasCredito] = useState("");
   // Si al guardar se emite la factura fiscal.
   const [facturar, setFacturar] = useState(false);
+  // De contado en el local: al costo más el 10 %, pagando todo en el momento. Con el mostrador, de entrada.
+  const [local, setLocal] = useState(clienteInicial === undefined || clienteInicial === mostradorId);
   const [confirmar, setConfirmar] = useState(false);
   const [confirmarNota, setConfirmarNota] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -235,6 +242,7 @@ export function Pos({
           setEntregaPrevista(guardado.entregaPrevista ?? "");
           setDiasCredito(guardado.diasCredito ?? "");
           setFacturar(guardado.facturar === true);
+          setLocal(guardado.local ?? (guardado.clienteId || mostradorId) === mostradorId);
         } else {
           setClave(nuevaClave());
           if (yaVendido) localStorage.removeItem(GUARDADO);
@@ -262,18 +270,22 @@ export function Pos({
     try {
       if (lineas.length === 0) localStorage.removeItem(GUARDADO);
       else {
-        const guardado: Guardado = { clave, clienteId, lineas, descuento, nota, fecha, modo, entrega, entregaPrevista, diasCredito, facturar };
+        const guardado: Guardado = { clave, clienteId, lineas, descuento, nota, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local };
         localStorage.setItem(GUARDADO, JSON.stringify(guardado));
       }
       localStorage.setItem(CAJERO, cajero);
     } catch {
       // Sin sitio para guardar no pasa nada.
     }
-  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito, facturar]);
+  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local]);
 
   const porClave = useMemo(() => new Map(catalogo.map((a) => [a.clave, a])), [catalogo]);
+  // El precio de siempre es el especial del cliente o el de la lista; de contado en el local, el costo más el 10 % si es menor.
   const precioDe = useCallback(
-    (articulo: ArticuloParaLaCaja, cliente: number) => preciosEspeciales[cliente]?.[articulo.clave] ?? articulo.precio_usd ?? 0,
+    (articulo: ArticuloParaLaCaja, cliente: number, enElLocal: boolean) => {
+      const deSiempre = preciosEspeciales[cliente]?.[articulo.clave] ?? articulo.precio_usd;
+      return (enElLocal ? precioEnElLocal(deSiempre, articulo.precio_contado) : deSiempre) ?? 0;
+    },
     [preciosEspeciales],
   );
 
@@ -315,7 +327,7 @@ export function Pos({
             nombre: articulo.nombre,
             unidad: articulo.unidad,
             cantidad: cuanto,
-            precio_usd: precioDe(articulo, clienteId),
+            precio_usd: precioDe(articulo, clienteId, local),
             precioManual: false,
             piezas: null,
           },
@@ -329,7 +341,7 @@ export function Pos({
       setNoEncontrado(null);
       setElegido(0);
     },
-    [clienteId, precioDe],
+    [clienteId, local, precioDe],
   );
 
   // Lo escrito: primero un código o SKU exacto; si no, lo que coincida en el nombre, la marca, el SKU, la presentación o la familia.
@@ -387,10 +399,23 @@ export function Pos({
     setListaClientes(false);
     setClienteMarcado(0);
     if (nuevo === mostradorId && modo !== "ahora") setModo("ahora");
+    // El mostrador es quien compra en el local y paga en el momento: de contado.
+    const enElLocal = nuevo === mostradorId ? true : local;
+    setLocal(enElLocal);
     setDiasCredito("");
-    // Los precios que no se tocaron a mano siguen al cliente (su precio especial, o el de la lista).
-    setLineas((actuales) => actuales.map((l) => (l.precioManual ? l : { ...l, precio_usd: precioDe(porClave.get(l.clave)!, nuevo) })));
+    // Los precios que no se tocaron a mano siguen al cliente (su precio especial, o el de la lista) y al contado.
+    setLineas((actuales) => actuales.map((l) => (l.precioManual ? l : { ...l, precio_usd: precioDe(porClave.get(l.clave)!, nuevo, enElLocal) })));
     enfocarBuscador();
+  };
+
+  /** Pone o quita el contado en el local: los precios que no se tocaron a mano cambian, y de contado se paga todo ahora. */
+  const cambiarLocal = (enElLocal: boolean) => {
+    setLocal(enElLocal);
+    if (enElLocal && modo !== "ahora") {
+      setModo("ahora");
+      setPagosTocados(false);
+    }
+    setLineas((actuales) => actuales.map((l) => (l.precioManual ? l : { ...l, precio_usd: precioDe(porClave.get(l.clave)!, clienteId, enElLocal) })));
   };
 
   const cancelar = () => {
@@ -422,6 +447,7 @@ export function Pos({
       pagos,
       modo,
       esMostrador,
+      enElLocal: local,
       tasa,
       metodosEnBolivares: METODOS_EN_BOLIVARES,
     });
@@ -489,6 +515,7 @@ export function Pos({
     confirmar,
     confirmar_nota: confirmarNota,
     facturar,
+    local,
     lineas: lineas.map((l) => ({
       clave: l.clave,
       producto_id: l.producto_id,
@@ -513,6 +540,8 @@ export function Pos({
   const venceEl = fechaCorta(sumarDias(fecha, diasEfectivos));
   const saldoNuevo = describirSaldo(cuenta.saldoNuevo);
   const nombreDeCliente = (c: ClienteParaLaCaja) => (c.id === mostradorId ? "Mostrador (sin cliente)" : c.rotulo);
+  // Lo del carrito que no tiene costo en Productos: de contado en el local va a su precio de siempre.
+  const sinCosto = lineas.filter((l) => porClave.get(l.clave)?.precio_contado == null).map((l) => l.nombre);
   const describirPago = () => {
     if (modo === "credito") return "Queda pendiente en su cuenta";
     const vias = pagosQueValen.map((p) => `${METODOS_PAGO[p.metodo]} ${usd(p.monto_usd)}`).join(" · ");
@@ -674,7 +703,9 @@ export function Pos({
                         </span>
                       </span>
                       <span className={estilos.resultadoPrecio}>
-                        {a.precio_usd === null && !preciosEspeciales[clienteId]?.[a.clave] ? "sin precio" : `${usd(precioDe(a, clienteId))} / ${NOMBRE_UNIDAD[a.unidad]}`}
+                        {a.precio_usd === null && !preciosEspeciales[clienteId]?.[a.clave] && !(local && a.precio_contado !== null)
+                          ? "sin precio"
+                          : `${usd(precioDe(a, clienteId, local))} / ${NOMBRE_UNIDAD[a.unidad]}`}
                       </span>
                     </button>
                   </li>
@@ -925,6 +956,18 @@ export function Pos({
             <span className="ayuda">{fecha === hoy ? "Hoy. Si la nota es de otro día, cámbiala: los días de crédito cuentan desde ahí." : `La nota es del ${fechaCorta(fecha)}: los días de crédito cuentan desde ahí.`}</span>
           </div>
 
+          <label className={panel.casilla} style={{ margin: 0 }}>
+            <input type="checkbox" checked={local} onChange={(e) => cambiarLocal(e.target.checked)} />
+            <span>
+              Contado en el local
+              <span className="ayuda">
+                {" "}
+                (costo + {RECARGO_DE_CONTADO_EN_EL_LOCAL} %, pagando todo ahora)
+                {local && sinCosto.length > 0 ? `. Sin costo en Productos, a su precio de siempre: ${sinCosto.join(", ")}.` : ""}
+              </span>
+            </span>
+          </label>
+
           <div className={estilos.modos} role="group" aria-label="Cómo paga">
             {(["ahora", "parte", "credito"] as ModoDePago[]).map((m) => (
               <button
@@ -935,6 +978,11 @@ export function Pos({
                 disabled={m !== "ahora" && esMostrador}
                 title={m !== "ahora" && esMostrador ? "Con el mostrador se paga en el momento: elige al cliente" : undefined}
                 onClick={() => {
+                  // Lo que queda pendiente no es de contado: va al precio de siempre.
+                  if (m !== "ahora" && local) {
+                    cambiarLocal(false);
+                    avisar("A crédito va al precio de siempre");
+                  }
                   setModo(m);
                   if (m === "parte" && !pagosTocados) {
                     setPagosTocados(true);
@@ -1183,6 +1231,7 @@ export function Pos({
               <div>
                 <dt>Pago</dt>
                 <dd>
+                  {local ? `De contado en el local (costo + ${RECARGO_DE_CONTADO_EN_EL_LOCAL} %) · ` : ""}
                   {describirPago()}
                   {soloEfectivo && cambio > 0 ? ` · cambio ${usd(cambio)}` : ""}
                 </dd>

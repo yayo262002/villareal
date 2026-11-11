@@ -1,10 +1,11 @@
 import { redondear, usd, type MetodoPago, type Unidad } from "./dinero.ts";
+import { subirA } from "./detal-calculo.ts";
 
 /**
  * Las cuentas de la venta en la caja (el punto de venta): el subtotal de
  * las líneas, el descuento, el total en dólares y en bolívares a la tasa
- * del día, cómo queda la cuenta del cliente según lo que pague ahora, y la
- * revisión de los pagos antes de guardar. Cálculo puro, con pruebas; lo que
+ * del día, cómo queda la cuenta del cliente según lo que pague ahora, el
+ * precio de contado en el local y la revisión de los pagos antes de guardar. Cálculo puro, con pruebas; lo que
  * toca la base está en `pos.ts`.
  */
 
@@ -36,6 +37,43 @@ export const NOMBRE_MODO: Record<ModoDePago, string> = {
   parte: "Paga una parte",
   credito: "Queda pendiente",
 };
+
+/**
+ * La venta de contado en el local: quien va al local y paga en el momento
+ * compra al costo más un 10 %; a crédito o con entrega, al precio de la
+ * lista (el costo más un 12 %). Lo decidió el dueño: el que paga de una le
+ * ahorra esperar el cobro.
+ */
+export const RECARGO_DE_CONTADO_EN_EL_LOCAL = 10;
+
+/** Lo que dice el cajero de una venta de contado en el local, para que el cierre del mes la separe. */
+export const CAJERO_DEL_LOCAL = "Local";
+
+/** El precio de contado en el local: el costo más el recargo, subido al centavo. Sin costo, null. */
+export function precioDeContado(costoUsd: number | null | undefined, recargoPct = RECARGO_DE_CONTADO_EN_EL_LOCAL): number | null {
+  const costo = Number(costoUsd);
+  if (costoUsd === null || costoUsd === undefined || !(costo > 0)) return null;
+  return subirA((costo * (100 + recargoPct)) / 100, 0.01);
+}
+
+/**
+ * Lo que paga en el local quien paga de contado: el precio de contado, salvo
+ * que el de siempre (la lista o su precio especial) sea más bajo. Sin costo
+ * no hay precio de contado y va el de siempre.
+ */
+export function precioEnElLocal(precioDeSiempre: number | null, contado: number | null): number | null {
+  if (contado === null) return precioDeSiempre;
+  if (precioDeSiempre === null || precioDeSiempre <= 0) return contado;
+  return Math.min(precioDeSiempre, contado);
+}
+
+/** El cajero que se guarda: «Local» delante en una venta de contado en el local («Local · Ana»). */
+export function cajeroDeLaVenta(cajero: string, enElLocal: boolean): string {
+  const quien = cajero.trim();
+  if (!enElLocal) return quien;
+  if (quien.toLowerCase().startsWith(CAJERO_DEL_LOCAL.toLowerCase())) return quien;
+  return quien ? `${CAJERO_DEL_LOCAL} · ${quien}` : CAJERO_DEL_LOCAL;
+}
 
 export type TotalesDelPos = { subtotal: number; descuento: number; total: number; totalBs: number | null };
 
@@ -101,11 +139,16 @@ export function revisarVentaPos(datos: {
   modo: ModoDePago;
   /** El cliente de mostrador no tiene cuenta: con él se paga todo en el momento. */
   esMostrador: boolean;
+  /** Una venta de contado en el local (al precio de contado): se paga entera en el momento. */
+  enElLocal?: boolean;
   tasa: number | null;
   metodosEnBolivares: MetodoPago[];
 }): string[] {
   const motivos: string[] = [];
   if (datos.lineas.length === 0) motivos.push("No hay ningún producto en la venta.");
+  if (datos.enElLocal && datos.modo !== "ahora") {
+    motivos.push("El precio de contado en el local es para quien paga todo en el momento: si deja algo pendiente, quita «Contado en el local» y va al precio de siempre.");
+  }
   for (const l of datos.lineas) {
     if (!(Number(l.cantidad) > 0)) motivos.push(`${l.nombre}: la cantidad tiene que ser mayor que cero.`);
     if (!(Number(l.precio_usd) >= 0)) motivos.push(`${l.nombre}: el precio no puede ser negativo.`);

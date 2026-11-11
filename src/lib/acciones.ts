@@ -2206,6 +2206,7 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     confirmar: cruda.confirmar === true,
     confirmar_nota: cruda.confirmar_nota === true,
     facturar: cruda.facturar === true,
+    local: cruda.local === true,
     lineas: (Array.isArray(cruda.lineas) ? cruda.lineas : []).map((l) => ({
       clave: String(l.clave ?? ""),
       producto_id: Number(l.producto_id) || 0,
@@ -2287,6 +2288,7 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     pagos: venta.pagos,
     modo: venta.modo,
     esMostrador: mostrador,
+    enElLocal: venta.local,
     tasa: tasa?.valor ?? null,
     metodosEnBolivares: METODOS_EN_BOLIVARES,
   });

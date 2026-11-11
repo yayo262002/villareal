@@ -11,7 +11,7 @@ import { buscarCliente, crearCliente, listarClientes, type Cliente, type Cliente
 import { buscarVentaPorClavePos, crearVenta, type LineaVenta } from "./ventas";
 import { registrarPago } from "./pagos";
 import { monedaDelMetodo, redondear } from "./dinero";
-import { totalesDe, type LineaDelPos, type ModoDePago, type PagoDelPos } from "./pos-calculo";
+import { cajeroDeLaVenta, totalesDe, type LineaDelPos, type ModoDePago, type PagoDelPos } from "./pos-calculo";
 
 /**
  * La caja (el punto de venta) desde la base: el catálogo con lo que hay de
@@ -33,6 +33,8 @@ export type ArticuloDelPos = Vendible & {
   presentacionTexto: string;
   /** Lo que suele pesar una pieza, si ya se aprendió de las notas. */
   pesoTipico: PesoTipico | null;
+  /** Lo que le cuesta al negocio: el de la marca, o el del tipo si se vende de una sola forma. De ahí sale el precio de contado en el local. */
+  costo_usd: number | null;
 };
 
 export async function catalogoDelPos(): Promise<ArticuloDelPos[]> {
@@ -53,6 +55,8 @@ export async function catalogoDelPos(): Promise<ArticuloDelPos[]> {
       familia: producto?.familia_id ? (nombreDeFamilia.get(producto.familia_id) ?? "") : "",
       presentacionTexto: presentacionDe(variante ?? producto ?? { presentacion: "", contenido: "" }),
       pesoTipico: e?.pesoPorPieza ?? null,
+      // El costo de la marca no se toma del tipo: cada marca cuesta lo suyo.
+      costo_usd: variante ? (variante.costo_usd ?? null) : (producto?.costo_usd ?? null),
     };
   });
 }
@@ -107,6 +111,8 @@ export type VentaDelPos = {
   confirmar_nota: boolean;
   /** Si al guardar se emite la factura fiscal (el cliente necesita cédula o RIF). */
   facturar: boolean;
+  /** Una venta de contado en el local, al precio de contado: se guarda con «Local» en el cajero. */
+  local: boolean;
   lineas: LineaDelPos[];
   pagos: PagoDelPos[];
 };
@@ -135,7 +141,7 @@ export async function guardarVentaDelPos(v: VentaDelPos, tasa: number | null): P
   const ventaId = await crearVenta(v.cliente_id, v.fecha, lineas, v.nota, tasa, porEntregar, porEntregar ? v.entrega_prevista : null, {
     origen: "pos",
     descuento_usd: descuento,
-    cajero: v.cajero,
+    cajero: cajeroDeLaVenta(v.cajero, v.local),
     clave_pos: v.clave_pos || null,
     dias_credito: v.dias_credito,
   });

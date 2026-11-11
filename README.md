@@ -273,7 +273,7 @@ src/lib/estudio-de-clientes.ts  El estudio desde la base, para el Resumen, su pa
 src/lib/contactos.ts      «Lo llamé», «Lo visité»: los tratos anotados con cada cliente
 src/app/admin/(panel)/clientes/seguimiento/  La pantalla del estudio de clientes
 src/app/admin/(panel)/ayuda/  «Cómo se usa el panel»: la guía rápida, en el orden del día
-src/lib/pos-calculo.ts    Las cuentas de la caja: totales, descuento, cómo paga, cómo queda la cuenta del cliente y el SKU propuesto (puro, con pruebas)
+src/lib/pos-calculo.ts    Las cuentas de la caja: totales, descuento, cómo paga, cómo queda la cuenta del cliente, el precio de contado en el local y el SKU propuesto (puro, con pruebas)
 src/lib/pos.ts            La caja desde la base: el catálogo con existencias, el cliente de mostrador y el guardado de la venta con sus pagos
 src/lib/codigos.ts        Los códigos de barras y los SKU: quién tiene un código, ponerlo y quitarlo
 src/lib/factura-calculo.ts  Las cuentas de la factura: lo exento, la base imponible, el IVA, el total en Bs; el libro de ventas (puro, con pruebas)
@@ -827,6 +827,18 @@ Binance y otro.
     si no se dijo otra cosa; se cambian para esta venta y se guardan con
     ella en `ventas.dias_credito`) con la fecha en que vence. Lo que va en
     bolívares se guarda a la tasa del día de la nota, con su referencia.
+  - **Contado en el local.** Quien va al local y paga todo en el momento
+    compra al **costo más un 10 %**; a crédito o con entrega, al precio de
+    siempre (el de la lista, que es el costo más un 12 %, o el especial del
+    cliente). La casilla «Contado en el local», junto a «Cómo paga», viene
+    marcada con el mostrador; marcarla pone «Paga todo ahora» y cambia los
+    precios que no se tocaron a mano, y elegir «Paga una parte» o «Queda
+    pendiente» la quita. El costo es el de la marca, o el del tipo si se
+    vende de una sola forma (el de Productos); lo que no tiene costo va a su
+    precio de siempre, y la caja dice cuál. Si el de siempre es más bajo,
+    se queda ese. La venta se guarda con «Local» delante del cajero («Local
+    · Ana»), para que el cierre del mes separe lo del local de lo de la
+    vendedora (`precioDeContado`, `cajeroDeLaVenta`).
   - **Confirmar venta** (F8) abre una confirmación compacta (cliente,
     fecha, productos, total, pago, cómo queda su cuenta, entrega) y Enter
     guarda. Antes de abrirla se revisa en la pantalla lo mismo que

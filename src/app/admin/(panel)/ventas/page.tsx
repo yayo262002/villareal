@@ -9,6 +9,7 @@ import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
 import { ventaCoincide } from "@/lib/buscar";
 import { fechaCorta, hoy, usd } from "@/lib/dinero";
 import { catalogoDelPos, clienteDeMostrador, siguienteNumeroDeVenta } from "@/lib/pos";
+import { precioDeContado } from "@/lib/pos-calculo";
 import { preciosEspecialesPorCliente } from "@/lib/precios-especiales";
 import { lectorDisponible } from "@/lib/lector-de-notas";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
@@ -64,6 +65,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
     existencia: a.existencia,
     estado: a.estado,
     pesoTipico: a.pesoTipico?.peso ?? null,
+    precio_contado: precioDeContado(a.costo_usd),
   }));
   const paraElegir = (c: (typeof clientes)[number]): ClienteParaLaCaja => ({ id: c.id, rotulo: c.rotulo, nombre: c.nombre, telefono: c.telefono, cedula_rif: c.cedula_rif, saldo_usd: c.saldo_usd, dias_credito: c.dias_credito });
   const listaDeClientes = [paraElegir(mostrador), ...clientes.filter((c) => c.id !== mostrador.id).map(paraElegir)];
