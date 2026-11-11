@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Pizarra de precios · Villa Real</title>
+<style>
+  /* Las fuentes del proyecto (OFL) y el león, por ruta relativa: se abre desde esta carpeta. */
+  @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
+  @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
+
+  /* La pizarra de precios de la charcutería: 90 × 60 cm, apaisada, para la pared detrás del mostrador. Sustituye a la de la
+     foto de fiambres llena de cartulinas pegadas: cada producto con su nombre y su marca impresos, por secciones, y al
+     lado una casilla blanca con el «$» para escribir el precio con marcador (plastificada se borra y se vuelve a escribir;
+     el precio en dólares cambia poco, y los bolívares los da la lista del día). Todo en milímetros, al tamaño real. */
+  @page { size: 900mm 600mm; margin: 0; }
+  html, body { margin: 0; background: #888; }
+  body { font-family: "Open Sans", Arial, sans-serif; padding: 20mm; }
+
+  .pizarra {
+    --rojo: #b3231d; --rojo-oscuro: #7c0a10; --oro: #e9b13a; --crema: #fbf3e2; --crema-fila: #f3e4c6; --tinta: #1f1612; --tinta-suave: #6b5d55;
+    position: relative; box-sizing: border-box; width: 900mm; height: 600mm; overflow: hidden; background: var(--crema); color: var(--tinta);
+    display: grid; grid-template-rows: auto 1fr auto;
+  }
+
+  /* La cabecera: el león, el nombre y el título, en una franja roja con su raya dorada. */
+  .cabecera { background: var(--rojo); color: var(--crema); border-bottom: 4mm solid var(--oro); display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: 16mm; padding: 8mm 26mm 7mm; }
+  .cabecera img { width: 38mm; height: 54.5mm; display: block; }
+  .marca .charcuteria { font-family: "Archivo Black"; font-size: 12mm; letter-spacing: 0.16em; text-transform: uppercase; color: var(--oro); line-height: 1; }
+  .marca .titulo { font-family: "Archivo Black"; font-size: 34mm; line-height: 0.95; margin-top: 3mm; letter-spacing: 0.01em; }
+  .aviso { text-align: right; font-size: 9.5mm; line-height: 1.3; font-weight: 600; }
+  .aviso b { display: block; font-family: "Archivo Black"; font-weight: 400; font-size: 13mm; color: var(--oro); line-height: 1.1; }
+
+  /* Tres columnas, cada una con sus secciones. */
+  .columnas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 14mm; padding: 8mm 20mm 0; min-height: 0; }
+  .columna { display: flex; flex-direction: column; gap: calc(9mm * var(--k, 1)); min-width: 0; min-height: 0; overflow: hidden; }
+  h2 { margin: 0 0 2mm; padding-bottom: 2mm; border-bottom: 1.6mm solid var(--oro); font-family: "Archivo Black"; font-weight: 400; font-size: calc(13mm * var(--k, 1)); letter-spacing: 0.06em; text-transform: uppercase; color: var(--rojo-oscuro); line-height: 1.1; }
+  .filas { display: grid; gap: calc(2mm * var(--k, 1)); }
+  .fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 5mm; padding: calc(3mm * var(--k, 1)) 4mm; border-radius: 3.5mm; }
+  .fila:nth-child(odd) { background: var(--crema-fila); }
+  .nombre { min-width: 0; font-weight: 800; font-size: calc(14mm * var(--k, 1)); line-height: 1.05; }
+  .nombre small { display: block; margin-top: 0.8mm; font-weight: 600; font-size: calc(8.6mm * var(--k, 1)); color: var(--tinta-suave); line-height: 1.1; }
+  .nombre small b { color: var(--rojo); font-weight: 800; }
+  /* La casilla para el precio, en dólares: se escribe con marcador al lado del «$». */
+  .precio { box-sizing: border-box; width: calc(82mm * var(--k, 1)); height: calc(24mm * var(--k, 1)); display: flex; align-items: center; padding: 0 3.5mm; border: 1.2mm solid var(--rojo); border-radius: 4mm; background: #ffffff; }
+  .precio span { font-family: "Archivo Black"; font-size: calc(12mm * var(--k, 1)); color: var(--rojo-oscuro); line-height: 1; }
+
+  .pie { display: flex; justify-content: space-between; align-items: center; gap: 12mm; padding: 4mm 26mm 7mm; font-size: 9mm; font-weight: 600; color: var(--tinta-suave); }
+  .pie b { color: var(--rojo-oscuro); font-weight: 800; }
+</style>
+</head>
+<body>
+<script>
+  // Lo que vende la charcutería (la lista del detal del panel), sin lo que ya no se compra. Cada producto: [nombre, marca y
+  // presentación, unidad]. La marca va pequeña, debajo; la unidad, en rojo, dice si el precio es del kilo o de la pieza.
+  const COLUMNAS = [
+    [
+      ["Jamones y tocineta", [
+        ["Jamón de pierna", "Drago · superior", "el kilo"],
+        ["Jamón de pierna", "Magro's · superior", "el kilo"],
+        ["Jamón de espalda", "Drago", "el kilo"],
+        ["Jamón ahumado", "Drago", "el kilo"],
+        ["Jamón arepero", "Drago", "el kilo"],
+        ["Pechuga de pavo", "", "el kilo"],
+        ["Tocineta", "Drago", "el kilo"],
+        ["Tocineta", "Cumbre Fresca", "el kilo"],
+      ]],
+      ["Quesos", [
+        ["Queso amarillo tipo cheddar", "El Legado", "el kilo"],
+        ["Queso gouda", "Vallecito", "el kilo"],
+        ["Mozzarella", "", "el kilo"],
+        ["Queso paisa", "", "el kilo"],
+      ]],
+    ],
+    [
+      ["Mortadelas y salchichas", [
+        ["Mortadela extra", "Drago", "el kilo"],
+        ["Mortadela tapara", "Drago", "el kilo"],
+        ["Mortadela especial", "Punta de Monte · para rebanar", "el kilo"],
+        ["Boloña de pollo", "Alpro", "el kilo"],
+        ["Salchichas", "Alpro · a granel", "el kilo"],
+        ["Salchichas tipo cóctel", "Cumbre Fresca", "el kilo"],
+      ]],
+      ["Por paquete o bolsa", [
+        ["Mortadela especial", "Punta de Monte", "1 kg"],
+        ["Mortadela especial", "Punta de Monte", "500 g"],
+        ["Mortadela especial", "Alibal", "1 kg"],
+        ["Mortadela especial", "Alibal", "500 g"],
+        ["Salchichas calibre 17", "", "paquete de 20"],
+        ["Queso pecorino rallado", "Guaralact", "bolsa de 500 g"],
+        ["Queso pecorino rallado", "Sortilegio", "bolsa de 500 g"],
+      ]],
+    ],
+    [
+      ["Suero y crema de leche", [
+        ["Suero", "San Pedro · bolsa", "800 ml"],
+        ["Suero pasteurizado", "San Pedro", "900 ml"],
+        ["Suero cremoso", "San Pedro", "900 ml"],
+        ["Suero cremoso", "San Pedro", "400 ml"],
+        ["Suero picante", "San Pedro", "400 ml"],
+        ["Suero", "Guaralact · bolsa", "800 ml"],
+        ["Suero cremoso", "Guaralact · bolsa", "800 ml"],
+        ["Crema de leche", "San Pedro", "250 g"],
+        ["Crema de leche", "San Pedro", "500 g"],
+        ["Crema de leche", "San Pedro · bolsa", "450 g"],
+      ]],
+      ["Huevos", [
+        ["Huevos", "", "cartón de 30"],
+        ["Huevos", "", "medio cartón"],
+      ]],
+    ],
+  ];
+
+  const fila = ([nombre, marca, unidad]) => `
+    <div class="fila">
+      <div class="nombre">${nombre}<small>${marca ? `${marca} · ` : ""}<b>${unidad}</b></small></div>
+      <div class="precio"><span>$</span></div>
+    </div>`;
+  const pizarra = document.createElement("article");
+  pizarra.className = "pizarra";
+  pizarra.dataset.archivo = "pizarra-90x60";
+  pizarra.innerHTML = `
+    <header class="cabecera">
+      <img src="../public/marca/leon.svg" alt="">
+      <div class="marca"><div class="charcuteria">Charcutería Villa Real</div><div class="titulo">Lista de precios</div></div>
+      <div class="aviso"><b>Precios en dólares</b>Se paga en bolívares<br>a la tasa BCV del día</div>
+    </header>
+    <main class="columnas">
+      ${COLUMNAS.map((secciones) => `<div class="columna">${secciones.map(([titulo, productos]) => `<section><h2>${titulo}</h2><div class="filas">${productos.map(fila).join("")}</div></section>`).join("")}</div>`).join("")}
+    </main>
+    <footer class="pie"><span>¿Pieza entera? <b>Pregunte el precio al mayor.</b></span><span>Todo se rebana al momento.</span></footer>`;
+  document.body.append(pizarra);
+
+  // Que todo quepa en la pizarra: si las columnas se pasan, todo encoge un poco (la escala --k) hasta que entren.
+  window.listo = false;
+  document.fonts.ready.then(() => {
+    const caja = pizarra.querySelector(".columnas");
+    let k = 1;
+    const sobra = () => [...caja.querySelectorAll(".columna")].some((c) => c.scrollHeight > c.clientHeight + 1);
+    while (sobra() && k > 0.6) {
+      k -= 0.02;
+      pizarra.style.setProperty("--k", k.toFixed(2));
+    }
+    window.listo = true;
+  });
+</script>
+</body>
+</html>
