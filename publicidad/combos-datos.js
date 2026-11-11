@@ -16,6 +16,8 @@ const CM = {
   "mortadela-de-pollo": 20,
   "pechuga-de-pavo": 28,
   "pechuga-de-pavo-drago": 28,
+  // Guardada para combos que vendrán (la pidió el dueño el 10/11): aún no sale en ninguno.
+  "pechuga-de-pavo-ahumada": 26,
   huevos: 9,
   salchichas: 17,
   tocineta: 28,
