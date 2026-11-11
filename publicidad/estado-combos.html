@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Combos para el estado de WhatsApp · Villa Real</title>
+<style>
+  /* Las fuentes del proyecto (OFL) y el león, por ruta relativa: se abre desde esta carpeta. */
+  @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
+  @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
+  @font-face { font-family: "Kaushan Script"; src: url("fuentes/KaushanScript-Regular.ttf"); }
+
+  /* El flier de los combos para el estado de WhatsApp: una imagen de 1080 × 1920 (9:16, lo que ocupa la pantalla del
+     teléfono), con los doce combos, su foto y su precio en dólares. Los combos salen de combos-datos.js (los mismos de las
+     hojas) y los precios, de combos-precios.js, que escribe el guion de los combos con la lista del detal de ese día
+     (no va al repositorio). Va en píxeles: 1 px de aquí es 1 px de la imagen (data-ppp="96"). */
+  html, body { margin: 0; background: #888; }
+  body { font-family: "Open Sans", Arial, sans-serif; padding: 20px; }
+
+  .flier {
+    --rojo: #b3231d; --rojo-oscuro: #7c0a10; --oro: #e9b13a; --oro-claro: #f6d779; --crema: #fbf3e2; --tinta: #1f1612; --tinta-suave: #6b5d55;
+    position: relative; box-sizing: border-box; width: 1080px; height: 1920px; overflow: hidden; background: var(--crema); color: var(--tinta);
+    display: grid; grid-template-rows: auto 1fr auto;
+  }
+
+  /* La cabecera roja con el león, como las hojas. */
+  .cabecera {
+    position: relative; background: radial-gradient(ellipse 80% 120% at 30% 20%, #c8141c, #a50d14 55%, #7d080d); color: var(--crema);
+    border-bottom: 10px solid var(--oro); padding: 46px 56px 40px; display: grid; grid-template-columns: auto 1fr; column-gap: 34px; align-items: center;
+  }
+  .cabecera img { width: 150px; height: 215px; display: block; filter: drop-shadow(0 6px 10px rgba(40, 5, 0, 0.35)); }
+  .charcuteria { font-family: "Archivo Black"; font-size: 34px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--oro); line-height: 1; }
+  .titulo { font-family: "Archivo Black"; font-size: 150px; line-height: 0.92; margin-top: 10px; letter-spacing: 0.01em; text-shadow: 0 6px 0 #6a060b; }
+  .lema { font-family: "Kaushan Script", cursive; font-size: 44px; line-height: 1.1; margin-top: 12px; color: var(--crema); }
+
+  /* Los doce combos, en tres columnas. */
+  .combos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 18px; padding: 30px 30px 18px; min-height: 0; }
+  .combo {
+    position: relative; min-width: 0; min-height: 0; box-sizing: border-box; background: #ffffff; border: 3px solid #ead9b6; border-radius: 26px;
+    display: grid; grid-template-rows: minmax(0, 1fr) auto auto; padding: 14px 14px 12px; box-shadow: 0 6px 14px rgba(90, 50, 10, 0.12);
+  }
+  .numero {
+    position: absolute; top: -6px; left: -6px; z-index: 3; width: 70px; height: 70px; border-radius: 50%; background: var(--rojo); color: var(--crema);
+    display: grid; place-content: center; text-align: center; font-family: "Archivo Black"; font-size: 34px; line-height: 0.9; border: 4px solid var(--oro);
+  }
+  .numero small { display: block; font-size: 11px; letter-spacing: 0.1em; }
+  .fotos { position: relative; z-index: 1; display: flex; justify-content: center; align-items: flex-end; min-height: 0; padding-top: 8px; overflow: hidden; }
+  .fotos img { height: calc(var(--cm, 30) * var(--px-por-cm, 5.6) * 1px); width: auto; max-width: 62%; min-width: 0; object-fit: contain; object-position: center bottom; position: relative; z-index: calc(100 - var(--cm, 30)); }
+  .fotos img + img { margin-left: -18px; }
+  .combo--tres .fotos img { max-width: 44%; }
+  .combo--tres .fotos img + img { margin-left: -12px; }
+  .combo--cuatro .fotos img { max-width: 34%; }
+  .combo--cuatro .fotos img + img { margin-left: -8px; }
+  .nombre { margin-top: 8px; text-align: center; font-weight: 800; font-size: 25px; line-height: 1.08; color: var(--tinta); text-wrap: balance; }
+  .detalle { display: block; margin-top: 3px; font-weight: 600; font-size: 17px; line-height: 1.15; color: var(--tinta-suave); }
+  .precio {
+    justify-self: center; margin-top: 8px; padding: 2px 22px 4px; border-radius: 999px; background: linear-gradient(180deg, #f9dd86, #edbb49 55%, #cf961f);
+    border: 2px solid #a8740f; font-family: "Archivo Black"; font-size: 40px; line-height: 1.15; color: var(--rojo-oscuro);
+  }
+  .precio small { font-size: 26px; }
+  /* Los especiales, en rojo, como en el cartel grande. */
+  .combo--especial { background: linear-gradient(180deg, #c3161d, #8a090f); border-color: var(--oro); }
+  .combo--especial .numero { background: var(--oro); color: var(--rojo-oscuro); border-color: #ffffff; }
+  .combo--especial .fotos { background: #ffffff; border-radius: 18px; padding: 8px 6px 4px; }
+  .combo--especial .nombre { color: var(--oro-claro); }
+  .combo--especial .detalle { color: #fbe3c8; }
+  .combo--especial .precio { background: #ffffff; border-color: var(--oro); }
+  .cinta { position: absolute; top: 12px; right: -3px; z-index: 3; background: var(--oro); color: var(--rojo-oscuro); font-family: "Archivo Black"; font-size: 14px; letter-spacing: 0.14em; padding: 5px 12px 5px 14px; border-radius: 8px 0 0 8px; }
+
+  .pie { background: var(--rojo); color: var(--crema); border-top: 8px solid var(--oro); padding: 22px 40px 26px; text-align: center; }
+  .pie b { display: block; font-family: "Archivo Black"; font-weight: 400; font-size: 38px; color: var(--oro); line-height: 1.1; }
+  .pie span { display: block; margin-top: 6px; font-size: 26px; font-weight: 600; }
+</style>
+</head>
+<body>
+<script src="combos-datos.js"></script>
+<script src="combos-precios.js"></script>
+<script>
+  const PRECIOS = globalThis.COMBOS_PRECIOS ?? { precios: {} };
+  const dolares = (n) => n.toFixed(2).replace(".", ",");
+  /** El nombre corto de cada combo: los productos, o el nombre propio de los especiales. */
+  const nombreDe = (c) => (c.titulo ? c.titulo : c.productos.map(([, nombre], i) => (i === 0 ? nombre : nombre.charAt(0).toLowerCase() + nombre.slice(1))).join(" + "));
+  const detalleDe = (c) => c.detalle.replace("de cada producto", "de cada uno");
+
+  const flier = document.createElement("article");
+  flier.className = "flier";
+  flier.dataset.archivo = "estado-combos";
+  flier.dataset.ppp = "96";
+  flier.dataset.formato = "jpeg";
+  flier.dataset.solo = "imagen";
+  flier.innerHTML = `
+    <header class="cabecera">
+      <img src="../public/marca/leon.svg" alt="">
+      <div><div class="charcuteria">Charcutería Villa Real</div><div class="titulo">COMBOS</div><div class="lema">Listos para la arepa, el sándwich y la pizza</div></div>
+    </header>
+    <main class="combos">
+      ${COMBOS.map((c) => {
+        const precio = PRECIOS.precios[c.n];
+        const clases = ["combo", c.especial ? "combo--especial" : "", c.productos.length === 3 ? "combo--tres" : "", c.productos.length >= 4 ? "combo--cuatro" : ""].filter(Boolean).join(" ");
+        return `<article class="${clases}">
+          <div class="numero"><small>COMBO</small>${c.n}</div>
+          ${c.especial ? `<div class="cinta">ESPECIAL</div>` : ""}
+          <div class="fotos">${c.productos.map(([foto]) => fotoDe(foto)).join("")}</div>
+          <div class="nombre">${nombreDe(c)}<span class="detalle">${detalleDe(c)}</span></div>
+          <div class="precio">${precio ? `<small>$</small>${dolares(precio)}` : "<small>Consulte</small>"}</div>
+        </article>`;
+      }).join("")}
+    </main>
+    <footer class="pie"><b>Precios en dólares</b><span>Se paga en bolívares a la tasa BCV del día${PRECIOS.fechaCorta ? ` · Precios del ${PRECIOS.fechaCorta}` : ""}</span></footer>`;
+  document.body.append(flier);
+
+  // Que cada combo quepa en su tarjeta: si las fotos, el nombre y el precio se pasan, las fotos encogen lo justo.
+  window.listo = false;
+  Promise.all([document.fonts.ready, ...[...flier.querySelectorAll("img")].map((i) => (i.complete ? null : new Promise((r) => (i.onload = i.onerror = r))))]).then(() => {
+    for (const combo of flier.querySelectorAll(".combo")) {
+      let px = 5.6;
+      // Se pasa si alguna foto asoma por encima de su caja (las fotos se apoyan abajo y crecen hacia arriba).
+      const caja = combo.querySelector(".fotos");
+      const pasa = () => { const arriba = caja.getBoundingClientRect().top + 6; return [...caja.querySelectorAll("img")].some((i) => i.getBoundingClientRect().top < arriba); };
+      while (pasa() && px > 2) {
+        px -= 0.1;
+        combo.style.setProperty("--px-por-cm", px.toFixed(2));
+      }
+    }
+    window.listo = true;
+  });
+</script>
+</body>
+</html>

@@ -57,6 +57,8 @@ next-env.d.ts
 /publicidad/tabla-peso.pdf
 /publicidad/tabla-peso.jpg
 /publicidad/tabla-peso.png
+/publicidad/combos-precios.js
+/publicidad/estado-combos.jpg
 /publicidad/lista-precios*.pdf
 /publicidad/lista-precios*.jpg
 /publicidad/lista-mayor*.pdf
