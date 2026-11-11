@@ -53,6 +53,10 @@ next-env.d.ts
 # la lista de precios del detal de cada día (npm run lista): cambia con la tasa
 /listas/
 /publicidad/lista-precios-datos.js
+/publicidad/tabla-peso-datos.js
+/publicidad/tabla-peso.pdf
+/publicidad/tabla-peso.jpg
+/publicidad/tabla-peso.png
 /publicidad/lista-precios*.pdf
 /publicidad/lista-precios*.jpg
 /publicidad/lista-mayor*.pdf

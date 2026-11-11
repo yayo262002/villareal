@@ -50,7 +50,7 @@ npm run verificar    typecheck + lint + pruebas unitarias
 npm run build        que compila
 npm run prueba:local   la web entera con una base temporal (después de build)
 npm run prueba:web     la web publicada, solo mirando: no crea ni borra nada
-npm run lista          las listas del detal y del mayor de hoy en PDF y en pantallas JPG para el teléfono (en listas/)
+npm run lista          las listas del detal y del mayor de hoy en PDF y en pantallas JPG para el teléfono, y la hoja de la rebanadora (en listas/)
 ```
 
 La web publicada tiene los datos de verdad del negocio. Por eso
@@ -283,7 +283,7 @@ src/lib/detal-calculo.ts  Las cuentas de la lista del detal: IVA, margen, la cha
 src/lib/detal.ts          La lista del detal desde la base: listar, cargar una factura o unos costos en dólares, agregar, cambiar, esconder, quitar
 src/app/admin/(panel)/detal/  La lista del detal en el panel: cargar facturas, agregar a mano, las reglas y el enlace para la familia
 src/app/lista/            La lista del detal para la familia, con su enlace y sin clave
-scripts/lista-detal.ts    npm run lista: las listas del detal y del mayor de hoy en archivos para el teléfono (diseño en publicidad/lista-precios.html)
+scripts/lista-detal.ts    npm run lista: las listas del detal y del mayor de hoy en archivos para el teléfono (diseño en publicidad/lista-precios.html) y la hoja de la rebanadora (publicidad/tabla-peso.html)
 src/lib/precios-especiales.ts  El precio especial de un cliente para un artículo
 src/components/pos.tsx    Registrar venta, como una caja (con JavaScript: cliente con saldo, lector, carrito, pago, atajos)
 src/app/admin/(panel)/ventas/  Ventas: arriba la caja, debajo las últimas ventas; /clasica, el formulario de siempre, de respaldo
@@ -1019,9 +1019,13 @@ Binance y otro.
   de un teléfono, y en pantallas JPG de 1080 × 1920 para mandarlas como
   fotos; la de la charcutería aparte, con las columnas «Detal» y «Mayor»
   (`lista-charcuteria-…`); y, si algo tiene precio al mayor, la del mayor
-  (`lista-al-mayor-…`, en verde). Solo lee la base y usa las mismas cuentas
-  que el panel; como los bolívares cambian con la tasa, el archivo vale
-  para ese día.
+  (`lista-al-mayor-…`, en verde). Y **la hoja de la rebanadora**
+  (`tabla-por-peso-…`, carta, para imprimir cada mañana y ponerla al lado
+  de la rebanadora): cada producto de la charcutería que se vende por kilo
+  con su precio al detal en bolívares en 100 g, 200 g, 250 g, 300 g, 500 g
+  y 1 kg, cada peso subido de 5 en 5. Solo lee la base y usa las mismas
+  cuentas que el panel; como los bolívares cambian con la tasa, el archivo
+  vale para ese día.
 
 ## Proveedores
 

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Precios por peso · Villa Real</title>
+<style>
+  /* Open Sans (OFL, en fuentes/), como las hojas de los combos y la lista del teléfono. */
+  @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
+
+  /* La hoja de la rebanadora: lo que se vende por kilo, con su precio en bolívares para los pesos de siempre (100 g,
+     200 g, el cuarto, 300 g, el medio y el kilo), a la tasa del día. Se imprime cada mañana en carta y se pone al lado
+     de la rebanadora. Los datos los escribe `npm run lista` en tabla-peso-datos.js (no va al repositorio: cambia cada día). */
+  @page { size: 216mm 279mm; margin: 0; }
+  html, body { margin: 0; background: #888; }
+  body { font-family: "Open Sans", Arial, sans-serif; padding: 20mm; }
+
+  .hoja {
+    --rojo: #b3231d; --rojo-oscuro: #7c0a10; --oro: #e9b13a; --crema: #fbf3e2; --crema-fila: #f3e5c9; --tinta: #1f1612; --tinta-suave: #6b5d55;
+    box-sizing: border-box; width: 216mm; height: 279mm; background: var(--crema); color: var(--tinta);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .cabecera { background: var(--rojo); color: var(--crema); border-bottom: 1.6mm solid var(--oro); padding: 6mm 10mm 5mm; display: grid; grid-template-columns: auto 1fr auto; column-gap: 6mm; align-items: center; }
+  .cabecera img { width: 15mm; height: 21.5mm; display: block; }
+  .antetitulo { font-weight: 800; font-size: 3.4mm; letter-spacing: 0.14em; text-transform: uppercase; color: var(--oro); }
+  h1 { margin: 0.6mm 0 0; font-weight: 800; font-size: 9mm; line-height: 1.05; }
+  .dia { text-align: right; font-size: 4mm; line-height: 1.35; font-weight: 600; }
+  .dia .fecha { text-transform: capitalize; }
+  .dia b { color: var(--oro); font-weight: 800; font-size: 5.2mm; }
+
+  .tabla { flex: 1; padding: 4mm 8mm 0; display: flex; flex-direction: column; min-height: 0; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  th { font-size: 3.6mm; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--rojo-oscuro); text-align: right; padding: 1.5mm 2mm 2mm; border-bottom: 0.8mm solid var(--oro); white-space: nowrap; }
+  th:first-child { text-align: left; }
+  th small { display: block; font-size: 2.8mm; font-weight: 700; letter-spacing: 0.04em; color: var(--tinta-suave); }
+  td { padding: 0 2mm; height: var(--alto-fila, 9.5mm); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tbody tr:nth-child(even) td { background: var(--crema-fila); }
+  td:first-child { text-align: left; white-space: normal; line-height: 1.1; border-radius: 1.5mm 0 0 1.5mm; }
+  td:last-child { border-radius: 0 1.5mm 1.5mm 0; }
+  .producto { font-size: var(--letra-nombre, 3.9mm); font-weight: 700; }
+  .kilo-usd { display: block; font-size: 2.9mm; font-weight: 600; color: var(--tinta-suave); }
+  .bs { font-size: var(--letra-precio, 4.3mm); font-weight: 800; color: var(--rojo-oscuro); }
+  /* El cuarto, el medio y el kilo, los que más se piden, un poco más marcados. */
+  .marcada { background-image: linear-gradient(rgba(233, 177, 58, 0.16), rgba(233, 177, 58, 0.16)); }
+
+  .nota { padding: 3mm 10mm 5mm; font-size: 3.1mm; line-height: 1.4; color: var(--tinta-suave); }
+</style>
+</head>
+<body>
+<script src="tabla-peso-datos.js"></script>
+<script>
+  const T = globalThis.TABLA_PESO;
+  const miles = (n) => n.toLocaleString("es-VE", { maximumFractionDigits: 0 });
+  const dolares = (n) => n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const tasa = T.tasa ? T.tasa.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
+  const nombreDelPeso = (g) => (g === 1000 ? "1 kg" : `${g} g`);
+  const apodo = { 250: "el cuarto", 500: "el medio", 1000: "el kilo" };
+  const marcadas = new Set([250, 500, 1000]);
+
+  const hoja = document.createElement("article");
+  hoja.className = "hoja";
+  hoja.dataset.archivo = "tabla-peso";
+  hoja.dataset.ppp = "200";
+  hoja.dataset.formato = "jpeg";
+  hoja.innerHTML = `
+    <header class="cabecera">
+      <img src="../public/marca/leon.svg" alt="">
+      <div><div class="antetitulo">Charcutería Villa Real</div><h1>Precios por peso</h1></div>
+      <div class="dia"><div class="fecha">${T.fechaLarga}</div>${tasa ? `<div>Tasa BCV <b>${tasa}</b></div>` : "<div>Sin tasa del día</div>"}</div>
+    </header>
+    <section class="tabla">
+      <table>
+        <colgroup><col style="width: 31%">${T.pesos.map(() => `<col>`).join("")}</colgroup>
+        <thead><tr><th>Producto</th>${T.pesos.map((g) => `<th class="${marcadas.has(g) ? "marcada" : ""}">${nombreDelPeso(g)}${apodo[g] ? `<small>${apodo[g]}</small>` : "<small>&nbsp;</small>"}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${T.filas
+            .map(
+              (f) => `<tr><td><span class="producto">${f.nombre}</span><span class="kilo-usd">$${dolares(f.usdKg)} el kilo</span></td>${f.bs
+                .map((bs, i) => `<td class="${marcadas.has(T.pesos[i]) ? "marcada" : ""}"><span class="bs">${bs === null ? "—" : miles(bs)}</span></td>`)
+                .join("")}</tr>`,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </section>
+    <p class="nota">Precios al detal en bolívares, a la tasa del BCV de este día, subidos de ${T.redondeo} en ${T.redondeo}. Sirve solo para hoy: se imprime cada mañana. Un peso que no está: el del kilo por los gramos (350 g = el kilo × 0,35).</p>`;
+  document.body.append(hoja);
+
+  // Que quepan todas las filas en la hoja: con muchas, las filas y las letras encogen lo justo.
+  window.listo = false;
+  document.fonts.ready.then(() => {
+    const caja = hoja.querySelector(".tabla");
+    const tabla = hoja.querySelector("table");
+    let alto = 9.5, nombre = 3.9, precio = 4.3;
+    const poner = () => {
+      hoja.style.setProperty("--alto-fila", `${alto}mm`);
+      hoja.style.setProperty("--letra-nombre", `${nombre}mm`);
+      hoja.style.setProperty("--letra-precio", `${precio}mm`);
+    };
+    poner();
+    while (tabla.getBoundingClientRect().height > caja.getBoundingClientRect().height - 2 && alto > 5) {
+      alto -= 0.25;
+      nombre = Math.max(2.8, nombre - 0.08);
+      precio = Math.max(3.2, precio - 0.09);
+      poner();
+    }
+    window.listo = true;
+  });
+</script>
+</body>
+</html>

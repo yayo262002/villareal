@@ -26,6 +26,8 @@ import { diaDeLaSemana, fechaCorta, hoy } from "../src/lib/dinero.ts";
  *   lista-de-precios-AAAA-MM-DD-1.jpg…   la misma en pantallas, para mandarla como fotos
  *   lista-charcuteria-AAAA-MM-DD.pdf, -1.jpg…  la charcutería aparte, cada producto con su precio al detal y al mayor
  *   lista-al-mayor-AAAA-MM-DD.pdf, -1.jpg…  la del mayor (lo que tiene precio al mayor: la charcutería)
+ *   tabla-por-peso-AAAA-MM-DD.pdf, .jpg   la hoja de la rebanadora: lo que se vende por kilo, en bolívares por peso
+ *                                         (100 g, 200 g, el cuarto, 300 g, el medio y el kilo), en carta para imprimir
  *
  * Solo lee la base. Hace falta Chrome (lo usa publicidad/generar.mjs).
  */
@@ -117,6 +119,31 @@ for (const lista of listas) {
     hechos.push(destino);
   }
 }
+// La hoja de la rebanadora: la charcutería que se vende por kilo, con su precio al detal en bolívares para los pesos de
+// siempre. Cada peso se pasa a bolívares por su cuenta (el kilo por los gramos) y se sube de 5 en 5, como lo demás.
+const PESOS = [100, 200, 250, 300, 500, 1000];
+const porKilo = filas
+  .filter((f) => f.categoria === "charcuteria" && f.unidad === "kg")
+  .map((f) => ({ nombre: f.nombre, usdKg: precioDetalUsd(f, reglas) }))
+  .filter((f): f is { nombre: string; usdKg: number } => f.usdKg !== null)
+  .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
+  .map((f) => ({ ...f, bs: PESOS.map((g) => enBolivares((f.usdKg * g) / 1000, tasa, reglas.redondeo_bs)) }));
+if (porKilo.length > 0) {
+  fs.writeFileSync(
+    path.join(carpetaPublicidad, "tabla-peso-datos.js"),
+    `// Lo escribe npm run lista (scripts/lista-detal.ts). No va al repositorio.\nglobalThis.TABLA_PESO = ${JSON.stringify({ ...comun, pesos: PESOS, filas: porKilo }, null, 1)};\n`,
+  );
+  const TABLA = /^tabla-peso\.(pdf|jpg|png)$/;
+  for (const viejo of fs.readdirSync(carpetaPublicidad).filter((f) => TABLA.test(f))) fs.rmSync(path.join(carpetaPublicidad, viejo));
+  const tabla = spawnSync(process.execPath, [path.join(carpetaPublicidad, "generar.mjs"), "tabla-peso"], { stdio: "inherit" });
+  if (tabla.status !== 0) throw new Error("No se pudo dibujar la hoja de la rebanadora.");
+  for (const archivo of fs.readdirSync(carpetaPublicidad).filter((f) => TABLA.test(f) && !f.endsWith(".png"))) {
+    const destino = archivo.replace("tabla-peso", `tabla-por-peso-${dia}`);
+    fs.renameSync(path.join(carpetaPublicidad, archivo), path.join(carpetaListas, destino));
+    hechos.push(destino);
+  }
+}
+
 console.log(
   `\n${contar(detal.grupos)} productos al detal${deCharcuteria.length > 0 ? `, ${deCharcuteria.length} de charcutería` : ""}${listas.includes(mayor) ? ` y ${contar(mayor.grupos)} al mayor` : ""} a la tasa ${tasa ?? "(sin tasa)"} en ${carpetaListas}:\n  ${hechos.join("\n  ")}`,
 );
