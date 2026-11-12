@@ -26,6 +26,19 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- Quien compró con factura sin ser de la cartera (en el mostrador): su
+  -- cédula o RIF, como va en la factura, y su nombre, para que la caja lo
+  -- reconozca la próxima vez y no haya que escribirlo otra vez. La clave es
+  -- la letra y el número sin el dígito del RIF (documento.ts): la cédula y
+  -- el RIF de la misma persona son el mismo comprador.
+  create table if not exists compradores (
+    clave text primary key,
+    documento text not null,
+    nombre text not null default '',
+    creado_en text not null default (datetime('now')),
+    actualizado_en text not null default (datetime('now'))
+  );
+
   -- A quién le compra el negocio (el que le vende los quesos) y cuánto le
   -- debe: cada compra suma y cada pago que se le hace resta, como con los
   -- clientes pero al revés. Los días de crédito son los que da el proveedor.
@@ -569,6 +582,7 @@ export const ESQUEMA = `
 /** Las tablas en orden de dependencias, para copiar o restaurar en orden. */
 export const TABLAS = [
   "clientes",
+  "compradores",
   "marcas",
   "familias",
   "fotos_familias",

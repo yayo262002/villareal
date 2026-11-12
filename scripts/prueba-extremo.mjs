@@ -2541,9 +2541,16 @@ async function probarFacturas() {
   const facturaDe = (destino) => Number(destino.match(/\/admin\/facturas\/(\d+)/)?.[1]);
   const ventaDe = (destino) => Number(destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
 
-  // En la caja, «Emitir factura» con el mostrador no vale; con un cliente con RIF, sale la factura con su ticket.
+  // En la caja, «Emitir factura» en el mostrador pide la cédula y el nombre de quien compra; con un cliente con RIF, sale la factura con su ticket.
+  const ventasAntes = Number((await consultar("select count(*) as n from ventas"))[0].n);
   r = await mandar({ cliente_id: mostrador.id, clave_pos: clave + "-m", lineas: [{ clave: "3", producto_id: 3, variante_id: null, nombre: "Huevos", unidad: "carton", cantidad: 1, precio_usd: 6.25, piezas: null }], pagos: [{ metodo: "efectivo_usd", monto_usd: 6.25 }] });
-  comprobar("una venta de mostrador no se factura: la caja lo dice y no guarda nada", r.destino.includes("mostrador no se factura"), r.destino);
+  comprobar(
+    "facturar en el mostrador sin la cédula y el nombre de quien compra: la caja los pide y no guarda nada",
+    r.destino.includes("cédula (o el RIF) y el nombre de quien compra") && Number((await consultar("select count(*) as n from ventas"))[0].n) === ventasAntes,
+    r.destino,
+  );
+  r = await mandar({ cliente_id: mostrador.id, clave_pos: clave + "-m", comprador: { documento: "J-40806430", nombre: "Alguien" }, lineas: [{ clave: "3", producto_id: 3, variante_id: null, nombre: "Huevos", unidad: "carton", cantidad: 1, precio_usd: 6.25, piezas: null }], pagos: [{ metodo: "efectivo_usd", monto_usd: 6.25 }] });
+  comprobar("un RIF sin su último número no vale: la caja lo dice", r.destino.includes("le falta el último número"), r.destino);
   r = await mandar({});
   const facturaId = facturaDe(r.destino);
   const [factura] = facturaId ? await consultar("select * from facturas where id = ?", [facturaId]) : [null];
@@ -2613,14 +2620,52 @@ async function probarFacturas() {
   comprobar("la segunda nota de crédito sigue su propia numeración", r.destino.includes("nota de crédito N.º 000002"), r.destino);
   comprobar("los ajustes ya no dejan cambiar desde qué número se numera", (await enviar("/admin/facturas", 'name="iva_pct"', { iva_pct: "16", facturas_desde: "5" })).destino.includes("numeración sigue sola"));
 
-  // Sin cédula ni RIF no hay factura: la nota manda a la ficha del cliente.
-  r = ventaMostrador ? await enviar(`/admin/ventas/${ventaMostrador}/nota`, 'name="venta_id"', { venta_id: String(ventaMostrador), volver_a: "", formato: "" }, cookie, {}, ">Facturar<") : { destino: "" };
-  comprobar("facturar a quien no tiene cédula ni RIF manda a su ficha a ponerlo", r.destino.startsWith(`/admin/clientes/${mostrador.id}?error=`) && r.destino.includes("cédula o el RIF"), r.destino);
+  // En el mostrador, la nota pide la cédula y el nombre de quien compra; sin ellos no hay factura.
+  const facturarNota = (id, campos) => enviar(`/admin/ventas/${id}/nota`, 'name="venta_id"', { venta_id: String(id), volver_a: "", formato: "", ...campos }, cookie, {}, ">Facturar<");
+  comprobar("la nota de una venta de mostrador pide la cédula y el nombre para facturar", Boolean(ventaMostrador) && (await pagina(`/admin/ventas/${ventaMostrador}/nota`)).html.includes('name="nombre_comprador"'));
+  r = ventaMostrador ? await facturarNota(ventaMostrador, { documento: "", nombre_comprador: "" }) : { destino: "" };
+  comprobar("facturar en el mostrador sin la cédula y el nombre no emite nada y lo dice", r.destino.startsWith(`/admin/ventas/${ventaMostrador}/nota?error=`) && r.destino.includes("nombre de quien compra"), r.destino);
+  r = ventaMostrador ? await facturarNota(ventaMostrador, { documento: "v-12.345.678", nombre_comprador: "  Ana   Pérez " }) : { destino: "" };
+  const facturaMostrador = facturaDe(r.destino);
+  const [deMostrador] = facturaMostrador ? await consultar("select cliente from facturas where id = ?", [facturaMostrador]) : [null];
+  const compradorEnFactura = deMostrador ? JSON.parse(deMostrador.cliente) : {};
+  comprobar(
+    "con la cédula y el nombre, la factura del mostrador sale a nombre de quien compra, con su cédula como va en la factura",
+    r.destino.includes("Factura N.º 000102 emitida") && compradorEnFactura.nombre === "Ana Pérez" && compradorEnFactura.cedula_rif === "V-12345678",
+    `${r.destino} ${JSON.stringify(compradorEnFactura)}`,
+  );
+  comprobar(
+    "quien compró con factura queda guardado, y la caja lo reconoce por su cédula",
+    (await consultar("select nombre from compradores where clave = 'V-12345678'"))[0]?.nombre === "Ana Pérez" && (await pagina("/admin/ventas")).html.includes("Ana Pérez"),
+  );
 
-  // Se limpia: las ventas de prueba se borran (ya sin factura vigente) y las existencias vuelven.
-  for (const id of [ventaId, ventaMostrador]) if (id) await enviar(`/admin/ventas/${id}/eliminar`, 'name="id"', { id: String(id) });
-  comprobar("las ventas de la prueba se borran al terminar", (await consultar("select count(*) as n from ventas where id in (?, ?)", [ventaId, ventaMostrador || 0]))[0].n === 0);
+  // En la caja: el mostrador, entregado en el momento sin foto de nota, con la cédula de alguien que ya compró y su factura.
+  r = await mandar({
+    cliente_id: mostrador.id,
+    clave_pos: clave + "-c",
+    entrega: "ahora",
+    entrega_prevista: "",
+    // Es igual a la venta de mostrador de arriba (los mismos huevos): la caja preguntaría si es repetida.
+    confirmar: true,
+    comprador: { documento: "12345678", nombre: "Ana Pérez" },
+    lineas: [{ clave: "3", producto_id: 3, variante_id: null, nombre: "Huevos", unidad: "carton", cantidad: 1, precio_usd: 6.25, piezas: null }],
+    pagos: [{ metodo: "efectivo_usd", monto_usd: 6.25 }],
+  });
+  const facturaCaja = facturaDe(r.destino);
+  const [deCaja] = facturaCaja ? await consultar("select cliente, venta_id from facturas where id = ?", [facturaCaja]) : [null];
+  comprobar(
+    "en el mostrador se vende y se factura en la caja sin foto de nota (paga y se lo lleva), a nombre de quien compra",
+    r.destino.includes("Entregada en el mostrador") && r.destino.includes("Factura N.º 000103 emitida") && JSON.parse(deCaja?.cliente ?? "{}").cedula_rif === "V-12345678",
+    r.destino,
+  );
+  const ventaCaja = deCaja ? Number(deCaja.venta_id) : 0;
+
+  // Se limpia: las facturas de prueba se anulan, las ventas se borran (ya sin factura vigente) y las existencias vuelven.
+  for (const f of [facturaMostrador, facturaCaja]) if (f) await enviar(`/admin/facturas/${f}/anular`, 'name="motivo"', { id: String(f), motivo: "Prueba automática" });
+  for (const id of [ventaId, ventaMostrador, ventaCaja]) if (id) await enviar(`/admin/ventas/${id}/eliminar`, 'name="id"', { id: String(id) });
+  comprobar("las ventas de la prueba se borran al terminar", (await consultar("select count(*) as n from ventas where id in (?, ?, ?)", [ventaId, ventaMostrador || 0, ventaCaja || 0]))[0].n === 0);
   escribirEnLocal("update clientes set cedula_rif = '' where id = ?", [cliente.id]);
+  escribirEnLocal("delete from compradores where clave = 'V-12345678'");
 }
 
 async function probarListaDetal() {

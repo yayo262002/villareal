@@ -6,6 +6,9 @@ import { buscarCliente } from "./clientes";
 import { rotuloDe } from "./rotulo";
 import { alicuotaIva, leerTasa, numeracionDeFacturasDesde } from "./ajustes";
 import { horaDeLaBase, hoy } from "./dinero";
+import { esMostrador } from "./pos";
+import { guardarComprador, limpiarNombreDeComprador } from "./compradores";
+import { leerDocumento, problemaDelDocumento } from "./documento";
 import {
   avisoDePeriodo,
   calcularFactura,
@@ -198,21 +201,50 @@ export class FaltaElRif extends Error {
   }
 }
 
+/** Lo que se escribió en la caja o en la nota sobre quien compra: la cédula o el RIF y, en el mostrador, el nombre. */
+export type CompradorEscrito = { documento?: string; nombre?: string };
+
+/** Por qué falta algo para facturarle a quien compra en el mostrador. */
+export const FALTA_EL_COMPRADOR = "Para facturar una venta de mostrador escribe la cédula (o el RIF) y el nombre de quien compra.";
+
 /**
  * Emite la factura de una venta: calcula el IVA con lo que hay hoy (la
  * alícuota, el tipo de IVA de cada producto, la tasa del día) y la guarda
  * con su número. Una venta con una factura vigente no se factura otra vez.
+ *
+ * A quién se le factura: al cliente de la venta, con la cédula o el RIF de
+ * su ficha. Si es el mostrador, a quien compra, con la cédula y el nombre
+ * que se escribieron (y se guarda, para reconocerlo la próxima vez). Si es
+ * un cliente de la cartera sin cédula y se escribió una, se le pone en su
+ * ficha. La providencia no deja facturar sin, como mínimo, la cédula.
  */
-export async function emitirFacturaDeVenta(ventaId: number): Promise<{ id: number; numero: number; aviso: string | null }> {
+export async function emitirFacturaDeVenta(ventaId: number, comprador: CompradorEscrito = {}): Promise<{ id: number; numero: number; aviso: string | null }> {
   const venta = await buscarVenta(ventaId);
   if (!venta) throw new Error("No se encontró la venta.");
   const yaTiene = await facturaVigenteDeVenta(ventaId);
   if (yaTiene) throw new Error(`Esta venta ya tiene la factura N.º ${numeroDeFactura(yaTiene.numero)}. Para hacerle otra, anula esa primero con una nota de crédito.`);
   const cliente = await buscarCliente(venta.cliente_id);
   if (!cliente) throw new Error("No se encontró el cliente de la venta.");
-  if (!cliente.cedula_rif.trim())
-    throw new FaltaElRif(cliente.id, `Para facturar hace falta la cédula o el RIF de ${rotuloDe(cliente)}: ponlo en su ficha y vuelve a pulsar «Facturar».`);
   if (venta.lineas.length === 0) throw new Error("La venta no tiene productos.");
+  const documento = leerDocumento(comprador.documento ?? "");
+  if ((comprador.documento ?? "").trim() && !documento) throw new Error(problemaDelDocumento(comprador.documento ?? ""));
+
+  let clienteFacturado: ClienteFacturado;
+  if (esMostrador(cliente)) {
+    const nombre = limpiarNombreDeComprador(comprador.nombre ?? "");
+    if (!documento || !nombre) throw new Error(FALTA_EL_COMPRADOR);
+    await guardarComprador(documento, nombre);
+    clienteFacturado = { nombre, razon_social: "", cedula_rif: documento.texto, direccion: "", telefono: "" };
+  } else {
+    let cedula = cliente.cedula_rif.trim();
+    if (!cedula && documento) {
+      // Un cliente de la cartera sin cédula: la que se escribió al facturarle queda en su ficha.
+      await ejecutar("update clientes set cedula_rif = ? where id = ? and trim(cedula_rif) = ''", [documento.texto, cliente.id]);
+      cedula = documento.texto;
+    }
+    if (!cedula) throw new FaltaElRif(cliente.id, `Para facturar hace falta la cédula o el RIF de ${rotuloDe(cliente)}: ponlo en su ficha y vuelve a pulsar «Facturar».`);
+    clienteFacturado = { nombre: cliente.nombre, razon_social: cliente.razon_social, cedula_rif: cedula, direccion: cliente.direccion, telefono: cliente.telefono };
+  }
 
   const [tipos, ivaPct, tasaDeHoy] = await Promise.all([ivaDeProductos(venta.lineas.map((l) => l.producto_id)), alicuotaIva(), leerTasa()]);
   const lineas: LineaParaFacturar[] = venta.lineas.map((l) => ({
@@ -232,13 +264,6 @@ export async function emitirFacturaDeVenta(ventaId: number): Promise<{ id: numbe
   });
   const fecha = hoy();
   const hora = horaDeLaBase(new Date().toISOString());
-  const clienteFacturado: ClienteFacturado = {
-    nombre: cliente.nombre,
-    razon_social: cliente.razon_social,
-    cedula_rif: cliente.cedula_rif.trim(),
-    direccion: cliente.direccion,
-    telefono: cliente.telefono,
-  };
 
   // El número se toma al guardar; si dos facturas se emiten a la vez, el índice único hace repetir a la segunda.
   for (let intento = 0; intento < 3; intento++) {

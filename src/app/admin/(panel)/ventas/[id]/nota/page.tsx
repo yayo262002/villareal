@@ -8,6 +8,8 @@ import { NOMBRE_ESTADO, aplicarPagos } from "@/lib/cuentas";
 import { sumarDias } from "@/lib/credito";
 import { cambiarEntrega, emitirFactura, subirAdjunto } from "@/lib/acciones";
 import { facturaVigenteDeVenta } from "@/lib/facturas";
+import { esMostrador } from "@/lib/pos";
+import { rotuloDe } from "@/lib/rotulo";
 import { numeroDeFactura } from "@/lib/factura-calculo";
 import { adjuntosDeVenta } from "@/lib/adjuntos";
 import { pagosDeVenta } from "@/lib/pagos";
@@ -81,16 +83,43 @@ export default async function PaginaNota({ params, searchParams }: Parametros) {
     }),
   );
 
-  // La factura de esta venta, o el botón para emitirla (a la ficha del cliente si le falta el RIF).
+  // La factura de esta venta, o el botón para emitirla. En el mostrador (o a un cliente sin cédula en su ficha) se abre
+  // ahí mismo para escribir la cédula de quien compra y, en el mostrador, su nombre: sin ellos no hay factura.
+  const deMostrador = esMostrador(cliente);
+  const pideComprador = deMostrador || !cliente.cedula_rif.trim();
+  const camposFactura = (
+    <>
+      <input type="hidden" name="venta_id" value={venta.id} />
+      <input type="hidden" name="volver_a" value={`/admin/ventas/${venta.id}/nota${formatoTicket ? "?formato=ticket" : ""}`} />
+      <input type="hidden" name="formato" value={formatoTicket ? "ticket" : ""} />
+    </>
+  );
   const botonFactura = factura ? (
     <Link href={`/admin/facturas/${factura.id}${formatoTicket ? "?formato=ticket" : ""}`} className="boton boton--secundario">
       Factura N.º {numeroDeFactura(factura.numero)}
     </Link>
+  ) : pideComprador ? (
+    <details className={estilos.facturarConCedula}>
+      <summary className="boton boton--secundario">Facturar…</summary>
+      <form action={emitirFactura} className={estilos.formularioCorto}>
+        {camposFactura}
+        <label htmlFor="factura-documento">{deMostrador ? "Cédula o RIF de quien compra" : `Cédula o RIF de ${rotuloDe(cliente)}`}</label>
+        <input id="factura-documento" name="documento" required autoComplete="off" placeholder="12345678 o J-12345678-9" />
+        {deMostrador && (
+          <>
+            <label htmlFor="factura-nombre">Nombre y apellido, o razón social</label>
+            <input id="factura-nombre" name="nombre_comprador" required autoComplete="off" />
+          </>
+        )}
+        <span className="ayuda">{deMostrador ? "Se guarda: la próxima vez la caja lo reconoce por su cédula." : "Queda guardada en su ficha."}</span>
+        <button type="submit" className="boton" title="Emite la factura fiscal de esta venta, con su IVA">
+          Facturar
+        </button>
+      </form>
+    </details>
   ) : (
     <form action={emitirFactura} style={{ display: "contents" }}>
-      <input type="hidden" name="venta_id" value={venta.id} />
-      <input type="hidden" name="volver_a" value={`/admin/ventas/${venta.id}/nota${formatoTicket ? "?formato=ticket" : ""}`} />
-      <input type="hidden" name="formato" value={formatoTicket ? "ticket" : ""} />
+      {camposFactura}
       <button type="submit" className="boton boton--secundario" title="Emite la factura fiscal de esta venta, con su IVA">
         Facturar
       </button>

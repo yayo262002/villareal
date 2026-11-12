@@ -277,6 +277,8 @@ src/lib/pos-calculo.ts    Las cuentas de la caja: totales, descuento, cómo paga
 src/lib/pos.ts            La caja desde la base: el catálogo con existencias, el cliente de mostrador y el guardado de la venta con sus pagos
 src/lib/codigos.ts        Los códigos de barras y los SKU: quién tiene un código, ponerlo y quitarlo
 src/lib/factura-calculo.ts  Las cuentas de la factura: lo exento, la base imponible, el IVA, el total en Bs; el libro de ventas (puro, con pruebas)
+src/lib/documento.ts      Leer una cédula o un RIF escrito de cualquier forma, como va en la factura (puro, con pruebas)
+src/lib/compradores.ts    Quien compró con factura en el mostrador, para reconocerlo por su cédula
 src/lib/facturas.ts       Las facturas y las notas de crédito desde la base: emitir, numerar, el número de control, anular, listar
 src/app/admin/(panel)/facturas/  Facturas: la lista del mes, los ajustes, cada factura (carta y ticket), anular, y el libro de ventas para Excel
 src/lib/detal-calculo.ts  Las cuentas de la lista del detal: IVA, margen, la charcutería (entre 0,80 y más un 10 % al mayor), dólares subidos al centavo, bolívares subidos de 5 en 5; las reglas guardadas; leer las líneas de una factura y una lista de costos en dólares (puro, con pruebas)
@@ -845,7 +847,8 @@ Binance y otro.
     revisará el servidor (`revisarVentaPos`), así el aviso es inmediato.
   - **Debajo del carrito**: **Entrega**, a la vista y **sin opción por
     defecto**: «Ya entregada», que **exige la foto de la nota firmada**
-    (se lee y se coteja como siempre), o «Queda por entregar el» con su
+    (se lee y se coteja como siempre; en el mostrador no, porque quien
+    compra ahí paga y se lo lleva en el momento), o «Queda por entregar el» con su
     fecha, que se cambia ahí mismo, entra en el despacho y el Resumen la
     recuerda ese día («Entregas pendientes»). Sin elegir una, o entregada
     sin foto, no se guarda. Plegados, **Observación y cajero**.
@@ -916,10 +919,21 @@ Binance y otro.
 - **Cómo se emite.** En la caja, marcando **«Emitir factura fiscal»**
   antes de confirmar: la venta se guarda como siempre y sale la factura
   (en ticket si se cobró algo, en carta si quedó pendiente). O después,
-  desde la nota de entrega, con **«Facturar»**. El cliente necesita
-  **cédula o RIF** en su ficha; si le falta, el panel lleva a ponerlo. El
-  mostrador no se factura: hay que elegir al cliente. Una venta con
-  factura vigente no se factura dos veces.
+  desde la nota de entrega, con **«Facturar»**. Una venta con factura
+  vigente no se factura dos veces.
+- **A quién: como mínimo, su cédula.** La providencia (art. 8, num. 6)
+  pide el nombre y el RIF de quien compra; a una persona que no necesita
+  la factura para sus impuestos le basta la cédula. No hay excepción por
+  monto: dos lonchas también llevan cédula. Un cliente de la cartera
+  factura con la cédula o el RIF de su ficha; si no la tiene, se escribe
+  junto a «Emitir factura» (o en «Facturar…», en la nota) y queda en su
+  ficha. **En el mostrador** se escriben la cédula (o el RIF) y el nombre
+  de quien compra: la factura sale a su nombre, sin crear un cliente, y
+  queda guardado (tabla `compradores`, `src/lib/compradores.ts`): la
+  próxima vez, al escribir su cédula el nombre sale solo. La cédula se
+  escribe como venga («12.345.678», «v12345678», «J408064308») y va en la
+  factura como «V-12345678» o «J-40806430-8»; un RIF sin su último número
+  no vale (`leerDocumento` en `src/lib/documento.ts`, con pruebas).
 - **Lo que lleva** (artículos 8 y 9 de la providencia): «Factura», el
   número correlativo (`facturas.numero`, seis cifras, desde el que diga
   el ajuste «numerar desde» si ya se facturaba en papel), el **número de

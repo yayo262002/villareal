@@ -212,6 +212,32 @@
   min-height: 40px;
   text-align: right;
 }
+/* La cédula y el nombre de quien compra, para la factura. */
+.comprador {
+  display: grid;
+  gap: var(--espacio-1);
+  padding: var(--espacio-2) var(--espacio-3) var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+.comprador label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: var(--espacio-1);
+}
+.comprador input {
+  min-height: 44px;
+  padding: 0 var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  font: inherit;
+  font-size: 16px;
+}
+.compradorMal {
+  font-size: 14px;
+  color: var(--color-error);
+}
 .opcionConFecha {
   display: inline-flex;
   flex-wrap: wrap;

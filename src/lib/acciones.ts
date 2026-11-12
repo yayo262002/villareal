@@ -130,7 +130,9 @@ import { anotarContacto, esTipoDeContacto, TIPOS_DE_CONTACTO } from "./contactos
 import { duenoDelCodigo, limpiarCodigo, limpiarSku, ponerCodigoAProducto, ponerCodigoAVariante } from "./codigos";
 import { guardarPrecioEspecial, listarPreciosEspecialesDe, quitarPrecioEspecial } from "./precios-especiales";
 import { catalogoDelPos, esMostrador, guardarVentaDelPos, type VentaDelPos } from "./pos";
-import { FaltaElRif, anularConNotaDeCredito, buscarFactura, contarFacturas, emitirFacturaDeVenta, facturaVigenteDeVenta, ponerNumeroDeControl } from "./facturas";
+import { FALTA_EL_COMPRADOR, FaltaElRif, anularConNotaDeCredito, buscarFactura, contarFacturas, emitirFacturaDeVenta, facturaVigenteDeVenta, ponerNumeroDeControl } from "./facturas";
+import { limpiarNombreDeComprador } from "./compradores";
+import { leerDocumento, problemaDelDocumento } from "./documento";
 import { esTipoIva, numeroDeFactura } from "./factura-calculo";
 import { revisarVentaPos, totalesDe } from "./pos-calculo";
 import { permitirStockNegativo, ponerPermitirStockNegativo } from "./ajustes";
@@ -2206,6 +2208,10 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     confirmar: cruda.confirmar === true,
     confirmar_nota: cruda.confirmar_nota === true,
     facturar: cruda.facturar === true,
+    comprador: {
+      documento: String(cruda.comprador?.documento ?? "").slice(0, 30),
+      nombre: limpiarNombreDeComprador(String(cruda.comprador?.nombre ?? "")),
+    },
     local: cruda.local === true,
     lineas: (Array.isArray(cruda.lineas) ? cruda.lineas : []).map((l) => ({
       clave: String(l.clave ?? ""),
@@ -2326,7 +2332,8 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
   } else if (fotoMala) {
     volver(fotoMala);
   } else if (!foto) {
-    volver(SIN_FOTO);
+    // En el mostrador se paga y se lleva en el momento: no hay nota firmada que fotografiar.
+    if (!mostrador) volver(SIN_FOTO);
   } else {
     lectura = await leerLaNota(foto, catalogo);
     const anotadas = venta.lineas.map((l) => ({
@@ -2342,10 +2349,15 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     if (reparos.length > 0 && !venta.confirmar_nota) volver(avisoDeLaNota(reparos, "confirma otra vez"), "confirmar_nota");
   }
 
-  // Si se pidió factura, antes de guardar se mira que se pueda: el cliente tiene que tener cédula o RIF.
+  // Si se pidió factura, antes de guardar se mira que se pueda: hace falta, como mínimo, la cédula de quien compra.
+  // En el mostrador, la que se escribe en la caja con su nombre; a un cliente sin cédula en su ficha, la que se escriba.
   if (venta.facturar) {
-    if (mostrador) volver("Una venta de mostrador no se factura: elige al cliente (con su cédula o RIF) o quita «Emitir factura».");
-    if (!cliente.cedula_rif.trim()) volver(`Para facturar hace falta la cédula o el RIF de ${rotuloDe(cliente)}: ponlo en su ficha, o quita «Emitir factura».`);
+    const escrito = venta.comprador?.documento ?? "";
+    if (escrito.trim() && !leerDocumento(escrito)) volver(problemaDelDocumento(escrito));
+    if (mostrador && (!leerDocumento(escrito) || !venta.comprador?.nombre)) volver(FALTA_EL_COMPRADOR);
+    if (!mostrador && !cliente.cedula_rif.trim() && !leerDocumento(escrito)) {
+      volver(`Para facturar hace falta la cédula o el RIF de ${rotuloDe(cliente)}: escríbelo junto a «Emitir factura», o quita «Emitir factura».`);
+    }
   }
   let resultado: Awaited<ReturnType<typeof guardarVentaDelPos>> | null = null;
   try {
@@ -2363,14 +2375,15 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     partes.push(`Quedan ${usd(resultado.pendiente)} pendientes en la cuenta de ${cliente.nombre}: vence el ${fechaCorta(sumarDias(venta.fecha, venta.dias_credito ?? cliente.dias_credito))}.`);
   }
   if (venta.entrega === "despacho") partes.push("Queda por entregar: ya está en el despacho y en el resumen.");
-  else partes.push("Con la foto de la nota firmada.");
+  else if (foto) partes.push("Con la foto de la nota firmada.");
+  else partes.push("Entregada en el mostrador.");
   const comentario = comentarioDeLaLectura(lectura, reparos).trim();
   if (comentario) partes.push(comentario);
   // Si se pidió factura, se emite ya y se va a ella; si no se pudo, la venta queda igual y se factura desde la nota.
   let facturada: Awaited<ReturnType<typeof emitirFacturaDeVenta>> | null = null;
   if (venta.facturar) {
     try {
-      facturada = await emitirFacturaDeVenta(resultado.ventaId);
+      facturada = await emitirFacturaDeVenta(resultado.ventaId, venta.comprador);
     } catch (error) {
       partes.push(`La factura no se emitió: ${mensajeDe(error)} Puedes facturarla desde la nota.`);
     }
@@ -2466,7 +2479,8 @@ export async function emitirFactura(datos: FormData): Promise<void> {
   if (!ventaId) volverConError(volverA, "No se encontró la venta.");
   let factura: Awaited<ReturnType<typeof emitirFacturaDeVenta>>;
   try {
-    factura = await emitirFacturaDeVenta(ventaId);
+    // En el mostrador (o a un cliente sin cédula en su ficha), la cédula y el nombre de quien compra, escritos en la nota.
+    factura = await emitirFacturaDeVenta(ventaId, { documento: texto(datos, "documento").slice(0, 30), nombre: texto(datos, "nombre_comprador") });
   } catch (error) {
     if (error instanceof FaltaElRif) volverConError(`/admin/clientes/${error.clienteId}`, error.message);
     volverConError(volverA, mensajeDe(error));

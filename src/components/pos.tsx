@@ -21,6 +21,7 @@ import { asignarCodigo, guardarVentaPos } from "@/lib/acciones";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { sumarDias } from "@/lib/credito";
 import { buscarParecidos } from "@/lib/parecido";
+import { leerDocumento, problemaDelDocumento } from "@/lib/documento";
 import estilos from "./pos.module.css";
 import panel from "@/app/admin/(panel)/panel.module.css";
 
@@ -68,6 +69,9 @@ export type ClienteParaLaCaja = {
   dias_credito: number;
 };
 
+/** Quien ya compró con factura, o un cliente con cédula o RIF en su ficha: la caja lo reconoce por el número. */
+export type CompradorParaLaCaja = { clave: string; documento: string; nombre: string };
+
 type Linea = LineaDelPos & { precioManual: boolean; piezas: number | null };
 
 /** Vacío mientras no se diga: la entrega se elige a mano, no hay opción por defecto. */
@@ -77,6 +81,8 @@ type Props = {
   catalogo: ArticuloParaLaCaja[];
   clientes: ClienteParaLaCaja[];
   mostradorId: number;
+  /** Para facturar en el mostrador: al escribir la cédula, el nombre sale solo si ya compró antes. */
+  compradores: CompradorParaLaCaja[];
   tasa: number | null;
   /** Por cliente y por clave de artículo: el precio especial. */
   preciosEspeciales: Record<number, Record<string, number>>;
@@ -162,12 +168,15 @@ type Guardado = {
   diasCredito: string;
   facturar: boolean;
   local?: boolean;
+  documento?: string;
+  nombreComprador?: string;
 };
 
 export function Pos({
   catalogo,
   clientes,
   mostradorId,
+  compradores,
   tasa,
   preciosEspeciales,
   sinTope,
@@ -209,6 +218,10 @@ export function Pos({
   const [diasCredito, setDiasCredito] = useState("");
   // Si al guardar se emite la factura fiscal.
   const [facturar, setFacturar] = useState(false);
+  // Para la factura: la cédula o el RIF de quien compra y, en el mostrador, su nombre (sale solo si ya compró antes).
+  const [documento, setDocumento] = useState("");
+  const [nombreComprador, setNombreComprador] = useState("");
+  const [nombreAutomatico, setNombreAutomatico] = useState(false);
   // De contado en el local: al costo más el 10 %, pagando todo en el momento. Con el mostrador, de entrada.
   const [local, setLocal] = useState(clienteInicial === undefined || clienteInicial === mostradorId);
   const [confirmar, setConfirmar] = useState(false);
@@ -242,6 +255,8 @@ export function Pos({
           setEntregaPrevista(guardado.entregaPrevista ?? "");
           setDiasCredito(guardado.diasCredito ?? "");
           setFacturar(guardado.facturar === true);
+          setDocumento(guardado.documento ?? "");
+          setNombreComprador(guardado.nombreComprador ?? "");
           setLocal(guardado.local ?? (guardado.clienteId || mostradorId) === mostradorId);
         } else {
           setClave(nuevaClave());
@@ -270,14 +285,14 @@ export function Pos({
     try {
       if (lineas.length === 0) localStorage.removeItem(GUARDADO);
       else {
-        const guardado: Guardado = { clave, clienteId, lineas, descuento, nota, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local };
+        const guardado: Guardado = { clave, clienteId, lineas, descuento, nota, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local, documento, nombreComprador };
         localStorage.setItem(GUARDADO, JSON.stringify(guardado));
       }
       localStorage.setItem(CAJERO, cajero);
     } catch {
       // Sin sitio para guardar no pasa nada.
     }
-  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local]);
+  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local, documento, nombreComprador]);
 
   const porClave = useMemo(() => new Map(catalogo.map((a) => [a.clave, a])), [catalogo]);
   // El precio de siempre es el especial del cliente o el de la lista; de contado en el local, el costo más el 10 % si es menor.
@@ -294,6 +309,26 @@ export function Pos({
   const pagos = useMemo<PagoDelPos[]>(() => (pagosTocados ? pagosEscritos : [{ metodo: "efectivo_usd", monto_usd: totales.total }]), [pagosTocados, pagosEscritos, totales.total]);
   const clienteElegido = clientes.find((c) => c.id === clienteId) ?? clientes.find((c) => c.id === mostradorId);
   const esMostrador = !clienteElegido || clienteElegido.id === mostradorId;
+  // Para facturar hace falta, como mínimo, la cédula de quien compra: en el mostrador se escribe con su nombre; a un
+  // cliente sin cédula en su ficha, se escribe aquí y queda en su ficha.
+  const pideComprador = facturar && (esMostrador || !clienteElegido?.cedula_rif.trim());
+  const compradoresPorClave = useMemo(() => new Map(compradores.map((c) => [c.clave, c])), [compradores]);
+  const documentoLeido = leerDocumento(documento);
+  const compradorConocido = documentoLeido ? compradoresPorClave.get(documentoLeido.clave) : undefined;
+  const problemaDocumento = problemaDelDocumento(documento);
+  /** Al escribir la cédula: si ya compró antes, su nombre sale solo (salvo que ya se haya escrito otro a mano). */
+  const escribirDocumento = (escrito: string) => {
+    setDocumento(escrito);
+    const leido = leerDocumento(escrito);
+    const conocido = leido ? compradoresPorClave.get(leido.clave) : undefined;
+    if (conocido && (nombreAutomatico || !nombreComprador.trim())) {
+      setNombreComprador(conocido.nombre);
+      setNombreAutomatico(true);
+    } else if (!conocido && nombreAutomatico) {
+      setNombreComprador("");
+      setNombreAutomatico(false);
+    }
+  };
   const pagosQueValen = modo === "credito" ? [] : pagos;
   const falta = faltaPorPagar(totales.total, pagosQueValen);
   const cuenta = cuentaDespues(clienteElegido?.saldo_usd ?? 0, totales.total, pagosQueValen);
@@ -432,6 +467,9 @@ export function Pos({
     setEntrega("");
     setEntregaPrevista("");
     setDiasCredito("");
+    setDocumento("");
+    setNombreComprador("");
+    setNombreAutomatico(false);
     setClave(nuevaClave());
     avisar("Venta cancelada");
     enfocarBuscador();
@@ -453,12 +491,14 @@ export function Pos({
     });
     if (!entrega) motivos.push("Di si ya la entregaste o si queda por entregar (abajo, en «Entrega»).");
     else if (entrega === "despacho" && !entregaPrevista) motivos.push("Escribe el día previsto de entrega.");
-    else if (entrega === "ahora" && !fotoEnEspera && !((document.getElementById("pos-foto") as HTMLInputElement | null)?.files?.length ?? 0)) {
+    else if (entrega === "ahora" && !esMostrador && !fotoEnEspera && !((document.getElementById("pos-foto") as HTMLInputElement | null)?.files?.length ?? 0)) {
+      // En el mostrador se paga y se lleva en el momento: no hay nota firmada que fotografiar.
       motivos.push("Ya entregada: adjunta la foto de la nota firmada (abajo, en «Entrega»).");
     }
-    if (facturar) {
-      if (esMostrador) motivos.push("Una venta de mostrador no se factura: elige al cliente (con su cédula o RIF) o quita «Emitir factura».");
-      else if (clienteElegido && !clienteElegido.cedula_rif.trim()) motivos.push(`Para facturar hace falta la cédula o el RIF de ${clienteElegido.rotulo}: ponlo en su ficha, o quita «Emitir factura».`);
+    if (pideComprador) {
+      if (problemaDocumento) motivos.push(problemaDocumento);
+      else if (esMostrador && (!documentoLeido || !nombreComprador.trim())) motivos.push("Para facturar, escribe la cédula (o el RIF) y el nombre de quien compra, junto a «Emitir factura».");
+      else if (!esMostrador && !documentoLeido) motivos.push(`Para facturar, escribe la cédula o el RIF de ${clienteElegido?.rotulo ?? "el cliente"} junto a «Emitir factura».`);
     }
     if (motivos.length > 0) {
       avisar(motivos[0], true);
@@ -515,6 +555,7 @@ export function Pos({
     confirmar,
     confirmar_nota: confirmarNota,
     facturar,
+    comprador: pideComprador ? { documento, nombre: esMostrador ? nombreComprador : "" } : undefined,
     local,
     lineas: lineas.map((l) => ({
       clave: l.clave,
@@ -1139,18 +1180,54 @@ export function Pos({
           )}
 
           <label className={panel.casilla} style={{ margin: 0 }}>
-            <input type="checkbox" checked={facturar} onChange={(e) => setFacturar(e.target.checked)} disabled={esMostrador} />
+            <input type="checkbox" checked={facturar} onChange={(e) => setFacturar(e.target.checked)} />
             <span>
               Emitir factura fiscal
               {esMostrador ? (
-                <span className="ayuda"> (elige al cliente)</span>
+                <span className="ayuda"> (con la cédula de quien compra)</span>
               ) : clienteElegido && !clienteElegido.cedula_rif.trim() ? (
-                <span className="ayuda"> (le falta la cédula o el RIF en su ficha)</span>
+                <span className="ayuda"> (escribe su cédula o RIF)</span>
               ) : clienteElegido ? (
                 <span className="ayuda"> ({clienteElegido.cedula_rif})</span>
               ) : null}
             </span>
           </label>
+          {pideComprador && (
+            <div className={estilos.comprador}>
+              <label htmlFor="pos-documento">{esMostrador ? "Cédula o RIF de quien compra" : `Cédula o RIF de ${clienteElegido?.rotulo ?? "el cliente"}`}</label>
+              <input
+                id="pos-documento"
+                value={documento}
+                onChange={(e) => escribirDocumento(e.target.value)}
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                placeholder="12345678"
+                aria-describedby="pos-documento-ayuda"
+              />
+              <span id="pos-documento-ayuda" className={problemaDocumento ? estilos.compradorMal : "ayuda"}>
+                {problemaDocumento
+                  ? problemaDocumento
+                  : documentoLeido
+                    ? `${documentoLeido.texto}${compradorConocido && esMostrador ? " · ya compró antes" : esMostrador ? " · nuevo: escribe su nombre" : " · queda en su ficha"}`
+                    : "Como mínimo la cédula: sin ella no hay factura."}
+              </span>
+              {esMostrador && (
+                <>
+                  <label htmlFor="pos-nombre-comprador">Nombre y apellido, o razón social</label>
+                  <input
+                    id="pos-nombre-comprador"
+                    value={nombreComprador}
+                    onChange={(e) => {
+                      setNombreComprador(e.target.value);
+                      setNombreAutomatico(false);
+                    }}
+                    autoComplete="off"
+                  />
+                </>
+              )}
+            </div>
+          )}
           {error && (
             <p className="aviso aviso--error" role="alert" style={{ margin: 0 }}>
               {error}
@@ -1239,7 +1316,14 @@ export function Pos({
               {facturar && (
                 <div>
                   <dt>Factura</dt>
-                  <dd>Se emite al confirmar{clienteElegido?.cedula_rif ? ` · ${clienteElegido.cedula_rif}` : ""}</dd>
+                  <dd>
+                    Se emite al confirmar
+                    {pideComprador
+                      ? ` · ${documentoLeido?.texto ?? documento}${esMostrador && nombreComprador.trim() ? ` · ${nombreComprador.trim()}` : ""}`
+                      : clienteElegido?.cedula_rif
+                        ? ` · ${clienteElegido.cedula_rif}`
+                        : ""}
+                  </dd>
                 </div>
               )}
               {!esMostrador && (

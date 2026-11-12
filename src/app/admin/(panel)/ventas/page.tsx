@@ -12,6 +12,7 @@ import { catalogoDelPos, clienteDeMostrador, siguienteNumeroDeVenta } from "@/li
 import { precioDeContado } from "@/lib/pos-calculo";
 import { preciosEspecialesPorCliente } from "@/lib/precios-especiales";
 import { lectorDisponible } from "@/lib/lector-de-notas";
+import { compradoresConocidos } from "@/lib/compradores";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { Pos, type ArticuloParaLaCaja, type ClienteParaLaCaja } from "@/components/pos";
 import estilos from "../panel.module.css";
@@ -33,7 +34,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const parametros = await searchParams;
   const texto = (campo: string) => (typeof parametros[campo] === "string" ? (parametros[campo] as string) : "");
   const busqueda = texto("q").trim();
-  const [catalogo, clientes, tasa, precios, sinTope, mostrador, siguiente, ventas] = await Promise.all([
+  const [catalogo, clientes, tasa, precios, sinTope, mostrador, siguiente, ventas, compradores] = await Promise.all([
     catalogoDelPos(),
     listarClientes(),
     leerTasa(),
@@ -46,6 +47,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
       ? listarVentas(100000).then((todas) => todas.filter((v) => ventaCoincide(v, busqueda)).slice(0, MAXIMO_AL_BUSCAR))
       : listarVentas(50)
     ).then(conLineas),
+    compradoresConocidos(),
   ]);
   // La foto de la nota firmada de cada venta, para enlazarla desde su fila.
   const [fotos, facturas] = await Promise.all([adjuntosDeVentas(ventas.map((v) => v.id)), facturasDeVentas(ventas.map((v) => v.id))]);
@@ -90,6 +92,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         catalogo={paraLaCaja}
         clientes={listaDeClientes}
         mostradorId={mostrador.id}
+        compradores={compradores}
         tasa={tasa?.valor ?? null}
         preciosEspeciales={precios}
         sinTope={sinTope}

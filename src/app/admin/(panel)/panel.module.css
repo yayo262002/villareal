@@ -366,6 +366,38 @@
   gap: var(--espacio-2);
   align-items: center;
 }
+/* «Facturar…» en la nota de una venta de mostrador: se abre ahí mismo para la cédula y el nombre de quien compra. */
+.facturarConCedula {
+  display: inline-block;
+}
+.facturarConCedula > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.facturarConCedula > summary::-webkit-details-marker {
+  display: none;
+}
+.facturarConCedula[open] {
+  flex-basis: 100%;
+}
+.formularioCorto {
+  display: grid;
+  gap: var(--espacio-2);
+  max-width: 360px;
+  margin-top: var(--espacio-3);
+  padding: var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+.formularioCorto input {
+  min-height: 44px;
+  padding: 0 var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  font: inherit;
+}
 .entradaPequena {
   width: 110px;
   min-height: 36px;

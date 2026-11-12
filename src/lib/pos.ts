@@ -111,6 +111,11 @@ export type VentaDelPos = {
   confirmar_nota: boolean;
   /** Si al guardar se emite la factura fiscal (el cliente necesita cédula o RIF). */
   facturar: boolean;
+  /**
+   * Quien compra, para la factura: en el mostrador, su cédula (o RIF) y su nombre; a un cliente de la cartera sin
+   * cédula en su ficha, la cédula. Vacío si no se factura o si el cliente ya la tiene.
+   */
+  comprador?: { documento: string; nombre: string };
   /** Una venta de contado en el local, al precio de contado: se guarda con «Local» en el cajero. */
   local: boolean;
   lineas: LineaDelPos[];
