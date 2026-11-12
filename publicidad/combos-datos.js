@@ -47,8 +47,10 @@ globalThis.COMBOS = [
   { n: 5, productos: [["pechuga-de-pavo-drago", "Pechuga de pavo"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para un sándwich diferente", destacar: "diferente" },
   { n: 6, productos: [["bolona-de-pollo", "Boloña de pollo"], ["queso-amarillo", "Queso amarillo tipo cheddar"]], detalle: "200 g de cada producto", lema: "Desayuno completo: boloña y queso", destacar: "Desayuno completo" },
   { n: 7, productos: [["mortadela-punta-de-monte", "Mortadela especial"], ["queso-amarillo", "Queso amarillo tipo cheddar"]], detalle: "200 g de cada producto", lema: "Para la arepa de todos los días", destacar: "todos los días" },
+  { n: 8, productos: [["jamon-de-espalda", "Jamón de espalda"], ["mozzarella", "Mozzarella"]], detalle: "200 g de cada producto", lema: "Para el sándwich caliente y la pizza", destacar: "sándwich caliente" },
+  { n: 9, productos: [["pechuga-de-pavo-drago", "Pechuga de pavo"], ["queso-amarillo", "Queso amarillo tipo cheddar"]], detalle: "200 g de cada producto", lema: "Para la lonchera y el desayuno", destacar: "la lonchera" },
   {
-    n: 8,
+    n: 10,
     titulo: "Combo solidario",
     productos: [["suero-san-pedro", "Suero San Pedro"], ["huevos", "Huevos"], ["mortadela-de-pollo", "Mortadela"]],
     detalle: "1 suero San Pedro de 800 ml, 6 huevos y 250 g de mortadela",
@@ -60,7 +62,7 @@ globalThis.COMBOS = [
     estilo: "solidario",
   },
   {
-    n: 9,
+    n: 11,
     titulo: "Combo perrero",
     productos: [["queso-amarillo", "Queso amarillo tipo cheddar", "chorro"], ["jamon-de-espalda", "Jamón de espalda", "perro"], ["salchichas", "Salchichas", "salsas"]],
     detalle: "100 g de queso amarillo tipo cheddar, 100 g de jamón de espalda y 6 salchichas",
@@ -73,7 +75,7 @@ globalThis.COMBOS = [
     alto: 88,
   },
   {
-    n: 10,
+    n: 12,
     titulo: "Combo navideño",
     productos: [["tocineta", "Tocineta", "moño"], ["jamon-ahumado", "Jamón ahumado", "gorro"]],
     detalle: "200 g de tocineta y 200 g de jamón ahumado",
@@ -86,7 +88,7 @@ globalThis.COMBOS = [
     alto: 86,
   },
   {
-    n: 11,
+    n: 13,
     titulo: "Combo pizzero",
     productos: [["tocineta", "Tocineta", "cortapizza"], ["jamon-de-espalda", "Jamón de espalda", "cocinero"], ["mozzarella", "Mozzarella", "porcion"]],
     detalle: "100 g de tocineta, 200 g de jamón de espalda y 200 g de mozzarella",
@@ -100,7 +102,7 @@ globalThis.COMBOS = [
     alto: 84,
   },
   {
-    n: 12,
+    n: 14,
     titulo: "Combo sandwichero",
     productos: [["pan-de-sandwich", "Pan de sándwich"], ["pechuga-de-pavo-ahumada", "Pechuga de pavo ahumada"], ["queso-paisa", "Queso paisa", "sandwich"]],
     detalle: "1 pan de sándwich, 200 g de queso paisa y 200 g de pechuga de pavo ahumada",

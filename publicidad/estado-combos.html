@@ -10,7 +10,7 @@
   @font-face { font-family: "Kaushan Script"; src: url("fuentes/KaushanScript-Regular.ttf"); }
 
   /* El flier de los combos para el estado de WhatsApp: una imagen de 1080 × 1920 (9:16, lo que ocupa la pantalla del
-     teléfono), con los doce combos, su foto y su precio en dólares. Los combos salen de combos-datos.js (los mismos de las
+     teléfono), con todos los combos, su foto y su precio en dólares. Los combos salen de combos-datos.js (los mismos de las
      hojas) y los precios, de combos-precios.js, que escribe el guion de los combos con la lista del detal de ese día
      (no va al repositorio). Va en píxeles: 1 px de aquí es 1 px de la imagen (data-ppp="96"). */
   html, body { margin: 0; background: #888; }
@@ -32,10 +32,11 @@
   .titulo { font-family: "Archivo Black"; font-size: 150px; line-height: 0.92; margin-top: 10px; letter-spacing: 0.01em; text-shadow: 0 6px 0 #6a060b; }
   .lema { font-family: "Kaushan Script", cursive; font-size: 44px; line-height: 1.1; margin-top: 12px; color: var(--crema); }
 
-  /* Los doce combos, en tres columnas. */
-  .combos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 18px; padding: 30px 30px 18px; min-height: 0; }
+  /* Los combos, en tres columnas y en tantas filas como hagan falta (--filas, que pone el guion de abajo). La cuadrícula
+     tiene seis columnas y cada combo ocupa dos: así, si la última fila no se llena, sus combos van al centro. */
+  .combos { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(var(--filas, 4), minmax(0, 1fr)); gap: 18px; padding: 30px 30px 18px; min-height: 0; }
   .combo {
-    position: relative; min-width: 0; min-height: 0; box-sizing: border-box; background: #ffffff; border: 3px solid #ead9b6; border-radius: 26px;
+    position: relative; min-width: 0; min-height: 0; grid-column: span 2; box-sizing: border-box; background: #ffffff; border: 3px solid #ead9b6; border-radius: 26px;
     display: grid; grid-template-rows: minmax(0, 1fr) auto auto; padding: 14px 14px 12px; box-shadow: 0 6px 14px rgba(90, 50, 10, 0.12);
   }
   .numero {
@@ -92,7 +93,7 @@
       <img src="../public/marca/leon.svg" alt="">
       <div><div class="charcuteria">Charcutería Villa Real</div><div class="titulo">COMBOS</div><div class="lema">Listos para la arepa, el sándwich y la pizza</div></div>
     </header>
-    <main class="combos">
+    <main class="combos" style="--filas: ${Math.ceil(COMBOS.length / 3)}">
       ${COMBOS.map((c) => {
         const precio = PRECIOS.precios[c.n];
         const clases = ["combo", c.especial ? "combo--especial" : "", c.productos.length === 3 ? "combo--tres" : "", c.productos.length >= 4 ? "combo--cuatro" : ""].filter(Boolean).join(" ");
@@ -106,6 +107,9 @@
       }).join("")}
     </main>
     <footer class="pie"><b>Precios en dólares</b><span>Se paga en bolívares a la tasa BCV del día${PRECIOS.fechaCorta ? ` · Precios del ${PRECIOS.fechaCorta}` : ""}</span></footer>`;
+  // Si la última fila no se llena, sus combos van al centro.
+  const sobran = COMBOS.length % 3;
+  if (sobran > 0) flier.querySelectorAll(".combo")[COMBOS.length - sobran].style.gridColumn = sobran === 2 ? "2 / span 2" : "3 / span 2";
   document.body.append(flier);
 
   // Que cada combo quepa en su tarjeta: si las fotos, el nombre y el precio se pasan, las fotos encogen lo justo.
