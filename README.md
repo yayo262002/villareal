@@ -1001,8 +1001,13 @@ Binance y otro.
   papel, con la cantidad y el precio en su propia línea encima del nombre.
   Lo que ya está en la lista (por el nombre, sin mirar mayúsculas) toma el
   costo nuevo; lo nuevo entra en la categoría elegida (Víveres, Limpieza y
-  cuidado personal, Charcutería). Lo que no se entiende (sin «(E)» o «(G)»,
-  sin precio) no se carga y se dice cuál es.
+  cuidado personal, Charcutería, Chucherías y snacks…). Lo que no se
+  entiende (sin «(E)» o «(G)», sin precio) no se carga y se dice cuál es.
+- **Las chucherías** (golosinas, snacks, chupetas, chicles) tienen su
+  categoría, «Chucherías y snacks», y van al **30 %** (margen propio de cada
+  una; lo demás de la misma factura de chucherías, también). Se venden por
+  unidad: si la factura trae la bolsa o la caja («1X24»), el costo de una
+  es el de la bolsa entre lo que trae.
 - **A mano.** Un producto se agrega también con su costo en dólares, con
   el de la factura en bolívares y su tasa, o con su precio al detal en
   dólares. Con un costo hay que decir si se le suma el IVA. Cada uno puede

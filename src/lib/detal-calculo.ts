@@ -34,6 +34,7 @@ export const CATEGORIAS_DETAL = {
   despensa: "Azúcar, café y bebidas",
   pan: "Pan y tostadas",
   galletas: "Galletas, cereales y compotas",
+  chucherias: "Chucherías y snacks",
   lacteos: "Margarinas, untables y aceites",
   viveres: "Otros víveres",
   limpieza: "Limpieza",
