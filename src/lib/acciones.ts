@@ -132,6 +132,7 @@ import { guardarPrecioEspecial, listarPreciosEspecialesDe, quitarPrecioEspecial 
 import { catalogoDelPos, esMostrador, guardarVentaDelPos, type VentaDelPos } from "./pos";
 import { FALTA_EL_COMPRADOR, FaltaElRif, anularConNotaDeCredito, buscarFactura, contarFacturas, emitirFacturaDeVenta, facturaVigenteDeVenta, ponerNumeroDeControl } from "./facturas";
 import { limpiarNombreDeComprador } from "./compradores";
+import { igualarCostosDelMayor, unirAlMayor } from "./costos-unidos";
 import { leerDocumento, problemaDelDocumento } from "./documento";
 import { esTipoIva, numeroDeFactura } from "./factura-calculo";
 import { revisarVentaPos, totalesDe } from "./pos-calculo";
@@ -2671,7 +2672,37 @@ export async function guardarArticuloDetal(datos: FormData): Promise<void> {
   const otro = await buscarArticuloDetalPorNombre(articulo.nombre);
   if (otro && otro.id !== id) volverConError(ruta, `Ya hay otro producto que se llama «${otro.nombre}».`);
   await actualizarArticuloDetal(id, articulo);
-  volverConExito(ruta, "Guardado: el precio de la lista ya es el nuevo.");
+  const enElMayor = await igualarCostosDelMayor([id]);
+  volverConExito(ruta, `Guardado: el precio de la lista ya es el nuevo.${dichoDelMayor(enElMayor)}`);
+}
+
+/** Lo que cambió en Villa Real al igualar los costos, para añadirlo al aviso («En Villa Real: Mozzarella: 7,60 $»). */
+function dichoDelMayor(cambiados: string[]): string {
+  return cambiados.length > 0 ? ` En Villa Real, el mismo costo: ${cambiados.join("; ")}.` : "";
+}
+
+/**
+ * Une un producto de la lista del detal con su artículo de Villa Real (o lo desune): desde ese momento tienen el mismo
+ * costo, y cada vez que cambie en la lista, cambia allí y se rehace su precio al mayor.
+ */
+export async function unirArticuloDetalAlMayor(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const actual = id ? await buscarArticuloDetal(id) : null;
+  if (!id || !actual) volverConError(RUTA_DETAL, "No se encontró ese producto.");
+  const ruta = `${RUTA_DETAL}/${id}`;
+  const clave = texto(datos, "articulo");
+  let unido: Awaited<ReturnType<typeof unirAlMayor>>;
+  try {
+    unido = await unirAlMayor(id, clave);
+  } catch (error) {
+    volverConError(ruta, mensajeDe(error));
+  }
+  if (!unido.articulo) volverConExito(ruta, `«${actual.nombre}» ya no está unido a Villa Real: cada uno lleva su costo.`);
+  volverConExito(
+    ruta,
+    `«${actual.nombre}» unido a «${unido.articulo.nombre}» de Villa Real: tienen el mismo costo.${unido.cambiados.length > 0 ? dichoDelMayor(unido.cambiados) : " Ya lo tenían igual."}`,
+  );
 }
 
 /** Esconde un producto de la lista que ve la familia, o lo vuelve a enseñar, sin perder su costo. */
@@ -2726,7 +2757,8 @@ export async function cargarFacturaDelDetal(datos: FormData): Promise<void> {
     fecha,
     iva_pct: (await reglasDelDetal()).iva_pct,
   });
-  volverConExito(RUTA_DETAL, `Factura cargada a la tasa ${tasa.toLocaleString("es-VE")}: ${resumenDeCarga(resultado, sinEntender)}`);
+  const enElMayor = await igualarCostosDelMayor();
+  volverConExito(RUTA_DETAL, `Factura cargada a la tasa ${tasa.toLocaleString("es-VE")}: ${resumenDeCarga(resultado, sinEntender)}${dichoDelMayor(enElMayor)}`);
 }
 
 /**
@@ -2759,7 +2791,8 @@ export async function cargarCostosDelDetal(datos: FormData): Promise<void> {
     fecha: fechaDeCompra(datos),
     iva_pct: (await reglasDelDetal()).iva_pct,
   });
-  volverConExito(RUTA_DETAL, `Costos cargados: ${resumenDeCarga(resultado, sinEntender)}`);
+  const enElMayor = await igualarCostosDelMayor();
+  volverConExito(RUTA_DETAL, `Costos cargados: ${resumenDeCarga(resultado, sinEntender)}${dichoDelMayor(enElMayor)}`);
 }
 
 /** Crea (o renueva) el enlace con el que la familia ve la lista sin clave. */

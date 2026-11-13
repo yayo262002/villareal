@@ -40,6 +40,9 @@ export type ArticuloDetal = {
   fecha_compra: string | null;
   costo_usd_anterior: number | null;
   fecha_compra_anterior: string | null;
+  /** El mismo producto en el catálogo de Villa Real, si está unido: el mismo costo (costos-unidos.ts). */
+  producto_id?: number | null;
+  variante_id?: number | null;
   activo: number;
   actualizado_en: string;
 };

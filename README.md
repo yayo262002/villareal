@@ -285,6 +285,7 @@ src/lib/facturas.ts       Las facturas y las notas de crédito desde la base: em
 src/app/admin/(panel)/facturas/  Facturas: la lista del mes, los ajustes, cada factura (carta y ticket), anular, y el libro de ventas para Excel
 src/lib/detal-calculo.ts  Las cuentas de la lista del detal: IVA, margen, la charcutería (entre 0,80 y más un 10 % al mayor), dólares subidos al centavo, bolívares subidos de 5 en 5; las reglas guardadas; leer las líneas de una factura y una lista de costos en dólares (puro, con pruebas)
 src/lib/detal.ts          La lista del detal desde la base: listar, cargar una factura o unos costos en dólares, agregar, cambiar, esconder, quitar
+src/lib/costos-unidos.ts  El mismo costo en el detal y en Villa Real: unir un producto de la lista con su artículo del catálogo e igualar el costo
 src/app/admin/(panel)/detal/  La lista del detal en el panel: cargar facturas, agregar a mano, las reglas y el enlace para la familia
 src/app/lista/            La lista del detal para la familia, con su enlace y sin clave
 scripts/lista-detal.ts    npm run lista: las listas del detal y del mayor de hoy en archivos para el teléfono (diseño en publicidad/lista-precios.html) y la hoja de la rebanadora (publicidad/tabla-peso.html)
@@ -1047,6 +1048,18 @@ Binance y otro.
   reglas» se cambian el margen de los víveres, el redondeo, la charcutería
   y el **margen al mayor de los víveres**: vacío (como está), los víveres
   no tienen precio al mayor.
+- **El mismo costo en el detal y en el mayor.** La charcutería y Villa
+  Real compran lo mismo al mismo proveedor (el mismo RIF), así que un
+  producto de la lista se une a su artículo del catálogo de Villa Real
+  (en su ficha, «El mismo producto en Villa Real»: el tipo, o la marca si
+  tiene varias, por la misma unidad). Desde ahí, cada vez que su costo
+  cambia en la lista (una factura cargada, unos costos pegados o un
+  cambio a mano), el artículo de Villa Real toma el mismo costo y su
+  precio al mayor se rehace con su margen; el aviso dice qué cambió
+  («En Villa Real, el mismo costo: Mozzarella: 7,60 $»). Manda la lista
+  del detal, que es donde se cargan las facturas: lo que se cambie a mano
+  en el catálogo lo pisa la siguiente compra, y la ficha del producto lo
+  avisa. Se desune eligiendo «Ninguno» (`src/lib/costos-unidos.ts`).
 - **Para la familia.** «Crear el enlace» da una dirección
   (`/lista/abcdefghjkmnpq`) que se manda por WhatsApp: con ella se ve la
   lista al día, en bolívares y en dólares, por categorías y con buscador
@@ -1108,8 +1121,9 @@ Binance y otro.
 - Una compra o un pago mal anotado se borra y se registra de nuevo. Borrar
   un proveedor pide la clave del panel.
 - Las compras no cambian el costo que figura en Productos (del que sale el
-  precio de venta): ese se sigue poniendo a mano. El último costo pagado se
-  ve en Inventario.
+  precio de venta): ese se sigue poniendo a mano, salvo en los productos
+  unidos a la lista del detal, que toman su costo (ver «El mismo costo en
+  el detal y en el mayor»). El último costo pagado se ve en Inventario.
 
 ## Inventario
 

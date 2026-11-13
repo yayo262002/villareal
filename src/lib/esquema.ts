@@ -553,6 +553,10 @@ export const ESQUEMA = `
     -- El costo con IVA, en dólares, de la compra anterior a la última, y su fecha: para decir cuánto cambió.
     costo_usd_anterior real,
     fecha_compra_anterior text,
+    -- El mismo producto en el catálogo de Villa Real (el tipo y, si tiene marcas, su artículo): cuando cambia el costo
+    -- aquí, cambia allí también (costos-unidos.ts). Vacío si no está unido.
+    producto_id integer references productos(id) on delete set null,
+    variante_id integer references variantes(id) on delete set null,
     activo integer not null default 1,
     creado_en text not null default (datetime('now')),
     actualizado_en text not null default (datetime('now'))

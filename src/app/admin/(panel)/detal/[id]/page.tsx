@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buscarArticuloDetal, conPrecios } from "@/lib/detal";
 import { leerTasa, reglasDelDetal } from "@/lib/ajustes";
-import { esconderArticuloDetal, guardarArticuloDetal, quitarArticuloDetalAccion } from "@/lib/acciones";
+import { esconderArticuloDetal, guardarArticuloDetal, quitarArticuloDetalAccion, unirArticuloDetalAlMayor } from "@/lib/acciones";
+import { articuloUnidoA, articulosDelMayor } from "@/lib/costos-unidos";
 import { CATEGORIAS_DETAL, costoConIva, margenDelMayor, reglaDelDetal } from "@/lib/detal-calculo";
 import { bs, bsRedondo, fechaCorta, hoy, tasaLegible, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
@@ -21,7 +22,12 @@ export default async function PaginaArticuloDetal({ params, searchParams }: Para
   const parametros = await searchParams;
   const articulo = /^\d+$/.test(id) ? await buscarArticuloDetal(Number(id)) : null;
   if (!articulo) notFound();
-  const [reglas, tasa] = await Promise.all([reglasDelDetal(), leerTasa()]);
+  const [reglas, tasa, articulosDelCatalogo, unido] = await Promise.all([
+    reglasDelDetal(),
+    leerTasa(),
+    articulosDelMayor(),
+    articuloUnidoA({ producto_id: articulo.producto_id ?? null, variante_id: articulo.variante_id ?? null }),
+  ]);
   const [a] = conPrecios([articulo], reglas, tasa?.valor ?? null);
   const porKilo = a.unidad === "kg" ? " el kilo" : "";
   const regla = reglaDelDetal(a, reglas);
@@ -93,6 +99,39 @@ export default async function PaginaArticuloDetal({ params, searchParams }: Para
               : ""}{" "}
           Los bolívares, a la tasa de hoy y subidos de {reglas.redondeo_bs} en {reglas.redondeo_bs}.
         </p>
+      </section>
+
+      <section className="tarjeta" style={{ marginTop: "var(--espacio-4)" }}>
+        <h2 className={estilos.subtitulo}>El mismo producto en Villa Real</h2>
+        <p className="ayuda" style={{ maxWidth: "65ch" }}>
+          Unido a su artículo del catálogo de Villa Real, los dos tienen el mismo costo: cada vez que cambie aquí (una factura cargada, unos costos pegados o un cambio
+          a mano), cambia allí, y su precio al mayor se rehace con su margen.
+        </p>
+        {unido ? (
+          <p>
+            Unido a <Link href={`/admin/productos/${unido.producto_id}`}>{unido.nombre}</Link>
+            {unido.costo_usd !== null ? `, con costo ${usd(unido.costo_usd)}` : ""}.
+          </p>
+        ) : (
+          <p className="ayuda">Todavía no está unido: cada uno lleva su costo.</p>
+        )}
+        <form action={unirArticuloDetalAlMayor} className={estilos.formularioCorto} style={{ maxWidth: 520 }}>
+          <input type="hidden" name="id" value={a.id} />
+          <label htmlFor="unir-articulo">Su artículo en Villa Real</label>
+          <select id="unir-articulo" name="articulo" defaultValue={unido?.clave ?? ""}>
+            <option value="">— Ninguno: cada uno con su costo</option>
+            {articulosDelCatalogo.map((x) => (
+              <option key={x.clave} value={x.clave}>
+                {x.nombre}
+                {x.unidad === "kg" ? " (por kilo)" : ""}
+              </option>
+            ))}
+          </select>
+          <span className="ayuda">Que sea el mismo producto y por la misma unidad: el costo por kilo con el del kilo.</span>
+          <button type="submit" className="boton">
+            Guardar
+          </button>
+        </form>
       </section>
 
       <section className="tarjeta" style={{ marginTop: "var(--espacio-4)" }}>

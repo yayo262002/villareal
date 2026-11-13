@@ -15,6 +15,7 @@ import { LineaPrecio, MarcasDelProducto } from "@/components/marcas-producto";
 import { ResenasDelProducto } from "@/components/resenas-panel";
 import { listarResenas } from "@/lib/resenas";
 import { FotoDeProducto } from "@/components/foto-de-producto";
+import { unidosEnElDetal } from "@/lib/costos-unidos";
 import { imagenDeProducto } from "@/lib/fotos-referenciales";
 import estilos from "../../panel.module.css";
 
@@ -34,7 +35,7 @@ export default async function PaginaProducto({ params, searchParams }: { params:
   const producto = Number.isSafeInteger(numero) && numero > 0 ? await buscarProducto(numero) : null;
   if (!producto) notFound();
 
-  const [categorias, variantes, familias, tasa, existencia, secciones, marcas, presentaciones, todasLasResenas] = await Promise.all([
+  const [categorias, variantes, familias, tasa, existencia, secciones, marcas, presentaciones, todasLasResenas, enElDetal] = await Promise.all([
     categoriasDeProducto(producto.id),
     variantesDeProducto(producto.id),
     listarFamilias(),
@@ -44,6 +45,7 @@ export default async function PaginaProducto({ params, searchParams }: { params:
     listarMarcas(),
     presentacionesUsadas(),
     listarResenas(),
+    unidosEnElDetal(producto.id),
   ]);
   const resenas = todasLasResenas.filter((r) => r.producto_id === producto.id);
   const estado = estadoDeProducto(producto);
@@ -63,6 +65,16 @@ export default async function PaginaProducto({ params, searchParams }: { params:
         <span className={`${estilos.estado} ${estilos[CLASE_DE_ESTADO[estado]]}`}>{NOMBRE_ESTADO_PRODUCTO[estado]}</span>
       </div>
       <Avisos parametros={parametros} />
+      {enElDetal.length > 0 && (
+        <p className="aviso" style={{ marginBottom: "var(--espacio-4)" }}>
+          <strong>Su costo viene de la lista del detal</strong> ({enElDetal.map((d, i) => (
+            <span key={d.id}>
+              {i > 0 ? ", " : ""}
+              <Link href={`/admin/detal/${d.id}`}>{d.nombre}</Link>
+            </span>
+          ))}): es el mismo producto, con el mismo costo. Cuando allí cambia, cambia aquí y el precio al mayor se rehace con el margen. Lo que se cambie aquí a mano lo pisa la siguiente compra.
+        </p>
+      )}
       {producto.combo_detal && (
         <p className="aviso" style={{ marginBottom: "var(--espacio-4)" }}>
           <strong>Es un combo del detal.</strong> Se vende en la caja al precio de la charcutería de hoy (lo que suman sus productos en la{" "}

@@ -2669,6 +2669,48 @@ async function probarFacturas() {
   escribirEnLocal("delete from compradores where clave = 'V-12345678'");
 }
 
+async function probarCostosUnidos() {
+  // Un producto de la lista del detal unido a su artículo de Villa Real: los dos con el mismo costo.
+  const hoyVet = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  const cargar = (costo) => enviar("/admin/detal", 'id="costos_lineas"', { proveedor: "El Drago", fecha_compra: hoyVet, categoria: "charcuteria", unidad: "kg", lineas: `Mozzarella unida de prueba ${costo}` });
+  let r = await cargar("6,00");
+  const [detal] = await consultar("select id from lista_detal where nombre = 'Mozzarella unida de prueba'");
+  comprobar("los costos de prueba entran en la lista del detal", Boolean(detal), r.destino);
+  if (!detal) return;
+  // La mozzarella del catálogo, con un margen conocido; lo de antes se guarda para dejarla como estaba.
+  const [variante] = await consultar("select id, costo_usd, precio_usd from variantes where producto_id = 2 order by id limit 1");
+  const [antes] = await consultar("select costo_usd, margen_pct, precio_usd from productos where id = 2");
+  escribirEnLocal("update productos set margen_pct = 25 where id = 2");
+  const clave = variante ? `2-${variante.id}` : "2";
+  const costoYPrecio = async () =>
+    variante ? (await consultar("select costo_usd, precio_usd from variantes where id = ?", [variante.id]))[0] : (await consultar("select costo_usd, precio_usd from productos where id = 2"))[0];
+
+  const p = await pagina(`/admin/detal/${detal.id}`);
+  comprobar("la ficha del detal ofrece unirlo a su artículo de Villa Real", p.html.includes('name="articulo"') && p.html.includes(`value="${clave}"`));
+  r = await enviar(`/admin/detal/${detal.id}`, 'name="articulo"', { id: String(detal.id), articulo: clave });
+  let ahora = await costoYPrecio();
+  comprobar(
+    "al unirlo, el artículo de Villa Real toma el mismo costo y rehace su precio al mayor con su margen (6,00 + 25 % = 7,50)",
+    r.destino.includes("tienen el mismo costo") && cerca(Number(ahora.costo_usd), 6) && cerca(Number(ahora.precio_usd), 7.5),
+    `${r.destino} ${JSON.stringify(ahora)}`,
+  );
+  r = await cargar("6,40");
+  ahora = await costoYPrecio();
+  comprobar(
+    "al cargar un costo nuevo en el detal, cambia también en Villa Real, y el aviso lo dice",
+    r.destino.includes("En Villa Real, el mismo costo") && cerca(Number(ahora.costo_usd), 6.4) && cerca(Number(ahora.precio_usd), 8),
+    `${r.destino} ${JSON.stringify(ahora)}`,
+  );
+  comprobar("la ficha del producto de Villa Real dice de dónde le viene el costo", (await pagina("/admin/productos/2")).html.includes("Su costo viene de la lista del detal"));
+  r = await enviar(`/admin/detal/${detal.id}`, 'name="articulo"', { id: String(detal.id), articulo: "" });
+  comprobar("se puede desunir: cada uno vuelve a llevar su costo", r.destino.includes("ya no está unido") && (await consultar("select producto_id from lista_detal where id = ?", [detal.id]))[0].producto_id === null, r.destino);
+
+  // Se deja todo como estaba.
+  escribirEnLocal("update productos set costo_usd = ?, margen_pct = ?, precio_usd = ? where id = 2", [antes.costo_usd, antes.margen_pct, antes.precio_usd]);
+  if (variante) escribirEnLocal("update variantes set costo_usd = ?, precio_usd = ? where id = ?", [variante.costo_usd, variante.precio_usd, variante.id]);
+  escribirEnLocal("delete from lista_detal where id = ?", [detal.id]);
+}
+
 async function probarCombosEnLaCaja() {
   // Al abrir la caja, los catorce combos del detal entran en su catálogo: ocultos en la web, con el precio del detal de hoy.
   let p = await pagina("/admin/ventas");
@@ -3078,6 +3120,7 @@ try {
     await probarFacturas();
     await probarListaDetal();
     await probarCombosEnLaCaja();
+    await probarCostosUnidos();
     await probarVitrina();
     await probarTareaDiaria();
     await probarRecuperacion();
