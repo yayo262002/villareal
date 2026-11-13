@@ -133,6 +133,8 @@ import { catalogoDelPos, esMostrador, guardarVentaDelPos, type VentaDelPos } fro
 import { FALTA_EL_COMPRADOR, FaltaElRif, anularConNotaDeCredito, buscarFactura, contarFacturas, emitirFacturaDeVenta, facturaVigenteDeVenta, ponerNumeroDeControl } from "./facturas";
 import { limpiarNombreDeComprador } from "./compradores";
 import { igualarCostosDelMayor, unirAlMayor } from "./costos-unidos";
+import { borrarFacturaDeCompra, guardarFacturaDeCompra } from "./facturas-compra";
+import { revisarFacturaDeCompra, totalesDeLineas } from "./libro-compras-calculo";
 import { leerDocumento, problemaDelDocumento } from "./documento";
 import { esTipoIva, numeroDeFactura } from "./factura-calculo";
 import { revisarVentaPos, totalesDe } from "./pos-calculo";
@@ -2748,17 +2750,79 @@ export async function cargarFacturaDelDetal(datos: FormData): Promise<void> {
   const tasa = await tasaDeLaCompra(datos, fecha, (mensaje) => volverConError(ruta, mensaje));
   if (tasa === null) volverConError(ruta, "No hay tasa del BCV guardada para ese día: escríbela.");
   const categoria = texto(datos, "categoria");
+  const ivaPct = (await reglasDelDetal()).iva_pct;
+  const proveedor = texto(datos, "proveedor").slice(0, 80);
   const resultado = await cargarCompraDetal({
     lineas: lineasDeFactura(lineas),
     categoria: esCategoriaDetal(categoria) ? categoria : "viveres",
     unidad: "unidad",
     tasa,
-    proveedor: texto(datos, "proveedor").slice(0, 80),
+    proveedor,
     fecha,
-    iva_pct: (await reglasDelDetal()).iva_pct,
+    iva_pct: ivaPct,
   });
   const enElMayor = await igualarCostosDelMayor();
-  volverConExito(RUTA_DETAL, `Factura cargada a la tasa ${tasa.toLocaleString("es-VE")}: ${resumenDeCarga(resultado, sinEntender)}${dichoDelMayor(enElMayor)}`);
+  // Con su número, la factura entra también en el libro de compras: lo exento, la base y el IVA salen de sus líneas.
+  const numeroFactura = texto(datos, "numero_factura").replace(/\s+/g, " ").slice(0, 40);
+  let enElLibro = "";
+  if (numeroFactura && proveedor.trim()) {
+    const totales = totalesDeLineas(lineas, ivaPct);
+    const rifEscrito = texto(datos, "rif_proveedor").slice(0, 20);
+    const { nueva } = await guardarFacturaDeCompra({
+      fecha: fecha ?? hoy(),
+      proveedor,
+      rif: leerDocumento(rifEscrito)?.texto ?? rifEscrito,
+      numero: numeroFactura,
+      numero_control: texto(datos, "numero_control").slice(0, 40),
+      ...totales,
+      iva_pct: ivaPct,
+      tasa,
+      origen: "detal",
+      nota: "",
+    });
+    enElLibro = ` ${nueva ? "Entra" : "Corregida"} en el libro de compras: factura N.º ${numeroFactura}, total ${bs(totales.total_bs)} (base ${bs(totales.base_bs)}, IVA ${bs(totales.iva_bs)}, exento ${bs(totales.exento_bs)}).`;
+  } else if (numeroFactura) {
+    enElLibro = " No entró en el libro de compras: falta el proveedor.";
+  }
+  volverConExito(RUTA_DETAL, `Factura cargada a la tasa ${tasa.toLocaleString("es-VE")}: ${resumenDeCarga(resultado, sinEntender)}${dichoDelMayor(enElMayor)}${enElLibro}`);
+}
+
+/** Anota a mano una factura de compra en el libro de compras (o la corrige, si ya estaba con ese número). */
+export async function anotarFacturaDeCompra(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const ruta = "/admin/facturas/compras";
+  const monto = (campo: string) => (texto(datos, campo).trim() ? (leerMonto(texto(datos, campo)) ?? Number.NaN) : 0);
+  const rifEscrito = texto(datos, "rif").slice(0, 20);
+  const tasaEscrita = texto(datos, "tasa").trim();
+  const d = {
+    fecha: texto(datos, "fecha").slice(0, 10),
+    proveedor: texto(datos, "proveedor").replace(/\s+/g, " ").trim().slice(0, 80),
+    rif: leerDocumento(rifEscrito)?.texto ?? rifEscrito.trim(),
+    numero: texto(datos, "numero").replace(/\s+/g, " ").trim().slice(0, 40),
+    numero_control: texto(datos, "numero_control").trim().slice(0, 40),
+    exento_bs: monto("exento_bs"),
+    base_bs: monto("base_bs"),
+    iva_pct: (await reglasDelDetal()).iva_pct,
+    iva_bs: monto("iva_bs"),
+    total_bs: monto("total_bs"),
+    tasa: tasaEscrita ? (leerMonto(tasaEscrita) ?? null) : null,
+    origen: "a_mano" as const,
+    nota: texto(datos, "nota").trim().slice(0, 200),
+  };
+  const motivos = revisarFacturaDeCompra(d, hoy());
+  if (motivos.length > 0) volverConError(`${ruta}#anotar`, motivos.join(" "));
+  // Sin tasa escrita, la del día de la factura (si se guardó), para ver lo mismo en dólares.
+  if (d.tasa === null) d.tasa = (await tasaEnFecha(d.fecha))?.valor ?? null;
+  const { nueva } = await guardarFacturaDeCompra(d);
+  volverConExito(`${ruta}?mes=${d.fecha.slice(0, 7)}`, `${nueva ? "Anotada" : "Corregida"}: la factura N.º ${d.numero} de ${d.proveedor}, total ${bs(d.total_bs)}.`);
+}
+
+/** Quita una factura de compra del libro (anotada por error). */
+export async function quitarFacturaDeCompra(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  if (id) await borrarFacturaDeCompra(id);
+  volverConExito(vueltaDeFactura(datos, "/admin/facturas/compras"), "Factura de compra quitada del libro.");
 }
 
 /**

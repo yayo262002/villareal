@@ -2669,6 +2669,50 @@ async function probarFacturas() {
   escribirEnLocal("delete from compradores where clave = 'V-12345678'");
 }
 
+async function probarLibroDeCompras() {
+  const hoyVet = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  const mes = hoyVet.slice(0, 7);
+  let p = await pagina("/admin/facturas/compras");
+  comprobar(`el libro de compras abre, con su formulario (${p.ms} ms)`, p.status === 200 && p.html.includes('name="total_bs"') && p.html.includes("Libro de compras (Excel)"));
+  comprobar("Facturas enlaza el libro de compras", (await pagina("/admin/facturas")).html.includes("/admin/facturas/compras"));
+  const anotar = (campos) =>
+    enviar("/admin/facturas/compras", 'name="total_bs"', { fecha: hoyVet, proveedor: "El Drago de prueba", rif: "j408064308", numero: "A-123", numero_control: "00-123", exento_bs: "", base_bs: "1.000,00", iva_bs: "160,00", total_bs: "1.160,00", tasa: "", nota: "", ...campos });
+  let r = await anotar({ total_bs: "1.300,00" });
+  comprobar("si lo exento, la base y el IVA no suman el total, no se anota y lo dice", r.destino.includes("suman 1.160,00"), r.destino);
+  r = await anotar({});
+  let compras = await consultar("select * from facturas_compra where numero = 'A-123'");
+  comprobar("la factura se anota, con el RIF del proveedor escrito como va en el libro", r.destino.includes("Anotada") && compras.length === 1 && compras[0].rif === "J-40806430-8" && cerca(Number(compras[0].iva_bs), 160), `${r.destino} ${JSON.stringify(compras)}`);
+  r = await anotar({ numero_control: "00-124" });
+  compras = await consultar("select * from facturas_compra where numero = 'A-123'");
+  comprobar("la misma factura anotada otra vez se corrige, no se repite", r.destino.includes("Corregida") && compras.length === 1 && compras[0].numero_control === "00-124", r.destino);
+
+  // Al cargar una factura en la lista del detal con su número, entra sola en el libro, con la base y el IVA de sus líneas.
+  r = await enviar("/admin/detal", 'id="lineas"', { proveedor: "Cecosesola de prueba", fecha_compra: hoyVet, tasa_compra: "896,12", categoria: "viveres", lineas: "12 x 500,00 Jugo del libro de prueba 200 ml (G)", numero_factura: "C-9", numero_control: "", rif_proveedor: "" });
+  const [delDetal] = await consultar("select * from facturas_compra where numero = 'C-9'");
+  comprobar(
+    "una factura cargada en el detal con su número entra en el libro de compras: base 6.000, IVA 960, total 6.960",
+    r.destino.includes("Entra en el libro de compras") && delDetal?.origen === "detal" && cerca(Number(delDetal.base_bs), 6000) && cerca(Number(delDetal.iva_bs), 960) && cerca(Number(delDetal.total_bs), 6960),
+    `${r.destino} ${JSON.stringify(delDetal)}`,
+  );
+
+  const respuesta = await fetch(`${base}/admin/facturas/compras/libro?mes=${mes}`, { headers: { cookie } });
+  const libro = Buffer.from(await respuesta.arrayBuffer()).toString("utf8");
+  comprobar(
+    "el libro de compras para Excel lleva cada factura con su RIF, su número, su control, lo exento, la base y el IVA",
+    respuesta.status === 200 && libro.includes("Fecha;Proveedor;RIF;") && libro.includes("El Drago de prueba;J-40806430-8;A-123;00-124;1160,00;0,00;1000,00;16;160,00") && libro.includes("Cecosesola de prueba;;C-9;"),
+    libro.slice(0, 400),
+  );
+  p = await pagina(`/admin/facturas/compras?mes=${mes}`);
+  comprobar("la pantalla del mes enseña las dos facturas y su IVA", p.html.includes("A-123") && p.html.includes("C-9") && p.html.includes("IVA pagado"));
+
+  // Se limpia: las facturas de prueba salen del libro y el jugo de la lista.
+  for (const f of await consultar("select id from facturas_compra where numero in ('A-123', 'C-9')")) {
+    await enviar(`/admin/facturas/compras?mes=${mes}`, 'title="Quita esta factura del libro', { id: String(f.id), volver_a: `/admin/facturas/compras?mes=${mes}` });
+  }
+  comprobar("una factura de compra se quita del libro", (await consultar("select count(*) as n from facturas_compra where numero in ('A-123', 'C-9')"))[0].n === 0);
+  escribirEnLocal("delete from lista_detal where nombre = 'Jugo del libro de prueba 200 ml'");
+}
+
 async function probarCostosUnidos() {
   // Un producto de la lista del detal unido a su artículo de Villa Real: los dos con el mismo costo.
   const hoyVet = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
@@ -3121,6 +3165,7 @@ try {
     await probarListaDetal();
     await probarCombosEnLaCaja();
     await probarCostosUnidos();
+    await probarLibroDeCompras();
     await probarVitrina();
     await probarTareaDiaria();
     await probarRecuperacion();

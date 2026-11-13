@@ -39,6 +39,9 @@ export default async function PaginaFacturas({ searchParams }: { searchParams: P
           <a href={`/admin/facturas/libro?mes=${mes}`} className="boton boton--secundario">
             Libro de ventas (Excel)
           </a>
+          <Link href={`/admin/facturas/compras?mes=${mes}`} className="boton boton--secundario">
+            Libro de compras
+          </Link>
           <Link href="/admin/ventas" className="boton">
             Registrar venta
           </Link>

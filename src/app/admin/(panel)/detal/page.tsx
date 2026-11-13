@@ -251,6 +251,24 @@ export default async function PaginaDetal({ searchParams }: { searchParams: Prom
             <label htmlFor="lineas">Líneas de la factura</label>
             <textarea id="lineas" name="lineas" rows={8} required placeholder={"12 x 447,59 Jugo Natulac Pera 200 ml (G)\n6 x 875,00 Maíz de Cotufa El Maizalito 400 g (E)"} />
           </div>
+          <div className="formulario__fila">
+            <div className="campo">
+              <label htmlFor="numero_factura">N.º de factura (para el libro de compras)</label>
+              <input id="numero_factura" name="numero_factura" type="text" maxLength={40} autoComplete="off" />
+            </div>
+            <div className="campo">
+              <label htmlFor="numero_control_compra">N.º de control</label>
+              <input id="numero_control_compra" name="numero_control" type="text" maxLength={40} autoComplete="off" />
+            </div>
+            <div className="campo">
+              <label htmlFor="rif_proveedor">RIF del proveedor</label>
+              <input id="rif_proveedor" name="rif_proveedor" type="text" maxLength={20} autoComplete="off" placeholder="J-12345678-9" />
+            </div>
+          </div>
+          <span className="ayuda">
+            Con el número de la factura, entra también en el <Link href="/admin/facturas/compras">libro de compras</Link>: lo exento, la base y el IVA salen de sus
+            líneas.
+          </span>
           <button type="submit" className="boton">
             Cargar
           </button>

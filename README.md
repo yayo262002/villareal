@@ -282,7 +282,9 @@ src/lib/factura-calculo.ts  Las cuentas de la factura: lo exento, la base imponi
 src/lib/documento.ts      Leer una cédula o un RIF escrito de cualquier forma, como va en la factura (puro, con pruebas)
 src/lib/compradores.ts    Quien compró con factura en el mostrador, para reconocerlo por su cédula
 src/lib/facturas.ts       Las facturas y las notas de crédito desde la base: emitir, numerar, el número de control, anular, listar
-src/app/admin/(panel)/facturas/  Facturas: la lista del mes, los ajustes, cada factura (carta y ticket), anular, y el libro de ventas para Excel
+src/app/admin/(panel)/facturas/  Facturas: la lista del mes, los ajustes, cada factura (carta y ticket), anular, y el libro de ventas para Excel; en compras/, el libro de compras
+src/lib/libro-compras-calculo.ts  Las cuentas del libro de compras: los totales de una factura por sus líneas, revisar una factura, las filas para Excel (puro, con pruebas)
+src/lib/facturas-compra.ts  Las facturas de compra desde la base: anotar o corregir, listar el mes, quitar
 src/lib/detal-calculo.ts  Las cuentas de la lista del detal: IVA, margen, la charcutería (entre 0,80 y más un 10 % al mayor), dólares subidos al centavo, bolívares subidos de 5 en 5; las reglas guardadas; leer las líneas de una factura y una lista de costos en dólares (puro, con pruebas)
 src/lib/detal.ts          La lista del detal desde la base: listar, cargar una factura o unos costos en dólares, agregar, cambiar, esconder, quitar
 src/lib/costos-unidos.ts  El mismo costo en el detal y en Villa Real: unir un producto de la lista con su artículo del catálogo e igualar el costo
@@ -995,6 +997,18 @@ Binance y otro.
   de crédito (en negativo), con el control, el RIF, lo exento, la base, la
   alícuota, el IVA y el total en bolívares a la tasa de cada documento y
   en dólares. Es lo que el contador necesita para declarar el IVA.
+- **El libro de compras** (Facturas → «Libro de compras»,
+  `/admin/facturas/compras`): las facturas de compra del mes (Drago,
+  Cecosesola, Granos de Oro…) con el RIF del proveedor, su número y su
+  control, lo exento, la base imponible y el IVA en bolívares, como vienen
+  impresas, y su Excel (`/admin/facturas/compras/libro?mes=2026-11`). El
+  IVA pagado en las compras (crédito fiscal) se descuenta del cobrado en
+  las ventas. Se anotan ahí (lo exento, la base y el IVA tienen que sumar
+  el total; la misma factura anotada otra vez se corrige, no se repite) o
+  salen solas al cargar una factura en la lista del detal con su número:
+  lo exento, la base y el IVA salen de sus líneas (tabla `facturas_compra`,
+  `src/lib/facturas-compra.ts`; las cuentas en
+  `src/lib/libro-compras-calculo.ts`, con pruebas).
 - **Lo que no hace el sistema**: renovar el RIF (venció en 2019), elegir
   la imprenta digital, ni declarar el IVA. Lo dice la propia pantalla.
 

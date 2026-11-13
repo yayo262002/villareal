@@ -563,6 +563,31 @@ export const ESQUEMA = `
   );
   create unique index if not exists lista_detal_nombre on lista_detal(nombre collate nocase);
 
+  -- Las facturas de compra (Drago, Cecosesola, Granos de Oro…), para el
+  -- libro de compras: lo exento, la base imponible y el IVA en bolívares,
+  -- como vienen impresos. Se anotan a mano en Facturas o salen solas al
+  -- cargar una factura en la lista del detal con su número. Una factura de
+  -- un proveedor con el mismo número es la misma: se corrige, no se repite.
+  create table if not exists facturas_compra (
+    id integer primary key autoincrement,
+    fecha text not null,
+    proveedor text not null,
+    rif text not null default '',
+    numero text not null,
+    numero_control text not null default '',
+    exento_bs real not null default 0,
+    base_bs real not null default 0,
+    iva_pct real not null default 16,
+    iva_bs real not null default 0,
+    total_bs real not null default 0,
+    tasa real,
+    origen text not null default 'a_mano' check (origen in ('a_mano', 'detal')),
+    nota text not null default '',
+    creado_en text not null default (datetime('now'))
+  );
+  create unique index if not exists facturas_compra_unica on facturas_compra(proveedor collate nocase, numero);
+  create index if not exists facturas_compra_fecha on facturas_compra(fecha);
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (
@@ -621,6 +646,7 @@ export const TABLAS = [
   "precios_especiales",
   "facturas",
   "lista_detal",
+  "facturas_compra",
 ] as const;
 
 /**
