@@ -39,6 +39,10 @@ const GIRAR_PRIMERO = new Map([["mortadela-de-pollo", 104], ["mortadela-punta-de
  *  (el eje largo de su silueta) y se endereza. Lo que no es alargado o va acostado (la mozzarella con sus
  *  lonjas, la bolsa de suero, el cartón de huevos, el paquete de salchichas) no se toca. */
 const ENDEREZAR = new Set(["mortadela-extra", "queso-amarillo", "queso-amarillo-vallecito", "jamon-de-espalda", "jamon-ahumado", "jamon-de-pierna", "jamon-arepero", "bolona-de-pollo", "pechuga-de-pavo"]);
+/** Lo que se le quita a una foto porque no es producto, en píxeles de la foto, y el radio de sus esquinas: al queso paisa,
+ *  la tira del plástico de la izquierda y, abajo, los reflejos blancos de la bolsa y la banda azulada de su cierre (el
+ *  dueño, 13/11: «se ve raro por abajo»); y las esquinas redondeadas de un bloque de verdad, no un corte recto. */
+const RECORTAR = new Map([["queso-paisa", { izquierda: 36, abajo: 137, radio: 18 }]]);
 
 if (argumentos[0] === "--recortar") {
   // El proceso hijo: solo el recorte, con el recortador y nada más.
@@ -158,11 +162,27 @@ for (const archivo of fs.readdirSync(origen).sort()) {
     como += `; enderezada ${giro.toFixed(1)}°`;
   }
   if (info.height < 700) imagen = imagen.resize({ height: 800, kernel: "lanczos3" });
-  const corregida = await imagen.modulate({ saturation: 1.08 }).sharpen({ sigma: 0.7 }).png().toBuffer();
+  let corregida = await imagen.modulate({ saturation: 1.08 }).sharpen({ sigma: 0.7 }).png().toBuffer();
+  if (RECORTAR.has(nombre)) {
+    corregida = await recortar(corregida, RECORTAR.get(nombre));
+    como += "; recortada";
+  }
   const salida = await sharp(corregida).trim({ threshold: 6 }).png().toFile(path.join(destino, `${nombre}.png`));
   console.log(`${nombre}.png: ${salida.width} × ${salida.height}; ${como}`);
 }
 fs.rmSync(temporal, { recursive: true, force: true });
+
+/** Le quita a una foto lo de sus bordes que no es producto y le redondea las esquinas (ver RECORTAR). */
+async function recortar(png, { izquierda = 0, derecha = 0, arriba = 0, abajo = 0, radio = 0 }) {
+  const { width, height } = await sharp(png).metadata();
+  const ancho = width - izquierda - derecha;
+  const alto = height - arriba - abajo;
+  const cortada = await sharp(png).extract({ left: izquierda, top: arriba, width: ancho, height: alto }).png().toBuffer();
+  if (radio <= 0) return cortada;
+  // Las cuatro esquinas redondeadas: las que quedan en un corte, y la que se pierde al quitar una tira de un lado.
+  const mascara = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${ancho}" height="${alto}"><rect x="0" y="0" width="${ancho}" height="${alto}" rx="${radio}" ry="${radio}" fill="#fff"/></svg>`);
+  return sharp(cortada).composite([{ input: mascara, blend: "dest-in" }]).png().toBuffer();
+}
 
 /**
  * Una foto que ya viene recortada (PNG con transparencia, de una app que quita fondos) guarda en los

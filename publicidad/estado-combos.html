@@ -100,7 +100,7 @@
         return `<article class="${clases}">
           <div class="numero"><small>COMBO</small>${c.n}</div>
           ${c.especial ? `<div class="cinta">ESPECIAL</div>` : ""}
-          <div class="fotos">${c.productos.map(([foto]) => fotoDe(foto)).join("")}</div>
+          <div class="fotos">${c.productos.map(([foto]) => fotoDe(foto, c)).join("")}</div>
           <div class="nombre">${nombreDe(c)}<span class="detalle">${detalleDe(c)}</span></div>
           <div class="precio">${precio ? `<small>$</small>${dolares(precio)}` : "<small>Consulte</small>"}</div>
         </article>`;

@@ -3,23 +3,26 @@
 //
 // De cada producto, lo que mide de alto en la vida real, en centímetros, tal como sale en su foto
 // (aproximado; el dueño lo corrige): con eso se dibujan todos a la misma escala.
+// El jamón de espalda y el de pierna, más grandes que los quesos amarillos (el dueño, 13/11): el de espalda era de 28 y el
+// de pierna de 30, y el queso amarillo Mi Vallecito, de 32.
 const CM = {
-  "jamon-de-espalda": 28,
+  "jamon-de-espalda": 32,
   "queso-amarillo": 26,
   // El arepero es un rollo de 1,8 kg y unos 7,5 cm de grueso (de largo, cerca de 40 cm). Con 32 salía flaco y pequeño al lado
   // de la mozzarella (el dueño, 13/11); con 36 es lo más alto del combo y la mozzarella no se queda chiquita.
   "jamon-arepero": 36,
   mozzarella: 27,
   "jamon-ahumado": 28,
-  "jamon-de-pierna": 30,
-  "queso-amarillo-vallecito": 32,
+  "jamon-de-pierna": 35,
+  "queso-amarillo-vallecito": 30,
   "bolona-de-pollo": 30,
-  // Un poco más pequeño que antes (18), como pidió el dueño.
-  "suero-san-pedro": 16,
+  // Más pequeño (era de 18, después de 16), como pidió el dueño.
+  "suero-san-pedro": 14,
   "mortadela-de-pollo": 20,
   "pechuga-de-pavo": 28,
   "pechuga-de-pavo-drago": 28,
-  "pechuga-de-pavo-ahumada": 26,
+  // Un poco más grande (era de 26), como pidió el dueño.
+  "pechuga-de-pavo-ahumada": 29,
   huevos: 9,
   salchichas: 17,
   tocineta: 28,
@@ -80,9 +83,8 @@ globalThis.COMBOS = [
     especial: true,
     etiqueta: "Especial perros calientes",
     fondo: "perros",
-    // Algo más bajos, para que el perro caliente de encima del jamón no llegue a la onda; y un poco solapados, como estaban.
-    alto: 88,
-    separacion: -7,
+    // Separados, no solapados (el dueño, 13/11: «que no estén tan pegados»). Lo alto lo pone la hoja: el perro caliente y
+    // las salsas no llegan a la onda.
   },
   {
     n: 12,
@@ -108,6 +110,8 @@ globalThis.COMBOS = [
     // Porciones de pizza en el fondo.
     fondo: "pizzas",
     estilo: "pizza",
+    // El jamón de espalda, como era: más alto, con el gorro de cocinero encima, achicaba a los tres.
+    cm: { "jamon-de-espalda": 28 },
   },
   {
     n: 14,
@@ -123,7 +127,18 @@ globalThis.COMBOS = [
   },
 ];
 
+// Lo ancho de una foto entre lo alto, cuando no es el de la foto: el arepero, más gordito (el dueño, 13/11). Su foto es de
+// 0,19 y se ensancha un 40 %.
+const ASPECTO = { "jamon-arepero": 0.27 };
+
+/** Lo que mide de alto un producto en un combo: lo de CM, salvo que el combo diga otra cosa (`cm`). */
+globalThis.cmDe = (nombre, combo) => combo?.cm?.[nombre] ?? CM[nombre];
+
+/** El estilo de la foto de un producto: su alto real y, si se ensancha, su proporción. */
+globalThis.estiloDeFoto = (nombre, combo) =>
+  `--cm: ${cmDe(nombre, combo)}${ASPECTO[nombre] ? `; aspect-ratio: ${ASPECTO[nombre]}; object-fit: fill` : ""}`;
+
 /** La foto de un producto, con su tamaño real, para que salga a escala. */
-globalThis.fotoDe = function fotoDe(nombre) {
-  return `<img src="fotos/${nombre}.png" style="--cm: ${CM[nombre]}" alt="">`;
+globalThis.fotoDe = function fotoDe(nombre, combo) {
+  return `<img src="fotos/${nombre}.png" style="${estiloDeFoto(nombre, combo)}" alt="">`;
 };
