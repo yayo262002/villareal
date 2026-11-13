@@ -14,7 +14,7 @@ Todas son **CC0** o de **dominio público**: se pueden usar, también en un come
 - `productos/parmesano.webp`: «Close up of parmesan cheese.jpg», de Monika Grabkowska, CC0. https://commons.wikimedia.org/wiki/File:Close_up_of_parmesan_cheese.jpg
 - `productos/huevos.webp`: «Brown-eggs.jpg», de Photos public domain.com, dominio público. https://commons.wikimedia.org/wiki/File:Brown-eggs.jpg
 - `productos/tocineta.webp`: «Bacon Meat», de Daria Nepriakhina, CC0. https://stocksnap.io/photo/bacon-meat-GI3XTVX4EQ
-- `productos/jamon.webp`: «Ham Pig», de Lan Lanister, CC0. https://stocksnap.io/photo/ham-pig-QXD6Y5RRI2
+- `productos/jamon.webp`: «Ham (4).jpg», de Renee Comet, dominio público. https://commons.wikimedia.org/wiki/File:Ham_(4).jpg (un jamón cocido entero, como el que se rebana aquí; antes, una pata de jamón curado)
 - `productos/pepperoni.webp`: «Ham sausage slices.jpg», de Fumikas Sagisavas, CC0. https://commons.wikimedia.org/wiki/File:Ham_sausage_slices.jpg
 - `productos/salami.webp`: «Wiener Wurst slices.jpg», de LordOider, CC0. https://commons.wikimedia.org/wiki/File:Wiener_Wurst_slices.jpg
 - `productos/mortadela.webp`: «Ham Burger», de Toronto Eaters, CC0. https://stocksnap.io/photo/ham-burger-T4EK2NTHY2
