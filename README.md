@@ -1020,8 +1020,9 @@ Binance y otro.
   lo exento, la base y el IVA salen de sus líneas (tabla `facturas_compra`,
   `src/lib/facturas-compra.ts`; las cuentas en
   `src/lib/libro-compras-calculo.ts`, con pruebas).
-- **Lo que no hace el sistema**: renovar el RIF (venció en 2019), elegir
-  la imprenta digital, ni declarar el IVA. Lo dice la propia pantalla.
+- **Lo que no hace el sistema**: actualizar el RIF (se hace en el SENIAT;
+  el de ahora es del 19/08/2026), elegir la imprenta digital, ni declarar
+  el IVA. Lo dice la propia pantalla.
 
 ## La lista del detal
 
@@ -1459,8 +1460,9 @@ Binance y otro.
 
 ## Pendiente
 
-- El comprobante de RIF que hay venció el 15/07/2019: conviene renovarlo en
-  el SENIAT antes de imprimirlo en facturas o ponerlo en la web.
+- El RIF está al día: el comprobante digital (formato nuevo, sin fecha de
+  vencimiento) dice «Última actualización 19/08/2026», con el mismo
+  domicilio fiscal de `negocio.ts`. Contribuyente ordinario del IVA.
 - Poner los precios reales: el de los huevos es de ejemplo y el panel lo
   avisa; las marcas del queso amarillo / cheddar (Kemmental, El Legado) y
   del pecorino (Sortilegio, Guaralac) están creadas con su foto y sin
@@ -1488,7 +1490,7 @@ Binance y otro.
 - Poner `ANTHROPIC_API_KEY` en Vercel y en `.env.local` para que las
   fotos de las notas se lean solas. Sin ella, la foto se guarda sin más.
 - Un dominio propio.
-- Para facturar de verdad: renovar el RIF, elegir con el contador la
+- Para facturar de verdad: elegir con el contador la
   imprenta digital autorizada (y entonces integrarla para que asigne el
   número de control sola) y confirmar con él qué productos están exentos.
   El panel ya emite las facturas, las notas de crédito y el libro de

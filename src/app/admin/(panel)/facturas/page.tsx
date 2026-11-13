@@ -193,7 +193,8 @@ export default async function PaginaFacturas({ searchParams }: { searchParams: P
         <h2 className={estilos.subtitulo}>Lo que hace falta para que la factura valga ante el SENIAT</h2>
         <ol className={estilos.pasos}>
           <li>
-            Un <strong>RIF vigente</strong> del negocio: el que hay venció en 2019; se renueva en el portal del SENIAT.
+            Un <strong>RIF vigente</strong> del negocio: ya está, se actualizó el 19/08/2026. Las facturas de compra, a nombre de ese RIF (J-40806430-8): a
+            nombre de una persona, su IVA no se descuenta.
           </li>
           <li>
             Una <strong>imprenta digital autorizada</strong> (o el servicio gratuito del SENIAT cuando esté disponible), que asigna el número de control a cada factura.
