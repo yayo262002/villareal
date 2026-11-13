@@ -721,7 +721,7 @@
     const lineas = combo.titulo
       ? `<div class="etiqueta">${combo.etiqueta ?? "Combo especial"}</div><span class="linea">${combo.titulo}</span>${festiva ? estrellaTitulo(combo.n, "izquierda") + estrellaTitulo(combo.n, "derecha") : ""}`
       : combo.productos.map(([, nombre], i) => `<span class="linea">${nombre}${i < combo.productos.length - 1 ? " +" : ""}</span>`).join("");
-    const piezas = combo.productos.map(([foto, , adorno]) => `<span class="pieza" style="--cm: ${cmDe(foto, combo)}"><img src="fotos/${foto}.png" style="${estiloDeFoto(foto, combo)}" alt="">${adorno ? ADORNOS[adorno] : ""}</span>`).join("");
+    const piezas = combo.productos.map(([foto, , adorno]) => `<span class="pieza" data-foto="${foto}" style="--cm: ${cmDe(foto, combo)}"><img src="fotos/${foto}.png" style="${estiloDeFoto(foto, combo)}" alt="">${adorno ? ADORNOS[adorno] : ""}</span>`).join("");
     if (combo.alto) hoja.dataset.alto = combo.alto;
     // Separados: 10 mm entre dos productos, 6 mm entre tres; el combo puede decir otra cosa (negativa, solapados).
     const separacion = combo.separacion ?? (combo.productos.length > 2 ? 6 : 10);
@@ -798,13 +798,21 @@
       const separacion = Number(hoja.dataset.separacion);
       const piezas = [...hoja.querySelectorAll(".pieza")].map((p) => {
         const img = p.querySelector("img");
-        // La proporción de la foto, o la que se le pone (el arepero, ensanchado).
-        return { cm: Number(p.style.getPropertyValue("--cm")), aspecto: parseFloat(img.style.aspectRatio) || img.naturalWidth / img.naturalHeight };
+        // La proporción de la foto, o la que se le pone (el arepero, ensanchado). `fijo`: lo que mide en todas las hojas de todos
+        // los días, en mm (la mozzarella, los quesos amarillos); esa no sigue la escala de la hoja. En los especiales, nada fijo.
+        return { p, img, fijo: hoja.classList.contains("hoja--especial") ? undefined : ALTO_EN_HOJA[p.dataset.foto], cm: Number(p.style.getPropertyValue("--cm")), aspecto: parseFloat(img.style.aspectRatio) || img.naturalWidth / img.naturalHeight };
       });
-      const anchoPorEscala = piezas.reduce((suma, p) => suma + p.cm * p.aspecto, 0);
+      const fijas = piezas.filter((p) => p.fijo);
+      const conEscala = piezas.filter((p) => !p.fijo);
+      const anchoFijo = fijas.reduce((suma, p) => suma + p.fijo * p.aspecto, 0);
+      const anchoPorEscala = conEscala.reduce((suma, p) => suma + p.cm * p.aspecto, 0);
       const alto = Number(hoja.dataset.alto) || BASE_MM - arriba;
-      let escala = Math.min(alto / Math.max(...piezas.map((p) => p.cm)), (216 - 2 * lado - separacion * (piezas.length - 1)) / anchoPorEscala);
-      const poner = () => hoja.style.setProperty("--mm-por-cm", escala.toFixed(3));
+      let escala = conEscala.length === 0 ? 3 : Math.min(alto / Math.max(...conEscala.map((p) => p.cm)), (216 - 2 * lado - separacion * (piezas.length - 1) - anchoFijo) / anchoPorEscala);
+      const poner = () => {
+        hoja.style.setProperty("--mm-por-cm", escala.toFixed(3));
+        // La de alto fijo: los centímetros que, a esta escala, dan sus milímetros.
+        for (const p of fijas) for (const el of [p.p, p.img]) el.style.setProperty("--cm", (p.fijo / escala).toFixed(3));
+      };
       poner();
       while (choca(hoja, arriba, lado, esquinas) && escala > 1) {
         escala *= 0.99;

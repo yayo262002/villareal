@@ -4,17 +4,17 @@
 // De cada producto, lo que mide de alto en la vida real, en centímetros, tal como sale en su foto
 // (aproximado; el dueño lo corrige): con eso se dibujan todos a la misma escala.
 // El jamón de espalda y el de pierna, más grandes que los quesos amarillos (el dueño, 13/11): el de espalda era de 28 y el
-// de pierna de 30, y el queso amarillo Mi Vallecito, de 32.
+// de pierna de 30. Los quesos amarillos, sin quedarse pequeños (el dueño, después): el cheddar era de 26 y el Mi Vallecito, de 30.
 const CM = {
   "jamon-de-espalda": 32,
-  "queso-amarillo": 26,
+  "queso-amarillo": 29,
   // El arepero es un rollo de 1,8 kg y unos 7,5 cm de grueso (de largo, cerca de 40 cm). Con 32 salía flaco y pequeño al lado
   // de la mozzarella (el dueño, 13/11); con 36 es lo más alto del combo y la mozzarella no se queda chiquita.
   "jamon-arepero": 36,
   mozzarella: 27,
   "jamon-ahumado": 28,
   "jamon-de-pierna": 35,
-  "queso-amarillo-vallecito": 30,
+  "queso-amarillo-vallecito": 32,
   "bolona-de-pollo": 30,
   // Más pequeño (era de 18, después de 16), como pidió el dueño.
   "suero-san-pedro": 14,
@@ -85,6 +85,8 @@ globalThis.COMBOS = [
     fondo: "perros",
     // Separados, no solapados (el dueño, 13/11: «que no estén tan pegados»). Lo alto lo pone la hoja: el perro caliente y
     // las salsas no llegan a la onda.
+    // El queso amarillo, un poquito más grande que en los demás (era de 29), sin pasar al jamón (32).
+    cm: { "queso-amarillo": 31 },
   },
   {
     n: 12,
@@ -126,6 +128,11 @@ globalThis.COMBOS = [
     estilo: "sandwich",
   },
 ];
+
+// Lo que mide de alto un producto en las hojas de todos los días, en mm, igual en todas (el dueño, 13/11: «el mismo tamaño en
+// todas»): la mozzarella (iba de 81 a 104 mm, según con qué fuera) y los quesos amarillos, algo más bajos que los jamones
+// (10,8 cm). Lo demás de la hoja se acomoda a su alrededor, a su escala. En los especiales no: van con otras medidas.
+const ALTO_EN_HOJA = { mozzarella: 92, "queso-amarillo": 98, "queso-amarillo-vallecito": 98 };
 
 // Lo ancho de una foto entre lo alto, cuando no es el de la foto: el arepero, más gordito (el dueño, 13/11). Su foto es de
 // 0,19 y se ensancha un 40 %.
