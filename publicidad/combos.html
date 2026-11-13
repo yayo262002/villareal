@@ -62,11 +62,10 @@
     height: calc(var(--cm, 30) * var(--mm-por-cm) * 1mm); width: auto; max-width: 104mm; min-width: 0;
     object-fit: contain; object-position: center bottom; display: block; position: relative; z-index: calc(100 - var(--cm, 30));
   }
-  .combo .fotos img + img, .combo .fotos img + .falta, .combo .fotos .falta + img { margin-left: -12mm; }
-  /* En algún combo el dueño quiere los dos productos un poco separados. */
-  .combo--separado .fotos img + img { margin-left: 3mm; }
+  /* Separados, como en las hojas (el dueño, 13/11: «están muy pegados»). Solapados 12 mm, en las tarjetas donde las fotos
+     encogen mucho (las de tres líneas de nombre) el queso tapaba entero al jamón o a la mortadela. */
+  .combo .fotos { column-gap: 4mm; }
   /* Los combos con nombre propio (perrero, solidario) llevan tres cosas y un solo título. */
-  .combo--tres .fotos img + img { margin-left: -7mm; }
   .combo--tres .producto { font-size: 11mm; color: var(--acento); }
   /* Y se distinguen de los demás, que son especiales: la tarjeta en rojo como la cabecera, el título en dorado,
      los productos sobre una bandeja blanca, el número en dorado y una cinta «Especial». */
@@ -172,10 +171,11 @@
         return { izquierda: r.right - ancho - 4, abajo: r.top + n(c.top) + alto + 4 };
       })();
       const pasa = () => {
-        const arriba = caja.getBoundingClientRect().top + 2;
+        const c = caja.getBoundingClientRect();
+        const arriba = c.top + 2;
         return [...caja.querySelectorAll("img")].some((i) => {
           const f = i.getBoundingClientRect();
-          return f.top < arriba || (cinta && f.right > cinta.izquierda && f.top < cinta.abajo);
+          return f.top < arriba || f.left < c.left - 1 || f.right > c.right + 1 || (cinta && f.right > cinta.izquierda && f.top < cinta.abajo);
         });
       };
       let escala = 2.1;

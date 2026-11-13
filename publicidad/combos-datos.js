@@ -6,13 +6,16 @@
 const CM = {
   "jamon-de-espalda": 28,
   "queso-amarillo": 26,
-  "jamon-arepero": 32,
+  // El arepero es un rollo de 1,8 kg y unos 7,5 cm de grueso (de largo, cerca de 40 cm). Con 32 salía flaco y pequeño al lado
+  // de la mozzarella (el dueño, 13/11); con 36 es lo más alto del combo y la mozzarella no se queda chiquita.
+  "jamon-arepero": 36,
   mozzarella: 27,
   "jamon-ahumado": 28,
   "jamon-de-pierna": 30,
   "queso-amarillo-vallecito": 32,
   "bolona-de-pollo": 30,
-  "suero-san-pedro": 18,
+  // Un poco más pequeño que antes (18), como pidió el dueño.
+  "suero-san-pedro": 16,
   "mortadela-de-pollo": 20,
   "pechuga-de-pavo": 28,
   "pechuga-de-pavo-drago": 28,
@@ -20,7 +23,8 @@ const CM = {
   huevos: 9,
   salchichas: 17,
   tocineta: 28,
-  "mortadela-punta-de-monte": 30,
+  // Casi tan alta como el queso amarillo: con 30, en el combo 9 el queso se veía muy pequeño a su lado (el dueño, 13/11).
+  "mortadela-punta-de-monte": 27,
   "pan-de-sandwich": 34,
   "mortadela-extra": 30,
   "queso-paisa": 30,
@@ -38,6 +42,9 @@ const CM = {
 // o lo que acompaña, después. Los combos con nombre propio (perrero, solidario, navideño, pizzero) son los especiales y van al final.
 // Van en secuencia, como pidió el dueño: primero los de todos los días y al final los especiales. Un combo nuevo entra en su
 // sitio y los que vienen detrás se corren un número (y se vuelven a imprimir sus hojas y el cartel).
+// En las hojas, los productos van separados (el dueño, 13/11: «están muy pegados»): 10 mm entre dos, 6 mm entre tres.
+// `separacion` (en mm) la cambia; negativa, se solapan. `alto` pone un tope a lo más alto (en mm); sin él, los productos
+// salen lo más grandes que caben sin tocar la cabecera, el sello ni los lados.
 // COMBOS y fotoDe quedan en globalThis: los usan las páginas que cargan este archivo con <script>.
 globalThis.COMBOS = [
   { n: 1, productos: [["jamon-de-pierna", "Jamón de pierna"], ["queso-amarillo-vallecito", "Queso amarillo"]], detalle: "200 g de cada producto", lema: "Para el sándwich y la arepa", destacar: "el sándwich" },
@@ -60,6 +67,8 @@ globalThis.COMBOS = [
     etiqueta: "Especial solidario",
     // Sin corazones: al dueño no le gustaban.
     estilo: "solidario",
+    // Los tres juntos, un poco solapados, como estaban.
+    separacion: -7,
   },
   {
     n: 11,
@@ -71,8 +80,9 @@ globalThis.COMBOS = [
     especial: true,
     etiqueta: "Especial perros calientes",
     fondo: "perros",
-    // Algo más bajos, para que el perro caliente de encima del jamón no llegue a la onda.
+    // Algo más bajos, para que el perro caliente de encima del jamón no llegue a la onda; y un poco solapados, como estaban.
     alto: 88,
+    separacion: -7,
   },
   {
     n: 12,
@@ -83,9 +93,8 @@ globalThis.COMBOS = [
     destacar: "Navidad",
     especial: true,
     etiqueta: "Especial de Navidad",
-    // Luces de Navidad en el fondo, y los productos algo más bajos para que el gorro no llegue a la cabecera.
+    // Luces de Navidad en el fondo.
     estilo: "navidad",
-    alto: 86,
   },
   {
     n: 13,
@@ -96,10 +105,9 @@ globalThis.COMBOS = [
     destacar: "tu pizza",
     especial: true,
     etiqueta: "Especial pizza",
-    // Porciones de pizza en el fondo, y los productos algo más bajos para que el gorro de cocinero no llegue a la onda.
+    // Porciones de pizza en el fondo.
     fondo: "pizzas",
     estilo: "pizza",
-    alto: 84,
   },
   {
     n: 14,
@@ -112,8 +120,6 @@ globalThis.COMBOS = [
     etiqueta: "Especial sándwich",
     fondo: "sandwiches",
     estilo: "sandwich",
-    // Algo más bajos, para que el sándwich de encima del queso no llegue a la cabecera.
-    alto: 86,
   },
 ];
 

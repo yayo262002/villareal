@@ -40,7 +40,8 @@
   .charcuteria { position: absolute; left: 47.5mm; top: 5.6mm; font-weight: 800; font-size: 9.6mm; line-height: 1; letter-spacing: 0.035em; color: var(--oro); z-index: 6; white-space: nowrap; }
   .nombre { position: absolute; left: 46.5mm; top: 13.2mm; font-weight: 800; font-size: 23.5mm; line-height: 1; letter-spacing: -0.015em; color: var(--crema); z-index: 6; white-space: nowrap; }
 
-  /* Los productos, de verdad: a la misma escala, derechos, apoyados en el mostrador y un poco solapados, el más pequeño delante. */
+  /* Los productos, de verdad: a la misma escala, derechos, apoyados en el mostrador y separados (--separacion, de cada
+     combo; en los que van solapados, el más pequeño delante). */
   .productos { position: absolute; left: 4mm; right: 4mm; top: 0; height: 158mm; display: flex; justify-content: center; align-items: flex-end; z-index: 4; }
   .pieza { position: relative; display: block; flex: none; z-index: calc(100 - var(--cm, 30)); }
   .pieza img { display: block; height: calc(var(--cm, 30) * var(--mm-por-cm) * 1mm); width: auto; }
@@ -48,10 +49,11 @@
     content: ""; position: absolute; left: -7%; right: -7%; bottom: -2.4mm; height: 6mm; z-index: -1;
     background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(70, 35, 10, 0.55), rgba(70, 35, 10, 0));
   }
-  .pieza + .pieza { margin-left: -10mm; }
-  /* Los adornos de los especiales, dibujados encima de la foto de cada producto. */
+  .pieza + .pieza { margin-left: var(--separacion, 10mm); }
+  /* Los adornos de los especiales, dibujados encima de la foto de cada producto. El gorro, el de cocinero, la porción y el
+     sándwich van algo encajados en el producto, no subidos encima: lo que sobresale le quita alto a los productos. */
   .adorno { position: absolute; display: block; overflow: visible; pointer-events: none; filter: drop-shadow(0 0.6mm 0.9mm rgba(40, 10, 0, 0.35)); }
-  .adorno--gorro { left: 2%; top: -27%; width: 96%; transform: rotate(-9deg); }
+  .adorno--gorro { left: 8%; top: -10%; width: 84%; transform: rotate(-9deg); }
   .adorno--moño { left: -12%; top: -6%; width: 64%; transform: rotate(-16deg); }
   .adorno--acebo { right: 0; top: -9%; width: 52%; transform: rotate(12deg); }
   .adorno--perro { left: -4%; top: -15%; width: 108%; transform: rotate(-7deg); }
@@ -60,12 +62,10 @@
   .adorno--corazon { left: 3%; top: 1%; width: 36%; transform: rotate(-14deg); }
   .adorno--corazones { left: 30%; top: -50%; width: 46%; }
   .adorno--escarapela { right: -21%; bottom: 1%; width: 54%; transform: rotate(9deg); }
-  .adorno--cortapizza { left: -14%; top: -12%; width: 74%; transform: rotate(-28deg); }
-  .adorno--cocinero { left: 4%; top: -32%; width: 92%; transform: rotate(-6deg); }
-  .adorno--porcion { right: -8%; top: -27%; width: 60%; transform: rotate(24deg); }
-  .adorno--sandwich { right: -30%; top: -21%; width: 76%; transform: rotate(10deg); }
-  .hoja--separado .pieza + .pieza { margin-left: 3mm; }
-  .hoja--tres .pieza + .pieza { margin-left: -7mm; }
+  .adorno--cortapizza { left: 4%; top: -6%; width: 66%; transform: rotate(-28deg); }
+  .adorno--cocinero { left: 8%; top: -18%; width: 84%; transform: rotate(-6deg); }
+  .adorno--porcion { right: 9%; top: -12%; width: 54%; transform: rotate(24deg); }
+  .adorno--sandwich { right: -14%; top: -9%; width: 66%; transform: rotate(10deg); }
 
   /* Lo que lleva: el nombre, el peso, la frase y la casilla del precio. */
   .contenido { position: absolute; left: 10mm; right: 10mm; top: 159.6mm; bottom: 13mm; display: flex; flex-direction: column; justify-content: space-between; gap: 3mm; z-index: 5; }
@@ -647,7 +647,8 @@
       ? `${bola(n, 9, 66, 5.2, "roja", 7)}${bola(n, 20, 55, 3.6, "oro", 5)}${bola(n, 207, 66, 4.6, "oro", 6)}${bola(n, 197, 57, 3.1, "roja", 4)}`
       : `${albahaca(n, 5, 40, 1, 158)}${tomate(n, 10, 70, 6, -12)}${albahaca(n, 211, 42, 1, -158)}${tomate(n, 206, 73, 5.2, 14)}`;
     // En el pizzero, como en su imagen, albahaca junto a la tocineta y un tomate junto al queso, en el mostrador.
-    const mostrador = navidad ? "" : `${albahaca(n, 13, 160, 0.85, -40)}${tomate(n, 201, 152, 6.4, 8)}`;
+    // El tomate de la derecha, pegado al borde: más adentro le quitaba sitio a los productos.
+    const mostrador = navidad ? "" : `${albahaca(n, 13, 160, 0.85, -40)}${tomate(n, 205, 152, 6.4, 8)}`;
     return `<svg class="capa capa--arte" viewBox="0 0 216 279" xmlns="http://www.w3.org/2000/svg">
       <defs>
         ${defsFestivas(n)}
@@ -709,8 +710,6 @@
     hoja.className = [
       "hoja",
       combo.especial ? "hoja--especial" : "",
-      combo.productos.length > 2 ? "hoja--tres" : "",
-      combo.separado ? "hoja--separado" : "",
       festiva ? "hoja--festiva" : "",
       combo.estilo ? `hoja--${combo.estilo}` : "",
     ]
@@ -724,6 +723,10 @@
       : combo.productos.map(([, nombre], i) => `<span class="linea">${nombre}${i < combo.productos.length - 1 ? " +" : ""}</span>`).join("");
     const piezas = combo.productos.map(([foto, , adorno]) => `<span class="pieza" style="--cm: ${CM[foto]}"><img src="fotos/${foto}.png" alt="">${adorno ? ADORNOS[adorno] : ""}</span>`).join("");
     if (combo.alto) hoja.dataset.alto = combo.alto;
+    // Separados: 10 mm entre dos productos, 6 mm entre tres; el combo puede decir otra cosa (negativa, solapados).
+    const separacion = combo.separacion ?? (combo.productos.length > 2 ? 6 : 10);
+    hoja.dataset.separacion = separacion;
+    hoja.style.setProperty("--separacion", `${separacion}mm`);
     hoja.innerHTML = `
       <img class="estante" src="fondos/estante.jpg" alt="">
       <img class="madera" src="fondos/madera.jpg" alt="">
@@ -747,29 +750,67 @@
     document.body.append(hoja);
   }
 
-  // La escala de cada hoja: lo más alto del combo llega hasta la onda dorada, salvo que el conjunto no quepa a lo ancho.
+  // La escala de cada hoja: los productos, lo más grandes que quepan. Lo más alto (un producto o su adorno) no llega a la
+  // cabecera, lo que cae debajo del sello del número no lo toca y nada se sale por los lados (en las festivas, ni se mete en
+  // las ramas y los tomates de las esquinas). Se prueba la más grande que cabe a lo ancho y se achica de poco en poco hasta
+  // que nada choca: se mide lo dibujado, adornos girados incluidos, no se calcula a ojo.
   // Entre los productos de un mismo combo la proporción es la de la vida real (CM, en combos-datos.js).
+  window.listo = false;
+  const BASE_MM = 158;
+  // El sello del número, redondo, arriba a la derecha (medido en las hojas, con milímetro y medio de aire).
+  const SELLO = { x: 186.5, y: 27.5, radio: 25.5 };
+  // Lo que adorna los lados de las festivas, que los productos no tapan: [izquierda, arriba, derecha, abajo], en mm, medido
+  // en las hojas. En el navideño, las ramas de pino con sus bolas; en el pizzero y el sandwichero, la albahaca y los tomates.
+  const ESQUINAS = {
+    navidad: [[0, 0, 29, 60], [0, 50, 24, 72], [0, 72, 6, 110], [187, 0, 216, 61], [193, 52, 216, 72], [204, 72, 216, 110]],
+    otras: [[0, 0, 21, 66], [0, 66, 17, 77], [194, 0, 216, 71], [200, 66, 216, 79], [0, 138, 17, 166], [197, 144, 216, 160]],
+  };
+  /** Lo que ocupa algo dibujado, en mm de la hoja. De un adorno, lo que ocupan sus trazos (girados), no su recuadro. */
+  function recuadro(el, caja, mm) {
+    const partes = el.tagName === "IMG" ? [el] : [...el.querySelectorAll("path, circle, ellipse, rect, polygon, polyline, line")].filter((p) => !p.closest("defs, clipPath, mask, pattern"));
+    const rs = partes.map((p) => p.getBoundingClientRect()).filter((r) => r.width > 0 || r.height > 0);
+    return {
+      x1: (Math.min(...rs.map((r) => r.left)) - caja.left) / mm,
+      y1: (Math.min(...rs.map((r) => r.top)) - caja.top) / mm,
+      x2: (Math.max(...rs.map((r) => r.right)) - caja.left) / mm,
+      y2: (Math.max(...rs.map((r) => r.bottom)) - caja.top) / mm,
+    };
+  }
+  /** Si algo de la hoja (una foto o un adorno) se sale de su sitio. */
+  function choca(hoja, arriba, lado, esquinas) {
+    const caja = hoja.getBoundingClientRect();
+    const mm = caja.width / 216;
+    return [...hoja.querySelectorAll(".pieza > img, .pieza > .adorno")].some((el) => {
+      const { x1, y1, x2, y2 } = recuadro(el, caja, mm);
+      if (y1 < arriba || x1 < lado || x2 > 216 - lado) return true;
+      const cerca = { x: Math.min(Math.max(SELLO.x, x1), x2), y: Math.min(Math.max(SELLO.y, y1), y2) };
+      if (Math.hypot(cerca.x - SELLO.x, cerca.y - SELLO.y) < SELLO.radio) return true;
+      return esquinas.some(([a, b, c, d]) => x1 < c && x2 > a && y1 < d && y2 > b);
+    });
+  }
   window.addEventListener("load", () => {
-    const ALTO_MM = 106;
-    const ANCHO_MM = 198;
-    const BASE_MM = 158;
-    const SELLO_IZQUIERDA_MM = 162;
-    const SELLO_ABAJO_MM = 52;
     for (const hoja of document.querySelectorAll(".hoja")) {
+      const festiva = hoja.classList.contains("hoja--festiva");
+      // El borde de abajo de la placa verde (49 mm) o de la onda dorada (48 mm a los lados; en el medio sube).
+      const arriba = festiva ? 50 : 48.5;
+      const lado = 6;
+      const esquinas = !festiva ? [] : hoja.classList.contains("hoja--navidad") ? ESQUINAS.navidad : ESQUINAS.otras;
+      const separacion = Number(hoja.dataset.separacion);
       const piezas = [...hoja.querySelectorAll(".pieza")].map((p) => {
         const img = p.querySelector("img");
         return { cm: Number(p.style.getPropertyValue("--cm")), aspecto: img.naturalWidth / img.naturalHeight };
       });
-      const solape = hoja.classList.contains("hoja--separado") ? -3 : hoja.classList.contains("hoja--tres") ? 7 : 10;
       const anchoPorEscala = piezas.reduce((suma, p) => suma + p.cm * p.aspecto, 0);
-      const alto = Number(hoja.dataset.alto) || ALTO_MM;
-      let escala = Math.min(alto / Math.max(...piezas.map((p) => p.cm)), (ANCHO_MM + solape * (piezas.length - 1)) / anchoPorEscala);
-      // Lo que queda a la derecha, si llega hasta debajo del sello, no puede subir más que él.
-      const ultima = piezas.at(-1);
-      const bordeDerecho = 108 + (anchoPorEscala * escala - solape * (piezas.length - 1)) / 2;
-      if (bordeDerecho > SELLO_IZQUIERDA_MM && ultima.cm * escala > BASE_MM - SELLO_ABAJO_MM) escala = (BASE_MM - SELLO_ABAJO_MM) / ultima.cm;
-      hoja.style.setProperty("--mm-por-cm", escala.toFixed(3));
+      const alto = Number(hoja.dataset.alto) || BASE_MM - arriba;
+      let escala = Math.min(alto / Math.max(...piezas.map((p) => p.cm)), (216 - 2 * lado - separacion * (piezas.length - 1)) / anchoPorEscala);
+      const poner = () => hoja.style.setProperty("--mm-por-cm", escala.toFixed(3));
+      poner();
+      while (choca(hoja, arriba, lado, esquinas) && escala > 1) {
+        escala *= 0.99;
+        poner();
+      }
     }
+    document.fonts.ready.then(() => (window.listo = true));
   });
 
   // Un nombre largo no se sale de la hoja: encoge lo justo.
