@@ -96,12 +96,17 @@
   /* La casilla del precio, en dólares, va en blanco: se escribe con marcador sobre el plástico al lado del «$».
      Una etiqueta pequeña abajo a la derecha, como las de precio de un supermercado: la que eligió el dueño entre cuatro
      tamaños. Su tamaño y su sitio (center, flex-end) van en las tres variables de .hoja. */
-  .hoja { --precio-ancho: 64mm; --precio-alto: 26mm; --precio-lado: flex-end; }
+  /* La casilla del precio: el mismo ancho y más alta (era de 26 mm), «más cuadrada», como pidió el dueño al imprimir la
+     primera: en la de 26 mm el precio escrito con marcador quedaba muy pequeño. Tan alta como cabe sin empujar lo de arriba. */
+  .hoja { --precio-ancho: 64mm; --precio-alto: 37mm; --precio-lado: flex-end; }
+  /* Los especiales llevan más cosas (el título en placa, los adornos): ahí cabe algo menos alta, que sigue siendo más que antes. */
+  .hoja--especial { --precio-alto: 34mm; }
   .precio {
     flex: none; align-self: var(--precio-lado); width: var(--precio-ancho); height: var(--precio-alto); box-sizing: border-box; display: flex; align-items: center;
     padding: 0 calc(var(--precio-alto) * 0.22); border: 1.4mm solid var(--rojo); border-radius: calc(var(--precio-alto) * 0.26); background: #fff9ec; box-shadow: inset 0 0 0 0.5mm #f0d9a8;
   }
-  .precio span { font-weight: 800; font-size: calc(var(--precio-alto) * 0.56); line-height: 1; color: var(--rojo-oscuro); }
+  /* El «$», arriba a la izquierda y de tamaño fijo: lo que crece es el sitio para escribir. */
+  .precio span { align-self: flex-start; margin-top: 5mm; font-weight: 800; font-size: 17mm; line-height: 1; color: var(--rojo-oscuro); }
 
   /* El navideño y el pizzero, con el estilo de las imágenes que trajo el dueño (fondos/referencia-navidad.png y
      fondos/referencia-pizza.jpg): la cabecera en una placa verde con borde dorado sobre luces desenfocadas, la mitad de
