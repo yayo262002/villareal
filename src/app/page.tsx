@@ -55,14 +55,16 @@ function atajosDe(familias: Familia[]): Atajo[] {
 
 /**
  * La portada vende la idea de Villa Real, no un supermercado: «Todo para tu
- * burger & pizzería» con la foto al lado (compacta: entra en la pantalla),
- * una línea con el mensaje mayorista, «¿Qué necesitas para tu negocio?»
- * (las colecciones: Burger, Pizzería), «Comprar por categoría» (las
- * familias de productos), cuatro productos destacados como mucho (los que
- * el dueño marca; si no marca ninguno, los primeros), los combos vigentes,
- * la llamada a quien monta su negocio y dónde está la tienda. Sin marcas:
- * cada marca sale al entrar en su producto. Lo que no está (tasa, precios)
- * no se inventa.
+ * burger & pizzería» sobre la foto de la hamburguesa y la pizza (a lo ancho
+ * en la pantalla ancha, con el texto a la izquierda; en el teléfono, la foto
+ * arriba y el título montado sobre ella), los atajos a las familias, una
+ * banda con el mensaje mayorista, «¿Qué necesitas para tu negocio?» (las
+ * colecciones: Burger, Pizzería), «Comprar por categoría» (las familias de
+ * productos), cuatro productos destacados como mucho (los que el dueño
+ * marca; si no marca ninguno, los primeros), los combos vigentes, la
+ * llamada a quien monta su negocio y dónde está la tienda. Sin marcas: cada
+ * marca sale al entrar en su producto. Lo que no está (tasa, precios) no se
+ * inventa.
  */
 export default async function PaginaInicio() {
   const [v, ofertas] = await Promise.all([vitrina(), ofertasVigentes(hoy())]);
@@ -76,23 +78,25 @@ export default async function PaginaInicio() {
       <DatosEstructurados datos={{ "@context": "https://schema.org", ...datosDeLaTienda() }} />
       <CabeceraPublica actual="inicio" />
 
-      <main id="contenido">
+      <main id="contenido" className={estilos.portada}>
         <section className={estilos.heroe} aria-labelledby="titulo-portada">
+          <picture className={estilos.heroeFoto}>
+            <source media="(min-width: 900px)" srcSet="/portada/heroe.webp" />
+            <img src="/portada/heroe-movil.webp" alt="" width={900} height={760} fetchPriority="high" />
+          </picture>
           <div className={estilos.heroeDentro}>
-            <picture className={estilos.heroeFoto}>
-              <source media="(min-width: 900px)" srcSet="/portada/heroe.webp" />
-              <img src="/portada/heroe-movil.webp" alt="" width={900} height={760} fetchPriority="high" />
-            </picture>
             <div className={estilos.heroeTexto}>
               <p className={estilos.antetitulo}>{negocio.nombreCorto} · Precios al mayor</p>
               <h1 id="titulo-portada" className={estilos.titulo}>
                 Todo para tu <span>burger &amp; pizzería</span>
               </h1>
               <p className={estilos.subtitulo}>Tu proveedor de confianza para negocios de comida en {negocio.localidad}.</p>
-              <AtajosDeCategorias atajos={atajosDe(v.todasLasFamilias)} />
               <div className={estilos.botones}>
-                <Link href="/productos" className={`boton boton--acento ${estilos.botonGrande}`}>
+                <Link href="/productos" className={`boton ${estilos.botonOro} ${estilos.botonGrande}`}>
                   Ver todos los productos
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
                 </Link>
                 {whatsapp && (
                   <a href={whatsapp} target="_blank" rel="noopener" className={`boton ${estilos.botonWhatsapp} ${estilos.botonGrande}`}>
@@ -103,69 +107,72 @@ export default async function PaginaInicio() {
               </div>
               <LineaTasa tasa={v.tasa} className={estilos.tasa} />
             </div>
+            <AtajosDeCategorias atajos={atajosDe(v.todasLasFamilias)} className={estilos.atajos} />
           </div>
         </section>
 
         <FranjaMayorista />
 
-        <div className={estilos.cuerpo}>
-          {v.colecciones.length > 0 && (
-            <section className={estilos.seccion} aria-labelledby="titulo-negocios">
-              <TituloDeSeccion id="titulo-negocios" antetitulo="Colecciones por tipo de negocio">
-                ¿Qué necesitas para tu negocio?
-              </TituloDeSeccion>
-              <RejillaDeColecciones colecciones={v.colecciones} />
-            </section>
-          )}
-
-          {v.familiasDeProductos.length > 0 && (
-            <section className={estilos.seccion} aria-labelledby="titulo-categorias">
-              <TituloDeSeccion id="titulo-categorias" antetitulo="El catálogo, por familias">
-                Comprar por categoría
-              </TituloDeSeccion>
-              <RejillaDeFamilias familias={v.familiasDeProductos} compacta />
-            </section>
-          )}
-
-          <section className={estilos.seccion} aria-labelledby="titulo-destacados">
-            <TituloDeSeccion id="titulo-destacados" antetitulo="Precios al mayor de hoy">
-              Productos destacados
+        {v.colecciones.length > 0 && (
+          <section className={estilos.seccion} aria-labelledby="titulo-negocios">
+            <TituloDeSeccion id="titulo-negocios" antetitulo="Colecciones por tipo de negocio">
+              ¿Qué necesitas para tu negocio?
             </TituloDeSeccion>
-            {lista.length === 0 ? (
-              <SinProductos texto="Todavía no hay productos publicados." pregunta="Hola, ¿qué productos tienen disponibles?" />
-            ) : (
-              <>
-                <RejillaDeProductos items={lista} tasa={tasa} />
-                <NotaDePrecios hayTasa={tasa !== null} items={lista} />
-                {v.productos.length > lista.length && (
-                  <Link href="/productos" className={`boton boton--secundario ${estilos.verTodos}`}>
-                    Ver los {v.productos.length} productos
-                  </Link>
-                )}
-              </>
-            )}
+            <RejillaDeColecciones colecciones={v.colecciones} />
           </section>
+        )}
 
-          {ofertas.length > 0 && (
-            <section className={estilos.seccion} aria-labelledby="titulo-ofertas">
-              <TituloDeSeccion id="titulo-ofertas" antetitulo="Compra más, paga menos">
-                Ofertas y combos
-              </TituloDeSeccion>
-              <RejillaDeOfertas ofertas={ofertas.slice(0, OFERTAS_EN_PORTADA)} tasa={tasa} rutas={rutasPublicas(v.productos)} />
-              {ofertas.length > OFERTAS_EN_PORTADA && (
-                <Link href="/ofertas" className={`boton boton--secundario ${estilos.verTodos}`}>
-                  Ver las {ofertas.length} ofertas
+        {v.familiasDeProductos.length > 0 && (
+          <section className={estilos.seccion} aria-labelledby="titulo-categorias">
+            <TituloDeSeccion id="titulo-categorias" antetitulo="El catálogo, por familias">
+              Comprar por categoría
+            </TituloDeSeccion>
+            <RejillaDeFamilias familias={v.familiasDeProductos} compacta />
+          </section>
+        )}
+
+        <section className={`${estilos.seccion} ${estilos.banda}`} aria-labelledby="titulo-destacados">
+          <TituloDeSeccion id="titulo-destacados" antetitulo="Precios al mayor de hoy">
+            Productos destacados
+          </TituloDeSeccion>
+          {lista.length === 0 ? (
+            <SinProductos texto="Todavía no hay productos publicados." pregunta="Hola, ¿qué productos tienen disponibles?" />
+          ) : (
+            <>
+              <RejillaDeProductos items={lista} tasa={tasa} />
+              <NotaDePrecios hayTasa={tasa !== null} items={lista} />
+              {v.productos.length > lista.length && (
+                <Link href="/productos" className={`boton ${estilos.verTodos}`}>
+                  Ver los {v.productos.length} productos
                 </Link>
               )}
-            </section>
+            </>
           )}
+        </section>
 
-          <MontandoTuNegocio />
-
-          <section id="contacto" className={`${estilos.seccion} ${estilos.contacto}`} aria-labelledby="titulo-contacto">
-            <TituloDeSeccion id="titulo-contacto" antetitulo="Tienda física en el centro">
-              Dónde estamos
+        {ofertas.length > 0 && (
+          <section className={estilos.seccion} aria-labelledby="titulo-ofertas">
+            <TituloDeSeccion id="titulo-ofertas" antetitulo="Compra más, paga menos">
+              Ofertas y combos
             </TituloDeSeccion>
+            <RejillaDeOfertas ofertas={ofertas.slice(0, OFERTAS_EN_PORTADA)} tasa={tasa} rutas={rutasPublicas(v.productos)} />
+            {ofertas.length > OFERTAS_EN_PORTADA && (
+              <Link href="/ofertas" className={`boton ${estilos.verTodos}`}>
+                Ver las {ofertas.length} ofertas
+              </Link>
+            )}
+          </section>
+        )}
+
+        <div className={estilos.seccion}>
+          <MontandoTuNegocio />
+        </div>
+
+        <section id="contacto" className={`${estilos.seccion} ${estilos.banda} ${estilos.contacto}`} aria-labelledby="titulo-contacto">
+          <TituloDeSeccion id="titulo-contacto" antetitulo="Tienda física en el centro">
+            Dónde estamos
+          </TituloDeSeccion>
+          <div className={estilos.contactoTarjeta}>
             <dl className={estilos.datos}>
               {(negocio.direccion || negocio.ciudad) && (
                 <div>
@@ -206,13 +213,13 @@ export default async function PaginaInicio() {
                 </a>
               )}
               {mapa && (
-                <a className="boton boton--secundario" href={mapa} target="_blank" rel="noopener">
+                <a className={`boton ${estilos.botonClaro}`} href={mapa} target="_blank" rel="noopener">
                   Cómo llegar
                 </a>
               )}
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </main>
 
       <PiePublico />

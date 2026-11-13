@@ -31,36 +31,15 @@
   --color-error-oscuro: #7f1f1f;
   --color-error-fondo: #fbe9e9;
 
-  /* La web pública: verde profundo, dorado y crema, como la fachada. */
+  /* La lista del detal (`/lista`) y algún detalle del panel: verde profundo, dorado y crema. */
   --color-verde-profundo: #0e2c1b;
-  --color-verde-noche: #081a10;
   --color-dorado: #f2bd2c;
-  --color-dorado-oscuro: #d9a514;
-  --color-dorado-tenue: rgba(242, 189, 44, 0.35);
-  /* El dorado para letra pequeña sobre blanco: el claro no se lee. */
-  --color-dorado-texto: #8a6100;
-  /* El verde de los botones principales, algo más luminoso que el de la cabecera. */
+  /* El verde de los botones de la lista, algo más luminoso. */
   --color-verde-boton: #1d6b3c;
-  --color-verde-boton-oscuro: #165530;
-  /* Crema transparente para lo que va sobre una foto oscura. */
-  --color-vidrio: rgba(251, 246, 234, 0.1);
-  --color-vidrio-fuerte: rgba(251, 246, 234, 0.2);
   --color-crema: #fbf6ea;
-  --color-crema-oscuro: #f3ead4;
   /* El verde de WhatsApp, con texto oscuro para que se lea bien. */
   --color-whatsapp: #25d366;
   --color-whatsapp-oscuro: #1ebe5a;
-  /* Lo que va encima de una foto, para que el texto se lea. */
-  --velo-foto: linear-gradient(90deg, rgba(8, 26, 16, 0.92) 0%, rgba(8, 26, 16, 0.7) 38%, rgba(8, 26, 16, 0.1) 62%, rgba(8, 26, 16, 0) 100%);
-  --velo-foto-movil: linear-gradient(180deg, rgba(8, 26, 16, 0.45) 0%, rgba(8, 26, 16, 0.78) 38%, rgba(8, 26, 16, 0.94) 75%);
-  /* La foto de arriba de la portada en el teléfono: se funde en el verde por abajo, donde entra el título. */
-  --velo-foto-arriba: linear-gradient(180deg, rgba(8, 26, 16, 0) 40%, rgba(8, 26, 16, 0.7) 75%, rgb(8, 26, 16) 100%);
-  /* El mismo velo abajo en todas las fotos de familia, para que el nombre se lea y todas parezcan de la misma marca. */
-  --velo-familia: linear-gradient(180deg, rgba(8, 26, 16, 0) 38%, rgba(8, 26, 16, 0.55) 62%, rgba(8, 26, 16, 0.92) 100%);
-  /* Detrás de «Foto referencial». */
-  --velo-aviso: rgba(8, 26, 16, 0.62);
-  --sombra-tarjeta: 0 1px 2px rgba(14, 44, 27, 0.06), 0 6px 18px rgba(14, 44, 27, 0.08);
-  --sombra-tarjeta-alta: 0 2px 4px rgba(14, 44, 27, 0.08), 0 14px 32px rgba(14, 44, 27, 0.14);
 
   --radio: 10px;
   --radio-grande: 16px;
@@ -79,6 +58,58 @@
   --ancho-web: 1200px;
 
   --fuente: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  /* Los títulos de la web: letra alta y estrecha (Anton, servida por la propia web). */
+  /* Los títulos de la lista del detal: letra alta y estrecha (Anton, servida por la propia web). */
   --fuente-titulos: var(--fuente-anton), Impact, "Arial Narrow Bold", sans-serif;
+
+  /* ---------- La web pública ----------
+   * Verde bosque, el oro del león y crema, como la fachada y las franelas,
+   * con más contraste: el verde casi negro de fondo, el oro para los
+   * botones y los detalles, el crema para leer. Un solo acento, el rojo
+   * tomate (la salsa, el pepperoni, el ketchup): solo en lo que tiene que
+   * saltar a la vista, «Oferta» y «Combo». */
+  --color-bosque-950: #05170d;
+  --color-bosque-900: #0a2416;
+  --color-bosque-800: #10331f;
+  --color-bosque-700: #174a2d;
+  /* El oro del león (`public/marca/leon.svg`). */
+  --color-oro: #e3a91f;
+  --color-oro-vivo: #efb935;
+  /* Letra dorada sobre el verde. */
+  --color-oro-claro: #f3c95f;
+  --color-oro-palido: #fbefcf;
+  /* Letra dorada pequeña sobre crema o blanco: el oro claro no se lee. */
+  --color-oro-hondo: #7a5605;
+  --color-oro-linea: rgba(227, 169, 31, 0.34);
+  /* Las bandas crema que separan secciones, y sus bordes. */
+  --color-arena: #f6eedd;
+  --color-arena-borde: #e8dcc2;
+  --color-tinta: #12231a;
+  --color-tinta-suave: #56645b;
+  /* Lo que va sobre el verde: crema, crema más tenue y sus rayas. */
+  --color-sobre-oscuro: #fbf3e2;
+  --color-sobre-oscuro-suave: rgba(251, 243, 226, 0.74);
+  --color-sobre-oscuro-linea: rgba(251, 243, 226, 0.14);
+  --color-sobre-oscuro-vidrio: rgba(251, 243, 226, 0.08);
+  --color-tomate: #c43d24;
+  --color-tomate-texto: #ffffff;
+
+  /* Los velos sobre las fotos, para que el texto se lea. */
+  --velo-heroe: linear-gradient(90deg, rgb(5, 23, 13) 0%, rgba(5, 23, 13, 0.55) 16%, rgba(5, 23, 13, 0) 38%);
+  --velo-heroe-abajo: linear-gradient(180deg, rgba(5, 23, 13, 0) 62%, rgb(5, 23, 13) 100%);
+  --velo-heroe-movil: linear-gradient(180deg, rgba(5, 23, 13, 0) 40%, rgba(5, 23, 13, 0.72) 78%, rgb(5, 23, 13) 100%);
+  --velo-foto-tarjeta: linear-gradient(180deg, rgba(5, 23, 13, 0) 30%, rgba(5, 23, 13, 0.5) 60%, rgba(5, 23, 13, 0.93) 100%);
+  --velo-banda: linear-gradient(90deg, rgb(5, 23, 13) 0%, rgb(5, 23, 13) 41%, rgba(5, 23, 13, 0.8) 47%, rgba(5, 23, 13, 0.35) 60%, rgba(5, 23, 13, 0) 82%);
+  --velo-banda-movil: linear-gradient(180deg, rgba(5, 23, 13, 0) 0%, rgba(5, 23, 13, 0.15) 24%, rgba(5, 23, 13, 0.82) 56%, rgba(5, 23, 13, 0.97) 100%);
+  --velo-chip: rgba(5, 23, 13, 0.62);
+
+  --sombra-web: 0 1px 2px rgba(10, 36, 22, 0.05), 0 10px 28px -14px rgba(10, 36, 22, 0.24);
+  --sombra-web-alta: 0 2px 6px rgba(10, 36, 22, 0.08), 0 26px 48px -20px rgba(10, 36, 22, 0.42);
+  --sombra-oro: 0 10px 24px -10px rgba(227, 169, 31, 0.7);
+
+  --radio-web-grande: 22px;
+
+  /* La letra de la web: Manrope para leer y para los precios; Fraunces, una
+     serifa redonda y gruesa, para los títulos. Las dos las sirve la web. */
+  --fuente-web: var(--fuente-manrope), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fuente-display: var(--fuente-fraunces), Georgia, "Times New Roman", serif;
 }

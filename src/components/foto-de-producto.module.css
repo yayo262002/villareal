@@ -26,23 +26,24 @@
   position: absolute;
   right: var(--espacio-2);
   bottom: var(--espacio-2);
-  padding: 2px var(--espacio-2);
+  padding: 3px 10px;
   border-radius: 999px;
-  background: var(--velo-aviso);
-  color: var(--color-crema);
+  background: var(--velo-chip);
+  color: var(--color-sobre-oscuro);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  backdrop-filter: blur(6px);
 }
 
 /* Sin foto: crema con el león en dorado tenue. */
 .sinFoto {
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 50% 40%, var(--color-crema) 0%, var(--color-crema-oscuro) 100%);
+  background: radial-gradient(circle at 50% 40%, var(--color-fondo) 0%, var(--color-arena) 100%);
 }
 .sinFoto img {
   width: 26%;
   height: auto;
-  opacity: 0.32;
+  opacity: 0.38;
 }

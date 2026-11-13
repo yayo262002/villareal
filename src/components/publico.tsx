@@ -10,10 +10,12 @@ import { ContadorCarrito } from "@/components/carrito/contador";
 import estilos from "./publico.module.css";
 
 /**
- * Lo que comparten las páginas públicas: la cabecera (arriba el león, el
- * buscador, el carrito y WhatsApp; en la pantalla ancha, debajo, el menú
- * con aire entre las secciones; en el teléfono, un menú que se despliega),
- * el pie, las cajas de precio y los datos para los buscadores.
+ * Lo que comparten las páginas públicas: la cabecera verde bosque (arriba
+ * el león y «Villa Real», el buscador, el carrito y WhatsApp; en la
+ * pantalla ancha, debajo, el menú en una fila más oscura con la raya
+ * dorada bajo la sección abierta; en el teléfono, un menú que se
+ * despliega), el pie con el león, las cajas de precio y los datos para los
+ * buscadores.
  */
 
 export type SeccionPublica = "inicio" | "productos" | "burger" | "pizzeria" | "ofertas" | "contacto";
@@ -29,7 +31,7 @@ const MENU: { seccion: SeccionPublica; nombre: string; ruta: string; icono?: str
 
 function Lupa() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
       <circle cx="11" cy="11" r="6.5" />
       <path d="m16 16 4.5 4.5" />
     </svg>
@@ -80,7 +82,7 @@ export function CabeceraPublica({ actual = null }: { actual?: SeccionPublica | n
             <Link href="/carrito" className={estilos.carrito} aria-label="Carrito de pedido">
               {/* El número va sobre el icono, no sobre la palabra. */}
               <span className={estilos.carritoIcono}>
-                <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6.2" />
                   <circle cx="9" cy="19" r="1.4" />
                   <circle cx="17" cy="19" r="1.4" />
@@ -125,20 +127,29 @@ export function PiePublico() {
       <ul className={estilos.pieVentajas}>
         {PIE.map((p) => (
           <li key={p.texto}>
-            <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: p.trazo }} />
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: p.trazo }} />
             <span>{p.texto}</span>
           </li>
         ))}
       </ul>
       <div className={estilos.pieDatos}>
-        <div>
-          <p className={estilos.pieNombre}>{negocio.nombre}</p>
-          <p>
-            {negocio.razonSocial || negocio.nombre}
-            {negocio.rif && ` · RIF ${negocio.rif}`}
-          </p>
-          {(negocio.direccion || negocio.ciudad) && <p>{[negocio.direccion, negocio.ciudad].filter(Boolean).join(", ")}</p>}
-          {negocio.horario && <p>{negocio.horario}</p>}
+        <div className={estilos.pieMarca}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/marca/leon.svg" alt="" width={44} height={64} loading="lazy" className={estilos.pieLeon} />
+          <div>
+            <p className={estilos.pieNombre}>{negocio.nombre}</p>
+            <p>
+              {negocio.razonSocial || negocio.nombre}
+              {negocio.rif && (
+                <>
+                  {" · "}
+                  <span className={estilos.sinCorte}>RIF {negocio.rif}</span>
+                </>
+              )}
+            </p>
+            {(negocio.direccion || negocio.ciudad) && <p>{[negocio.direccion, negocio.ciudad].filter(Boolean).join(", ")}</p>}
+            {negocio.horario && <p>{negocio.horario}</p>}
+          </div>
         </div>
         <nav className={estilos.pieEnlaces} aria-label="Más">
           <Link href="/productos">Productos</Link>
@@ -210,7 +221,7 @@ export function PreciosProducto({ producto, tasa, desde = false }: { producto: C
  * por kg · al mayor». Sin precio, lo de siempre.
  */
 export function PreciosEnLinea({ precios, unidad, tasa }: { precios: { precio_usd: number | null }; unidad?: string; tasa: number | null }) {
-  if (precios.precio_usd === null) return <p className={estilos.precioPendiente}>Consulta el precio del día</p>;
+  if (precios.precio_usd === null) return <p className={estilos.precioPendienteClaro}>Consulta el precio del día</p>;
   const enBs = aBolivares(precios.precio_usd, tasa);
   return (
     <p className={estilos.preciosLinea}>

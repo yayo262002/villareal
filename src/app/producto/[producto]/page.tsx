@@ -189,7 +189,7 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
               )}
             </p>
 
-            <div className={estilos.bloque}>
+            <div className={`${estilos.bloque} ${estilos.bloqueCompra}`}>
               <h2 className={estilos.bloqueTitulo}>Precio de hoy</h2>
               <PreciosProducto
                 producto={
