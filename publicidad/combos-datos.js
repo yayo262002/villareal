@@ -132,7 +132,8 @@ globalThis.COMBOS = [
 // Lo que mide de alto un producto en las hojas de todos los días, en mm, igual en todas (el dueño, 13/11: «el mismo tamaño en
 // todas»): la mozzarella (iba de 81 a 104 mm, según con qué fuera) y los quesos amarillos, algo más bajos que los jamones
 // (10,8 cm). Lo demás de la hoja se acomoda a su alrededor, a su escala. En los especiales no: van con otras medidas.
-const ALTO_EN_HOJA = { mozzarella: 92, "queso-amarillo": 98, "queso-amarillo-vallecito": 98 };
+// El gouda Mi Vallecito (solo en el combo 1), un poco más grande que el cheddar (el dueño, 13/11), sin pasar al jamón de pierna.
+const ALTO_EN_HOJA = { mozzarella: 92, "queso-amarillo": 98, "queso-amarillo-vallecito": 104 };
 
 // Lo ancho de una foto entre lo alto, cuando no es el de la foto: el arepero, más gordito (el dueño, 13/11). Su foto es de
 // 0,19 y se ensancha un 40 %.
