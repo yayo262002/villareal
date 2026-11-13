@@ -1516,6 +1516,7 @@ export async function alternarProducto(datos: FormData): Promise<void> {
   const producto = id ? await buscarProducto(id) : null;
   if (!id || !producto) volverConError("/admin/productos", "No se encontró el producto.");
   const activo = texto(datos, "activo") === "1";
+  if (activo && producto.combo_detal) volverConError(volverA(datos, `/admin/productos/${id}`), "Un combo del detal no se publica en la web, que es al mayor: se vende en la caja.");
   await cambiarActivo(id, activo);
   volverConExito(
     volverA(datos, "/admin/productos"),

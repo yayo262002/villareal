@@ -275,6 +275,8 @@ src/app/admin/(panel)/clientes/seguimiento/  La pantalla del estudio de clientes
 src/app/admin/(panel)/ayuda/  «Cómo se usa el panel»: la guía rápida, en el orden del día
 src/lib/pos-calculo.ts    Las cuentas de la caja: totales, descuento, cómo paga, cómo queda la cuenta del cliente, el precio de contado en el local y el SKU propuesto (puro, con pruebas)
 src/lib/pos.ts            La caja desde la base: el catálogo con existencias, el cliente de mostrador y el guardado de la venta con sus pagos
+src/lib/combos-detal.ts   Los catorce combos del detal: lo que lleva cada uno y su precio con la lista del detal (puro, con pruebas)
+src/lib/combos-en-la-caja.ts  Los combos como artículos de la caja, ocultos en la web, con el precio del detal de hoy
 src/lib/codigos.ts        Los códigos de barras y los SKU: quién tiene un código, ponerlo y quitarlo
 src/lib/factura-calculo.ts  Las cuentas de la factura: lo exento, la base imponible, el IVA, el total en Bs; el libro de ventas (puro, con pruebas)
 src/lib/documento.ts      Leer una cédula o un RIF escrito de cualquier forma, como va en la factura (puro, con pruebas)
@@ -808,6 +810,22 @@ Binance y otro.
     ¿Quieres registrarlo?») y deja ponérselo a un artículo o crear uno nuevo
     con el código puesto. Lo que no tiene código se vende igual por su
     nombre.
+  - **Los combos del detal** (las catorce bandejas de las hojas y el
+    cartel: 200 g de jamón y 200 g de queso, el solidario, el perrero…)
+    también se venden en la caja, **al mismo precio que en la
+    charcutería**: lo que suman sus productos en la lista del detal de
+    hoy, subido al centavo, también de contado en el local. Se buscan por
+    su nombre o por «COMBO-3» (su SKU, el número de la hoja), y en
+    Códigos de barras se les puede poner uno para escanear la bandeja. Si
+    a un producto del combo le falta el precio en la lista (el queso
+    paisa, mientras no se compre), sale sin precio y se escribe a mano.
+    Cada combo es un producto del catálogo marcado con su clave
+    (`productos.combo_detal`), que la caja crea la primera vez y pone al
+    día si cambia su número o su nombre: **nunca sale en la web**, que es
+    al mayor, y «Publicar» no lo publica (para dejar de venderlo, se pasa
+    a borrador). Lo que lleva cada uno está en `src/lib/combos-detal.ts`
+    (con pruebas); su venta es una venta normal, con su nota, su factura
+    y sus estadísticas.
   - **El carrito** es una tabla compacta: producto (con lo que hay en
     inventario, en verde, amarillo o rojo), la cantidad con su nombre
     («Kilos», «Cartones», «Unidades») y, solo en lo que va por kilo, las

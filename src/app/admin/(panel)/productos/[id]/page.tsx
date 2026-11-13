@@ -63,6 +63,12 @@ export default async function PaginaProducto({ params, searchParams }: { params:
         <span className={`${estilos.estado} ${estilos[CLASE_DE_ESTADO[estado]]}`}>{NOMBRE_ESTADO_PRODUCTO[estado]}</span>
       </div>
       <Avisos parametros={parametros} />
+      {producto.combo_detal && (
+        <p className="aviso" style={{ marginBottom: "var(--espacio-4)" }}>
+          <strong>Es un combo del detal.</strong> Se vende en la caja al precio de la charcutería de hoy (lo que suman sus productos en la{" "}
+          <Link href="/admin/detal">lista del detal</Link>) y no sale nunca en la web, que es al mayor. Su nombre y lo que lleva vienen de las hojas de los combos. Para dejar de venderlo, pásalo a borrador.
+        </p>
+      )}
 
       <section className="tarjeta">
         <div className={estilos.varianteTitulo} style={{ marginBottom: "var(--espacio-3)" }}>

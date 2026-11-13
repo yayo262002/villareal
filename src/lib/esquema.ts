@@ -124,7 +124,9 @@ export const ESQUEMA = `
     codigo_barras text not null default '',
     sku text not null default '',
     -- Si lleva IVA o está exento (los huevos, el queso blanco duro…): lo que la factura marca con «(E)».
-    iva text not null default 'general' check (iva in ('general', 'exento'))
+    iva text not null default 'general' check (iva in ('general', 'exento')),
+    -- Un combo del detal que se vende en la caja (su clave en combos-detal.ts): oculto en la web; vacío en los demás.
+    combo_detal text
   );
 
   -- Las marcas: Guaralact, Kemmental, El Legado… Una marca puede vender

@@ -2669,6 +2669,59 @@ async function probarFacturas() {
   escribirEnLocal("delete from compradores where clave = 'V-12345678'");
 }
 
+async function probarCombosEnLaCaja() {
+  // Al abrir la caja, los catorce combos del detal entran en su catálogo: ocultos en la web, con el precio del detal de hoy.
+  let p = await pagina("/admin/ventas");
+  const combos = await consultar("select id, nombre, activo, borrador, sku from productos where combo_detal is not null order by id");
+  comprobar(
+    "la caja crea los catorce combos del detal, ocultos en la web, con su número de SKU",
+    combos.length === 14 && combos.every((c) => Number(c.activo) === 0 && Number(c.borrador) === 0) && combos.some((c) => c.sku === "COMBO-3" && c.nombre === "Combo jamón de espalda + mozzarella"),
+    JSON.stringify(combos.slice(0, 3)),
+  );
+  comprobar("la caja ofrece los combos", p.html.includes("Combo jamón de espalda + mozzarella") && p.html.includes("Combos del detal"));
+  // Abrir la caja otra vez no los duplica.
+  await pagina("/admin/ventas");
+  comprobar("abrir la caja otra vez no los duplica", Number((await consultar("select count(*) as n from productos where combo_detal is not null"))[0].n) === 14);
+  // No salen en la web al mayor, y no se pueden publicar.
+  p = await pagina("/productos?q=combo");
+  comprobar("los combos del detal no salen en la web al mayor", p.status === 200 && !p.html.includes("Combo jamón de espalda + mozzarella"));
+  const combo = combos.find((c) => c.sku === "COMBO-3");
+  const publicar = await enviar(`/admin/productos/${combo.id}`, 'name="activo"', { id: String(combo.id), activo: "1" });
+  comprobar(
+    "un combo no se publica aunque se pulse «Publicar»: lo dice y sigue oculto",
+    publicar.destino.includes("no se publica en la web") && Number((await consultar("select activo from productos where id = ?", [combo.id]))[0].activo) === 0,
+    publicar.destino,
+  );
+
+  // Se vende en el mostrador como cualquier artículo: al precio que se escriba si su lista no lo tiene, entregado en el momento.
+  const [mostrador] = await consultar("select id from clientes where nombre = 'Mostrador' and telefono = ''");
+  const hoyVet = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  const venta = JSON.stringify({
+    clave_pos: `combo-${Date.now()}`,
+    cliente_id: mostrador.id,
+    fecha: hoyVet,
+    cajero: "",
+    descuento_usd: 0,
+    nota: "",
+    modo: "ahora",
+    entrega: "ahora",
+    entrega_prevista: "",
+    dias_credito: null,
+    confirmar: true,
+    confirmar_nota: false,
+    facturar: false,
+    lineas: [{ clave: String(combo.id), producto_id: combo.id, variante_id: null, nombre: combo.nombre, unidad: "unidad", cantidad: 2, precio_usd: 3.13, piezas: null }],
+    pagos: [{ metodo: "efectivo_usd", monto_usd: 6.26 }],
+  });
+  const r = await enviar("/admin/ventas", 'name="venta"', { venta });
+  const ventaId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  comprobar("un combo se vende en la caja: dos combos, cobrados, con su nota", Boolean(ventaId) && r.destino.includes("Venta registrada"), r.destino);
+  if (ventaId) {
+    comprobar("la nota nombra el combo", (await pagina(`/admin/ventas/${ventaId}/nota`)).html.includes("Combo jamón de espalda + mozzarella"));
+    await enviar(`/admin/ventas/${ventaId}/eliminar`, 'name="id"', { id: String(ventaId) });
+  }
+}
+
 async function probarListaDetal() {
   const formatoBs = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   const subirA = (n, paso) => Math.round(Math.ceil(Math.round((n / paso) * 1e6) / 1e6) * paso * 100) / 100;
@@ -3024,6 +3077,7 @@ try {
     await probarCaja();
     await probarFacturas();
     await probarListaDetal();
+    await probarCombosEnLaCaja();
     await probarVitrina();
     await probarTareaDiaria();
     await probarRecuperacion();

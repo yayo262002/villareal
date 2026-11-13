@@ -161,6 +161,8 @@ async function migrar(cliente: Client): Promise<void> {
     ["en_oferta", "en_oferta integer not null default 0"],
     ["marca_id", "marca_id integer references marcas(id)"],
     ["seccion", "seccion text not null default ''"],
+    // Un combo del detal que se vende en la caja (su clave en combos-detal.ts): oculto en la web, con el precio del detal de hoy.
+    ["combo_detal", "combo_detal text"],
   ] as const) {
     if (!new RegExp(`\\b${columna}\\b`).test(deProductos)) await añadirColumna(cliente, "productos", definicion);
   }
@@ -216,6 +218,8 @@ async function migrar(cliente: Client): Promise<void> {
   }
   await cliente.execute("create unique index if not exists variantes_codigo_unico on variantes(codigo_barras) where codigo_barras <> ''");
   await cliente.execute("create unique index if not exists productos_codigo_unico on productos(codigo_barras) where codigo_barras <> ''");
+  // Cada combo del detal tiene un solo artículo en la caja, aunque dos pantallas lo creen a la vez.
+  await cliente.execute("create unique index if not exists productos_combo_detal on productos(combo_detal) where combo_detal is not null");
   await cliente.execute("create unique index if not exists ventas_clave_pos_unica on ventas(clave_pos) where clave_pos is not null");
   await cliente.execute("create index if not exists pagos_venta on pagos(venta_id)");
   if (!/\bseccion\b/.test(await definicionDe(cliente, "producto_categorias"))) {

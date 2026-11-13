@@ -3,7 +3,9 @@ import { ejecutar, fila } from "./db";
 import { listarProductos } from "./productos";
 import { listarVariantes } from "./variantes";
 import { listarFamilias } from "./familias";
-import { presentacionDe, vendiblesDe, type Vendible } from "./catalogo";
+import { claveDe, presentacionDe, vendiblesDe, type Vendible } from "./catalogo";
+import { combosEnLaCaja } from "./combos-en-la-caja";
+import { skuDelCombo } from "./combos-detal";
 import { existencias } from "./inventario";
 import type { EstadoDeExistencia } from "./stock";
 import type { PesoTipico } from "./piezas";
@@ -35,15 +37,42 @@ export type ArticuloDelPos = Vendible & {
   pesoTipico: PesoTipico | null;
   /** Lo que le cuesta al negocio: el de la marca, o el del tipo si se vende de una sola forma. De ahí sale el precio de contado en el local. */
   costo_usd: number | null;
+  /** Un combo del detal: al precio del detal de hoy, el mismo que en la charcutería, también de contado en el local. */
+  esCombo: boolean;
 };
 
+/** El nombre con que la caja agrupa los combos del detal. */
+export const FAMILIA_DE_LOS_COMBOS = "Combos del detal";
+
 export async function catalogoDelPos(): Promise<ArticuloDelPos[]> {
-  const [productos, variantes, familias, stock] = await Promise.all([listarProductos(true), listarVariantes(), listarFamilias(), existencias()]);
+  const [productos, variantes, familias, stock, combos] = await Promise.all([listarProductos(true), listarVariantes(), listarFamilias(), existencias(), combosEnLaCaja()]);
   const nombreDeFamilia = new Map(familias.map((f) => [f.id, f.nombre]));
   const existenciaDe = new Map(stock.map((e) => [e.clave, e]));
   const porProducto = new Map(productos.map((p) => [p.id, p]));
   const porVariante = new Map(variantes.map((v) => [v.id, v]));
-  return vendiblesDe(productos, variantes).map((v) => {
+  // Los combos del detal, al final: ocultos en la web, con el precio del detal de hoy.
+  const deCombos: ArticuloDelPos[] = combos.map((c) => ({
+    clave: claveDe(c.producto_id, null),
+    producto_id: c.producto_id,
+    variante_id: null,
+    nombre: c.combo.nombre,
+    unidad: "unidad",
+    precio_usd: c.precio_usd,
+    codigo_barras: c.codigo_barras,
+    sku: skuDelCombo(c.combo),
+    marca: "",
+    presentacion: "",
+    contenido: "",
+    tipo: c.combo.nombre,
+    existencia: null,
+    estado: "sin_seguir",
+    familia: FAMILIA_DE_LOS_COMBOS,
+    presentacionTexto: c.combo.detalle,
+    pesoTipico: null,
+    costo_usd: null,
+    esCombo: true,
+  }));
+  return [...vendiblesDe(productos, variantes).map((v): ArticuloDelPos => {
     const e = existenciaDe.get(v.clave);
     const producto = porProducto.get(v.producto_id);
     const variante = v.variante_id ? porVariante.get(v.variante_id) : null;
@@ -57,8 +86,9 @@ export async function catalogoDelPos(): Promise<ArticuloDelPos[]> {
       pesoTipico: e?.pesoPorPieza ?? null,
       // El costo de la marca no se toma del tipo: cada marca cuesta lo suyo.
       costo_usd: variante ? (variante.costo_usd ?? null) : (producto?.costo_usd ?? null),
+      esCombo: false,
     };
-  });
+  }), ...deCombos];
 }
 
 export const NOMBRE_DEL_MOSTRADOR = "Mostrador";

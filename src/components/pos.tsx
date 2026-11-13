@@ -54,6 +54,8 @@ export type ArticuloParaLaCaja = {
   pesoTipico: number | null;
   /** El precio de contado en el local (el costo más el 10 %), o null si no tiene costo en Productos. */
   precio_contado: number | null;
+  /** Un combo del detal: va al precio del detal de hoy, el mismo que en la charcutería (también de contado en el local). */
+  esCombo: boolean;
 };
 
 export type ClienteParaLaCaja = {
@@ -582,7 +584,8 @@ export function Pos({
   const saldoNuevo = describirSaldo(cuenta.saldoNuevo);
   const nombreDeCliente = (c: ClienteParaLaCaja) => (c.id === mostradorId ? "Mostrador (sin cliente)" : c.rotulo);
   // Lo del carrito que no tiene costo en Productos: de contado en el local va a su precio de siempre.
-  const sinCosto = lineas.filter((l) => porClave.get(l.clave)?.precio_contado == null).map((l) => l.nombre);
+  // Los combos del detal no cuentan: van siempre al precio de la charcutería.
+  const sinCosto = lineas.filter((l) => !porClave.get(l.clave)?.esCombo && porClave.get(l.clave)?.precio_contado == null).map((l) => l.nombre);
   const describirPago = () => {
     if (modo === "credito") return "Queda pendiente en su cuenta";
     const vias = pagosQueValen.map((p) => `${METODOS_PAGO[p.metodo]} ${usd(p.monto_usd)}`).join(" · ");

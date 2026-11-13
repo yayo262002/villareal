@@ -51,6 +51,8 @@ export type Producto = {
   sku: string;
   /** Si lleva IVA o está exento: lo que la factura marca con «(E)». */
   iva: TipoIva;
+  /** Si es un combo del detal que se vende en la caja (su clave en combos-detal.ts): oculto en la web; null en los demás. */
+  combo_detal: string | null;
   creado_en: string;
   /** Cuándo se puso la foto principal, o null si no tiene (entonces va la de referencia). */
   foto_version: string | null;
@@ -111,6 +113,7 @@ function completar(p: Producto): Producto {
     codigo_barras: p.codigo_barras ?? "",
     sku: p.sku ?? "",
     iva: p.iva === "exento" ? "exento" : "general",
+    combo_detal: p.combo_detal || null,
     creado_en: p.creado_en,
     foto_version: p.foto_version ?? null,
   };
@@ -202,14 +205,17 @@ export async function actualizarProducto(id: number, datos: DatosProducto): Prom
   );
 }
 
-/** Publicar (o volver a publicar) quita el borrador: un producto en la web ya no es un borrador. */
+/**
+ * Publicar (o volver a publicar) quita el borrador: un producto en la web ya no es un borrador. Un combo del detal no
+ * se publica nunca (no es mercancía al mayor: se vende en la caja); como mucho pasa a borrador, y entonces no se vende.
+ */
 export async function cambiarActivo(id: number, activo: boolean): Promise<void> {
-  await ejecutar("update productos set activo = ?, borrador = 0 where id = ?", [activo ? 1 : 0, id]);
+  await ejecutar("update productos set activo = case when combo_detal is null then ? else 0 end, borrador = 0 where id = ?", [activo ? 1 : 0, id]);
 }
 
 export async function ponerEstado(id: number, estado: EstadoProducto): Promise<void> {
   const { activo, borrador } = columnasDeEstado(estado);
-  await ejecutar("update productos set activo = ?, borrador = ? where id = ?", [activo, borrador, id]);
+  await ejecutar("update productos set activo = case when combo_detal is null then ? else 0 end, borrador = ? where id = ?", [activo, borrador, id]);
 }
 
 // ---------- Las otras familias en que sale ----------

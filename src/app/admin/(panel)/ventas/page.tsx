@@ -68,6 +68,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
     estado: a.estado,
     pesoTipico: a.pesoTipico?.peso ?? null,
     precio_contado: precioDeContado(a.costo_usd),
+    esCombo: a.esCombo,
   }));
   const paraElegir = (c: (typeof clientes)[number]): ClienteParaLaCaja => ({ id: c.id, rotulo: c.rotulo, nombre: c.nombre, telefono: c.telefono, cedula_rif: c.cedula_rif, saldo_usd: c.saldo_usd, dias_credito: c.dias_credito });
   const listaDeClientes = [paraElegir(mostrador), ...clientes.filter((c) => c.id !== mostrador.id).map(paraElegir)];
