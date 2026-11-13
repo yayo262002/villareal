@@ -23,7 +23,7 @@ export const negocio = {
   whatsapp: "584246343236",
   correo: "comercializadoravillareal@gmail.com",
 
-  // Domicilio fiscal según el RIF (SENIAT, 2016).
+  // Domicilio fiscal según el RIF (SENIAT; inscrito el 04/07/2016, última actualización 19/08/2026).
   ciudad: "Barquisimeto, estado Lara",
   direccion: "Calle 38 entre carreras 30 y 31, local s/n, sector Centro",
   // Lo mismo por partes, para los buscadores.

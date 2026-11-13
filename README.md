@@ -302,7 +302,7 @@ scripts/stickers.ts       Los dibuja con Chrome en public/stickers/ (PNG y WebP,
 src/app/admin/(panel)/stickers/  La pantalla para guardarlos en el teléfono
 src/app/admin/            El panel (productos/nuevo y productos/[id], marcas, familias, ofertas…)
 sellos/                   Los modelos de los sellos de tinta (empresa, RECIBIDO, MERCANCÍA RECIBIDA, PAGADO): sellos.html los dibuja y generar.mjs saca los PNG a 600 ppp y el PDF para la sellería
-publicidad/               La inauguración del mayor, el viernes 20/11/2026 (inauguracion.html: el flier para el estado de WhatsApp, 1080 × 1920, y el pendón de la puerta, 80 × 200 cm a tamaño real, con el mismo diseño medido en «unidades»; verde, dorado y crema como el letrero, la foto de la portada y las de los productos). El flier de los combos para el estado de WhatsApp (estado-combos.html: 1080 × 1920, todos los combos con su foto y su precio en dólares, de combos-precios.js, que no va al repositorio). La pizarra de precios de la charcutería (pizarra.html, 90 × 60 cm: cada producto con su marca y una casilla con el «$» para el marcador). Los combos del detal: combos-datos.js (los combos, una sola vez), combos.html (el cartel de 60 × 90 cm para la pared, tres por fila y los de la última fila al centro) y combos-individuales.html (una hoja carta por combo, en PDF y en JPG a 300 ppp, para imprimir y plastificar cada una, con el diseño de fondos/referencia-dueno.png y Open Sans, en fuentes/; el navideño y el pizzero, con el de fondos/referencia-navidad.png y referencia-pizza.jpg: placa verde, luces, la mitad de abajo roja y la frase en Kaushan Script; el pizzero, sin nada de Navidad); fondos.mjs saca los estantes y la madera de esas hojas; los productos juntos y en su proporción real, la casilla del precio en blanco para el marcador; quitar-fondo.mjs le quita el fondo a cada foto de fotos/originales/ (red neuronal, se instala aparte), le limpia los bordes y le corrige el color (fotos/CREDITOS.md dice cuál no es del dueño); generar.mjs saca el PDF para la imprenta y la vista previa
+publicidad/               La inauguración del mayor, el viernes 20/11/2026 (inauguracion.html: el flier para el estado de WhatsApp, 1080 × 1920, y el pendón de la puerta, 80 × 200 cm a tamaño real, con el mismo diseño medido en «unidades»; verde, dorado y crema como el letrero, la foto de la portada y las de los productos). El flier de los combos para el estado de WhatsApp (estado-combos.html: 1080 × 1920, todos los combos con su foto y su precio en dólares, de combos-precios.js, que no va al repositorio). La pizarra de precios de la charcutería (pizarra.html, 90 × 60 cm: cada producto con su marca y una casilla con el «$» para el marcador). Los combos del detal: combos-datos.js (los combos, una sola vez), combos.html (el cartel de 60 × 90 cm para la pared, tres por fila y los de la última fila al centro) y combos-individuales.html (una hoja carta por combo; combo-horizontal.html, la prueba de una hoja acostada, 279 × 216 mm, con los productos a la izquierda y una casilla del precio mucho más grande a la derecha, en PDF y en JPG a 300 ppp, para imprimir y plastificar cada una, con el diseño de fondos/referencia-dueno.png y Open Sans, en fuentes/; el navideño y el pizzero, con el de fondos/referencia-navidad.png y referencia-pizza.jpg: placa verde, luces, la mitad de abajo roja y la frase en Kaushan Script; el pizzero, sin nada de Navidad); fondos.mjs saca los estantes y la madera de esas hojas; los productos juntos y en su proporción real, la casilla del precio en blanco para el marcador; quitar-fondo.mjs le quita el fondo a cada foto de fotos/originales/ (red neuronal, se instala aparte), le limpia los bordes y le corrige el color (fotos/CREDITOS.md dice cuál no es del dueño); generar.mjs saca el PDF para la imprenta y la vista previa
 datos/                    La base de datos (fuera de Git)
 ```
 
@@ -1020,8 +1020,9 @@ Binance y otro.
   lo exento, la base y el IVA salen de sus líneas (tabla `facturas_compra`,
   `src/lib/facturas-compra.ts`; las cuentas en
   `src/lib/libro-compras-calculo.ts`, con pruebas).
-- **Lo que no hace el sistema**: renovar el RIF (venció en 2019), elegir
-  la imprenta digital, ni declarar el IVA. Lo dice la propia pantalla.
+- **Lo que no hace el sistema**: actualizar el RIF (se hace en el SENIAT;
+  el de ahora es del 19/08/2026), elegir la imprenta digital, ni declarar
+  el IVA. Lo dice la propia pantalla.
 
 ## La lista del detal
 
@@ -1495,8 +1496,9 @@ Binance y otro.
 
 ## Pendiente
 
-- El comprobante de RIF que hay venció el 15/07/2019: conviene renovarlo en
-  el SENIAT antes de imprimirlo en facturas o ponerlo en la web.
+- El RIF está al día: el comprobante digital (formato nuevo, sin fecha de
+  vencimiento) dice «Última actualización 19/08/2026», con el mismo
+  domicilio fiscal de `negocio.ts`. Contribuyente ordinario del IVA.
 - Poner los precios reales: el de los huevos es de ejemplo y el panel lo
   avisa; las marcas del queso amarillo / cheddar (Kemmental, El Legado) y
   del pecorino (Sortilegio, Guaralac) están creadas con su foto y sin
@@ -1524,7 +1526,7 @@ Binance y otro.
 - Poner `ANTHROPIC_API_KEY` en Vercel y en `.env.local` para que las
   fotos de las notas se lean solas. Sin ella, la foto se guarda sin más.
 - Un dominio propio.
-- Para facturar de verdad: renovar el RIF, elegir con el contador la
+- Para facturar de verdad: elegir con el contador la
   imprenta digital autorizada (y entonces integrarla para que asigne el
   número de control sola) y confirmar con él qué productos están exentos.
   El panel ya emite las facturas, las notas de crédito y el libro de

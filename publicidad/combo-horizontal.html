@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Combo en horizontal (prueba) · Villa Real</title>
+<style>
+  /* Una prueba que pidió el dueño: la hoja de un combo en carta acostada (279 × 216 mm), para ver si le gusta más que la
+     de pie. El mismo estilo (la cabecera roja con el león, el sello, los estantes y el mostrador, Open Sans), con los
+     productos grandes a la izquierda sobre el mostrador y, a la derecha, lo que lleva y una casilla del precio mucho más
+     grande para el marcador. Toma el combo de combos-datos.js por su número (data-combo). */
+  @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
+  @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans-Italic.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: italic; }
+  @page { size: 279mm 216mm; margin: 0; }
+  html, body { margin: 0; background: #888; }
+  body { font-family: "Open Sans", Arial, sans-serif; display: grid; gap: 20mm; padding: 20mm; justify-content: start; }
+
+  .hoja {
+    --rojo: #a80d14; --rojo-oscuro: #7c0a10; --oro: #f2c14e; --crema: #fff6e3; --tinta: #2a1a14; --mm-por-cm: 3;
+    position: relative; width: 279mm; height: 216mm; overflow: hidden; background: #f6e5c2;
+  }
+  .estante { position: absolute; left: 0; top: 30mm; width: 279mm; height: 112mm; object-fit: cover; display: block; }
+  .madera { position: absolute; left: 0; top: 140mm; width: 279mm; height: 76mm; object-fit: cover; display: block; }
+  .luz { position: absolute; left: 0; top: 140mm; width: 150mm; height: 76mm; background: radial-gradient(ellipse 60% 60% at 50% 40%, rgba(255, 251, 238, 0.7), rgba(255, 251, 238, 0)); }
+  .canto { position: absolute; left: 0; top: 139.4mm; width: 279mm; height: 2.2mm; background: linear-gradient(180deg, rgba(120, 80, 30, 0.28), rgba(120, 80, 30, 0)); }
+  .capa { position: absolute; left: 0; top: 0; width: 279mm; height: 216mm; display: block; z-index: 2; }
+  .capa--sello { z-index: 6; }
+
+  .leon { position: absolute; left: 8mm; top: 4mm; width: 24mm; height: 34.4mm; display: block; z-index: 6; }
+  .raya { position: absolute; left: 36.5mm; top: 7mm; width: 0.6mm; height: 28mm; background: var(--oro); z-index: 6; }
+  .charcuteria { position: absolute; left: 42mm; top: 5mm; font-weight: 800; font-size: 8.4mm; line-height: 1; letter-spacing: 0.035em; color: var(--oro); z-index: 6; }
+  .nombre { position: absolute; left: 41mm; top: 11.8mm; font-weight: 800; font-size: 20.5mm; line-height: 1; letter-spacing: -0.015em; color: var(--crema); z-index: 6; white-space: nowrap; }
+
+  /* Los productos, a la izquierda, sobre el mostrador. */
+  .productos { position: absolute; left: 6mm; width: 140mm; top: 0; height: 160mm; display: flex; justify-content: center; align-items: flex-end; z-index: 4; }
+  .pieza { position: relative; display: block; flex: none; z-index: calc(100 - var(--cm, 30)); }
+  .pieza img { display: block; height: calc(var(--cm, 30) * var(--mm-por-cm) * 1mm); width: auto; }
+  .pieza::after { content: ""; position: absolute; left: -7%; right: -7%; bottom: -2.4mm; height: 6mm; z-index: -1; background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(70, 35, 10, 0.55), rgba(70, 35, 10, 0)); }
+  .pieza + .pieza { margin-left: -10mm; }
+
+  /* A la derecha, en una tarjeta crema: lo que lleva, el peso, la frase y el precio. */
+  .contenido {
+    position: absolute; left: 150mm; right: 8mm; top: 46mm; bottom: 14mm; z-index: 5; box-sizing: border-box; padding: 7mm 7mm 8mm;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 4mm;
+    background: rgba(255, 249, 236, 0.93); border: 0.6mm solid #e7b33f; border-radius: 6mm; box-shadow: 0 2mm 5mm rgba(60, 25, 5, 0.3);
+  }
+  .titulo { text-align: center; }
+  .linea { display: block; font-weight: 800; font-size: 11mm; line-height: 1.02; letter-spacing: -0.012em; text-transform: uppercase; color: var(--rojo-oscuro); text-wrap: balance; }
+  .linea + .linea { margin-top: 1.6mm; }
+  .pildora {
+    align-self: center; box-sizing: border-box; padding: 1.2mm 7mm; border-radius: 3mm; border: 0.35mm solid #a8740f; text-align: center;
+    background: linear-gradient(180deg, #f9dd86 0%, #edbb49 55%, #cf961f 100%); color: #5e0a0c; font-weight: 800; font-size: 6.4mm; line-height: 1.2; white-space: nowrap;
+  }
+  .frase { text-align: center; font-style: italic; font-weight: 600; font-size: 7.2mm; line-height: 1.15; color: var(--tinta); text-wrap: balance; }
+  .subrayado { position: relative; display: inline-block; }
+  .subrayado svg { position: absolute; left: -2%; width: 104%; bottom: -1.2mm; height: 2.4mm; display: block; }
+  /* La casilla del precio: todo el ancho de la tarjeta y bien alta, para escribir el precio grande con marcador. */
+  .precio {
+    flex: none; height: 46mm; box-sizing: border-box; display: flex; align-items: center; padding: 0 9mm;
+    border: 1.6mm solid var(--rojo); border-radius: 9mm; background: #ffffff; box-shadow: inset 0 0 0 0.5mm #f0d9a8;
+  }
+  .precio span { margin-top: 1.4mm; font-weight: 800; font-size: 22mm; line-height: 1; color: var(--rojo-oscuro); }
+</style>
+</head>
+<body>
+<script src="combos-datos.js"></script>
+<script>
+  window.listo = false;
+  const NUMERO = 2;
+  const combo = COMBOS.find((c) => c.n === NUMERO);
+
+  /** La cabecera roja con su onda dorada y la franja de abajo, como en las hojas de pie, a lo ancho de la hoja acostada. */
+  const arte = `<svg class="capa" viewBox="0 0 279 216" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="oroH" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#b07c14"/><stop offset=".2" stop-color="#f6d779"/><stop offset=".42" stop-color="#fff1b8"/><stop offset=".62" stop-color="#e0ad3b"/><stop offset=".82" stop-color="#a8740f"/><stop offset="1" stop-color="#f0c95f"/></linearGradient>
+      <radialGradient id="rojoCabecera" cx=".42" cy=".4" r=".85"><stop offset="0" stop-color="#c8141c"/><stop offset=".55" stop-color="#a50d14"/><stop offset="1" stop-color="#7d080d"/></radialGradient>
+      <pattern id="trama" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="2.4" stroke="#ffffff" stroke-opacity=".035" stroke-width=".7"/></pattern>
+    </defs>
+    <path d="M0,0H279V42C232,40 190,33 130,33.5C76,34 36,41 0,44Z" fill="url(#rojoCabecera)"/>
+    <path d="M0,0H279V42C232,40 190,33 130,33.5C76,34 36,41 0,44Z" fill="url(#trama)"/>
+    <path d="M0,44C36,41 76,34 130,33.5C190,33 232,40 279,42V46.5C232,44 190,35.5 130,35.1C76,35.3 36,43.5 0,50.5Z" fill="url(#oroH)"/>
+    <path d="M0,209.5C80,207.5 199,207.5 279,209.5V216H0Z" fill="url(#rojoCabecera)"/>
+    <path d="M0,209.5C80,207.5 199,207.5 279,209.5" fill="none" stroke="url(#oroH)" stroke-width="1.2"/>
+  </svg>`;
+
+  /** El sello dorado con el número del combo, arriba a la derecha. */
+  function sello(n) {
+    const cx = 252, cy = 24, R = 20.5, PICOS = 26;
+    let borde = "";
+    for (let i = 0; i <= 720; i++) {
+      const t = (i / 720) * 2 * Math.PI;
+      const r = R * (1 + 0.026 * Math.cos(PICOS * t));
+      borde += `${i ? "L" : "M"}${(cx + r * Math.cos(t)).toFixed(2)},${(cy + r * Math.sin(t)).toFixed(2)}`;
+    }
+    const dos = n >= 10;
+    const desde = dos ? 12 : 10.7;
+    const rayas = (signo) => [[2.8, 4.7], [5.4, 6.1], [8, 4.7]].map(([dy, largo]) => `<line x1="${cx + signo * desde}" y1="${cy + dy}" x2="${cx + signo * (desde + largo * (dos ? 0.6 : 1))}" y2="${cy + dy}"/>`).join("");
+    return `<svg class="capa capa--sello" viewBox="0 0 279 216" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="oroSello" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".35" stop-color="#e8b43f"/><stop offset=".7" stop-color="#b98417"/><stop offset="1" stop-color="#f6d779"/></linearGradient>
+        <linearGradient id="oroNumero" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".5" stop-color="#f2c94c"/><stop offset="1" stop-color="#c58a14"/></linearGradient>
+        <radialGradient id="rojoSello" cx=".5" cy=".42" r=".65"><stop offset="0" stop-color="#bd1019"/><stop offset="1" stop-color="#7a070c"/></radialGradient>
+      </defs>
+      <path d="${borde}Z" fill="url(#oroSello)"/>
+      <circle cx="${cx}" cy="${cy}" r="${R - 2.4}" fill="url(#rojoSello)" stroke="#fff1b8" stroke-width=".35"/>
+      <text x="${cx}" y="${cy - 8.2}" text-anchor="middle" font-family="Open Sans" font-weight="800" font-size="6.3" fill="#ffffff">COMBO</text>
+      <text x="${cx}" y="${cy + (dos ? 11 : 13.1)}" text-anchor="middle" font-family="Open Sans" font-weight="800" font-size="${dos ? 18 : 24.5}" fill="url(#oroNumero)">${n}</text>
+      <g stroke="#f2c14e" stroke-width=".6" stroke-linecap="round">${rayas(1)}${rayas(-1)}</g>
+    </svg>`;
+  }
+
+  const enMayusculas = (texto) => texto.toUpperCase().replace(/(\d) G\b/g, "$1 g").replace(/(\d) ML\b/g, "$1 ml").replace(/(\d) /g, "$1 ");
+  function frase(c) {
+    const raya = `<svg viewBox="0 0 100 6" preserveAspectRatio="none"><path fill="#a80d14" d="M0,4.4C30,.4 70,.4 100,3.2C70,2.2 30,2.8 0,6Z"/></svg>`;
+    if (!c.destacar || !c.lema.includes(c.destacar)) return c.lema;
+    return c.lema.replace(c.destacar, `<span class="subrayado">${c.destacar}${raya}</span>`);
+  }
+
+  const hoja = document.createElement("article");
+  hoja.className = "hoja";
+  hoja.dataset.archivo = `combo-${combo.n}-horizontal`;
+  hoja.dataset.ppp = "300";
+  hoja.dataset.formato = "jpeg";
+  const lineas = combo.productos.map(([, nombre], i) => `<span class="linea">${nombre}${i < combo.productos.length - 1 ? " +" : ""}</span>`).join("");
+  const piezas = combo.productos.map(([foto]) => `<span class="pieza" style="--cm: ${CM[foto]}"><img src="fotos/${foto}.png" alt=""></span>`).join("");
+  hoja.innerHTML = `
+    <img class="estante" src="fondos/estante.jpg" alt="">
+    <img class="madera" src="fondos/madera.jpg" alt="">
+    <div class="luz"></div><div class="canto"></div>
+    ${arte}
+    <img class="leon" src="../public/marca/leon.svg" alt="">
+    <div class="raya"></div>
+    <div class="charcuteria">CHARCUTERÍA</div>
+    <div class="nombre">Villa Real</div>
+    ${sello(combo.n)}
+    <div class="productos">${piezas}</div>
+    <section class="contenido">
+      <div class="titulo">${lineas}</div>
+      <div class="pildora">${enMayusculas(combo.detalle)}</div>
+      <div class="frase">${frase(combo)}</div>
+      <div class="precio"><span>$</span></div>
+    </section>`;
+  document.body.append(hoja);
+
+  // La escala: lo más alto del combo llega hasta debajo de la cabecera, sin pasar del ancho de su lado.
+  Promise.all([document.fonts.ready, ...[...hoja.querySelectorAll("img")].map((i) => (i.complete ? null : new Promise((r) => (i.onload = i.onerror = r))))]).then(() => {
+    const ALTO_MM = 104, ANCHO_MM = 136, SOLAPE = 10;
+    const piezasMedidas = [...hoja.querySelectorAll(".pieza")].map((p) => {
+      const img = p.querySelector("img");
+      return { cm: Number(p.style.getPropertyValue("--cm")), aspecto: img.naturalWidth / img.naturalHeight };
+    });
+    const anchoPorEscala = piezasMedidas.reduce((s, p) => s + p.cm * p.aspecto, 0);
+    const escala = Math.min(ALTO_MM / Math.max(...piezasMedidas.map((p) => p.cm)), (ANCHO_MM + SOLAPE * (piezasMedidas.length - 1)) / anchoPorEscala);
+    hoja.style.setProperty("--mm-por-cm", escala.toFixed(3));
+    window.listo = true;
+  });
+</script>
+</body>
+</html>
