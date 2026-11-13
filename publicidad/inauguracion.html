@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Inauguración · Villa Real</title>
+<!-- Cinzel, la letra de «VILLA REAL» en el letrero del local (OFL, Google Fonts). Las demás, del proyecto. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=block">
+<style>
+  @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
+  @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
+  @font-face { font-family: "Kaushan Script"; src: url("fuentes/KaushanScript-Regular.ttf"); }
+
+  /* La inauguración del mayor de Villa Real, el viernes 20 de noviembre de 2026: el flier para el estado de WhatsApp
+     (1080 × 1920 px, data-ppp="96") y el pendón de la puerta (80 × 200 cm, a tamaño real para la imprenta). Es el mismo
+     diseño: todo se mide en «unidades» del flier (--u: 1 px en el estado, 0,7407 mm en el pendón, que es 800 mm / 1080),
+     y en el pendón, que es más alto, lo que sobra se reparte entre los bloques. Los colores, los del letrero y las
+     franelas: verde profundo, dorado y crema. Solo fotos reales: la de la portada de la web (CC0) y las de los productos. */
+  @page { margin: 0; }
+  html, body { margin: 0; background: #777; }
+  body { font-family: "Open Sans", Arial, sans-serif; display: grid; gap: 40px; padding: 20px; justify-items: start; }
+
+  .pieza {
+    --verde: #0d2a1a; --verde-medio: #164a2c; --dorado: #e9b13a; --dorado-claro: #f8dc8a; --dorado-oscuro: #a8740f; --crema: #fbf6ea; --tinta: #1f1612;
+    position: relative; box-sizing: border-box; overflow: hidden; color: var(--crema);
+    width: calc(1080 * var(--u)); background: var(--verde);
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: calc(70 * var(--u)) calc(60 * var(--u)) 0;
+  }
+  /* --fotos: lo que crecen los productos; en el pendón, que es más alto, más grandes. */
+  .estado { --u: 1px; height: 1920px; --fotos: 0.8; }
+  .pendon { --u: 0.74074mm; height: 2000mm; --fotos: 1.3; }
+  .pendon .villa { font-size: calc(140 * var(--u)); }
+  .pendon .fecha .numero { font-size: calc(190 * var(--u)); }
+  .pendon .ofrece li { font-size: calc(48 * var(--u)); }
+
+  /* La foto de la hamburguesa y la pizza arriba, fundida en el verde. */
+  .foto {
+    position: absolute; inset: 0 0 auto; height: 58%; background: url("../public/portada/heroe.webp") center 30% / cover no-repeat; opacity: 0.55;
+  }
+  .foto::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(13, 42, 26, 0.55) 0%, rgba(13, 42, 26, 0.35) 35%, rgba(13, 42, 26, 0.92) 78%, var(--verde) 100%); }
+  /* Unos destellos dorados, de fiesta, sin tapar nada. */
+  .destellos { position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(circle at 8% 22%, var(--dorado) 0 calc(5 * var(--u)), transparent calc(6 * var(--u))),
+      radial-gradient(circle at 92% 17%, var(--dorado-claro) 0 calc(4 * var(--u)), transparent calc(5 * var(--u))),
+      radial-gradient(circle at 86% 40%, var(--dorado) 0 calc(3 * var(--u)), transparent calc(4 * var(--u))),
+      radial-gradient(circle at 12% 46%, var(--dorado-claro) 0 calc(3 * var(--u)), transparent calc(4 * var(--u))),
+      radial-gradient(circle at 20% 9%, var(--dorado-claro) 0 calc(3 * var(--u)), transparent calc(4 * var(--u))),
+      radial-gradient(circle at 76% 6%, var(--dorado) 0 calc(4 * var(--u)), transparent calc(5 * var(--u)));
+  }
+  .pieza > *:not(.foto):not(.destellos) { position: relative; z-index: 1; }
+
+  .marca { display: grid; justify-items: center; text-align: center; }
+  .marca img { width: calc(150 * var(--u)); height: auto; filter: drop-shadow(0 calc(6 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, 0.45)); }
+  .comercializadora { margin-top: calc(14 * var(--u)); font-weight: 600; font-size: calc(30 * var(--u)); letter-spacing: 0.32em; padding-left: 0.32em; display: flex; align-items: center; gap: calc(16 * var(--u)); }
+  .comercializadora i { display: block; width: calc(56 * var(--u)); height: calc(3 * var(--u)); background: var(--dorado); }
+  .villa { font-family: "Cinzel", serif; font-weight: 900; font-size: calc(120 * var(--u)); line-height: 1; color: var(--dorado); letter-spacing: 0.02em; text-shadow: 0 calc(5 * var(--u)) 0 rgba(0, 0, 0, 0.35); }
+  .lema { font-family: "Kaushan Script", cursive; font-size: calc(46 * var(--u)); margin-top: calc(8 * var(--u)); color: var(--crema); }
+
+  .gran { display: grid; justify-items: center; text-align: center; }
+  .gran .antes { font-family: "Archivo Black"; font-size: calc(64 * var(--u)); letter-spacing: 0.08em; color: var(--dorado-claro); line-height: 1; }
+  .gran .titulo { font-family: "Archivo Black"; font-size: calc(100 * var(--u)); line-height: 0.95; letter-spacing: 0.01em; color: var(--crema);
+    text-shadow: 0 calc(7 * var(--u)) 0 var(--dorado-oscuro), 0 calc(14 * var(--u)) calc(24 * var(--u)) rgba(0, 0, 0, 0.45); }
+
+  /* La fecha, en una placa dorada como la de los combos. */
+  .fecha { display: grid; justify-items: center; text-align: center; padding: calc(16 * var(--u)) calc(70 * var(--u)) calc(20 * var(--u));
+    border-radius: calc(28 * var(--u)); background: linear-gradient(180deg, #f9dd86, var(--dorado) 55%, #cf961f); color: var(--verde);
+    border: calc(4 * var(--u)) solid var(--dorado-claro); box-shadow: 0 calc(12 * var(--u)) calc(30 * var(--u)) rgba(0, 0, 0, 0.4); }
+  .fecha .dia { font-family: "Archivo Black"; font-size: calc(54 * var(--u)); letter-spacing: 0.1em; line-height: 1; }
+  .fecha .numero { font-family: "Archivo Black"; font-size: calc(140 * var(--u)); line-height: 0.95; }
+  .fecha .mes { font-family: "Archivo Black"; font-size: calc(46 * var(--u)); letter-spacing: 0.08em; line-height: 1; }
+  .hora { margin: calc(12 * var(--u)) 0 0; font-weight: 700; font-size: calc(36 * var(--u)); color: var(--crema); text-align: center; }
+
+  /* Los productos, juntos sobre la mesa, con su sombra. */
+  .productos { display: flex; align-items: flex-end; justify-content: center; width: 100%; margin-top: calc(10 * var(--u)); }
+  .productos img { height: calc(var(--alto) * var(--fotos) * var(--u)); width: auto; max-width: 30%; object-fit: contain; filter: drop-shadow(0 calc(10 * var(--u)) calc(12 * var(--u)) rgba(0, 0, 0, 0.5)); }
+  .productos img + img { margin-left: calc(-26 * var(--u)); }
+  .mesa { width: 100%; height: calc(16 * var(--u)); margin-top: calc(-8 * var(--u)); border-radius: 50%; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5), transparent 70%); }
+
+  .ofrece { list-style: none; margin: 0; padding: 0; display: grid; gap: calc(8 * var(--u)); justify-items: center; text-align: center; }
+  .ofrece li { font-weight: 800; font-size: calc(40 * var(--u)); line-height: 1.1; display: flex; align-items: center; gap: calc(16 * var(--u)); }
+  .ofrece li::before { content: ""; width: calc(16 * var(--u)); height: calc(16 * var(--u)); border-radius: 50%; background: var(--dorado); flex: none; }
+
+  .pie { align-self: stretch; margin: 0 calc(-60 * var(--u)); padding: calc(24 * var(--u)) calc(40 * var(--u)) calc(30 * var(--u)); background: var(--crema); color: var(--verde);
+    border-top: calc(10 * var(--u)) solid var(--dorado); text-align: center; display: grid; gap: calc(6 * var(--u)); }
+  .pie .te { font-family: "Kaushan Script", cursive; font-size: calc(50 * var(--u)); color: var(--verde-medio); line-height: 1.05; }
+  .pie .donde { font-weight: 800; font-size: calc(30 * var(--u)); line-height: 1.2; }
+  .pie .contacto { font-family: "Archivo Black"; font-size: calc(46 * var(--u)); letter-spacing: 0.02em; color: var(--verde); }
+  .pie .pagos { font-weight: 600; font-size: calc(28 * var(--u)); color: var(--verde-medio); }
+</style>
+</head>
+<body>
+<template id="pieza">
+  <div class="foto"></div>
+  <div class="destellos"></div>
+  <header class="marca">
+    <img src="../public/marca/leon.svg" alt="">
+    <div class="comercializadora"><i></i>COMERCIALIZADORA<i></i></div>
+    <div class="villa">VILLA REAL</div>
+    <div class="lema">Tu proveedor para burger &amp; pizza</div>
+  </header>
+  <div class="gran">
+    <div class="antes">¡GRAN</div>
+    <div class="titulo">INAUGURACIÓN!</div>
+  </div>
+  <div>
+    <div class="fecha">
+      <span class="dia">VIERNES</span>
+      <span class="numero">20</span>
+      <span class="mes">DE NOVIEMBRE</span>
+    </div>
+    <p class="hora">De 9:00 a. m. a 6:00 p. m.</p>
+  </div>
+  <div style="width: 100%">
+    <div class="productos">
+      <img src="fotos/tocineta.png" style="--alto: 230" alt="">
+      <img src="fotos/jamon-de-espalda.png" style="--alto: 300" alt="">
+      <img src="fotos/mozzarella.png" style="--alto: 250" alt="">
+      <img src="fotos/queso-amarillo.png" style="--alto: 290" alt="">
+      <img src="fotos/pechuga-de-pavo-drago.png" style="--alto: 270" alt="">
+    </div>
+    <div class="mesa"></div>
+  </div>
+  <ul class="ofrece">
+    <li>Piezas enteras al mayor</li>
+    <li>Combos listos para llevar</li>
+    <li>Todo para tu burger &amp; pizzería</li>
+  </ul>
+  <footer class="pie">
+    <div class="te">¡Te esperamos!</div>
+    <div class="donde">Calle 38 entre carreras 30 y 31 · Centro · Barquisimeto</div>
+    <div class="contacto">WhatsApp 0424-6343236</div>
+    <div class="pagos">@comercializadoravillareal · Pago móvil · Efectivo · Zelle</div>
+  </footer>
+</template>
+<script>
+  window.listo = false;
+  const molde = document.getElementById("pieza");
+  for (const [clase, archivo, extra] of [
+    ["estado", "inauguracion-estado", { ppp: "96", formato: "jpeg", solo: "imagen" }],
+    ["pendon", "pendon-inauguracion-80x200", { formato: "jpeg" }],
+  ]) {
+    const pieza = document.createElement("article");
+    pieza.className = `pieza ${clase}`;
+    pieza.dataset.archivo = archivo;
+    Object.assign(pieza.dataset, extra);
+    pieza.append(molde.content.cloneNode(true));
+    document.body.append(pieza);
+  }
+  Promise.all([document.fonts.ready, ...[...document.images].map((i) => (i.complete ? null : new Promise((r) => (i.onload = i.onerror = r))))]).then(() => (window.listo = true));
+</script>
+</body>
+</html>
