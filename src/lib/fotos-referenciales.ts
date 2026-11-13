@@ -42,6 +42,12 @@ export const FOTOS_REFERENCIALES: { foto: string; palabras: string[] }[] = [
   { foto: "queso-rallado", palabras: ["rallado", "rallada", "queso rallado"] },
   { foto: "parmesano", palabras: ["parmesano", "pecorino", "grana padano"] },
   { foto: "queso-de-ano", palabras: ["queso de ano"] },
+  // Los quesos blancos de aquí (el arepero, el llanero, el de mano…), con el bloque de queso blanco; siempre con «queso»
+  // delante: el jamón arepero no es un queso.
+  {
+    foto: "queso-blanco",
+    palabras: ["queso arepero", "queso blanco", "queso llanero", "queso duro", "queso de mano", "queso paisa", "queso telita", "queso fresco", "queso guayanes", "queso palmita", "queso semiduro"],
+  },
   // «Queso amarillo / Cheddar», con el bloque de cheddar; el cheddar a secas, con la tabla de quesos.
   { foto: "queso-amarillo", palabras: ["queso amarillo"] },
   { foto: "queso-cheddar", palabras: ["cheddar"] },

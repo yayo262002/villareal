@@ -447,7 +447,9 @@ datos/                    La base de datos (fuera de Git)
   Kemmental), la de la primera, que es mercancía de verdad; si no,
   una **foto de referencia** de lo que es, elegida por su nombre, de lo más
   concreto a lo más general (la salsa cheddar no es un queso, lo rallado
-  lleva la del queso rallado; `src/lib/fotos-referenciales.ts`), que la
+  lleva la del queso rallado, los quesos blancos de aquí, como el queso
+  arepero, el llanero o el de mano, la del bloque de queso blanco, y el
+  jamón arepero sigue siendo jamón; `src/lib/fotos-referenciales.ts`), que la
   ficha marca «Foto referencial»; y si ninguna le va, un fondo crema con
   el león. Las de referencia son fotos de comida CC0 o de dominio público
   (`public/productos/`, con sus créditos); en cuanto el dueño sube la suya,

@@ -4,9 +4,10 @@ Fotos reales de comida que la web enseña en cada producto mientras el dueño no
 
 Todas son **CC0** o de **dominio público**: se pueden usar, también en un comercio, sin pedir permiso ni citar. Salen de StockSnap y de Wikimedia Commons, recortadas en un cuadrado de 720 px y pasadas a WebP.
 
-- `productos/queso-amarillo.webp`: «Montgomerys cheddar cheese.jpg», de Jon Sullivan, dominio público. https://commons.wikimedia.org/wiki/File:Montgomerys_cheddar_cheese.jpg
+- `productos/queso-amarillo.webp`: «Chesses gouda affinage.JPG», de Alpha.prim, dominio público. https://commons.wikimedia.org/wiki/File:Chesses_gouda_affinage.JPG (ruedas de gouda amarillo; antes, un cheddar curado con vetas azules, que no se parecía al queso amarillo de aquí)
 - `productos/queso-cheddar.webp`: «Olives Cheese», de ISO Republic, CC0. https://stocksnap.io/photo/olives-cheese-VUAQNMLAPF
-- `productos/mozzarella.webp`: «White cheddar cheese.jpg», de Jon Sullivan, dominio público. https://commons.wikimedia.org/wiki/File:White_cheddar_cheese.jpg (un bloque blanco y cuadrado, como la mozzarella que se vende aquí; no una bola)
+- `productos/mozzarella.webp`: «White cheddar cheese.jpg», de Jon Sullivan, dominio público. https://commons.wikimedia.org/wiki/File:White_cheddar_cheese.jpg (un bloque blanco y cuadrado, entero y con sus lonjas, como la mozzarella que se vende aquí; no una bola)
+- `productos/queso-blanco.webp` (el queso arepero, el llanero, el de mano, el paisa…): «Greek feta.jpg», de Jon Sullivan, dominio público. https://commons.wikimedia.org/wiki/File:Greek_feta.jpg (un bloque de queso blanco)
 - `productos/crema.webp` (el suero y la crema de leche): «Milk Splash», de George Desipris, CC0. https://stocksnap.io/photo/milk-splash-0PIWORZOK5
 - `productos/queso-rallado.webp`: «Food Spaghetti», de Krzysztof Puszczyński, CC0. https://stocksnap.io/photo/food-spaghetti-T6J8OZBM38
 - `productos/queso-de-ano.webp`: «Cheese Food», de Jakub Rostkowski, CC0. https://stocksnap.io/photo/cheese-food-ABFRSZL8XB

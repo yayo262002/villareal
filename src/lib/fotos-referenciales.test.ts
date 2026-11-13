@@ -33,6 +33,16 @@ test("lo más concreto gana: la salsa cheddar no es un queso, ni la caja una piz
   assert.equal(foto("Papas fritas congeladas"), "papas-fritas");
 });
 
+test("los quesos blancos de aquí llevan el bloque de queso blanco, y el jamón arepero sigue siendo jamón", () => {
+  assert.equal(foto("Queso Arepero"), "queso-blanco");
+  assert.equal(foto("Queso llanero"), "queso-blanco");
+  assert.equal(foto("Queso de mano"), "queso-blanco");
+  assert.equal(foto("Queso paisa El Lucero"), "queso-blanco");
+  assert.equal(foto("Jamon Arepero Drago"), "jamon");
+  // Un queso sin más señas, con el queso amarillo.
+  assert.equal(foto("Queso gouda"), "queso-amarillo");
+});
+
 test("sin tildes, en plural o en singular, y solo palabras enteras", () => {
   assert.equal(foto("JAMÓN ahumado"), "jamon");
   assert.equal(foto("Champiñones laminados"), "champinones");
