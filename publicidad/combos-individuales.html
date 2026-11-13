@@ -105,8 +105,9 @@
     flex: none; align-self: var(--precio-lado); width: var(--precio-ancho); height: var(--precio-alto); box-sizing: border-box; display: flex; align-items: center;
     padding: 0 calc(var(--precio-alto) * 0.22); border: 1.4mm solid var(--rojo); border-radius: calc(var(--precio-alto) * 0.26); background: #fff9ec; box-shadow: inset 0 0 0 0.5mm #f0d9a8;
   }
-  /* El «$», arriba a la izquierda y de tamaño fijo: lo que crece es el sitio para escribir. */
-  .precio span { align-self: flex-start; margin-top: 5mm; font-weight: 800; font-size: 17mm; line-height: 1; color: var(--rojo-oscuro); }
+  /* El «$», a la izquierda, centrado de alto (al dueño, arriba le quedaba algo alto) y de tamaño fijo: lo que crece es
+     el sitio para escribir. La caja de la letra lleva más aire arriba que abajo; el medio milímetro la baja a ojo. */
+  .precio span { align-self: center; margin-top: 1mm; font-weight: 800; font-size: 17mm; line-height: 1; color: var(--rojo-oscuro); }
 
   /* El navideño y el pizzero, con el estilo de las imágenes que trajo el dueño (fondos/referencia-navidad.png y
      fondos/referencia-pizza.jpg): la cabecera en una placa verde con borde dorado sobre luces desenfocadas, la mitad de
