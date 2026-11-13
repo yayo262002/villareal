@@ -163,8 +163,14 @@ export function rutasPublicas(productos: ProductoDeVitrina[]): Map<number, strin
   return new Map(productos.map((p) => [p.producto.id, rutaProducto(p.producto)]));
 }
 
-/** Los destacados; si el dueño no ha destacado ninguno, todos. */
+/**
+ * Los destacados; si el dueño no ha destacado ninguno, todos, primero los que ya tienen precio: en la portada se ve
+ * antes lo que se puede pedir con su precio que lo que dice «Consulta el precio del día». Dentro de cada grupo, el
+ * orden de siempre.
+ */
 export function destacados(productos: ProductoDeVitrina[]): ProductoDeVitrina[] {
   const marcados = productos.filter((p) => p.producto.destacado);
-  return marcados.length > 0 ? marcados : productos;
+  if (marcados.length > 0) return marcados;
+  const conPrecio = productos.filter((p) => p.publicado.precio_usd !== null);
+  return [...conPrecio, ...productos.filter((p) => p.publicado.precio_usd === null)];
 }

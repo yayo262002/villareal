@@ -141,11 +141,16 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
   const ventajas = [...new Set([...ventajasDe(producto.descripcion), ...(unico ? ventajasDe(unico.descripcion) : [])])];
   const imagen = imagenDeProducto(direccionDeFotoDeProducto(producto), producto.nombre, fotoDeAlgunaVariante(variantes));
   const familia = v.todasLasFamilias.find((f) => f.id === producto.familia_id) ?? null;
-  // Debajo, otros de sus familias; si no hay, otros cualquiera.
+  // Debajo, primero los de su misma familia (los otros quesos), después los que comparten con él un negocio o una familia
+  // (la mozzarella y los jamones, en Pizzería) y, si no hay ninguno, otros cualquiera. El título dice cuál es el caso.
   const suyas = v.productos.find((p) => p.producto.id === producto.id)?.familias ?? [];
   const demas = v.productos.filter((p) => p.producto.id !== producto.id);
-  const deSuFamilia = demas.filter((p) => p.familias.some((f) => suyas.includes(f)));
-  const relacionados = (deSuFamilia.length > 0 ? deSuFamilia : demas).slice(0, RELACIONADOS);
+  const deSuFamilia = demas.filter((p) => producto.familia_id !== null && p.producto.familia_id === producto.familia_id);
+  const queComparten = demas.filter((p) => !deSuFamilia.includes(p) && p.familias.some((f) => suyas.includes(f)));
+  const cercanos = [...deSuFamilia, ...queComparten];
+  const relacionados = (cercanos.length > 0 ? cercanos : demas).slice(0, RELACIONADOS);
+  const todosDeSuFamilia = relacionados.length > 0 && relacionados.every((p) => deSuFamilia.includes(p));
+  const tituloRelacionados = todosDeSuFamilia ? "De la misma familia" : cercanos.length > 0 ? "También te puede interesar" : "Otros productos";
   const nombre = producto.nombre.toLowerCase();
   const pedir = enlaceWhatsapp(unico ? `Hola, quiero pedir ${nombre} ${unico.nombre.toLowerCase()}.` : `Hola, quiero pedir ${nombre}.`);
   const mayor = enlaceWhatsapp(`Hola, quiero comprar ${nombre} al mayor.`);
@@ -306,7 +311,7 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
 
         {relacionados.length > 0 && (
           <section className={estilos.relacionados} aria-labelledby="titulo-relacionados">
-            <TituloDeSeccion id="titulo-relacionados">{deSuFamilia.length > 0 ? "De la misma familia" : "Otros productos"}</TituloDeSeccion>
+            <TituloDeSeccion id="titulo-relacionados">{tituloRelacionados}</TituloDeSeccion>
             <RejillaDeProductos items={relacionados} tasa={tasa?.valor ?? null} />
           </section>
         )}
