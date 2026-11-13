@@ -133,8 +133,9 @@ export function PaginaCarrito({ negocio, whatsapp }: { negocio: string; whatsapp
 
       <section className={estilos.resumen} aria-label="Total del pedido">
         <p className={estilos.total}>
+          {/* «Total estimado:» encima, el total en bolívares grande y los dólares debajo. */}
           Total estimado: <strong>{totales.total_bs !== null ? bs(totales.total_bs) : usd(totales.total_usd)}</strong>
-          {totales.total_bs !== null && <span> · {usd(totales.total_usd)}</span>}
+          {totales.total_bs !== null && <span>{usd(totales.total_usd)}</span>}
         </p>
         {datos.tasa && <p className={estilos.ayuda}>Bolívares a la tasa BCV de hoy: {bs(datos.tasa)} por dólar.</p>}
         {totales.sinPrecio > 0 && (

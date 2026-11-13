@@ -1214,27 +1214,36 @@ Binance y otro.
 
 ## La vitrina y el carrito
 
-- **La cabecera**, en todas las páginas públicas: arriba el león y «Villa
-  Real», el buscador, el carrito con cuántos productos lleva y el botón de
-  WhatsApp; en la pantalla ancha, debajo, el menú (Inicio, Productos,
-  Burger, Pizzería, Ofertas, Contacto) en su propia fila y con aire. En el
-  teléfono, el león, el carrito, WhatsApp y un menú que se despliega con
-  el buscador y las secciones (funciona sin JavaScript; con él, se cierra
-  solo al ir a otra página).
+- **La cabecera**, en todas las páginas públicas, verde bosque: arriba el
+  león y «Villa Real» (en la serifa de los títulos, en oro), el buscador
+  (una píldora crema con la lupa en un círculo dorado), el carrito con
+  cuántos productos lleva (el número, en oro, en la esquina del botón) y
+  el botón de WhatsApp; en la pantalla ancha, debajo, el menú (Inicio,
+  Productos, Burger, Pizzería, Ofertas, Contacto) en su propia fila, más
+  oscura, con una raya dorada bajo la sección abierta. En el teléfono, el
+  león, el carrito, WhatsApp y un menú que se despliega con el buscador y
+  las secciones en letra grande (funciona sin JavaScript; con él, se
+  cierra solo al ir a otra página).
 - **La portada** vende la idea, no un supermercado: «Todo para tu burger &
-  pizzería» con la foto de la hamburguesa y la pizza al lado, compacta
-  (en la pantalla ancha, texto a la izquierda y foto a la derecha, sin
-  ocupar más de lo que se ve; en el teléfono, la foto arriba y el título
-  debajo), los atajos a las familias, los dos botones y la tasa del día;
-  una línea discreta con el mensaje mayorista («Precios al mayor · Compra
-  más, paga menos»: el dorado es para los botones y los detalles, no para
-  cubrir la página); **«¿Qué necesitas para tu negocio?»** con las
-  colecciones (Burger, Pizzería), **«Comprar por categoría»** con las
-  familias activas, cada una con su foto y el mismo velo verde (una sin
-  productos publicados lo dice en su página y ofrece preguntar); los
-  **productos destacados**, cuatro como mucho (los marcados «Destacarlo en
-  la portada»; si no hay ninguno, los cuatro primeros); los combos
-  vigentes; «¿Estás montando tu negocio?» y dónde está la tienda. Se
+  pizzería» sobre la foto de la hamburguesa y la pizza saliendo del horno
+  (en la pantalla ancha, la foto a todo el ancho y el texto a la izquierda,
+  sobre su parte oscura; en el teléfono, la foto arriba, fundida en el
+  verde, y el título montado sobre ella), los dos botones («Ver todos los
+  productos» en oro y «Pedir por WhatsApp»), la tasa del día en una
+  píldora y, abajo, los atajos a las familias (en el teléfono, una fila
+  que se desliza de lado); una banda verde pegada a la foto con el mensaje
+  mayorista («Precios al mayor · Compra más, paga menos · Tu proveedor
+  para burger & pizza») en la serifa dorada; **«¿Qué necesitas para tu
+  negocio?»** con las colecciones (Burger, Pizzería), dos fotos grandes
+  con su botón dorado; **«Comprar por categoría»** con las familias
+  activas, cada una con su foto y el mismo velo verde (en el teléfono, una
+  fila que se desliza de lado; en la pantalla ancha, cuatro por fila, y la
+  última fila se reparte para no dejar huecos; una sin productos
+  publicados lo dice en su página y ofrece preguntar); los **productos
+  destacados**, cuatro como mucho (los marcados «Destacarlo en la
+  portada»; si no hay ninguno, los cuatro primeros), sobre una banda crema
+  más oscura; los combos vigentes; «¿Estás montando tu negocio?» y dónde
+  está la tienda, también sobre la banda crema, que llega hasta el pie. Se
   guarda hecha y se rehace con cada cambio del panel y cada mañana con la
   tarea diaria (así un combo que vence deja de salir).
 - **Productos** (`/productos`): todos los publicados y los **filtros**, que
@@ -1281,12 +1290,39 @@ Binance y otro.
   `public/productos/CREDITOS.md`); no son de la mercancía del negocio. Una
   portada de familia o una foto de producto subidas en el panel sustituyen
   a las incluidas.
-- **Diseño**: verde profundo, dorado y crema (`src/styles/tokens.css`), los
-  títulos en Anton (Next la descarga al compilar y la sirve la propia web;
-  el teléfono no le pide nada a Google). Fondo crema en las secciones,
-  verde oscuro en la cabecera y la portada, botones verdes (los
-  principales) y dorados. Primero el teléfono; en una pantalla ancha, el
-  menú en su fila y la ficha del producto en dos columnas.
+- **Diseño** (rehecho en noviembre de 2026, porque el de antes al dueño no
+  le gustaba): el de una marca de alimentos para negocios, con los colores
+  de la fachada y de las franelas llevados a más contraste
+  (`src/styles/tokens.css`, sección «La web pública»): **verde bosque**
+  casi negro en la cabecera, la portada, el pie y la caja de compra;
+  **el oro del león** (`#e3a91f`, el de `public/marca/leon.svg`) en los
+  botones principales, las rayas y los detalles, y un oro más hondo para
+  la letra pequeña sobre crema; **crema** de fondo, con bandas crema más
+  oscuras para separar secciones, y tarjetas blancas con una sombra
+  verdosa. Un solo acento, el **rojo tomate**, y solo en las etiquetas
+  «Oferta» y «Combo». WhatsApp conserva su verde, porque el cliente lo
+  reconoce. Dos letras, que Next descarga al compilar y sirve la propia
+  web (el teléfono no le pide nada a Google): **Fraunces**, una serifa
+  redonda y gruesa (con su eje «SOFT» al máximo), para los títulos, y
+  **Manrope** para leer y para los precios, con las cifras alineadas.
+  Anton queda solo para la lista del detal. Los botones son píldoras.
+  Las tarjetas de producto: la foto cuadrada arriba, el nombre, el detalle,
+  una raya de puntos y el precio al mayor en bolívares grande con los
+  dólares debajo, «Agregar» en verde (o «Ver opciones» con borde) y «Ver
+  detalles» subrayado en oro. Los combos son como un vale: una raya de
+  puntos con un mordisco a cada lado antes del precio. Productos, Ofertas
+  y el carrito empiezan con una banda verde a todo el ancho, pegada a la
+  cabecera, con el título grande en crema (en Productos, el buscador monta
+  sobre ella); cada familia, con su foto en una tarjeta que monta sobre la
+  misma banda. La página de cada producto: la foto en su marco blanco y,
+  al lado, el nombre y **la caja de compra en verde bosque**, con el
+  precio en crema, «Agregar al carrito» en oro y «Pedir por WhatsApp»;
+  debajo, las marcas, «Por qué elegirlo» (las reseñas como citas, con
+  unas comillas doradas) y «Cómo comprar». Las bandas a todo el ancho
+  pintan su fondo con una sombra recortada, así nada se sale de la
+  pantalla. Primero el teléfono: entre 360 y 400 px no se desborda nada a
+  los lados; en una pantalla ancha, el menú en su fila y la ficha del
+  producto en dos columnas.
 
 ## La web hacia fuera
 

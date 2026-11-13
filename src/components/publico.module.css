@@ -1,9 +1,10 @@
 /*
  * Lo que comparten las páginas públicas: la cabecera, el pie y las cajas de
- * precio. En el teléfono, la barra lleva el león, el carrito, WhatsApp y el
- * menú que se despliega; en una tableta aparece el buscador; en una
- * pantalla ancha, el carrito y WhatsApp dicen su nombre y el menú va en su
- * propia fila, debajo, con aire entre las secciones.
+ * precio. La cabecera es verde bosque, con el león y «Villa Real» en la
+ * serifa de los títulos. En el teléfono, la barra lleva el león, el
+ * carrito, WhatsApp y el menú que se despliega; en una tableta aparece el
+ * buscador; en una pantalla ancha, el carrito y WhatsApp dicen su nombre y
+ * el menú va en su propia fila, debajo, más oscura y con aire.
  */
 
 /* ---------- La cabecera ---------- */
@@ -12,16 +13,17 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--color-verde-profundo);
-  color: var(--color-crema);
-  border-bottom: 1px solid var(--color-dorado-tenue);
+  background: var(--color-bosque-900);
+  color: var(--color-sobre-oscuro);
+  font-family: var(--fuente-web);
+  border-bottom: 1px solid var(--color-oro-linea);
 }
 .barra {
   display: flex;
   align-items: center;
-  gap: var(--espacio-3);
+  gap: var(--espacio-2);
   max-width: var(--ancho-web);
-  min-height: 68px;
+  min-height: 64px;
   margin: 0 auto;
   padding: var(--espacio-2) var(--espacio-3) var(--espacio-2) var(--espacio-4);
 }
@@ -29,82 +31,89 @@
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--espacio-2);
+  gap: 10px;
   min-width: 0;
   margin-right: auto;
   color: inherit;
   text-decoration: none;
 }
 .marca:focus-visible {
-  outline: 3px solid var(--color-dorado);
+  outline: 3px solid var(--color-oro);
   outline-offset: 4px;
   border-radius: var(--radio);
 }
 .leon {
   flex: none;
   width: auto;
-  height: 48px;
+  height: 42px;
 }
 .marcaTexto {
   display: grid;
+  gap: 3px;
   min-width: 0;
   line-height: 1;
 }
 .marcaArriba {
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
   white-space: nowrap;
+  color: var(--color-sobre-oscuro-suave);
 }
 .marcaNombre {
-  font-family: var(--fuente-titulos);
-  font-size: 26px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  font-family: var(--fuente-display);
+  font-size: 23px;
+  font-weight: 700;
+  font-variation-settings: "SOFT" 100;
+  letter-spacing: -0.01em;
   white-space: nowrap;
-  color: var(--color-dorado);
+  color: var(--color-oro-claro);
 }
 
 .acciones {
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--espacio-2);
+  gap: 6px;
 }
 .accionTexto {
   display: none;
 }
 
-/* El buscador: una píldora crema con la lupa. */
+/* El buscador: una píldora crema, con la lupa en un círculo dorado. */
 .buscar,
 .buscarMovil {
   display: flex;
   align-items: center;
   min-width: 0;
-  overflow: hidden;
+  padding: 4px;
   border-radius: 999px;
-  background: var(--color-crema);
-  color: var(--color-verde-profundo);
+  background: var(--color-sobre-oscuro);
+  color: var(--color-bosque-900);
 }
 .buscar {
   display: none;
 }
 .buscar:focus-within,
 .buscarMovil:focus-within {
-  outline: 3px solid var(--color-dorado);
+  outline: 3px solid var(--color-oro);
   outline-offset: 2px;
 }
 .buscar input,
 .buscarMovil input {
   flex: 1;
   min-width: 0;
-  height: 46px;
-  padding: 0 var(--espacio-2) 0 var(--espacio-5);
+  height: 40px;
+  padding: 0 var(--espacio-2) 0 var(--espacio-4);
   border: 0;
   background: transparent;
-  color: var(--color-texto);
+  color: var(--color-tinta);
   font-size: 15px;
+}
+.buscar input::placeholder,
+.buscarMovil input::placeholder {
+  color: var(--color-tinta-suave);
 }
 .buscar input:focus,
 .buscarMovil input:focus {
@@ -115,12 +124,18 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 48px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   border: 0;
-  background: transparent;
-  color: var(--color-verde-profundo);
+  border-radius: 50%;
+  background: var(--color-oro);
+  color: var(--color-bosque-950);
   cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.buscar button:hover,
+.buscarMovil button:hover {
+  background: var(--color-oro-vivo);
 }
 
 .carrito {
@@ -130,28 +145,30 @@
   align-items: center;
   justify-content: center;
   gap: var(--espacio-2);
-  min-width: 44px;
-  height: 44px;
+  min-width: 42px;
+  height: 42px;
+  border: 1px solid var(--color-sobre-oscuro-linea);
   border-radius: 999px;
-  color: var(--color-crema);
+  color: var(--color-sobre-oscuro);
   font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-weight: 700;
   text-decoration: none;
-  text-transform: uppercase;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 .carrito:hover {
-  color: var(--color-dorado);
+  border-color: var(--color-oro);
+  color: var(--color-oro-claro);
 }
+/* El número del carrito va en la esquina del botón (el botón es su referencia, no el icono). */
 .carritoIcono {
-  position: relative;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
 }
 .carrito:focus-visible {
-  outline: 3px solid var(--color-dorado);
+  outline: 3px solid var(--color-oro);
+  outline-offset: 2px;
 }
 
 .whatsapp {
@@ -160,22 +177,21 @@
   align-items: center;
   justify-content: center;
   gap: var(--espacio-2);
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 999px;
   background: var(--color-whatsapp);
-  color: var(--color-verde-profundo);
+  color: var(--color-bosque-950);
   font-size: 14px;
   font-weight: 800;
-  letter-spacing: 0.04em;
   text-decoration: none;
-  text-transform: uppercase;
+  transition: background-color 0.15s ease;
 }
 .whatsapp:hover {
   background: var(--color-whatsapp-oscuro);
 }
 .whatsapp:focus-visible {
-  outline: 3px solid var(--color-dorado);
+  outline: 3px solid var(--color-oro);
   outline-offset: 2px;
 }
 
@@ -187,17 +203,17 @@
   flex: none;
   width: 18px;
   height: 18px;
-  color: var(--color-dorado);
+  color: var(--color-oro);
 }
 
-/* El desplegable del teléfono. */
+/* El desplegable del teléfono: funciona sin JavaScript (`<details>`). */
 .menuMovil summary {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radio);
-  color: var(--color-crema);
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  color: var(--color-sobre-oscuro);
   list-style: none;
   cursor: pointer;
 }
@@ -205,48 +221,56 @@
   display: none;
 }
 .menuMovil summary:focus-visible {
-  outline: 3px solid var(--color-dorado);
+  outline: 3px solid var(--color-oro);
 }
 .menuMovil[open] summary {
-  background: var(--color-verde-noche);
-  color: var(--color-dorado);
+  background: var(--color-oro);
+  color: var(--color-bosque-950);
 }
 .menuMovilPanel {
   position: absolute;
   top: 100%;
   right: 0;
   left: 0;
-  max-height: calc(100dvh - 68px);
+  max-height: calc(100dvh - 64px);
   overflow-y: auto;
-  padding: var(--espacio-4) var(--espacio-4) var(--espacio-5);
-  border-bottom: 3px solid var(--color-dorado);
-  background: var(--color-verde-profundo);
-  box-shadow: var(--sombra-tarjeta-alta);
+  padding: var(--espacio-4) var(--espacio-4) var(--espacio-6);
+  border-top: 1px solid var(--color-oro-linea);
+  border-bottom: 3px solid var(--color-oro);
+  background: var(--color-bosque-950);
+  box-shadow: var(--sombra-web-alta);
 }
 .menuMovilPanel nav {
   display: grid;
-  gap: 2px;
-  margin-top: var(--espacio-3);
+  margin-top: var(--espacio-4);
 }
 .menuMovilPanel nav a {
   display: flex;
   align-items: center;
   gap: var(--espacio-3);
-  min-height: 52px;
-  padding: 0 var(--espacio-3);
-  border-bottom: 1px solid var(--color-vidrio);
-  color: var(--color-crema);
-  font-family: var(--fuente-titulos);
-  font-size: 22px;
-  letter-spacing: 0.04em;
+  min-height: 56px;
+  padding: 0 var(--espacio-2);
+  border-bottom: 1px solid var(--color-sobre-oscuro-linea);
+  color: var(--color-sobre-oscuro);
+  font-family: var(--fuente-display);
+  font-size: 24px;
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100;
   text-decoration: none;
-  text-transform: uppercase;
+}
+/* Una flecha al final de cada sección. */
+.menuMovilPanel nav a::after {
+  content: "→";
+  margin-left: auto;
+  font-family: var(--fuente-web);
+  font-size: 18px;
+  color: var(--color-oro);
 }
 .menuMovilPanel nav a:last-child {
   border-bottom: 0;
 }
 .menuMovilPanel nav a[aria-current="page"] {
-  color: var(--color-dorado);
+  color: var(--color-oro-claro);
 }
 .menuMovilPanel .menuIcono {
   width: 22px;
@@ -257,16 +281,17 @@
 @media (min-width: 760px) {
   .barra {
     gap: var(--espacio-4);
-    min-height: 76px;
+    min-height: 74px;
+    padding-right: var(--espacio-4);
   }
   .leon {
-    height: 54px;
+    height: 48px;
   }
   .marcaArriba {
-    font-size: 10px;
+    font-size: 9px;
   }
   .marcaNombre {
-    font-size: 30px;
+    font-size: 27px;
   }
   .marca {
     margin-right: 0;
@@ -274,7 +299,7 @@
   .buscar {
     display: flex;
     flex: 1;
-    max-width: 520px;
+    max-width: 480px;
     margin: 0 auto;
   }
   .buscarMovil {
@@ -288,14 +313,13 @@
 /* Pantalla ancha: el carrito y WhatsApp con su nombre, y el menú en su fila, sin desplegable. */
 @media (min-width: 1024px) {
   .barra {
-    min-height: 84px;
-    padding-right: var(--espacio-4);
+    min-height: 80px;
   }
   .leon {
-    height: 60px;
+    height: 54px;
   }
   .marcaNombre {
-    font-size: 34px;
+    font-size: 30px;
   }
   .acciones {
     gap: var(--espacio-3);
@@ -304,7 +328,7 @@
     display: inline;
   }
   .carrito {
-    padding: 0 var(--espacio-3);
+    padding: 0 var(--espacio-4) 0 var(--espacio-3);
   }
   .whatsapp {
     width: auto;
@@ -315,8 +339,9 @@
   }
   .menu {
     display: block;
-    background: var(--color-verde-noche);
-    border-bottom: 1px solid var(--color-dorado-tenue);
+    background: var(--color-bosque-950);
+    font-family: var(--fuente-web);
+    border-bottom: 1px solid var(--color-oro-linea);
   }
   .menuDentro {
     display: flex;
@@ -327,39 +352,58 @@
     padding: 0 var(--espacio-4);
   }
   .menu a {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: var(--espacio-2);
-    min-height: 52px;
-    border-bottom: 3px solid transparent;
-    color: var(--color-crema);
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
+    min-height: 48px;
+    color: var(--color-sobre-oscuro-suave);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
     text-decoration: none;
     text-transform: uppercase;
     white-space: nowrap;
+    transition: color 0.15s ease;
+  }
+  /* La raya dorada bajo la sección abierta (y bajo la que se señala). */
+  .menu a::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--color-oro);
+    transform: scaleX(0);
+    transition: transform 0.2s ease;
   }
   .menu a:hover {
-    color: var(--color-dorado);
+    color: var(--color-sobre-oscuro);
+  }
+  .menu a:hover::after,
+  .menu a[aria-current="page"]::after {
+    transform: scaleX(1);
   }
   .menu a[aria-current="page"] {
-    border-bottom-color: var(--color-dorado);
-    color: var(--color-dorado);
+    color: var(--color-oro-claro);
   }
   .menu a:focus-visible {
-    outline: 3px solid var(--color-dorado);
+    outline: 3px solid var(--color-oro);
   }
 }
 
-/* ---------- Las cajas de precio ---------- */
+/* ---------- Las cajas de precio ----------
+ * Van dentro de la caja de compra de la página de cada producto y de cada
+ * marca, que es verde bosque: el precio en crema, grande, y los dólares
+ * debajo. */
 
-/* Una caja por precio: al mayor y, si el dueño lo puso, al detal. */
 .precios {
   margin: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--espacio-3);
+  gap: var(--espacio-4);
 }
 .preciosUno {
   grid-template-columns: 1fr;
@@ -368,77 +412,96 @@
   min-width: 0;
   display: grid;
   gap: 2px;
-  padding: var(--espacio-3) var(--espacio-4);
-  border-left: 4px solid var(--color-dorado);
-  border-radius: var(--radio);
-  background: var(--color-crema);
-}
-.precioCajaMayor {
-  background: var(--color-exito-fondo);
 }
 .precioCaja dt {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-texto-suave);
+  letter-spacing: 0.14em;
+  color: var(--color-oro-claro);
 }
 .precioCaja dd {
   margin: 0;
 }
-/* El tamaño baja en pantallas estrechas para que «Bs 12.310,25» quepa en media tarjeta. */
+/* El tamaño baja en pantallas estrechas para que «Bs 12.310,25» quepa entero. */
 .precio {
-  font-size: clamp(26px, 7.2vw, 38px);
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  color: var(--color-verde-profundo);
+  font-size: clamp(34px, 9.6vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--color-sobre-oscuro);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  line-height: 1.1;
+}
+.precios:not(.preciosUno) .precio {
+  font-size: clamp(24px, 6.4vw, 34px);
 }
 .precioUsd {
-  font-size: 14px;
-  color: var(--color-texto-suave);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-sobre-oscuro-suave);
   font-variant-numeric: tabular-nums;
 }
 .precioPendiente {
-  font-size: 16px;
+  font-family: var(--fuente-display);
+  font-size: 24px;
   font-weight: 600;
-  color: var(--color-texto-suave);
+  font-variation-settings: "SOFT" 100;
+  line-height: 1.15;
+  color: var(--color-oro-claro);
 }
 /* «desde Bs 127,75»: el más barato de varias marcas. */
 .desde {
-  font-size: 0.6em;
+  font-size: 0.5em;
   font-weight: 600;
-  color: var(--color-texto-suave);
+  letter-spacing: 0;
+  color: var(--color-sobre-oscuro-suave);
 }
+
+/* El precio de cada marca, en una línea, sobre su tarjeta clara. */
 .preciosLinea {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-tinta-suave);
   font-variant-numeric: tabular-nums;
 }
 .preciosLinea strong {
-  color: var(--color-verde-profundo);
+  display: block;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--color-bosque-900);
+}
+.preciosLinea .precioUsd {
+  font-size: 13px;
+  color: var(--color-tinta-suave);
+}
+.precioPendienteClaro {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--color-oro-hondo);
 }
 
 /* ---------- El pie ---------- */
 
 .pie {
   margin-top: var(--espacio-7);
-  background: var(--color-verde-profundo);
-  color: var(--color-crema);
+  background: var(--color-bosque-950);
+  color: var(--color-sobre-oscuro);
+  font-family: var(--fuente-web);
   font-size: 14px;
 }
 .pieVentajas {
   list-style: none;
   max-width: var(--ancho-web);
   margin: 0 auto;
-  padding: var(--espacio-5) var(--espacio-4);
+  padding: var(--espacio-6) var(--espacio-4);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--espacio-4);
-  border-bottom: 1px solid var(--color-dorado-tenue);
+  gap: var(--espacio-5) var(--espacio-4);
+  border-bottom: 1px solid var(--color-sobre-oscuro-linea);
 }
 @media (min-width: 760px) {
   .pieVentajas {
@@ -449,47 +512,75 @@
   display: flex;
   align-items: center;
   gap: var(--espacio-3);
+  min-width: 0;
   font-size: 13px;
-  font-weight: 800;
-  line-height: 1.25;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .pieVentajas svg {
   flex: none;
-  color: var(--color-dorado);
+  box-sizing: content-box;
+  padding: 9px;
+  border: 1px solid var(--color-oro-linea);
+  border-radius: 50%;
+  color: var(--color-oro);
 }
 .pieDatos {
   max-width: var(--ancho-web);
   margin: 0 auto;
-  padding: var(--espacio-5) var(--espacio-4) var(--espacio-6);
+  padding: var(--espacio-6) var(--espacio-4) var(--espacio-7);
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--espacio-5);
+  gap: var(--espacio-6);
 }
-.pieDatos p + p {
+.pieMarca {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-4);
+  min-width: 0;
+  max-width: 560px;
+}
+.pieLeon {
+  flex: none;
+  width: auto;
+  height: 64px;
+}
+.pieMarca p {
+  color: var(--color-sobre-oscuro-suave);
+  overflow-wrap: break-word;
+}
+/* El RIF no se parte por sus guiones. */
+.sinCorte {
+  white-space: nowrap;
+}
+.pieMarca p + p {
   margin-top: var(--espacio-1);
 }
-.pieNombre {
-  font-family: var(--fuente-titulos);
-  font-size: 22px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--color-dorado);
+.pieMarca .pieNombre {
+  margin-bottom: var(--espacio-2);
+  font-family: var(--fuente-display);
+  font-size: 24px;
+  font-weight: 700;
+  font-variation-settings: "SOFT" 100;
+  line-height: 1.1;
+  color: var(--color-oro-claro);
 }
 .pieEnlaces {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: var(--espacio-2) var(--espacio-5);
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  align-content: start;
+  gap: var(--espacio-3) var(--espacio-7);
 }
 .pieEnlaces a {
-  color: var(--color-crema);
+  color: var(--color-sobre-oscuro);
   font-weight: 700;
+  text-decoration: none;
 }
 .pieEnlaces a:hover {
-  color: var(--color-dorado);
+  color: var(--color-oro-claro);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 /* Enlace para saltar la cabecera. Solo aparece al llegar a él con el teclado. */
@@ -500,8 +591,9 @@
   z-index: 40;
   padding: var(--espacio-2) var(--espacio-4);
   border-radius: var(--radio);
-  background: var(--color-dorado);
-  color: var(--color-verde-profundo);
+  background: var(--color-oro);
+  color: var(--color-bosque-950);
+  font-family: var(--fuente-web);
   font-weight: 700;
 }
 .saltar:focus {

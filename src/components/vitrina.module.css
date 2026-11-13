@@ -1,9 +1,10 @@
 /*
- * La vitrina pública: secciones, tarjetas de productos y de familias, los
- * atajos de la portada, la franja mayorista, la de confianza y la llamada
- * a los negocios. Fondo crema, títulos en verde profundo, detalles en
- * dorado, fotos reales. Primero el teléfono. Las animaciones son cortas y
- * se apagan si el teléfono pide menos movimiento.
+ * La vitrina pública: secciones, tarjetas de productos, de familias y de
+ * combos, los atajos de la portada, la franja mayorista y la llamada a los
+ * negocios. Crema de fondo, tarjetas blancas con sombra verde, títulos en
+ * la serifa redonda (Fraunces), detalles en oro y el rojo tomate solo para
+ * «Oferta» y «Combo». Fotos reales. Primero el teléfono. Las animaciones son
+ * cortas y se apagan si el teléfono pide menos movimiento.
  */
 
 /* ---------- Títulos de sección ---------- */
@@ -13,40 +14,34 @@
   gap: var(--espacio-2);
   margin-bottom: var(--espacio-5);
 }
+/* «PRECIOS AL MAYOR DE HOY», con una raya dorada delante. */
 .antetituloSeccion {
-  justify-self: center;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-dorado-texto);
-}
-/* «CATEGORÍAS PRINCIPALES», con una raya dorada a cada lado. */
-.tituloSeccion {
   display: flex;
   align-items: center;
-  gap: var(--espacio-4);
-  margin: 0;
-  font-family: var(--fuente-titulos);
-  font-weight: 400;
-  font-size: clamp(28px, 7vw, 44px);
-  line-height: 1.05;
-  letter-spacing: 0.01em;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  text-align: center;
-  color: var(--color-verde-profundo);
+  color: var(--color-oro-hondo);
 }
-.tituloSeccion::before,
-.tituloSeccion::after {
+.antetituloSeccion::before {
   content: "";
-  flex: 1;
-  height: 3px;
-  min-width: 24px;
+  flex: none;
+  width: 28px;
+  height: 2px;
   border-radius: 2px;
-  background: var(--color-dorado);
+  background: var(--color-oro);
 }
-.tituloSeccion span {
-  flex: 0 1 auto;
+.tituloSeccion {
+  margin: 0;
+  font-family: var(--fuente-display);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100;
+  font-size: clamp(30px, 7.6vw, 48px);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  color: var(--color-bosque-900);
   text-wrap: balance;
 }
 
@@ -76,177 +71,215 @@
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-grande);
+  border: 1px solid var(--color-arena-borde);
+  border-radius: 18px;
   background: var(--color-superficie);
-  box-shadow: var(--sombra-tarjeta);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: var(--sombra-web);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .tarjeta:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--sombra-tarjeta-alta);
+  transform: translateY(-4px);
+  border-color: var(--color-oro-linea);
+  box-shadow: var(--sombra-web-alta);
 }
-/* La foto, cuadrada y a todo el ancho, sobre blanco en todas las tarjetas: el mismo marco para todos los productos. */
+/* La foto, cuadrada y a todo el ancho, sobre blanco: el mismo marco para todos los productos. */
 .tarjetaImagen {
   position: relative;
   display: block;
   aspect-ratio: 1;
-  border-bottom: 1px solid var(--color-borde);
+  overflow: hidden;
   background: var(--color-superficie);
 }
 .tarjetaFoto {
   width: 100%;
   height: 100%;
 }
-.tarjeta:hover .tarjetaFoto img {
-  transform: scale(1.04);
-}
 .tarjetaFoto img {
-  transition: transform 0.35s ease;
+  transition: transform 0.5s ease;
+}
+.tarjeta:hover .tarjetaFoto img {
+  transform: scale(1.05);
 }
 .etiqueta {
   position: absolute;
-  top: var(--espacio-2);
-  left: var(--espacio-2);
-  padding: 3px var(--espacio-3);
+  top: 10px;
+  left: 10px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: var(--color-dorado);
-  color: var(--color-verde-profundo);
-  font-size: 12px;
+  background: var(--color-tomate);
+  color: var(--color-tomate-texto);
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  box-shadow: var(--sombra-tarjeta);
 }
 .tarjetaCuerpo {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--espacio-1);
-  padding: var(--espacio-3) var(--espacio-3) var(--espacio-4);
+  gap: 3px;
+  padding: var(--espacio-3) var(--espacio-3) 14px;
 }
 @media (min-width: 720px) {
   .tarjetaCuerpo {
-    padding: var(--espacio-4);
+    padding: var(--espacio-4) 18px 18px;
   }
 }
 .tarjetaNombre {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.2;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 @media (min-width: 720px) {
   .tarjetaNombre {
-    font-size: 17px;
+    font-size: 18px;
   }
 }
 .tarjetaNombre a {
-  color: var(--color-verde-profundo);
+  color: var(--color-bosque-900);
   text-decoration: none;
+}
+.tarjetaNombre a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--color-oro);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 .tarjetaDetalle {
   font-size: 13px;
   line-height: 1.35;
-  color: var(--color-texto-suave);
+  color: var(--color-tinta-suave);
 }
 .precio {
   display: grid;
   gap: 1px;
-  margin-top: var(--espacio-2);
+  margin-top: var(--espacio-3);
+  padding-top: var(--espacio-3);
+  border-top: 1px dashed var(--color-arena-borde);
 }
 .precioEtiqueta {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--color-dorado-texto);
+  color: var(--color-oro-hondo);
 }
 /* El precio en bolívares: lo más visible de la tarjeta después de la foto. */
 .precioPrincipal {
-  font-size: clamp(21px, 5.8vw, 28px);
-  font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-  color: var(--color-verde-profundo);
+  font-size: clamp(20px, 5.6vw, 26px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--color-bosque-900);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 .precioSecundario {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-texto-suave);
+  color: var(--color-tinta-suave);
   font-variant-numeric: tabular-nums;
 }
 .precioPendiente {
-  margin-top: var(--espacio-2);
+  margin-top: var(--espacio-3);
+  padding-top: var(--espacio-3);
+  border-top: 1px dashed var(--color-arena-borde);
   font-size: 14px;
   font-weight: 700;
-  color: var(--color-texto-suave);
+  line-height: 1.3;
+  color: var(--color-oro-hondo);
 }
 .tarjetaAcciones {
   display: grid;
   gap: var(--espacio-2);
   margin-top: auto;
-  padding-top: var(--espacio-3);
+  padding-top: 14px;
 }
 .agregar {
   width: 100%;
 }
+/* «Ver opciones»: lleva a elegir la marca; con borde, para no confundirse con «Agregar». */
 .botonOpciones {
   width: 100%;
+  min-height: 44px;
   padding: 0 var(--espacio-2);
-  background: var(--color-verde-boton);
+  border: 1.5px solid var(--color-bosque-700);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-bosque-800);
   font-size: 14px;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .botonOpciones:hover {
-  background: var(--color-verde-boton-oscuro);
+  background: var(--color-bosque-900);
+  color: var(--color-oro-claro);
 }
 .verDetalles {
   justify-self: center;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
-  color: var(--color-verde-profundo);
+  color: var(--color-bosque-700);
+  text-decoration: underline;
+  text-decoration-color: var(--color-oro-linea);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.verDetalles:hover {
+  color: var(--color-bosque-900);
+  text-decoration-color: var(--color-oro);
 }
 
 /* ---------- Secciones de una familia (Burger: Quesos, Proteínas, Salsas…) ---------- */
 
 .secciones {
   display: grid;
-  gap: var(--espacio-6);
+  gap: var(--espacio-7);
 }
 .seccionDeFamilia {
   display: grid;
-  gap: var(--espacio-3);
+  gap: var(--espacio-4);
 }
 .tituloDeSeccion {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--espacio-3);
-  padding-bottom: var(--espacio-2);
-  border-bottom: 3px solid var(--color-dorado);
-  font-family: var(--fuente-titulos);
-  font-weight: 400;
-  font-size: clamp(24px, 6vw, 32px);
+  padding-bottom: var(--espacio-3);
+  border-bottom: 1px solid var(--color-arena-borde);
+  font-family: var(--fuente-display);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100;
+  font-size: clamp(26px, 6.6vw, 36px);
   line-height: 1.1;
-  text-transform: uppercase;
-  color: var(--color-verde-profundo);
+  letter-spacing: -0.015em;
+  color: var(--color-bosque-900);
+}
+.tituloDeSeccion::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 56px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-oro);
 }
 .tituloDeSeccion span {
   flex: none;
-  font-family: var(--fuente);
-  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--color-arena);
+  font-family: var(--fuente-web);
+  font-size: 12.5px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: none;
-  color: var(--color-texto-suave);
+  letter-spacing: 0.02em;
+  color: var(--color-tinta-suave);
 }
 
 /* ---------- Filtrar por marca ---------- */
@@ -254,17 +287,18 @@
 .filtroMarcas {
   display: grid;
   gap: var(--espacio-3);
-  padding: var(--espacio-4);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-grande);
+  padding: var(--espacio-4) 18px;
+  border: 1px solid var(--color-arena-borde);
+  border-radius: 18px;
   background: var(--color-superficie);
+  box-shadow: var(--sombra-web);
 }
 .filtroTitulo {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--color-dorado-texto);
+  color: var(--color-oro-hondo);
 }
 .filtroOpciones {
   display: flex;
@@ -277,21 +311,27 @@
   gap: var(--espacio-2);
   min-height: 42px;
   padding: 0 var(--espacio-4) 0 var(--espacio-3);
-  border: 1px solid var(--color-borde);
+  border: 1px solid var(--color-arena-borde);
   border-radius: 999px;
-  background: var(--color-crema);
+  background: var(--color-fondo);
+  color: var(--color-bosque-800);
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.filtroOpcion:hover {
+  border-color: var(--color-oro);
 }
 .filtroOpcion input {
   width: 18px;
   height: 18px;
-  accent-color: var(--color-verde-boton);
+  accent-color: var(--color-oro);
 }
 .filtroOpcion:has(input:checked) {
-  border-color: var(--color-verde-profundo);
-  background: var(--color-verde-profundo);
-  color: var(--color-crema);
+  border-color: var(--color-bosque-900);
+  background: var(--color-bosque-900);
+  color: var(--color-oro-claro);
 }
 .filtroAcciones {
   display: flex;
@@ -300,11 +340,17 @@
   gap: var(--espacio-4);
 }
 .filtroAcciones .boton {
-  min-height: 42px;
-  background: var(--color-verde-boton);
+  min-height: 46px;
+  padding: 0 var(--espacio-6);
+  border-radius: 999px;
+  background: var(--color-bosque-700);
+  font-weight: 800;
+}
+.filtroAcciones .boton:hover {
+  background: var(--color-bosque-900);
 }
 
-/* ---------- Tarjetas de familias ---------- */
+/* ---------- Tarjetas de familias y colecciones ---------- */
 
 .rejillaFamilias {
   list-style: none;
@@ -339,11 +385,12 @@
   display: block;
   aspect-ratio: 1;
   overflow: hidden;
-  border-radius: var(--radio-grande);
-  background: var(--color-verde-profundo);
-  color: var(--color-crema);
+  border-radius: 18px;
+  background: var(--color-bosque-900);
+  color: var(--color-sobre-oscuro);
   text-decoration: none;
-  box-shadow: var(--sombra-tarjeta);
+  box-shadow: var(--sombra-web);
+  isolation: isolate;
 }
 @media (min-width: 720px) {
   .familia {
@@ -354,10 +401,10 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--velo-familia);
+  background: var(--velo-foto-tarjeta);
 }
 .familia:focus-visible {
-  outline: 3px solid var(--color-dorado);
+  outline: 3px solid var(--color-oro);
   outline-offset: 3px;
 }
 .familiaFoto {
@@ -366,8 +413,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: saturate(1.06) contrast(1.04);
-  transition: transform 0.4s ease;
+  filter: saturate(1.08) contrast(1.04);
+  transition: transform 0.6s ease;
 }
 .familia:hover .familiaFoto {
   transform: scale(1.06);
@@ -377,12 +424,12 @@
   inset: 0;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 50% 40%, var(--color-crema) 0%, var(--color-crema-oscuro) 100%);
+  background: var(--color-bosque-800);
 }
 .familiaSinFoto img {
   width: 24%;
   height: auto;
-  opacity: 0.35;
+  opacity: 0.4;
 }
 .familiaTexto {
   position: absolute;
@@ -391,41 +438,183 @@
   left: 0;
   z-index: 1;
   display: grid;
+  justify-items: start;
   gap: var(--espacio-1);
-  padding: var(--espacio-3) var(--espacio-3) var(--espacio-4);
+  padding: 14px;
 }
 @media (min-width: 720px) {
   .familiaTexto {
-    padding: var(--espacio-4);
+    padding: 18px;
   }
 }
 .familiaNombre {
-  font-family: var(--fuente-titulos);
-  font-size: clamp(21px, 5.6vw, 30px);
-  line-height: 1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-family: var(--fuente-display);
+  font-size: clamp(21px, 5.6vw, 28px);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100;
+  line-height: 1.04;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 .familiaVer {
   display: inline-flex;
   align-items: center;
-  gap: var(--espacio-1);
-  font-size: 12px;
+  gap: 6px;
+  font-size: 11.5px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-dorado);
+  color: var(--color-oro-claro);
+}
+.familiaVer svg {
+  transition: transform 0.2s ease;
+}
+.familia:hover .familiaVer svg {
+  transform: translateX(3px);
+}
+
+/* Las colecciones por negocio: dos tarjetas grandes con su foto, su nombre, para quién son y un botón dorado. */
+.rejillaColecciones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--espacio-4);
+}
+@media (min-width: 720px) {
+  .rejillaColecciones {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--espacio-5);
+  }
+}
+.rejillaColecciones .familia {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radio-web-grande);
+}
+@media (min-width: 720px) {
+  .rejillaColecciones .familia {
+    aspect-ratio: 16 / 11;
+  }
+}
+.rejillaColecciones .familiaTexto {
+  gap: 6px;
+  padding: 22px;
+}
+@media (min-width: 720px) {
+  .rejillaColecciones .familiaTexto {
+    padding: 30px;
+  }
+}
+.rejillaColecciones .familiaNombre {
+  font-size: clamp(40px, 11vw, 60px);
+  letter-spacing: -0.03em;
+}
+.familiaDescripcion {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-sobre-oscuro-suave);
+}
+.rejillaColecciones .familiaVer {
+  margin-top: var(--espacio-3);
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: var(--color-oro);
+  color: var(--color-bosque-950);
+  font-size: 12px;
+  box-shadow: var(--sombra-oro);
+  transition: background-color 0.15s ease;
+}
+.rejillaColecciones .familia:hover .familiaVer {
+  background: var(--color-oro-vivo);
+}
+
+/*
+ * Las familias de la portada: en el teléfono, una fila que se desliza de
+ * lado (se ven dos y un trozo de la tercera); en la pantalla ancha, cuatro
+ * por fila, y la última fila se reparte para que no quede un hueco.
+ */
+.rejillaFamilias--compacta {
+  display: flex;
+  gap: var(--espacio-3);
+  margin: 0 calc(-1 * var(--espacio-4));
+  padding: 2px var(--espacio-4) var(--espacio-3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--espacio-4);
+  scrollbar-width: none;
+}
+.rejillaFamilias--compacta::-webkit-scrollbar {
+  display: none;
+}
+.rejillaFamilias--compacta > li {
+  flex: 0 0 40%;
+  scroll-snap-align: start;
+}
+.rejillaFamilias--compacta > li:last-child:nth-child(odd) {
+  grid-column: auto;
+}
+.rejillaFamilias--compacta .familia,
+.rejillaFamilias--compacta > li:last-child:nth-child(odd) .familia {
+  aspect-ratio: 3 / 4;
+}
+.rejillaFamilias--compacta .familiaNombre {
+  font-size: clamp(19px, 5.2vw, 25px);
+}
+.rejillaFamilias--compacta .familiaVer {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+@media (min-width: 720px) {
+  .rejillaFamilias--compacta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: clamp(170px, 17vw, 215px);
+    gap: var(--espacio-4);
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+  .rejillaFamilias--compacta > li {
+    flex: none;
+  }
+  .rejillaFamilias--compacta .familia,
+  .rejillaFamilias--compacta > li:last-child:nth-child(odd) .familia {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+  /* Si en la última fila quedan tres, la última ocupa dos; si quedan dos, las dos; si queda una, toda la fila. */
+  .rejillaFamilias--compacta > li:last-child:nth-child(4n + 3),
+  .rejillaFamilias--compacta > li:last-child:nth-child(4n + 2),
+  .rejillaFamilias--compacta > li:nth-last-child(2):nth-child(4n + 1) {
+    grid-column: span 2;
+  }
+  .rejillaFamilias--compacta > li:last-child:nth-child(4n + 1) {
+    grid-column: 1 / -1;
+  }
 }
 
 /* Las familias, para ir de una a otra: se deslizan de lado en el teléfono. */
 .chips {
   display: flex;
   gap: var(--espacio-2);
-  margin: 0 calc(-1 * var(--espacio-4)) var(--espacio-2);
-  padding: 0 var(--espacio-4) var(--espacio-1);
+  margin: 0 calc(-1 * var(--espacio-4));
+  padding: 2px var(--espacio-4) var(--espacio-2);
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 720px) {
+  .chips {
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
 }
 .chips a {
   display: inline-flex;
@@ -434,75 +623,97 @@
   gap: var(--espacio-2);
   min-height: 42px;
   padding: 0 var(--espacio-4);
-  border: 1px solid var(--color-borde);
+  border: 1px solid var(--color-arena-borde);
   border-radius: 999px;
   background: var(--color-superficie);
-  color: var(--color-verde-profundo);
+  color: var(--color-bosque-800);
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
+  transition: border-color 0.15s ease;
+}
+.chips a:hover {
+  border-color: var(--color-oro);
 }
 .chips a[aria-current="page"] {
-  border-color: var(--color-verde-profundo);
-  background: var(--color-verde-profundo);
-  color: var(--color-dorado);
+  border-color: var(--color-bosque-900);
+  background: var(--color-bosque-900);
+  color: var(--color-oro-claro);
 }
 .chipIcono {
   width: 18px;
   height: 18px;
+  color: var(--color-oro-hondo);
+}
+.chips a[aria-current="page"] .chipIcono {
+  color: var(--color-oro-claro);
 }
 
 /* ---------- Los atajos de la portada: una foto pequeña y redonda, y el nombre ---------- */
 
 .atajos {
   display: flex;
-  flex-wrap: wrap;
   gap: var(--espacio-2);
+  margin: 0 calc(-1 * var(--espacio-4));
+  padding: 2px var(--espacio-4) var(--espacio-1);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.atajos::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 900px) {
+  .atajos {
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
 }
 .atajos a {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: var(--espacio-2);
-  min-height: 38px;
-  padding: 3px var(--espacio-3) 3px 3px;
-  border: 1px solid var(--color-dorado-tenue);
+  min-height: 42px;
+  padding: 4px var(--espacio-4) 4px 4px;
+  border: 1px solid var(--color-sobre-oscuro-linea);
   border-radius: 999px;
-  background: var(--color-vidrio);
-  color: var(--color-crema);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  background: var(--color-sobre-oscuro-vidrio);
+  color: var(--color-sobre-oscuro);
+  font-size: 13px;
+  font-weight: 700;
   text-decoration: none;
-  text-transform: uppercase;
-  backdrop-filter: blur(6px);
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 .atajos a:hover {
-  border-color: var(--color-dorado);
-  background: var(--color-vidrio-fuerte);
+  border-color: var(--color-oro);
+  color: var(--color-oro-claro);
 }
 .atajos a:focus-visible {
-  outline: 3px solid var(--color-dorado);
+  outline: 3px solid var(--color-oro);
   outline-offset: 2px;
 }
 .atajos img {
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-/* ---------- La franja mayorista: una línea discreta, verde con los lemas en dorado ---------- */
+/* ---------- La franja mayorista: una banda verde con los lemas en la serifa dorada ---------- */
 
 .mayorista {
   display: grid;
-  gap: var(--espacio-1);
-  padding: var(--espacio-3) var(--espacio-4);
-  border-top: 1px solid var(--color-dorado-tenue);
-  background: var(--color-verde-profundo);
-  color: var(--color-crema);
+  gap: var(--espacio-2);
+  padding: 18px var(--espacio-4);
+  border-top: 1px solid var(--color-oro-linea);
+  border-bottom: 1px solid var(--color-oro-linea);
+  background: var(--color-bosque-900);
+  color: var(--color-sobre-oscuro);
   text-align: center;
 }
 .mayoristaLemas {
@@ -512,90 +723,39 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 4px var(--espacio-3);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.3;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-dorado);
+  gap: 2px 18px;
+  font-family: var(--fuente-display);
+  font-size: 18px;
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100;
+  line-height: 1.35;
+  color: var(--color-oro-claro);
 }
-/* En el teléfono, un lema por línea, sin puntos sueltos al principio. */
+/* En el teléfono, un lema por línea, sin adornos sueltos al principio. */
 .mayoristaLemas li {
   flex: 1 1 100%;
 }
 @media (min-width: 720px) {
+  .mayoristaLemas {
+    font-size: 20px;
+  }
   .mayoristaLemas li {
     flex: 0 0 auto;
   }
   .mayoristaLemas li + li::before {
-    content: "·";
-    margin-right: var(--espacio-3);
-    color: var(--color-crema);
+    content: "✦";
+    margin-right: 18px;
+    font-size: 12px;
+    vertical-align: 3px;
+    color: var(--color-oro);
   }
 }
 .mayoristaProductos {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--color-crema);
-  opacity: 0.85;
-}
-
-/* ---------- Las colecciones por negocio: dos tarjetas grandes con su foto, su nombre y para quién son ---------- */
-
-.rejillaColecciones {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--espacio-3);
-}
-@media (min-width: 720px) {
-  .rejillaColecciones {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--espacio-5);
-  }
-}
-.rejillaColecciones .familia {
-  aspect-ratio: 16 / 9;
-}
-@media (min-width: 720px) {
-  .rejillaColecciones .familia {
-    aspect-ratio: 2 / 1;
-  }
-}
-.rejillaColecciones .familiaNombre {
-  font-size: clamp(30px, 8vw, 44px);
-}
-.familiaDescripcion {
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--color-crema);
-}
-
-/* Las familias de productos, compactas: cuatro por fila en la pantalla ancha. */
-.rejillaFamilias--compacta {
-  gap: var(--espacio-3);
-}
-@media (min-width: 720px) {
-  .rejillaFamilias--compacta {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--espacio-4);
-  }
-  .rejillaFamilias--compacta .familia,
-  .rejillaFamilias--compacta > li:last-child:nth-child(odd) .familia {
-    aspect-ratio: 4 / 3;
-  }
-  .rejillaFamilias--compacta > li:last-child:nth-child(odd) {
-    grid-column: auto;
-  }
-}
-.rejillaFamilias--compacta .familiaNombre {
-  font-size: clamp(19px, 5vw, 24px);
+  color: var(--color-sobre-oscuro-suave);
 }
 
 /* ---------- La franja de confianza: tarjetas claras con su icono ---------- */
@@ -611,14 +771,8 @@
 @media (min-width: 900px) {
   .confianza {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--espacio-4);
-  }
-  .confianza li {
-    flex-direction: row;
-    align-items: center;
   }
 }
-/* En el teléfono, el icono encima del texto: así «Barquisimeto» cabe en media tarjeta. */
 .confianza li {
   display: flex;
   flex-direction: column;
@@ -626,16 +780,13 @@
   gap: var(--espacio-3);
   min-width: 0;
   padding: var(--espacio-4);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-grande);
+  border: 1px solid var(--color-arena-borde);
+  border-radius: 18px;
   background: var(--color-superficie);
-  box-shadow: var(--sombra-tarjeta);
-  color: var(--color-verde-profundo);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.25;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  color: var(--color-bosque-900);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .confianzaIcono {
   display: grid;
@@ -644,8 +795,8 @@
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  background: var(--color-verde-profundo);
-  color: var(--color-dorado);
+  background: var(--color-bosque-900);
+  color: var(--color-oro);
 }
 
 /* ---------- ¿Estás montando tu negocio? ---------- */
@@ -653,15 +804,18 @@
 .montando {
   display: grid;
   overflow: hidden;
-  border-radius: 20px;
-  background: var(--color-verde-profundo);
-  color: var(--color-crema);
-  box-shadow: var(--sombra-tarjeta-alta);
+  border-radius: 26px;
+  background: var(--color-bosque-900);
+  color: var(--color-sobre-oscuro-suave);
+  box-shadow: var(--sombra-web-alta);
 }
+/* Las dos fotos, separadas por una raya dorada. */
 .montandoFotos {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  height: 190px;
+  gap: 3px;
+  height: 200px;
+  background: var(--color-oro);
 }
 .montandoFotos img {
   width: 100%;
@@ -672,16 +826,17 @@
   display: grid;
   gap: var(--espacio-4);
   justify-items: start;
-  padding: var(--espacio-6) var(--espacio-5);
+  padding: var(--espacio-6) 22px 30px;
   font-size: 17px;
 }
 .montandoTitulo {
-  font-family: var(--fuente-titulos);
-  font-weight: 400;
-  font-size: clamp(32px, 8.5vw, 52px);
-  line-height: 1;
-  text-transform: uppercase;
-  color: var(--color-dorado);
+  font-family: var(--fuente-display);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100;
+  font-size: clamp(34px, 8.6vw, 54px);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  color: var(--color-oro-claro);
   text-wrap: balance;
 }
 /* Una por línea en el teléfono: «Hamburgueserías» no se parte. */
@@ -691,9 +846,10 @@
   padding: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--espacio-2) var(--espacio-4);
+  gap: var(--espacio-2) var(--espacio-5);
   width: 100%;
-  font-weight: 800;
+  color: var(--color-sobre-oscuro);
+  font-weight: 700;
 }
 @media (min-width: 520px) {
   .montandoLista {
@@ -703,7 +859,7 @@
 .montandoLista li {
   display: flex;
   align-items: center;
-  gap: var(--espacio-2);
+  gap: 10px;
   min-width: 0;
 }
 .montandoLista li::before {
@@ -711,12 +867,13 @@
   display: inline-grid;
   flex: none;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: var(--color-dorado);
-  color: var(--color-verde-profundo);
+  background: var(--color-oro);
+  color: var(--color-bosque-950);
   font-size: 13px;
+  font-weight: 800;
 }
 @media (min-width: 900px) {
   .montando {
@@ -724,24 +881,24 @@
   }
   .montandoFotos {
     height: auto;
-    min-height: 360px;
+    min-height: 400px;
   }
   .montandoTexto {
     align-content: center;
-    padding: var(--espacio-7) var(--espacio-6);
+    padding: var(--espacio-7) 56px;
   }
 }
-/* «Contactar por WhatsApp»: el verde de WhatsApp, en una sola línea también en un teléfono estrecho. */
+/* Los botones de WhatsApp de la vitrina: el verde de WhatsApp, en una sola línea también en un teléfono estrecho. */
 .botonWhatsapp {
   min-height: 52px;
   padding: 0 var(--espacio-5);
+  border-radius: 999px;
   background: var(--color-whatsapp);
-  color: var(--color-verde-profundo);
+  color: var(--color-bosque-950);
   font-size: clamp(14px, 3.8vw, 16px);
   font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
   white-space: nowrap;
+  transition: background-color 0.15s ease;
 }
 .botonWhatsapp:hover {
   background: var(--color-whatsapp-oscuro);
@@ -754,21 +911,35 @@
   justify-items: start;
   gap: var(--espacio-4);
   padding: var(--espacio-6) var(--espacio-5);
-  border: 2px dashed var(--color-borde);
-  border-radius: var(--radio-grande);
+  border: 1.5px dashed var(--color-arena-borde);
+  border-radius: 20px;
+  background: var(--color-superficie);
   font-size: 17px;
+  line-height: 1.5;
+}
+.sinProductos > a:last-child {
+  font-weight: 700;
+  color: var(--color-bosque-700);
+  text-decoration-color: var(--color-oro);
+  text-underline-offset: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .tarjeta,
   .tarjetaFoto img,
   .familiaFoto,
-  .atajos a {
+  .familiaVer svg,
+  .atajos a,
+  .oferta,
+  .ofertaFoto img {
     transition: none;
   }
   .tarjeta:hover,
   .tarjeta:hover .tarjetaFoto img,
-  .familia:hover .familiaFoto {
+  .familia:hover .familiaFoto,
+  .familia:hover .familiaVer svg,
+  .oferta:hover,
+  .oferta:hover .ofertaFoto img {
     transform: none;
   }
 }
@@ -780,54 +951,101 @@
   gap: var(--espacio-7);
   max-width: var(--ancho-web);
   margin: 0 auto;
-  padding: var(--espacio-5) var(--espacio-4) 0;
+  padding: 0 var(--espacio-4);
+  font-family: var(--fuente-web);
 }
 .pagina > * {
   min-width: 0;
 }
+@media (min-width: 720px) {
+  .pagina {
+    gap: 56px;
+  }
+}
+/*
+ * El encabezado de una página (Productos, Ofertas, Tu pedido): una banda
+ * verde bosque a todo el ancho, pegada a la cabecera, con el título en la
+ * serifa crema. La banda pinta su fondo a los lados con una sombra recortada:
+ * así no se sale de la pantalla ni hace falta sacarla del contenedor.
+ */
 .encabezado {
   display: grid;
+  justify-items: start;
   gap: var(--espacio-3);
+  padding: 40px 0 48px;
+  background: var(--color-bosque-950);
+  box-shadow: 0 0 0 100vmax var(--color-bosque-950);
+  clip-path: inset(0 -100vmax);
+  color: var(--color-sobre-oscuro);
+}
+@media (min-width: 720px) {
+  .encabezado {
+    padding: 56px 0 64px;
+  }
+}
+/* Lo que va justo debajo (el buscador de Productos) monta sobre la banda. */
+.encabezado + .filtros {
+  position: relative;
+  z-index: 1;
+  margin-top: -44px;
 }
 .tituloPagina {
-  font-family: var(--fuente-titulos);
-  font-weight: 400;
-  font-size: clamp(36px, 9.5vw, 60px);
+  font-family: var(--fuente-display);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100;
+  font-size: clamp(42px, 11.5vw, 76px);
   line-height: 1;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
-  color: var(--color-verde-profundo);
+  letter-spacing: -0.03em;
+  color: var(--color-sobre-oscuro);
+  overflow-wrap: anywhere;
 }
 .entradilla {
   max-width: 62ch;
   font-size: 17px;
-  line-height: 1.5;
-  color: var(--color-texto-suave);
+  line-height: 1.55;
+  color: var(--color-sobre-oscuro-suave);
 }
 .antetitulo {
   display: inline-flex;
   align-items: center;
   gap: var(--espacio-2);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-dorado);
+  color: var(--color-oro-claro);
 }
-.tasa {
-  font-size: 14px;
-  color: var(--color-texto-suave);
-}
-/* La tasa sobre la foto de una familia. */
+/* La tasa del día, en una píldora con su punto dorado, sobre el verde. */
+.tasa,
 .tasaClara {
-  font-size: 14px;
-  color: var(--color-crema);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  padding: 6px 14px;
+  border: 1px solid var(--color-oro-linea);
+  border-radius: 999px;
+  background: var(--color-sobre-oscuro-vidrio);
+  color: var(--color-sobre-oscuro);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+.tasa::before,
+.tasaClara::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-oro);
+  box-shadow: 0 0 0 3px var(--color-oro-linea);
 }
 .notaPrecios {
   margin-top: var(--espacio-4);
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--color-texto-suave);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-tinta-suave);
 }
 .seccion {
   display: grid;
@@ -838,84 +1056,89 @@
   min-width: min(100%, 320px);
 }
 
-/* El buscador grande de la página de productos. */
-/* Buscar y filtrar: el buscador, la familia, el negocio y el botón, en una tarjeta clara. */
+/* Buscar y filtrar: el buscador, la familia, el negocio y el botón, en una tarjeta blanca. */
 .filtros {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--espacio-3);
-  padding: var(--espacio-4);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-grande);
+  padding: 18px;
+  border: 1px solid var(--color-arena-borde);
+  border-radius: 20px;
   background: var(--color-superficie);
+  box-shadow: var(--sombra-web-alta);
 }
 @media (min-width: 720px) {
   .filtros {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto;
     align-items: end;
+    padding: 20px 22px;
   }
 }
 .filtroCampo {
   display: grid;
-  gap: var(--espacio-1);
+  gap: 6px;
   min-width: 0;
 }
 .filtroCampo label {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-dorado-texto);
+  color: var(--color-oro-hondo);
 }
 .filtroCampo input,
 .filtroCampo select {
   width: 100%;
   min-height: 48px;
-  padding: 0 var(--espacio-3);
-  border: 2px solid var(--color-borde);
-  border-radius: var(--radio);
-  background: var(--color-superficie);
+  padding: 0 14px;
+  border: 1.5px solid var(--color-arena-borde);
+  border-radius: 12px;
+  background: var(--color-fondo);
   font: inherit;
-  color: var(--color-texto);
+  color: var(--color-tinta);
 }
 .filtroCampo input:focus-visible,
 .filtroCampo select:focus-visible {
-  outline: 3px solid var(--color-dorado);
+  outline: 3px solid var(--color-oro);
   outline-offset: 1px;
-  border-color: var(--color-verde-profundo);
-}
-.filtros .boton {
-  min-height: 48px;
-  background: var(--color-verde-boton);
-}
-.filtros .boton:hover {
-  background: var(--color-verde-boton-oscuro);
+  border-color: var(--color-bosque-700);
 }
 
-/* La cabecera de una familia: su foto de fondo con un velo verde, y el nombre encima. */
+/*
+ * La cabecera de una familia: su foto con un velo verde y el nombre encima,
+ * en una tarjeta que monta sobre una banda verde pegada a la cabecera.
+ */
+.cabeceraFamiliaBanda {
+  position: relative;
+  padding-top: var(--espacio-5);
+}
+.cabeceraFamiliaBanda::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 58%;
+  background: var(--color-bosque-950);
+  box-shadow: 0 0 0 100vmax var(--color-bosque-950);
+  clip-path: inset(0 -100vmax);
+}
 .cabeceraFamilia {
   position: relative;
   overflow: hidden;
   display: grid;
   align-items: end;
-  min-height: 250px;
-  border-radius: var(--radio-grande);
-  background: var(--color-verde-profundo);
-  color: var(--color-crema);
+  min-height: 400px;
+  border-radius: var(--radio-web-grande);
+  background: var(--color-bosque-950);
+  color: var(--color-sobre-oscuro);
+  box-shadow: var(--sombra-web-alta);
 }
 .cabeceraFamilia::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--velo-foto-movil);
-}
-@media (min-width: 760px) {
-  .cabeceraFamilia {
-    min-height: 320px;
-  }
-  .cabeceraFamilia::after {
-    background: var(--velo-foto);
-  }
+  background: var(--velo-banda-movil);
 }
 .cabeceraFamiliaFoto {
   position: absolute;
@@ -924,34 +1147,58 @@
   height: 100%;
   object-fit: cover;
 }
+/* En la pantalla ancha la foto va a la derecha, entera y nítida, y se funde en el verde donde está el nombre. */
+@media (min-width: 760px) {
+  .cabeceraFamilia {
+    min-height: 380px;
+  }
+  .cabeceraFamilia::after {
+    background: var(--velo-banda);
+  }
+  .cabeceraFamiliaFoto {
+    left: auto;
+    width: 62%;
+  }
+}
 .cabeceraFamiliaTexto {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: var(--espacio-2);
+  gap: 10px;
   justify-items: start;
-  max-width: 640px;
-  padding: var(--espacio-6) var(--espacio-5) var(--espacio-5);
+  max-width: 660px;
+  padding: var(--espacio-6) 22px 26px;
+}
+@media (min-width: 760px) {
+  .cabeceraFamiliaTexto {
+    padding: var(--espacio-7) 48px;
+  }
 }
 .cabeceraFamiliaNombre {
-  font-family: var(--fuente-titulos);
-  font-weight: 400;
-  font-size: clamp(42px, 11vw, 76px);
-  line-height: 0.95;
-  text-transform: uppercase;
-  color: var(--color-crema);
+  font-family: var(--fuente-display);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100;
+  font-size: clamp(44px, 12vw, 84px);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  color: var(--color-sobre-oscuro);
   overflow-wrap: anywhere;
 }
 .cabeceraFamiliaDescripcion {
   font-size: 17px;
+  line-height: 1.45;
+  color: var(--color-sobre-oscuro-suave);
 }
 .cabeceraFamiliaCuenta {
   font-size: 14px;
-  font-weight: 700;
-  color: var(--color-dorado);
+  font-weight: 800;
+  color: var(--color-oro-claro);
+}
+.cabeceraFamilia .chipIcono {
+  color: var(--color-oro-claro);
 }
 
-/* ---------- Combos y ofertas ---------- */
+/* ---------- Combos y ofertas: tarjetas como un vale, con su corte de tijera ---------- */
 
 .rejillaOfertas {
   list-style: none;
@@ -959,7 +1206,7 @@
   padding: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--espacio-4);
+  gap: var(--espacio-5);
 }
 @media (min-width: 720px) {
   .rejillaOfertas {
@@ -976,36 +1223,47 @@
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
-  border: 2px solid var(--color-dorado);
-  border-radius: var(--radio-grande);
+  border: 1px solid var(--color-oro-linea);
+  border-radius: var(--radio-web-grande);
   background: var(--color-superficie);
-  box-shadow: var(--sombra-tarjeta);
+  box-shadow: var(--sombra-web);
   scroll-margin-top: 110px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.oferta:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--sombra-web-alta);
 }
 .oferta:target {
-  outline: 4px solid var(--color-dorado-tenue);
+  outline: 3px solid var(--color-oro);
+  outline-offset: 3px;
 }
 .ofertaFoto {
   position: relative;
-  aspect-ratio: 16 / 9;
-  background: var(--color-crema);
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--color-arena);
 }
 .ofertaFoto img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.5s ease;
+}
+.oferta:hover .ofertaFoto img {
+  transform: scale(1.05);
 }
 .etiquetaCombo {
   position: absolute;
   top: var(--espacio-3);
   left: var(--espacio-3);
-  padding: 3px var(--espacio-3);
+  padding: 5px 12px;
   border-radius: 999px;
-  background: var(--color-verde-profundo);
-  color: var(--color-dorado);
-  font-size: 12px;
+  background: var(--color-tomate);
+  color: var(--color-tomate-texto);
+  font-size: 11.5px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .ofertaCuerpo {
@@ -1013,52 +1271,90 @@
   flex: 1;
   flex-direction: column;
   gap: var(--espacio-3);
-  padding: var(--espacio-4) var(--espacio-5) var(--espacio-5);
+  padding: 18px 20px 22px;
 }
 .ofertaCabecera {
   display: grid;
-  gap: var(--espacio-2);
+  gap: 6px;
 }
 .ofertaNombre {
-  font-family: var(--fuente-titulos);
-  font-weight: 400;
+  font-family: var(--fuente-display);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100;
   font-size: 30px;
-  line-height: 1;
-  text-transform: uppercase;
-  color: var(--color-verde-profundo);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--color-bosque-900);
 }
 .ofertaDescripcion {
   font-size: 15px;
-  color: var(--color-texto-suave);
+  line-height: 1.45;
+  color: var(--color-tinta-suave);
 }
 .ofertaLleva {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: var(--espacio-1);
+  gap: 6px;
   font-size: 15px;
 }
 .ofertaLleva li {
   position: relative;
-  padding-left: var(--espacio-5);
+  padding-left: 28px;
   overflow-wrap: anywhere;
 }
 .ofertaLleva li::before {
   content: "✓";
   position: absolute;
-  left: 2px;
-  color: var(--color-exito);
+  top: 2px;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--color-oro-palido);
+  color: var(--color-oro-hondo);
+  font-size: 11px;
   font-weight: 800;
 }
 .ofertaLleva a {
-  color: var(--color-verde-profundo);
+  color: var(--color-bosque-800);
   font-weight: 700;
+  text-decoration-color: var(--color-oro-linea);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
+/* El pie del vale: una línea de puntos con un mordisco a cada lado, el precio y los botones. */
 .ofertaPie {
+  position: relative;
   display: grid;
   gap: var(--espacio-2);
   margin-top: auto;
-  padding-top: var(--espacio-3);
-  border-top: 1px dashed var(--color-borde);
+  padding-top: 18px;
+  border-top: 2px dashed var(--color-arena-borde);
+}
+.ofertaPie::before,
+.ofertaPie::after {
+  content: "";
+  position: absolute;
+  top: -12px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--color-oro-linea);
+  border-radius: 50%;
+  background: var(--color-fondo);
+}
+.ofertaPie::before {
+  left: -32px;
+}
+.ofertaPie::after {
+  right: -32px;
+}
+.ofertaPie .precio,
+.ofertaPie .precioPendiente {
+  margin: 0;
+  padding: 0;
+  border: 0;
 }

@@ -1,101 +1,177 @@
 /*
- * La portada, compacta: el texto a la izquierda y la foto (hamburguesa con
- * papas y pizza saliendo del horno) a la derecha, en una pantalla ancha sin
- * ocupar más de lo que se ve; en el teléfono, la foto arriba, no muy alta,
- * y el texto debajo. Debajo, las secciones de la vitrina
- * (`components/vitrina.module.css`).
+ * La portada. Arriba, la foto de la hamburguesa y la pizza saliendo del
+ * horno: en la pantalla ancha, a todo el ancho, con el texto a la izquierda
+ * sobre la parte oscura de la foto; en el teléfono, la foto arriba, fundida
+ * en el verde, y el título montado sobre ella. Debajo, las secciones, cada
+ * una en el ancho de la web; la de los destacados y la de «Dónde estamos»
+ * van sobre una banda crema más oscura. Las piezas de la vitrina están en
+ * `components/vitrina.module.css`.
  */
 
-.heroe {
-  background: var(--color-verde-noche);
-  color: var(--color-crema);
-}
-.heroeDentro {
+.portada {
   display: grid;
-  gap: var(--espacio-5);
-  max-width: var(--ancho-web);
-  margin: 0 auto;
-  padding: var(--espacio-4) var(--espacio-4) var(--espacio-6);
+  gap: var(--espacio-7);
+  font-family: var(--fuente-web);
+}
+.portada > * {
+  min-width: 0;
+}
+@media (min-width: 720px) {
+  .portada {
+    gap: 72px;
+  }
+}
+
+/* ---------- La foto de arriba ---------- */
+
+.heroe {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--color-bosque-950);
+  color: var(--color-sobre-oscuro);
 }
 .heroeFoto {
   position: relative;
   display: block;
+  aspect-ratio: 900 / 700;
   overflow: hidden;
-  aspect-ratio: 16 / 10;
-  border-radius: var(--radio-grande);
-  background: var(--color-verde-profundo);
 }
 .heroeFoto::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--velo-foto-arriba);
-  opacity: 0.35;
+  background: var(--velo-heroe-movil);
 }
 .heroeFoto img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 60% 50%;
+  object-position: 55% 40%;
+}
+.heroeDentro {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--espacio-6);
+  max-width: var(--ancho-web);
+  margin: -72px auto 0;
+  padding: 0 var(--espacio-4) var(--espacio-6);
 }
 .heroeTexto {
   display: grid;
   justify-items: start;
-  gap: var(--espacio-4);
+  gap: 18px;
   min-width: 0;
 }
 .heroeTexto > * {
-  max-width: 640px;
+  max-width: 620px;
 }
+/* «VILLA REAL · PRECIOS AL MAYOR», con una raya dorada delante. */
 .antetitulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--color-dorado);
+  color: var(--color-oro-claro);
+}
+.antetitulo::before {
+  content: "";
+  flex: none;
+  width: 28px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-oro);
 }
 .titulo {
-  font-family: var(--fuente-titulos);
-  font-weight: 400;
-  font-size: clamp(42px, 12vw, 84px);
-  line-height: 0.92;
-  letter-spacing: 0.005em;
-  text-transform: uppercase;
-  color: var(--color-crema);
+  font-family: var(--fuente-display);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100;
+  font-size: clamp(46px, 12.4vw, 84px);
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+  color: var(--color-sobre-oscuro);
+  text-wrap: balance;
 }
 .titulo span {
   display: block;
-  color: var(--color-dorado);
+  color: var(--color-oro-claro);
 }
 .subtitulo {
-  font-size: clamp(17px, 4.6vw, 21px);
-  font-weight: 600;
-  line-height: 1.35;
+  font-size: clamp(17px, 4.6vw, 20px);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--color-sobre-oscuro-suave);
 }
 .botones {
   display: grid;
   gap: var(--espacio-3);
   width: 100%;
+  margin-top: var(--espacio-1);
 }
 .botonGrande {
-  min-height: 54px;
-  padding: 0 var(--espacio-5);
+  min-height: 56px;
+  padding: 0 28px;
+  border-radius: 999px;
   font-size: 16px;
   font-weight: 800;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+.botonOro {
+  background: var(--color-oro);
+  color: var(--color-bosque-950);
+  box-shadow: var(--sombra-oro);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.botonOro:hover {
+  background: var(--color-oro-vivo);
+}
+.botonOro svg {
+  transition: transform 0.2s ease;
+}
+.botonOro:hover svg {
+  transform: translateX(3px);
 }
 .botonWhatsapp {
+  border-radius: 999px;
   background: var(--color-whatsapp);
-  color: var(--color-verde-profundo);
+  color: var(--color-bosque-950);
   font-weight: 800;
+  transition: background-color 0.15s ease;
 }
 .botonWhatsapp:hover {
   background: var(--color-whatsapp-oscuro);
 }
+/* La tasa del día, en una píldora con su punto dorado. */
 .tasa {
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  padding: 6px 14px;
+  border: 1px solid var(--color-oro-linea);
+  border-radius: 999px;
+  background: var(--color-sobre-oscuro-vidrio);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tasa::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-oro);
+  box-shadow: 0 0 0 3px var(--color-oro-linea);
+}
+/* Los atajos a las familias, abajo de la foto, separados por una raya. */
+.atajos {
+  padding-top: var(--espacio-5);
+  border-top: 1px solid var(--color-sobre-oscuro-linea);
 }
 
 @media (min-width: 560px) {
@@ -105,93 +181,170 @@
     width: auto;
   }
 }
+
+/* Pantalla ancha: la foto a todo el ancho y el texto a la izquierda, sobre su parte oscura. */
 @media (min-width: 900px) {
-  /* Dos columnas: el texto a la izquierda, la foto a la derecha; todo a la vista sin bajar. */
-  .heroeDentro {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    align-items: center;
-    gap: var(--espacio-7);
-    padding: var(--espacio-6) var(--espacio-4);
+  .heroe {
+    display: grid;
+    min-height: clamp(580px, 48vw, 680px);
   }
   .heroeFoto {
-    order: 2;
-    aspect-ratio: 4 / 3;
-    max-height: 440px;
+    position: absolute;
+    inset: 0 0 0 18%;
+    aspect-ratio: auto;
   }
   .heroeFoto::after {
-    opacity: 0.2;
+    background: var(--velo-heroe), var(--velo-heroe-abajo);
   }
   .heroeFoto img {
     object-position: 70% 50%;
   }
-  .heroeTexto {
-    order: 1;
+  .heroeDentro {
+    align-content: end;
+    width: 100%;
+    margin-top: 0;
+    padding: 72px var(--espacio-4) var(--espacio-6);
+    gap: 56px;
   }
   .heroeTexto > * {
-    max-width: 580px;
+    max-width: 560px;
   }
   .titulo {
-    font-size: clamp(48px, 5.4vw, 72px);
+    font-size: clamp(56px, 6.2vw, 84px);
   }
 }
 
 /* ---------- Debajo de la foto ---------- */
 
-.cuerpo {
-  display: grid;
-  gap: var(--espacio-7);
-  max-width: var(--ancho-web);
-  margin: 0 auto;
-  padding: var(--espacio-7) var(--espacio-4) 0;
-}
-.cuerpo > * {
-  min-width: 0;
-}
+/* Cada sección, en el ancho de la web. */
 .seccion {
   display: grid;
   gap: var(--espacio-4);
+  width: 100%;
+  max-width: var(--ancho-web);
+  margin: 0 auto;
+  padding: 0 var(--espacio-4);
+}
+/*
+ * La banda crema más oscura (los destacados, «Dónde estamos»): pinta su
+ * fondo a los lados con una sombra recortada, sin salirse de la pantalla.
+ */
+.banda {
+  padding-top: var(--espacio-7);
+  padding-bottom: var(--espacio-7);
+  background: var(--color-arena);
+  box-shadow: 0 0 0 100vmax var(--color-arena);
+  clip-path: inset(0 -100vmax);
 }
 .verTodos {
   justify-self: center;
   min-width: min(100%, 320px);
+  min-height: 50px;
+  border-radius: 999px;
+  background: var(--color-bosque-900);
+  color: var(--color-sobre-oscuro);
+  font-weight: 800;
+}
+.verTodos:hover {
+  background: var(--color-bosque-700);
 }
 
+/* ---------- Dónde estamos ---------- */
+
+/* «Dónde estamos» es lo último antes del pie: su banda llega hasta él. */
 .contacto {
+  margin-bottom: calc(-1 * var(--espacio-7));
   scroll-margin-top: 88px;
+}
+.contactoTarjeta {
+  display: grid;
+  gap: var(--espacio-5);
+  padding: var(--espacio-5);
+  border: 1px solid var(--color-arena-borde);
+  border-radius: var(--radio-web-grande);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-web);
+}
+@media (min-width: 720px) {
+  .contactoTarjeta {
+    padding: var(--espacio-6);
+  }
 }
 .datos {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--espacio-4);
+  gap: var(--espacio-5);
   margin: 0;
-  padding: var(--espacio-5);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-grande);
-  background: var(--color-crema);
 }
 @media (min-width: 720px) {
   .datos {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--espacio-5) var(--espacio-6);
   }
 }
+.datos > div {
+  display: grid;
+  gap: var(--espacio-1);
+  padding-left: var(--espacio-4);
+  border-left: 3px solid var(--color-oro);
+}
 .datos dt {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-texto-suave);
+  color: var(--color-oro-hondo);
 }
 .datos dd {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-tinta);
   overflow-wrap: anywhere;
 }
 .datos a {
-  color: var(--color-verde-profundo);
+  color: var(--color-bosque-800);
+  text-decoration-color: var(--color-oro);
+  text-underline-offset: 4px;
 }
 .contactoBotones {
   display: flex;
   flex-wrap: wrap;
   gap: var(--espacio-3);
+}
+.contactoBotones .boton {
+  min-height: 50px;
+  padding: 0 var(--espacio-5);
+  border-radius: 999px;
+  font-weight: 800;
+}
+.botonClaro {
+  border: 1.5px solid var(--color-bosque-700);
+  background: transparent;
+  color: var(--color-bosque-800);
+}
+.botonClaro:hover {
+  background: var(--color-bosque-900);
+  color: var(--color-sobre-oscuro);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .botonOro,
+  .botonOro svg {
+    transition: none;
+  }
+  .botonOro:hover svg {
+    transform: none;
+  }
+}
+
+/* La banda mayorista va pegada a la foto de arriba, sin el aire de las demás secciones. */
+.heroe + * {
+  margin-top: calc(-1 * var(--espacio-7));
+}
+@media (min-width: 720px) {
+  .heroe + * {
+    margin-top: -72px;
+  }
 }

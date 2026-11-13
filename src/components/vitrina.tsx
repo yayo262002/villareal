@@ -17,8 +17,8 @@ import { IconoWhatsapp } from "@/components/icono-whatsapp";
 import estilos from "./vitrina.module.css";
 
 /**
- * Las piezas de la vitrina pública: el título de cada sección con sus dos
- * rayas doradas, la tarjeta de un producto (su foto grande, el nombre, la
+ * Las piezas de la vitrina pública: el título de cada sección (la raya
+ * dorada y el antetítulo encima), la tarjeta de un producto (su foto grande, el nombre, la
  * presentación, el precio al mayor en bolívares bien visible con los
  * dólares debajo, «Agregar» y «Ver detalles»), la tarjeta de una familia
  * con su foto, los atajos de la portada, la franja mayorista, la de
@@ -380,7 +380,11 @@ export function PaginaDeVitrina({ children }: { children: ReactNode }) {
   );
 }
 
-/** El título de una página (Productos, Ofertas), con su entradilla y lo que se quiera debajo. */
+/**
+ * El título de una página (Productos, Ofertas, Tu pedido): una banda verde
+ * a todo el ancho, pegada a la cabecera, con el título grande, su
+ * entradilla y lo que se quiera debajo (la tasa del día).
+ */
 export function EncabezadoDePagina({ titulo, id, entradilla, children }: { titulo: string; id?: string; entradilla?: ReactNode; children?: ReactNode }) {
   return (
     <header className={estilos.encabezado}>
@@ -393,28 +397,30 @@ export function EncabezadoDePagina({ titulo, id, entradilla, children }: { titul
   );
 }
 
-/** La cabecera de una familia: su portada de fondo, su nombre y su descripción. */
+/** La cabecera de una familia: su portada de fondo, su nombre y su descripción, en una tarjeta que monta sobre la banda verde de arriba. */
 export function CabeceraDeFamilia({ familia, cuantos, children }: { familia: Familia; cuantos: number; children?: ReactNode }) {
   const portada = direccionDePortada(familia);
   return (
-    <header className={estilos.cabeceraFamilia}>
-      {portada && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={portada} alt="" width={960} height={720} className={estilos.cabeceraFamiliaFoto} fetchPriority="high" />
-      )}
-      <div className={estilos.cabeceraFamiliaTexto}>
-        <p className={estilos.antetitulo}>
-          <Icono nombre={familia.icono} className={estilos.chipIcono} />
-          Categoría
-        </p>
-        <h1 id="titulo-familia" className={estilos.cabeceraFamiliaNombre}>
-          {familia.nombre}
-        </h1>
-        {familia.descripcion && <p className={estilos.cabeceraFamiliaDescripcion}>{familia.descripcion}</p>}
-        {cuantos > 0 && <p className={estilos.cabeceraFamiliaCuenta}>{cuantos === 1 ? "1 producto" : `${cuantos} productos`}</p>}
-        {children}
-      </div>
-    </header>
+    <div className={estilos.cabeceraFamiliaBanda}>
+      <header className={estilos.cabeceraFamilia}>
+        {portada && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={portada} alt="" width={960} height={720} className={estilos.cabeceraFamiliaFoto} fetchPriority="high" />
+        )}
+        <div className={estilos.cabeceraFamiliaTexto}>
+          <p className={estilos.antetitulo}>
+            <Icono nombre={familia.icono} className={estilos.chipIcono} />
+            Categoría
+          </p>
+          <h1 id="titulo-familia" className={estilos.cabeceraFamiliaNombre}>
+            {familia.nombre}
+          </h1>
+          {familia.descripcion && <p className={estilos.cabeceraFamiliaDescripcion}>{familia.descripcion}</p>}
+          {cuantos > 0 && <p className={estilos.cabeceraFamiliaCuenta}>{cuantos === 1 ? "1 producto" : `${cuantos} productos`}</p>}
+          {children}
+        </div>
+      </header>
+    </div>
   );
 }
 

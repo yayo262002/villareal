@@ -7,77 +7,96 @@
 }
 .botonAgregar {
   width: 100%;
+  min-height: 44px;
   padding: 0 var(--espacio-2);
+  border-radius: 999px;
   white-space: nowrap;
-  background: var(--color-verde-boton);
+  background: var(--color-bosque-700);
+  color: var(--color-sobre-oscuro);
+  font-size: 14px;
   font-weight: 800;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   transition: background-color 0.15s ease, transform 0.15s ease;
 }
 .botonAgregar:hover {
-  background: var(--color-verde-boton-oscuro);
+  background: var(--color-bosque-900);
 }
 .botonAgregar:active {
   transform: scale(0.98);
 }
+.botonAgregar svg {
+  color: var(--color-oro-claro);
+}
 .enCarrito {
   font-size: 13px;
   font-weight: 700;
-  color: var(--color-marca);
+  color: var(--color-bosque-700);
   text-align: center;
 }
 
-/* − cantidad + : botones grandes para el dedo. */
+/* − cantidad + : botones redondos y grandes para el dedo. */
 .cantidad {
   display: flex;
   align-items: center;
-  gap: var(--espacio-1);
+  gap: 6px;
   min-width: 0;
 }
 .cantidad button {
   flex: none;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
+  width: 42px;
+  height: 42px;
+  border: 1.5px solid var(--color-arena-borde);
+  border-radius: 50%;
   background: var(--color-superficie);
   font-size: 20px;
   font-weight: 700;
   line-height: 1;
-  color: var(--color-marca-oscuro);
+  color: var(--color-bosque-900);
   cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.cantidad button:hover {
+  border-color: var(--color-oro);
 }
 .cantidad input {
   width: 4.5rem;
   min-width: 0;
-  height: 40px;
+  height: 42px;
   padding: 0 var(--espacio-2);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
+  border: 1.5px solid var(--color-arena-borde);
+  border-radius: 12px;
+  background: var(--color-superficie);
+  color: var(--color-tinta);
   text-align: center;
-  font-weight: 700;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+.cantidad input:focus-visible {
+  outline: 3px solid var(--color-oro);
+  outline-offset: 1px;
 }
 .unidad {
   font-size: 14px;
-  color: var(--color-texto-suave);
+  font-weight: 600;
+  color: var(--color-tinta-suave);
   overflow-wrap: anywhere;
 }
 
+/* El número de la cabecera, en oro sobre el icono. */
 .contador {
   position: absolute;
-  top: -7px;
-  right: -10px;
-  min-width: 20px;
-  height: 20px;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
   padding: 0 5px;
+  border: 2px solid var(--color-bosque-900);
   border-radius: 999px;
-  background: var(--color-dorado);
-  color: var(--color-verde-profundo);
-  font-size: 12px;
+  background: var(--color-oro);
+  color: var(--color-bosque-950);
+  font-size: 11px;
   font-weight: 800;
-  line-height: 20px;
+  line-height: 18px;
   text-align: center;
 }
 
@@ -91,6 +110,7 @@
   .pagina {
     grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
     align-items: start;
+    gap: var(--espacio-6);
   }
 }
 .lineas {
@@ -103,23 +123,24 @@
 .linea {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--espacio-3);
+  gap: var(--espacio-3) var(--espacio-4);
   padding: var(--espacio-4);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-grande);
+  border: 1px solid var(--color-arena-borde);
+  border-radius: 18px;
   background: var(--color-superficie);
-  box-shadow: var(--sombra-tarjeta);
+  box-shadow: var(--sombra-web);
 }
 .lineaApagada {
   opacity: 0.7;
   grid-template-columns: minmax(0, 1fr) auto;
 }
 .lineaFoto {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  mix-blend-mode: multiply;
-  border-radius: var(--radio);
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--color-arena-borde);
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--color-superficie);
 }
 .lineaTexto {
   display: grid;
@@ -127,8 +148,14 @@
   min-width: 0;
 }
 .lineaTexto a {
-  color: var(--color-marca-oscuro);
+  color: var(--color-bosque-900);
+  font-size: 16px;
   text-decoration: none;
+}
+.lineaTexto a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--color-oro);
+  text-underline-offset: 3px;
 }
 .lineaPrecio {
   grid-column: 1 / -1;
@@ -137,17 +164,20 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--espacio-2) var(--espacio-3);
-  padding-top: var(--espacio-2);
-  border-top: 1px dashed var(--color-borde);
+  padding-top: var(--espacio-3);
+  border-top: 1px dashed var(--color-arena-borde);
 }
 .lineaPrecio strong {
-  font-size: 18px;
-  color: var(--color-marca);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--color-bosque-900);
   font-variant-numeric: tabular-nums;
 }
 .ayuda {
   font-size: 14px;
-  color: var(--color-texto-suave);
+  line-height: 1.45;
+  color: var(--color-tinta-suave);
 }
 .quitar {
   border: 0;
@@ -162,61 +192,94 @@
   border: 0;
   background: none;
   padding: var(--espacio-2) 0;
-  color: var(--color-texto-suave);
+  color: var(--color-tinta-suave);
   font-size: 14px;
   text-decoration: underline;
   cursor: pointer;
 }
 
+/* El resumen: el total grande, quién pide y el botón de WhatsApp. */
 .resumen {
   display: grid;
   gap: var(--espacio-3);
-  padding: var(--espacio-5);
-  border-radius: var(--radio-grande);
+  padding: 22px;
+  border: 1px solid var(--color-arena-borde);
+  border-top: 4px solid var(--color-oro);
+  border-radius: var(--radio-web-grande);
   background: var(--color-superficie);
-  border: 1px solid var(--color-borde);
-  box-shadow: var(--sombra-tarjeta);
+  box-shadow: var(--sombra-web-alta);
 }
 @media (min-width: 900px) {
   .resumen {
     position: sticky;
-    top: 96px;
+    top: 100px;
+    padding: 26px;
   }
 }
 .total {
-  font-size: 18px;
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-oro-hondo);
 }
 .total strong {
-  font-size: 26px;
-  color: var(--color-marca);
+  font-size: clamp(30px, 8.6vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  text-transform: none;
+  line-height: 1.1;
+  color: var(--color-bosque-900);
   font-variant-numeric: tabular-nums;
+}
+.total span {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-tinta-suave);
 }
 .quien {
   display: grid;
   gap: var(--espacio-3);
+  margin-top: var(--espacio-2);
+  padding-top: var(--espacio-4);
+  border-top: 1px dashed var(--color-arena-borde);
 }
 .quien label {
   display: grid;
-  gap: var(--espacio-1);
-  font-size: 14px;
-  font-weight: 600;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-tinta);
 }
 .quien input {
-  min-height: 44px;
-  padding: 0 var(--espacio-3);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
-  background: var(--color-superficie);
-  font-weight: 400;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1.5px solid var(--color-arena-borde);
+  border-radius: 12px;
+  background: var(--color-fondo);
+  color: var(--color-tinta);
+  font-weight: 500;
+}
+.quien input:focus-visible {
+  outline: 3px solid var(--color-oro);
+  outline-offset: 1px;
+  border-color: var(--color-bosque-700);
 }
 .enviar {
   width: 100%;
-  min-height: 54px;
+  min-height: 56px;
+  margin-top: var(--espacio-2);
   padding: 0 var(--espacio-3);
+  border-radius: 999px;
   background: var(--color-whatsapp);
-  color: var(--color-verde-profundo);
+  color: var(--color-bosque-950);
   font-size: 16px;
   font-weight: 800;
+  transition: background-color 0.15s ease;
 }
 .enviar:hover {
   background: var(--color-whatsapp-oscuro);
@@ -240,7 +303,22 @@
   display: grid;
   justify-items: start;
   gap: var(--espacio-4);
-  padding: var(--espacio-6) 0;
+  padding: var(--espacio-6) var(--espacio-5);
+  border: 1.5px dashed var(--color-arena-borde);
+  border-radius: var(--radio-web-grande);
+  background: var(--color-superficie);
   font-size: 18px;
-  color: var(--color-texto-suave);
+  color: var(--color-tinta-suave);
+}
+.vacio a {
+  min-height: 50px;
+  padding: 0 var(--espacio-6);
+  border-radius: 999px;
+  background: var(--color-oro);
+  color: var(--color-bosque-950);
+  font-weight: 800;
+  box-shadow: var(--sombra-oro);
+}
+.vacio a:hover {
+  background: var(--color-oro-vivo);
 }

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Anton } from "next/font/google";
+import { Anton, Fraunces, Manrope } from "next/font/google";
 import { negocio } from "@/config/negocio";
 import "./globals.css";
 
@@ -33,20 +33,24 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
 };
 
-// La letra de los títulos de la web. Next la descarga al compilar y la sirve
-// desde la propia web: el teléfono del cliente no le pide nada a Google.
+// Las letras de la web. Next las descarga al compilar y las sirve desde la
+// propia web: el teléfono del cliente no le pide nada a Google. Anton, la de
+// los títulos de la lista del detal; Fraunces (con su eje «SOFT», que la
+// redondea) para los títulos de la web, y Manrope para leer y los precios.
 const anton = Anton({ weight: "400", subsets: ["latin"], display: "swap", variable: "--fuente-anton" });
+const fraunces = Fraunces({ subsets: ["latin"], display: "swap", axes: ["SOFT"], variable: "--fuente-fraunces" });
+const manrope = Manrope({ subsets: ["latin"], display: "swap", variable: "--fuente-manrope" });
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   // El color de la cabecera: en el teléfono la barra del navegador se funde con ella.
-  themeColor: "#0e2c1b",
+  themeColor: "#0a2416",
 };
 
 export default function LayoutRaiz({ children }: { children: ReactNode }) {
   return (
-    <html lang="es-VE" className={anton.variable}>
+    <html lang="es-VE" className={`${anton.variable} ${fraunces.variable} ${manrope.variable}`}>
       <body>{children}</body>
     </html>
   );

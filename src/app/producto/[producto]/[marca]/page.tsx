@@ -154,7 +154,7 @@ export default async function PaginaMarca({ params }: Parametros) {
               {presentacion ? `${presentacion} · ` : ""}Al mayor, por {porQueSeCobra({ ...producto, presentacion: "", contenido: "" })}
             </p>
 
-            <div className={estilos.bloque}>
+            <div className={`${estilos.bloque} ${estilos.bloqueCompra}`}>
               <h2 className={estilos.bloqueTitulo}>Precio de hoy</h2>
               <PreciosProducto producto={{ precio_usd: variante.precio_usd, unidad: producto.unidad }} tasa={tasa?.valor ?? null} />
               <LineaTasa tasa={tasa} className={estilos.tasa} />
