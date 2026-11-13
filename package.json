@@ -14,6 +14,7 @@
     "lista": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/lista-detal.ts",
     "stickers": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/stickers.ts",
     "miniaturas": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/miniaturas.ts",
+    "combos": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/combos.ts",
     "prueba:local": "node scripts/prueba-extremo.mjs",
     "prueba:web": "node scripts/prueba-extremo.mjs --url=https://villareal-green.vercel.app"
   },

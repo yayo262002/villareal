@@ -51,6 +51,7 @@ npm run build        que compila
 npm run prueba:local   la web entera con una base temporal (después de build)
 npm run prueba:web     la web publicada, solo mirando: no crea ni borra nada
 npm run miniaturas     las fotos de public/familias/ y public/productos/ en pequeño (public/miniaturas/), al añadir o cambiar una
+npm run combos         la lista personal de los precios de los combos de hoy, desglosada (con lo que cuesta y lo que deja), y el flier del estado (en listas/)
 npm run lista          las listas del detal y del mayor de hoy en PDF y en pantallas JPG para el teléfono, y la hoja de la rebanadora (en listas/)
 ```
 
@@ -294,6 +295,7 @@ src/lib/detal.ts          La lista del detal desde la base: listar, cargar una f
 src/lib/costos-unidos.ts  El mismo costo en el detal y en Villa Real: unir un producto de la lista con su artículo del catálogo e igualar el costo
 src/app/admin/(panel)/detal/  La lista del detal en el panel: cargar facturas, agregar a mano, las reglas y el enlace para la familia
 src/app/lista/            La lista del detal para la familia, con su enlace y sin clave
+scripts/combos.ts         npm run combos: el precio de cada combo del detal de hoy, producto por producto, con lo que cuesta y lo que deja (publicidad/precios-combos.html, dos hojas carta), y el flier del estado; la misma cuenta que la caja
 scripts/lista-detal.ts    npm run lista: las listas del detal y del mayor de hoy en archivos para el teléfono (diseño en publicidad/lista-precios.html) y la hoja de la rebanadora (publicidad/tabla-peso.html)
 src/lib/precios-especiales.ts  El precio especial de un cliente para un artículo
 src/components/pos.tsx    Registrar venta, como una caja (con JavaScript: cliente con saldo, lector, carrito, pago, atajos)

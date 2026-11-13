@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Precios de los combos · Villa Real</title>
+<style>
+  /* El precio de cada combo, desglosado: lo que lleva, el precio del detal de cada producto, lo que suma, lo que cuesta y
+     lo que deja. Es la lista personal del dueño, no para mandar a los clientes. Dos hojas carta (las de todos los días y
+     las especiales) para verlas en el teléfono o imprimirlas. Los datos los escribe
+     `npm run combos` en precios-combos-datos.js, con la lista del detal del día; generar.mjs saca el PDF y el JPG. */
+  @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
+  @page { size: 216mm 279mm; margin: 0; }
+  html, body { margin: 0; background: #888; }
+  body { font-family: "Open Sans", Arial, sans-serif; display: grid; gap: 20mm; padding: 20mm; justify-content: start; color: #2a1a14; }
+
+  .hoja {
+    --rojo: #a80d14; --rojo-oscuro: #7c0a10; --oro: #c98f1e; --crema: #fff8ec; --borde: #e7d2a6; --suave: #6b5646;
+    width: 216mm; height: 279mm; box-sizing: border-box; padding: 11mm 13mm 9mm; background: var(--crema);
+    display: flex; flex-direction: column; gap: 2.6mm; overflow: hidden;
+  }
+  .cabecera { display: flex; align-items: center; gap: 4.5mm; padding: 0 0 3.2mm; border-bottom: 0.9mm solid var(--oro); }
+  .cabecera img { width: 13mm; height: auto; display: block; }
+  .cabecera h1 { margin: 0; font-size: 8.4mm; line-height: 1.02; font-weight: 800; color: var(--rojo-oscuro); }
+  .cabecera p { margin: 1.2mm 0 0; font-size: 3.5mm; line-height: 1.3; color: var(--suave); }
+
+  .combo { background: #fff; border: 0.35mm solid var(--borde); border-radius: 3mm; padding: 2mm 3.6mm 1.6mm; }
+  /* Todo en la línea del título: el número, el nombre, los bolívares, lo que cuesta y deja, y el precio. */
+  .titulo { display: flex; align-items: center; gap: 3mm; }
+  .numero { flex: none; min-width: 7mm; text-align: center; padding: 0.6mm 1.6mm; border-radius: 1.6mm; background: var(--rojo); color: #fff6e3; font-weight: 800; font-size: 3.6mm; }
+  .nombre { flex: 1; min-width: 0; font-weight: 800; font-size: 3.9mm; line-height: 1.2; }
+  .total { flex: none; display: flex; align-items: baseline; gap: 2.4mm; line-height: 1.1; white-space: nowrap; }
+  .total strong { order: 3; font-size: 5.6mm; font-weight: 800; color: var(--rojo-oscuro); }
+  .total span { font-size: 3mm; color: var(--suave); }
+  .total .gana { font-weight: 700; color: #2d6a2a; }
+  table { width: 100%; border-collapse: collapse; margin-top: 1mm; font-size: 3.3mm; }
+  td { padding: 0.75mm 0; border-top: 0.25mm dotted #d6bf8e; vertical-align: baseline; }
+  td.cuanto { width: 26mm; font-weight: 700; }
+  td.precio { width: 36mm; text-align: right; color: var(--suave); white-space: nowrap; }
+  td.suma { width: 20mm; text-align: right; font-weight: 700; white-space: nowrap; }
+  .falta { margin: 1mm 0 0; font-size: 3.2mm; font-weight: 700; color: var(--rojo); }
+
+  .pie { margin-top: auto; font-size: 3mm; line-height: 1.4; color: var(--suave); }
+</style>
+</head>
+<body>
+<script src="precios-combos-datos.js"></script>
+<script>
+  const D = globalThis.PRECIOS_COMBOS;
+  const dinero = (n) => `$${n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const bolivares = (n) => `Bs ${n.toLocaleString("es-VE", { maximumFractionDigits: 0 })}`;
+  const escapar = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  function tarjeta(c) {
+    const filas = c.partes
+      .map(
+        (p) => `<tr>
+          <td class="cuanto">${escapar(p.cuanto)}</td>
+          <td>${escapar(p.nombre)}</td>
+          <td class="precio">${p.precio === null ? "sin precio" : `${dinero(p.precio)} ${p.unidad === "kg" || p.estimado ? "el kilo" : "c/u"}${p.estimado ? " (estimado)" : ""}`}</td>
+          <td class="suma">${p.subtotal === null ? "—" : dinero(p.subtotal)}</td>
+        </tr>`,
+      )
+      .join("");
+    const total =
+      c.total === null
+        ? `<div class="total"><strong>—</strong><span>falta un precio</span></div>`
+        : `<div class="total"><strong>${c.partes.some((p) => p.estimado) ? "≈ " : ""}${dinero(c.total)}</strong>${c.totalBs !== null ? `<span>${bolivares(c.totalBs)}</span>` : ""}${
+            c.costo !== null ? `<span class="gana">cuesta ${dinero(c.costo)} · deja ${dinero(c.total - c.costo)}</span>` : ""
+          }</div>`;
+    return `<section class="combo">
+      <div class="titulo"><span class="numero">${c.n}</span><span class="nombre">${escapar(c.n <= 9 ? c.nombre.replace(/^Combo (\S)/, (_, l) => l.toUpperCase()) : c.nombre)}</span>${total}</div>
+      <table>${filas}</table>
+      ${c.falta.length > 0 ? `<p class="falta">Falta en la lista del detal: ${c.falta.map(escapar).join(", ")}${c.partes.some((p) => p.estimado) ? " (va con su costo estimado)" : ""}. Hasta que se cargue, en la caja este combo se cobra a mano.</p>` : ""}
+    </section>`;
+  }
+
+  function hoja(archivo, titulo, combos) {
+    const h = document.createElement("article");
+    h.className = "hoja";
+    h.dataset.archivo = archivo;
+    h.dataset.formato = "jpeg";
+    h.innerHTML = `
+      <header class="cabecera">
+        <img src="../public/marca/leon.svg" alt="">
+        <div>
+          <h1>${titulo}</h1>
+          <p>Lista personal: con lo que cuesta y lo que deja · precios del ${escapar(D.fechaLarga)}${D.tasa ? ` · tasa BCV ${D.tasa.toLocaleString("es-VE", { maximumFractionDigits: 2 })}` : ""}</p>
+        </div>
+      </header>
+      ${combos.map(tarjeta).join("")}
+      <p class="pie">Cada combo es la suma de sus productos al precio del detal de hoy, subida al centavo: el mismo precio que cobra la caja. Los bolívares, a la tasa BCV de hoy.</p>`;
+    document.body.append(h);
+  }
+
+  hoja("precios-combos-1", "Precios de los combos de todos los días", D.combos.filter((c) => c.n <= 9));
+  hoja("precios-combos-2", "Precios de los combos especiales", D.combos.filter((c) => c.n > 9));
+</script>
+</body>
+</html>
