@@ -31,7 +31,8 @@ const env = Object.fromEntries(
     .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()]),
 );
 
-const puerto = 3112;
+// Otro puerto con PUERTO_PRUEBA, para correr dos pruebas a la vez (dos copias del proyecto).
+const puerto = Number(process.env.PUERTO_PRUEBA) || 3112;
 const base = urlWeb ?? `http://localhost:${puerto}`;
 const carpetaTemporal = fs.mkdtempSync(path.join(os.tmpdir(), "villareal-prueba-"));
 const rutaDb = path.join(carpetaTemporal, "prueba.db");
