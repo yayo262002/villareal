@@ -84,6 +84,9 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
           <Link href="#lista" className="boton boton--secundario">
             Últimas ventas
           </Link>
+          <Link href="/admin/combos/etiquetas" className="boton boton--secundario">
+            Etiquetas de los combos
+          </Link>
         </div>
       </div>
       <Avisos parametros={parametros} />

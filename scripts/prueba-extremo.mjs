@@ -2765,6 +2765,13 @@ async function probarCombosEnLaCaja() {
     JSON.stringify(combos.slice(0, 3)),
   );
   comprobar("la caja ofrece los combos", p.html.includes("Combo jamón de espalda + mozzarella") && p.html.includes("Combos del detal"));
+  // Las etiquetas de las bandejas, con el código de barras de su número.
+  const etiquetas = await pagina("/admin/combos/etiquetas?c_espalda-mozzarella=3&c_solidario=0");
+  comprobar(
+    "las etiquetas de las bandejas: las que se pidan de cada combo, con su número y su código de barras",
+    etiquetas.status === 200 && (etiquetas.html.match(/Código de barras COMBO-3"/g) ?? []).length === 3 && !etiquetas.html.includes("Código de barras COMBO-10\"") && etiquetas.html.includes("<rect"),
+    String(etiquetas.status),
+  );
   // Abrir la caja otra vez no los duplica.
   await pagina("/admin/ventas");
   comprobar("abrir la caja otra vez no los duplica", Number((await consultar("select count(*) as n from productos where combo_detal is not null"))[0].n) === 14);

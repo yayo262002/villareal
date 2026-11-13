@@ -277,6 +277,8 @@ src/lib/pos-calculo.ts    Las cuentas de la caja: totales, descuento, cómo paga
 src/lib/pos.ts            La caja desde la base: el catálogo con existencias, el cliente de mostrador y el guardado de la venta con sus pagos
 src/lib/combos-detal.ts   Los catorce combos del detal: lo que lleva cada uno y su precio con la lista del detal (puro, con pruebas)
 src/lib/combos-en-la-caja.ts  Los combos como artículos de la caja, ocultos en la web, con el precio del detal de hoy
+src/lib/codigo128.ts      El código de barras Code 128 de las etiquetas de los combos (puro, con pruebas)
+src/app/admin/(panel)/combos/etiquetas/  Las etiquetas de las bandejas de los combos, con su precio y su código de barras, para imprimir
 src/lib/codigos.ts        Los códigos de barras y los SKU: quién tiene un código, ponerlo y quitarlo
 src/lib/factura-calculo.ts  Las cuentas de la factura: lo exento, la base imponible, el IVA, el total en Bs; el libro de ventas (puro, con pruebas)
 src/lib/documento.ts      Leer una cédula o un RIF escrito de cualquier forma, como va en la factura (puro, con pruebas)
@@ -829,6 +831,15 @@ Binance y otro.
     a borrador). Lo que lleva cada uno está en `src/lib/combos-detal.ts`
     (con pruebas); su venta es una venta normal, con su nota, su factura
     y sus estadísticas.
+  - **Las etiquetas de las bandejas** (Ventas → «Etiquetas de los combos»,
+    `/admin/combos/etiquetas`): se elige cuántas de cada combo y salen en
+    hojas carta, diez por hoja (90 × 50 mm, para recortar o en papel
+    adhesivo), cada una con el número y el nombre del combo, lo que lleva,
+    su precio de hoy (el de la charcutería, con «$») y el código de barras
+    de su SKU: **en la caja, escanear la bandeja mete el combo en la
+    venta**. El código es Code 128, sin librerías (`src/lib/codigo128.ts`,
+    con pruebas). Como el precio cambia con los costos, se imprimen otra
+    vez cuando cambie.
   - **El carrito** es una tabla compacta: producto (con lo que hay en
     inventario, en verde, amarillo o rojo), la cantidad con su nombre
     («Kilos», «Cartones», «Unidades») y, solo en lo que va por kilo, las
