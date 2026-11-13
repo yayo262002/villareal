@@ -1,8 +1,9 @@
 import { buscarFamilia, buscarFotoDeFamilia } from "@/lib/familias";
 import { haySesion } from "@/lib/sesion";
+import { cacheDeFoto } from "@/lib/cache-de-fotos";
 
 /** GET /foto-familia/[id] devuelve la portada de una familia: pública si la familia está activa; si no, solo con sesión. */
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
+export async function GET(peticion: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await params;
   const numero = Number(id);
   const familia = Number.isSafeInteger(numero) && numero > 0 ? await buscarFamilia(numero) : null;
@@ -18,7 +19,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     headers: {
       "content-type": foto.tipo,
       "content-length": String(foto.tamano),
-      "cache-control": visible ? "public, max-age=86400" : "private, no-store",
+      "cache-control": cacheDeFoto(peticion.url, familia.foto_version, visible),
     },
   });
 }

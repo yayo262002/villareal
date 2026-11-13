@@ -35,6 +35,14 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:ruta*", headers: CABECERAS_DE_SEGURIDAD },
       {
+        // Las fotos de la web que vienen en public/ (la portada, las familias, las de referencia, el león, las
+        // miniaturas): un día en el teléfono y en Vercel, y una semana más mientras se comprueba si cambió. Sin esto se
+        // preguntaban otra vez en cada visita. No es «para siempre» porque pueden cambiar con el mismo nombre (una foto de
+        // referencia nueva).
+        source: "/:carpeta(portada|familias|productos|marca|miniaturas)/:archivo+",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
+      },
+      {
         // El panel y las tareas no son para los buscadores.
         source: "/(admin|api)/:ruta*",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],

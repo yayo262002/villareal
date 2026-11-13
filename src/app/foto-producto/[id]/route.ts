@@ -1,5 +1,6 @@
 import { buscarFotoDeProducto, buscarProducto } from "@/lib/productos";
 import { haySesion } from "@/lib/sesion";
+import { cacheDeFoto } from "@/lib/cache-de-fotos";
 
 /**
  * GET /foto-producto/[id] devuelve la foto principal de un producto. Es
@@ -7,7 +8,7 @@ import { haySesion } from "@/lib/sesion";
  * solo con la sesión del panel. La dirección lleva `?v=` con la fecha de la
  * foto, así se guarda en caché sin enseñar una vieja.
  */
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
+export async function GET(peticion: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await params;
   const numero = Number(id);
   const producto = Number.isSafeInteger(numero) && numero > 0 ? await buscarProducto(numero) : null;
@@ -23,7 +24,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     headers: {
       "content-type": foto.tipo,
       "content-length": String(foto.tamano),
-      "cache-control": visible ? "public, max-age=86400" : "private, no-store",
+      "cache-control": cacheDeFoto(peticion.url, producto.foto_version, visible),
     },
   });
 }

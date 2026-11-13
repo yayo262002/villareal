@@ -5,6 +5,7 @@ import { ofertasVigentes } from "@/lib/ofertas";
 import { hoy } from "@/lib/dinero";
 import { destacados, rutasPublicas, vitrina } from "@/lib/vitrina";
 import { direccionDePortada, type Familia } from "@/lib/familias";
+import { miniatura } from "@/lib/portadas";
 import { CabeceraPublica, DatosEstructurados, LineaTasa, PiePublico, datosDeLaTienda } from "@/components/publico";
 import {
   AtajosDeCategorias,
@@ -49,7 +50,10 @@ const ATAJOS: { texto: string; familia: string; foto?: string }[] = [
 function atajosDe(familias: Familia[]): Atajo[] {
   return ATAJOS.flatMap((a) => {
     const familia = familias.find((f) => f.slug === a.familia);
-    return familia ? [{ texto: a.texto, ruta: `/categoria/${familia.slug}`, foto: a.foto ?? direccionDePortada(familia) }] : [];
+    if (!familia) return [];
+    // La foto, en miniatura: el círculo es de 64 px, y la foto entera le quitaba el turno a la de arriba.
+    const foto = a.foto ?? direccionDePortada(familia);
+    return [{ texto: a.texto, ruta: `/categoria/${familia.slug}`, foto: foto ? miniatura(foto) : null }];
   });
 }
 

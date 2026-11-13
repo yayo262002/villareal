@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { enlaceWhatsapp } from "@/config/negocio";
 import { nombreDeVenta, porQueSeCobra } from "@/lib/catalogo";
 import { direccionDePortada, type Familia } from "@/lib/familias";
+import { portadaMediana } from "@/lib/portadas";
 import { rutaProducto } from "@/lib/enlaces";
 import { aBolivares, bs, fechaCorta, unidadEnPalabras, usd } from "@/lib/dinero";
 import { claveDeOferta } from "@/lib/carrito";
@@ -98,7 +99,9 @@ export function TarjetaDeProducto({ item, tasa, prioridad = false }: { item: Pro
           {item.clave ? (
             <BotonAgregar clave={item.clave} nombre={nombreParaElCarrito} unidad={producto.unidad} className={estilos.agregar} />
           ) : (
-            <Link href={`${ruta}#marcas`} className={`boton ${estilos.botonOpciones}`} aria-label={`Ver las ${variantes.length} opciones de ${producto.nombre}`}>
+            // El nombre que oye quien no ve la pantalla empieza por lo que se lee en el botón, así también lo encuentra quien
+            // lo pide por voz («Ver opciones»).
+            <Link href={`${ruta}#marcas`} className={`boton ${estilos.botonOpciones}`} aria-label={`Ver opciones de ${producto.nombre} (${variantes.length})`}>
               Ver opciones
             </Link>
           )}
@@ -111,11 +114,15 @@ export function TarjetaDeProducto({ item, tasa, prioridad = false }: { item: Pro
   );
 }
 
-export function RejillaDeProductos({ items, tasa }: { items: ProductoDeVitrina[]; tasa: number | null }) {
+/**
+ * Las tarjetas de unos productos. `prioridad`: las dos primeras piden su foto enseguida, porque están arriba de la página
+ * (Productos); en la portada o debajo de una cabecera no, que le quitarían el turno a la foto grande de arriba.
+ */
+export function RejillaDeProductos({ items, tasa, prioridad = false }: { items: ProductoDeVitrina[]; tasa: number | null; prioridad?: boolean }) {
   return (
     <ul className={estilos.rejillaProductos}>
       {items.map((item, i) => (
-        <TarjetaDeProducto key={item.producto.id} item={item} tasa={tasa} prioridad={i < 2} />
+        <TarjetaDeProducto key={item.producto.id} item={item} tasa={tasa} prioridad={prioridad && i < 2} />
       ))}
     </ul>
   );
@@ -175,7 +182,8 @@ export function FiltroDeMarcas({
       ))}
       <p className={estilos.filtroTitulo}>Filtrar por marca</p>
       <div className={estilos.filtroOpciones}>
-        {marcas.map((m) => (
+        {/* Las elegidas primero: en el teléfono la fila se desliza de lado, y una elegida al final quedaba fuera de la vista. */}
+        {[...marcas].sort((a, b) => Number(elegidas.includes(b.slug)) - Number(elegidas.includes(a.slug))).map((m) => (
           <label key={m.slug} className={estilos.filtroOpcion}>
             <input type="checkbox" name="marca" value={m.slug} defaultChecked={elegidas.includes(m.slug)} />
             <span>{m.nombre}</span>
@@ -196,15 +204,30 @@ export function FiltroDeMarcas({
   );
 }
 
-/** La tarjeta de una familia (o de una colección): su foto a todo el ancho, con el nombre encima, todas con el mismo velo. */
-export function TarjetaDeFamilia({ familia, conDescripcion = false }: { familia: Familia; conDescripcion?: boolean }) {
+/**
+ * La tarjeta de una familia (o de una colección): su foto a todo el ancho, con el nombre encima, todas con el mismo velo.
+ * `tamanos`: lo que mide la tarjeta (el «sizes» de la foto); con él, una portada incluida se ofrece también a 480 px y el
+ * teléfono no baja la foto entera para una tarjeta pequeña.
+ */
+export function TarjetaDeFamilia({ familia, conDescripcion = false, tamanos }: { familia: Familia; conDescripcion?: boolean; tamanos?: string }) {
   const portada = direccionDePortada(familia);
+  const mediana = portada && tamanos ? portadaMediana(portada) : null;
   return (
     <li>
       <Link href={`/categoria/${familia.slug}`} className={estilos.familia}>
         {portada ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={portada} alt="" width={640} height={480} loading="lazy" decoding="async" className={estilos.familiaFoto} />
+          <img
+            src={portada}
+            srcSet={mediana ? `${mediana} 480w, ${portada} 640w` : undefined}
+            sizes={mediana ? tamanos : undefined}
+            alt=""
+            width={640}
+            height={480}
+            loading="lazy"
+            decoding="async"
+            className={estilos.familiaFoto}
+          />
         ) : (
           <span className={estilos.familiaSinFoto} aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -231,7 +254,8 @@ export function RejillaDeFamilias({ familias, compacta = false }: { familias: Fa
   return (
     <ul className={`${estilos.rejillaFamilias} ${compacta ? estilos["rejillaFamilias--compacta"] : ""}`}>
       {familias.map((f) => (
-        <TarjetaDeFamilia key={f.id} familia={f} />
+        // En el teléfono, 40 % del ancho en la fila de la portada y la mitad en la rejilla; en la pantalla ancha, un cuarto o un tercio.
+        <TarjetaDeFamilia key={f.id} familia={f} tamanos={compacta ? "(max-width: 719px) 40vw, 300px" : "(max-width: 719px) 46vw, 400px"} />
       ))}
     </ul>
   );

@@ -68,13 +68,15 @@ export function CabeceraPublica({ actual = null }: { actual?: SeccionPublica | n
       </a>
       <header className={estilos.cabecera}>
         <div className={estilos.barra}>
-          <Link href="/" className={estilos.marca} aria-label={`${negocio.nombre}: inicio`}>
+          {/* Su nombre, para quien no ve la pantalla, es lo que se lee («Comercializadora Villa Real») y «inicio». */}
+          <Link href="/" className={estilos.marca}>
             {/* El león coronado de la marca. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/marca/leon.svg" alt="" width={33} height={52} className={estilos.leon} />
             <span className={estilos.marcaTexto}>
-              <span className={estilos.marcaArriba}>Comercializadora</span>
+              <span className={estilos.marcaArriba}>Comercializadora</span>{" "}
               <span className={estilos.marcaNombre}>Villa Real</span>
+              <span className="visualmente-oculto">, inicio</span>
             </span>
           </Link>
           <Buscador id="buscar-cabecera" className={estilos.buscar} ayuda="Buscar queso, tocineta, salsas…" />

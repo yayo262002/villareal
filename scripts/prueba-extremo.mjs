@@ -394,7 +394,7 @@ async function probarPrecios() {
     "portada: el pecorino dice «desde» con la más barata (3,50) y cuántas marcas hay, sin nombrar ninguna, y lleva la foto de la primera marca (mercancía de verdad, no la de referencia)",
     /Al mayor, desde<\/p><p[^>]*>Bs 127,75/.test(portadaMarcas) && portadaMarcas.includes("2 marcas para elegir") && !portadaMarcas.includes("Sortilegio") &&
       portadaMarcas.includes(`/foto-variante/${varianteSortilegio}?v=`) && !portadaMarcas.includes("/productos/queso-rallado.webp") &&
-      portadaMarcas.includes('href="/producto/4-pecorino#marcas"') && portadaMarcas.includes(">Ver opciones<") && portadaMarcas.includes("Ver las 2 opciones de Pecorino"),
+      portadaMarcas.includes('href="/producto/4-pecorino#marcas"') && portadaMarcas.includes(">Ver opciones<") && portadaMarcas.includes("Ver opciones de Pecorino (2)"),
     portadaMarcas.slice(Math.max(0, portadaMarcas.indexOf("pecorino rallado</a>") - 100), portadaMarcas.indexOf("pecorino rallado</a>") + 900).replace(/\s+/g, " "),
   );
   const fichaPecorino = await pagina("/producto/4-pecorino", "");
@@ -413,7 +413,7 @@ async function probarPrecios() {
   const seccionDeMarcas = fichaPecorino.html.slice(inicioMarcas, fichaPecorino.html.indexOf("</section>", inicioMarcas));
   comprobar(
     "con marcas, se pide desde la marca elegida: el botón de arriba lleva a las marcas y cada una tiene el suyo",
-    fichaPecorino.html.includes('href="#marcas"') && fichaPecorino.html.includes('id="marcas"') && fichaPecorino.html.includes('aria-label="Pedir Sortilegio 500 g por WhatsApp"') &&
+    fichaPecorino.html.includes('href="#marcas"') && fichaPecorino.html.includes('id="marcas"') && fichaPecorino.html.includes('aria-label="Pedir por WhatsApp: Sortilegio 500 g"') &&
       !fichaPecorino.html.includes('quiero%20pedir%20pecorino."') && (seccionDeMarcas.match(/>Agregar</g) ?? []).length === 2,
   );
   const fotoVariante = await fetch(base + `/foto-variante/${varianteSortilegio}`);
@@ -513,8 +513,8 @@ async function probarPrecios() {
   const conTres = legible((await pagina("/producto/4-pecorino?marca=sortilegio", "")).html);
   const partesConTres = [
     conTres.includes("Filtrar por marca"),
-    conTres.includes('aria-label="Pedir Sortilegio 500 g por WhatsApp"'),
-    !conTres.includes('aria-label="Pedir Guaralac 500 g por WhatsApp"'),
+    conTres.includes('aria-label="Pedir por WhatsApp: Sortilegio 500 g"'),
+    !conTres.includes('aria-label="Pedir por WhatsApp: Guaralac 500 g"'),
     (conTres.match(/<input type="checkbox" name="marca"[^>]*>/g) ?? []).some((casilla) => casilla.includes('value="sortilegio"') && casilla.includes('checked=""')),
     conTres.includes("Ver todas las marcas"),
   ];

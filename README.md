@@ -50,6 +50,7 @@ npm run verificar    typecheck + lint + pruebas unitarias
 npm run build        que compila
 npm run prueba:local   la web entera con una base temporal (después de build)
 npm run prueba:web     la web publicada, solo mirando: no crea ni borra nada
+npm run miniaturas     las fotos de public/familias/ y public/productos/ en pequeño (public/miniaturas/), al añadir o cambiar una
 npm run lista          las listas del detal y del mayor de hoy en PDF y en pantallas JPG para el teléfono, y la hoja de la rebanadora (en listas/)
 ```
 
@@ -172,7 +173,8 @@ src/lib/catalogo-inicial.ts  Las familias iniciales, los borradores y los combos
 src/lib/preparar-catalogo.ts Crea en borrador lo que falte del catálogo inicial
 src/lib/ofertas.ts        Ofertas y combos: precio, fechas, estado y lo que llevan
 src/lib/iconos.ts         Los iconos de las familias, a trazo
-src/lib/portadas.ts       Qué familias traen su foto en public/familias/
+src/lib/portadas.ts       Qué familias traen su foto en public/familias/, y su miniatura (public/miniaturas/, npm run miniaturas)
+src/lib/cache-de-fotos.ts Cuánto se guardan las fotos que la web sirve desde la base (un año en el teléfono con su ?v=)
 src/lib/vitrina.ts        Lo que enseña la web: productos publicados con su precio, sus marcas, su foto y sus familias; buscar
 src/components/vitrina.tsx  Las piezas de la web: tarjetas de producto, de familia y de combo, la franja de confianza…
 src/lib/carrito.ts        El carrito: cantidades, totales y el mensaje del pedido para WhatsApp
@@ -448,7 +450,7 @@ datos/                    La base de datos (fuera de Git)
   una **foto de referencia** de lo que es, elegida por su nombre, de lo más
   concreto a lo más general (la salsa cheddar no es un queso, lo rallado
   lleva la del queso rallado, los quesos blancos de aquí, como el queso
-  arepero, el llanero o el de mano, la del bloque de queso blanco, y el
+  arepero, el llanero o el de mano, la de un queso llanero de verdad, y el
   jamón arepero sigue siendo jamón; `src/lib/fotos-referenciales.ts`), que la
   ficha marca «Foto referencial»; y si ninguna le va, un fondo crema con
   el león. Las de referencia son fotos de comida CC0 o de dominio público
@@ -1314,7 +1316,10 @@ Binance y otro.
   `textoCoincide` en `src/lib/buscar.ts`), la **familia** (`?familia=`),
   el **negocio** (`?negocio=burger`) y la **marca** (`?marca=guaralact`).
   Lo que no se encuentra se dice, con un botón para preguntarlo por
-  WhatsApp.
+  WhatsApp. En el teléfono los filtros van juntos, para que los productos
+  asomen enseguida: «Buscar» al lado de la casilla, la familia y el negocio
+  uno al lado del otro y las marcas en una fila que se desliza de lado (las
+  elegidas primero); en la pantalla ancha, en una fila.
 - **Cada colección y cada familia** (`/categoria/burger`,
   `/categoria/quesos`): su portada, sus productos (los suyos y los que
   también salen en ella, sin repetirse; los destacados primero) por
@@ -1394,6 +1399,17 @@ Binance y otro.
   de cada producto (JSON-LD), mapa del sitio (portada, Productos, Ofertas,
   cada categoría, cada producto y cada marca) y `robots.txt`. El panel,
   las tareas y el carrito quedan fuera de los buscadores.
+- **Que cargue rápido en el teléfono** (revisado con Lighthouse el
+  13/11/2026: accesibilidad, buenas prácticas y buscadores a 100). La foto
+  grande de arriba se pide primero y nada le quita el turno: los círculos
+  de las categorías llevan su miniatura de 128 px, las tarjetas de la fila
+  de categorías una portada de 480 px cuando les basta (`srcset`), y los
+  productos destacados de la portada esperan a que se llegue a ellos (solo
+  en Productos, donde están arriba, las dos primeras fotos van primero).
+  Las fotos que la web sirve desde la base llevan `?v=` con su fecha: el
+  teléfono las guarda un año y Vercel un día (una foto escondida deja de
+  verse a más tardar al día siguiente); las de `public/`, un día
+  (`next.config.ts`).
 - **En el teléfono** la web se puede poner en la pantalla de inicio, con el
   león de icono. Manteniendo pulsado el icono sale el acceso al panel.
 - **El panel como app.** El panel tiene su propio manifiesto

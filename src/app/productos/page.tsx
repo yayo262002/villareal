@@ -64,7 +64,13 @@ export default async function PaginaProductos({ searchParams }: Parametros) {
           <form action="/productos" className={estilos.filtros} role="search" aria-label="Buscar y filtrar">
             <div className={estilos.filtroCampo}>
               <label htmlFor="buscar-productos">Buscar por tipo de producto</label>
-              <input id="buscar-productos" name="q" type="search" defaultValue={busqueda} placeholder="Queso, tocineta, salsa…" enterKeyHint="search" />
+              {/* En el teléfono, «Buscar» va al lado de la casilla; en la pantalla ancha, al final de la fila (el de abajo). */}
+              <div className={estilos.buscarFila}>
+                <input id="buscar-productos" name="q" type="search" defaultValue={busqueda} placeholder="Queso, tocineta, salsa…" enterKeyHint="search" />
+                <button type="submit" className={`boton ${estilos.buscarBoton}`}>
+                  Buscar
+                </button>
+              </div>
             </div>
             <div className={estilos.filtroCampo}>
               <label htmlFor="filtro-familia">Familia</label>
@@ -91,7 +97,7 @@ export default async function PaginaProductos({ searchParams }: Parametros) {
               </div>
             )}
             <div className={estilos.filtroAcciones}>
-              <button type="submit" className="boton">
+              <button type="submit" className={`boton ${estilos.buscarBotonAncho}`}>
                 Buscar
               </button>
               {filtrando && (
@@ -109,7 +115,10 @@ export default async function PaginaProductos({ searchParams }: Parametros) {
             />
           ) : (
             <>
-              <RejillaDeProductos items={lista} tasa={tasa} />
+              {/* Entre el título de la página y el nombre de cada producto: el orden de los títulos, para quien no ve la pantalla. */}
+              <h2 className="visualmente-oculto">{cuantos === "1 producto encontrado" ? "El producto" : "Los productos"}</h2>
+              {/* Aquí las primeras tarjetas están arriba: sus fotos se piden primero. */}
+              <RejillaDeProductos items={lista} tasa={tasa} prioridad />
               <NotaDePrecios hayTasa={tasa !== null} items={lista} />
             </>
           )}

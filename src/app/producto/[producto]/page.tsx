@@ -271,7 +271,7 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
                         <div className={estilos.varianteAcciones}>
                           <BotonAgregar clave={claveDe(producto.id, m.id)} nombre={nombreDeVenta(producto.nombre, m.nombre)} unidad={producto.unidad} />
                           {pedirEsta && (
-                            <a className={estilos.varianteEnlaceTexto} href={pedirEsta} target="_blank" rel="noopener" aria-label={`Pedir ${m.nombre} por WhatsApp`}>
+                            <a className={estilos.varianteEnlaceTexto} href={pedirEsta} target="_blank" rel="noopener" aria-label={`Pedir por WhatsApp: ${m.nombre}`}>
                               Pedir por WhatsApp
                             </a>
                           )}
