@@ -10,11 +10,13 @@ import { interpretarCaptura, type CapturaLeida } from "./captura-leida";
  * (`nota-leida.ts`, `captura-leida.ts`).
  *
  * Hace falta `ANTHROPIC_API_KEY`. Sin ella no se lee nada y todo sigue
- * funcionando como antes. Cada lectura cuesta una fracción de centavo.
+ * funcionando como antes. Cada lectura cuesta uno o dos centavos de dólar
+ * (la foto, las instrucciones con el catálogo y la respuesta, con Sonnet 5.5).
  */
 
 const MODELO_POR_DEFECTO = "claude-sonnet-5-5";
-const ESPERA_MAXIMA_MS = 25_000;
+/** Con margen dentro de los 60 s que tiene la página de Ventas para guardar. */
+const ESPERA_MAXIMA_MS = 40_000;
 
 /** Con esta variable, en las pruebas, la «lectura» viene escrita dentro de la propia imagen. */
 const FALSO = "LECTOR_DE_NOTAS_FALSO";
@@ -76,9 +78,11 @@ async function preguntar(instrucciones: string, foto: FotoParaLeer, que: string)
       signal: AbortSignal.timeout(ESPERA_MAXIMA_MS),
       body: JSON.stringify({
         model: process.env.MODELO_LECTOR_DE_NOTAS || MODELO_POR_DEFECTO,
-        // Una nota con muchas líneas y los datos del cliente pasa de 800.
-        max_tokens: 1500,
-        temperature: 0,
+        // Lo que piensa antes de contestar cuenta dentro de max_tokens: con sitio de sobra, el JSON nunca sale cortado.
+        max_tokens: 4000,
+        // Leer una hoja no necesita pensar mucho: con poco esfuerzo contesta antes y cuesta menos. (Sin «temperature»:
+        // Claude Sonnet 5.5 rechaza con un 400 cualquier valor que no sea el de siempre, y no se leía nada.)
+        output_config: { effort: "low" },
         system: instrucciones,
         messages: [
           {

@@ -743,7 +743,13 @@ Binance y otro.
     casilla «Ya revisé la foto de la nota» permite guardar igual; nada se
     corrige solo (`src/lib/nota-leida.ts`). Lo mismo al marcar entregado
     un pedido desde el despacho o desde la nota. Sin la clave no se lee
-    nada y todo sigue igual. Cada lectura cuesta una fracción de centavo.
+    nada y todo sigue igual. No es gratis: se paga por uso (saldo que se
+    recarga en console.anthropic.com, aparte de cualquier plan de
+    claude.ai). Con Claude Sonnet 5.5 (2 $ el millón de tokens de entrada y
+    10 $ el de salida) cada nota cuesta uno o dos centavos de dólar: la
+    foto, las instrucciones con el catálogo y la respuesta. Con
+    `MODELO_LECTOR_DE_NOTAS=claude-haiku-5-5` costaría unas veinte veces
+    menos, pero lee peor la letra de mano.
   - **La foto no se pierde.** Al llegar se guarda en `fotos_en_espera`
     (`src/lib/fotos-en-espera.ts`); si el formulario vuelve con un aviso
     (un precio raro, la fecha de la nota), la trae por su número y no hay
