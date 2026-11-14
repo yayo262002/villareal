@@ -83,7 +83,12 @@ export default async function PaginaEtiquetas({ searchParams }: { searchParams: 
             <label key={c.combo.clave} className={estilos.cuantasFila}>
               <span>
                 <strong>{c.combo.n}.</strong> {nombreEnLaEtiqueta(c.combo.nombre, c.combo.n >= 10)}
-                {c.precio_usd === null && <span className="ayuda"> (sin precio: le falta {c.faltan.join(", ")} en la lista del detal)</span>}
+                {c.precio_usd === null &&
+                  (c.combo.precioAMano ? (
+                    <span className="ayuda"> (sin precio: lo que lleva varía; se escribe a mano)</span>
+                  ) : (
+                    <span className="ayuda"> (sin precio: le falta {c.faltan.join(", ")} en la lista del detal)</span>
+                  ))}
               </span>
               <input type="number" name={`c_${c.combo.clave}`} min={0} max={MAXIMO_POR_COMBO} defaultValue={pedidas(c.combo.clave)} inputMode="numeric" />
             </label>

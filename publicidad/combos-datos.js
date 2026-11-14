@@ -128,7 +128,8 @@ globalThis.COMBOS = [
     estilo: "sandwich",
   },
   {
-    // Una bandeja de 200 g con los recortes de las piezas que se rebanan (el dueño, 14/11: «que aparezcan todas las piezas»).
+    // Una bandeja con los recortes de las piezas que se rebanan (el dueño, 14/11: «que aparezcan todas las piezas»). Sin
+    // peso: lo que lleva varía (el dueño, el mismo día: «no le pongas la cantidad porque va a variar»).
     // Al final, con los especiales: no es la pareja de un jamón y un queso, y así no se corre ningún número (ni las etiquetas
     // de las bandejas con su código de barras).
     n: 15,
@@ -147,7 +148,7 @@ globalThis.COMBOS = [
       ["pechuga-de-pavo-drago", "Pechuga de pavo"],
       ["pechuga-de-pavo-ahumada", "Pechuga de pavo ahumada"],
     ],
-    detalle: "Bandeja de 200 g de recortes surtidos",
+    detalle: "Bandeja de recortes surtidos",
     lema: "Un poquito de todo en una bandeja",
     destacar: "Un poquito de todo",
     especial: true,

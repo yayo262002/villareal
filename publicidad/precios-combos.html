@@ -61,8 +61,9 @@
         </tr>`,
       )
       .join("");
-    const total =
-      c.total === null
+    const total = c.aMano
+      ? `<div class="total"><strong>—</strong><span>a mano</span></div>`
+      : c.total === null
         ? `<div class="total"><strong>—</strong><span>falta un precio</span></div>`
         : `<div class="total"><strong>${c.partes.some((p) => p.estimado) ? "≈ " : ""}${dinero(c.total)}</strong>${c.totalBs !== null ? `<span>${bolivares(c.totalBs)}</span>` : ""}${
             c.costo !== null ? `<span class="gana">cuesta ${dinero(c.costo)} · deja ${dinero(c.total - c.costo)}</span>` : ""
@@ -70,6 +71,7 @@
     return `<section class="combo">
       <div class="titulo"><span class="numero">${c.n}</span><span class="nombre">${escapar(c.n <= 9 ? c.nombre.replace(/^Combo (\S)/, (_, l) => l.toUpperCase()) : c.nombre)}</span>${total}</div>
       <table>${filas}</table>
+      ${c.aMano ? `<p class="falta">Lo que lleva varía con lo que se esté rebanando: el precio se escribe a mano en la hoja y en la caja.</p>` : ""}
       ${c.falta.length > 0 ? `<p class="falta">Falta en la lista del detal: ${c.falta.map(escapar).join(", ")}${c.partes.some((p) => p.estimado) ? " (va con su costo estimado)" : ""}. Hasta que se cargue, en la caja este combo se cobra a mano.</p>` : ""}
     </section>`;
   }

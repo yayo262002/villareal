@@ -30,6 +30,8 @@ export type ComboDelDetal = {
   /** Lo que lleva, como en la hoja del combo. */
   detalle: string;
   componentes: ComponenteDelCombo[];
+  /** El precio se escribe a mano cada vez en la caja: lo que lleva varía (los recortes, según lo que se esté rebanando). */
+  precioAMano?: boolean;
 };
 
 const DE_CADA_UNO = "200 g de cada producto";
@@ -74,14 +76,15 @@ export const COMBOS_DEL_DETAL: ComboDelDetal[] = [
     detalle: "1 pan de sándwich, 200 g de queso paisa y 200 g de pechuga de pavo ahumada",
     componentes: [{ detal: "Pan blanco enriquecido Viva Mejor 500 g", cantidad: 1 }, { detal: "Queso paisa", cantidad: g200 }, { detal: "Pechuga de pavo ahumada Drago", cantidad: g200 }],
   },
-  // Los recortes de las piezas que se rebanan, surtidos. Su precio por kilo es el de «Recortes» en la lista del detal: mientras
-  // no esté, el combo sale sin precio y se escribe a mano en la caja.
+  // Los recortes de las piezas que se rebanan, surtidos. Ni peso ni precio fijos: lo que lleva varía con lo que se esté
+  // rebanando (el dueño), así que en la caja el precio se escribe a mano cada vez.
   {
     n: 15,
     clave: "recortes",
     nombre: "Combo de recortes",
-    detalle: "Bandeja de 200 g de recortes surtidos",
-    componentes: [{ detal: "Recortes", cantidad: g200 }],
+    detalle: "Bandeja de recortes surtidos",
+    componentes: [],
+    precioAMano: true,
   },
 ];
 
@@ -105,6 +108,7 @@ export function faltanParaElCombo(combo: ComboDelDetal, precioDe: (nombreDetal: 
  * falta el precio (entonces se escribe a mano en la caja).
  */
 export function precioDelCombo(combo: ComboDelDetal, precioDe: (nombreDetal: string) => number | null): number | null {
+  if (combo.precioAMano || combo.componentes.length === 0) return null;
   let suma = 0;
   for (const c of combo.componentes) {
     const precio = precioDe(c.detal);

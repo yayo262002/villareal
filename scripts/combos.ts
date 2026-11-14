@@ -89,12 +89,14 @@ const desglose = COMBOS_DEL_DETAL.map((combo) => {
   return {
     n: combo.n,
     nombre: combo.nombre,
+    // Lo que lleva varía (los recortes): el precio se escribe a mano.
+    aMano: Boolean(combo.precioAMano),
     detalle: combo.detalle,
     partes,
     total,
     totalBs: enBolivares(total, tasa, reglas.redondeo_bs),
     falta: faltanParaElCombo(combo, (nombre) => (porNombre.has(claveDeNombreDetal(nombre)) ? precioDe(nombre) : null)),
-    costo: partes.every((p) => p.costo !== null) ? partes.reduce((s, p) => s + (p.costo ?? 0), 0) : null,
+    costo: partes.length > 0 && partes.every((p) => p.costo !== null) ? partes.reduce((s, p) => s + (p.costo ?? 0), 0) : null,
   };
 });
 
@@ -105,6 +107,7 @@ for (const c of desglose) {
   console.log(`${String(c.n).padStart(2)}. ${c.nombre}: $${dos(c.total)}${c.totalBs !== null ? ` (Bs ${c.totalBs})` : ""} · cuesta $${dos(c.costo)} · deja $${dos(c.total !== null && c.costo !== null ? c.total - c.costo : null)}`);
   for (const p of c.partes) console.log(`      ${p.cuanto.padEnd(13)} ${p.nombre.padEnd(48)} $${dos(p.precio)}/${p.unidad} → $${dos(p.subtotal)}`);
   if (c.falta.length > 0) console.log(`      FALTA EN LA LISTA DEL DETAL: ${c.falta.join(", ")}`);
+  if (c.aMano) console.log("      Lo que lleva varía: el precio se escribe a mano.");
 }
 
 // Los datos de las hojas del desglose (con lo que cuesta y lo que deja: son para el dueño) y los precios del flier.

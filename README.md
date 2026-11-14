@@ -867,8 +867,9 @@ Binance y otro.
     Códigos de barras se les puede poner uno para escanear la bandeja. Si
     a un producto del combo le falta el precio en la lista (el queso
     paisa, mientras no se compre), sale sin precio y se escribe a mano.
-    El de recortes (el 15, 200 g surtidos) cuesta 200 g de lo que diga
-    «Recortes» en la lista del detal, por kilo: mientras no esté, a mano.
+    El de recortes (el 15) no lleva peso ni precio fijos, porque lo que
+    lleva varía con lo que se esté rebanando: en la caja se cobra siempre
+    a mano (`precioAMano`).
     Cada combo es un producto del catálogo marcado con su clave
     (`productos.combo_detal`), que la caja crea la primera vez y pone al
     día si cambia su número o su nombre: **nunca sale en la web**, que es

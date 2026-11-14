@@ -39,14 +39,13 @@ test("si a un producto del combo le falta el precio, el combo queda sin precio y
   assert.deepEqual(faltanParaElCombo(combo("sandwichero"), precioDe), ["Queso paisa"]);
 });
 
-test("el combo de recortes es una bandeja de 200 g al precio por kilo de «Recortes» en la lista del detal", () => {
+test("el combo de recortes no lleva peso ni precio fijos: lo que lleva varía, y en la caja se cobra a mano", () => {
   assert.equal(combo("recortes").n, 15);
   assert.equal(skuDelCombo(combo("recortes")), "COMBO-15");
-  // Mientras no esté en la lista, sin precio: se escribe a mano en la caja.
-  assert.equal(precioDelCombo(combo("recortes"), () => null), null);
-  assert.deepEqual(faltanParaElCombo(combo("recortes"), () => null), ["Recortes"]);
-  // Con 4,40 $ el kilo: 0,2 × 4,40 = 0,88.
-  assert.equal(precioDelCombo(combo("recortes"), (nombre) => (claveDeNombreDetal(nombre) === "recortes" ? 4.4 : null)), 0.88);
+  assert.ok(!/[0-9]/.test(combo("recortes").detalle));
+  // Aunque en la lista hubiera precio para todo, no sale ninguno; y no le falta nada en la lista.
+  assert.equal(precioDelCombo(combo("recortes"), () => 4.4), null);
+  assert.deepEqual(faltanParaElCombo(combo("recortes"), () => null), []);
 });
 
 test("los nombres del detal se buscan sin tildes, mayúsculas ni espacios de más", () => {
