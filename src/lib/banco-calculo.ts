@@ -97,7 +97,11 @@ export function leerAvisoDelBanco(texto: string): LecturaDelBanco {
     limpio.match(/\boperaci[oó]n:?\s*(?:N[°º.o]*\s*)?(\d{4,20})/i);
   const referencia = conReferencia ? conReferencia[1] : "";
 
-  const conFecha = limpio.match(/\b(\d{1,2})[-/](\d{1,2})[-/](\d{4}|\d{2})\b/);
+  // Solo la fecha del propio aviso, «en fecha 14-11-26»: una captura de pantalla trae también lo que hay detrás (el
+  // historial del panel, «Nota N.° 000088 20/10/2026»), y tomar esa fecha pasaba el pago a dólares con la tasa de otro
+  // día (el 14/11/2026, una transferencia de hoy entró con fecha 20/10 y dejó 5,83 $ a favor que no existían). El
+  // aviso sin fecha vale el día en que llegó.
+  const conFecha = limpio.match(/\bfecha:?\s*(\d{1,2})[-/](\d{1,2})[-/](\d{4}|\d{2})\b/i);
   const fecha = conFecha ? leerFecha(conFecha[1], conFecha[2], conFecha[3]) : null;
   const conHora = limpio.match(/\bhora:?\s*(\d{1,2}):(\d{2})/i) ?? limpio.match(/\b(\d{1,2}):(\d{2})\s*(?:[ap]\.?\s*m\.?)?(?:\D|$)/i);
   const hora = conHora && Number(conHora[1]) < 24 && Number(conHora[2]) < 60 ? `${conHora[1].padStart(2, "0")}:${conHora[2]}` : null;

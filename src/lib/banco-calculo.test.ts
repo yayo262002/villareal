@@ -96,6 +96,18 @@ test("una fecha que no existe no se toma", () => {
   if (l.leido) assert.equal(l.movimiento.fecha, null);
 });
 
+test("de una captura, solo la fecha del aviso: la de lo que se ve detrás no cuenta", () => {
+  // Una transferencia (sin fecha) con el historial del panel detrás: no es del 20/10, vale el día en que llegó.
+  const conHistorial = leerAvisoDelBanco(
+    "Recibiste una transferencia BDV de PEDRO ANTONIO GOMEZ RIVAS por Bs.158.193,41 bajo el numero de operacion 008000123554 VENTA Nota N.° 000088 20/10/2026 42,5 kg Mozzarella Pagada",
+  );
+  assert.equal(conHistorial.leido, true);
+  if (conHistorial.leido) assert.equal(conHistorial.movimiento.fecha, null);
+  // Con su «en fecha», esa, aunque detrás haya otra.
+  const conFecha = leerAvisoDelBanco(`${CON_TELEFONO} Nota N.° 000088 20/10/2026`);
+  if (conFecha.leido) assert.equal(conFecha.movimiento.fecha, "2026-11-14");
+});
+
 test("la referencia escrita a mano suele ser solo el final", () => {
   assert.equal(mismaReferencia("012345678094", "8094"), true);
   assert.equal(mismaReferencia("8094", "012345678094"), true);
