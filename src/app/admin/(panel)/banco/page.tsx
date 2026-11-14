@@ -13,6 +13,7 @@ import {
 } from "@/lib/acciones";
 import { bs, fechaCorta, fechaDeLaBase, horaDeLaBase, redondear, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
+import { BotonCopiar } from "@/components/boton-copiar";
 import estilos from "../panel.module.css";
 import propios from "./banco.module.css";
 
@@ -322,15 +323,17 @@ export default async function PaginaBanco({ searchParams }: { searchParams: Prom
       <section className="tarjeta" id="telefono">
         <h2 className={estilos.subtitulo}>El teléfono del banco</h2>
         <p>
-          El teléfono que tiene el <strong>BDVapp</strong> manda a la web cada aviso de pago que le llega, con la app <strong>MacroDroid</strong> (gratis, en
-          Google Play). Tiene que quedarse encendido, con datos o wifi, y con la sesión del BDVapp abierta.
+          Un teléfono del negocio le manda a la web cada aviso de pago del banco. Puede ser un <strong>iPhone</strong>, con los <strong>SMS</strong> del BDV
+          y la app Atajos, o un <strong>Android</strong>, con las notificaciones del BDVapp y la app MacroDroid. Tiene que quedarse encendido y con datos o
+          wifi.
         </p>
         {direccion ? (
           <>
             <div className="campo">
-              <label htmlFor="direccion">La dirección para MacroDroid (lleva la clave: no la compartas)</label>
+              <label htmlFor="direccion">La dirección del teléfono (lleva la clave: no la compartas)</label>
               <input id="direccion" type="text" readOnly value={direccion} className={propios.direccion} />
             </div>
+            <BotonCopiar texto={direccion} etiqueta="Copiar la dirección" />
             <form action={crearClaveDelTelefonoDelBanco}>
               <button type="submit" className={estilos.botonEnlace}>
                 Cambiar la clave (la de ahora deja de valer)
@@ -344,8 +347,37 @@ export default async function PaginaBanco({ searchParams }: { searchParams: Prom
             </button>
           </form>
         )}
+        <h3 className={propios.subtituloTelefono}>Con un iPhone (los SMS del BDV)</h3>
         <ol className={propios.pasos}>
-          <li>En el teléfono del banco, instala <strong>MacroDroid</strong> desde Google Play.</li>
+          <li>
+            Que te lleguen a este iPhone los <strong>SMS del BDV</strong> de los pagos recibidos (al número que tiene registrado el banco). Si no te llegan,
+            actívalos con el BDV. El iPhone no deja leer las notificaciones del BDVapp: solo los SMS.
+          </li>
+          <li>
+            Guarda como contacto el número del que llegan esos SMS, con el nombre <strong>BDV</strong>.
+          </li>
+          <li>
+            App <strong>Atajos</strong> → «Automatización» → «+» → <strong>«Mensaje»</strong>. En «Remitente», el contacto <strong>BDV</strong>; en «El
+            mensaje contiene», <strong>Recibiste</strong>. Marca <strong>«Ejecutar inmediatamente»</strong> → «Siguiente» → «Nueva automatización en
+            blanco».
+          </li>
+          <li>
+            Añade la acción <strong>«Obtener contenido de URL»</strong> y pega en la URL la dirección de arriba («Copiar la dirección»). Toca la flechita
+            «&gt;»: Método <strong>POST</strong>; Cuerpo de la solicitud <strong>JSON</strong>; «Añadir nuevo campo» → «Texto», con la clave{" "}
+            <strong>texto</strong> y, de valor, la variable <strong>«Entrada del atajo»</strong> (el mensaje).
+          </li>
+          <li>
+            Para probar, toca ▶ en la automatización: arriba de esta página saldrá que llegó algo «(no era un pago recibido)». Con eso ya está conectado.
+          </li>
+        </ol>
+        <p className="ayuda">
+          El remitente es importante: sin él, cualquiera podría mandarte un SMS que diga «Recibiste…» y se anotaría como un abono. Hace falta iOS 17 o más
+          nuevo para que se ejecute sin preguntar.
+        </p>
+
+        <h3 className={propios.subtituloTelefono}>Con un Android (las notificaciones del BDVapp)</h3>
+        <ol className={propios.pasos}>
+          <li>En el teléfono del banco, con la sesión del BDVapp abierta, instala <strong>MacroDroid</strong> desde Google Play.</li>
           <li>
             «Añadir macro» → <strong>Disparador</strong>: «Notificación» → «Notificación recibida» → elige la app <strong>BDVapp</strong>; en «Texto», que
             contenga <strong>Recibiste</strong>. MacroDroid pedirá el permiso de leer las notificaciones: dáselo.
@@ -366,8 +398,8 @@ export default async function PaginaBanco({ searchParams }: { searchParams: Prom
         </ol>
         <p className="ayuda">
           Si el teléfono no deja dar a MacroDroid el permiso de las notificaciones (pasa en algunos Android Go), activa los SMS del BDV y usa el disparador
-          «SMS recibido» con el texto del SMS en el cuerpo: el aviso dice lo mismo. Un pago que se anota a mano (con su captura, o en la caja) y llega
-          también del banco se une y no se cuenta dos veces.
+          «SMS recibido», solo del número del BDV, con el texto del SMS en el cuerpo: el aviso dice lo mismo. Un pago que se anota a mano (con su captura,
+          o en la caja) y llega también del banco se une y no se cuenta dos veces.
         </p>
       </section>
     </>

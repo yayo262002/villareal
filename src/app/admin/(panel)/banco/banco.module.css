@@ -109,3 +109,9 @@
   margin: var(--espacio-3) 0;
   padding-left: 1.4em;
 }
+
+.subtituloTelefono {
+  margin: var(--espacio-5) 0 0;
+  font-size: 17px;
+  font-weight: 800;
+}

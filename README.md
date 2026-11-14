@@ -1145,6 +1145,15 @@ Binance y otro.
   del banco»), se guarda en `ajustes.banco_clave` y se cambia ahí; sin
   ella la web no acepta nada (401). Las instrucciones paso a paso están en
   esa misma pantalla.
+- **Desde un iPhone** (el dueño lo pidió el 14/11/2026: el Huawei no le
+  funcionó). El iPhone no deja a ninguna app leer las notificaciones del
+  BDVapp, así que va con los **SMS del BDV**: en Atajos, una automatización
+  «Mensaje» del remitente BDV (el número guardado como contacto) que
+  contenga «Recibiste», con «Ejecutar inmediatamente» (iOS 17 o más nuevo),
+  y la acción «Obtener contenido de URL» POST con cuerpo JSON (el campo
+  «texto» con la entrada del atajo). Sin el remitente, cualquiera podría mandar un SMS
+  falso que se anotaría como abono. En el panel, «Copiar la dirección» la
+  copia para pegarla en Atajos.
 - **Qué lee** (`leerAvisoDelBanco` en `src/lib/banco-calculo.ts`, con
   pruebas): los dos avisos que manda el BDV, «Recibiste un PagomovilBDV por
   Bs.57.158,84 del 0424-5550199 Ref: 012345678094 en fecha 14-11-26 hora:
