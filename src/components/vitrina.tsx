@@ -317,6 +317,7 @@ export function FranjaMayorista() {
         <li>Precios al mayor</li>
         <li>Compra más, paga menos</li>
         <li>Tu proveedor para burger &amp; pizza</li>
+        <li>Delivery a Barquisimeto y Cabudare</li>
       </ul>
       <p className={estilos.mayoristaProductos}>Quesos · Embutidos · Salsas · Papas · Huevos · Lácteos · Bebidas</p>
     </section>
@@ -325,7 +326,7 @@ export function FranjaMayorista() {
 
 const CONFIANZA = [
   { icono: "etiqueta", texto: "Precios especiales por volumen" },
-  { icono: "camion", texto: "Entregas y distribución en Barquisimeto" },
+  { icono: "camion", texto: "Delivery a Barquisimeto y Cabudare" },
   { icono: "escudo", texto: "Productos de alta calidad" },
   { icono: "manos", texto: "Tu proveedor de confianza" },
 ] as const;

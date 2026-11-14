@@ -139,6 +139,8 @@ import { leerDocumento, problemaDelDocumento } from "./documento";
 import { esTipoIva, numeroDeFactura } from "./factura-calculo";
 import { revisarVentaPos, totalesDe } from "./pos-calculo";
 import { permitirStockNegativo, ponerPermitirStockNegativo } from "./ajustes";
+import { ponerAjustesDelDelivery } from "./ajustes";
+import { TARIFAS_MAXIMAS, ajustesDelFormulario } from "./delivery";
 import { empujarAviso } from "./push";
 import { avisoDePrueba } from "./avisos";
 import { negocio } from "@/config/negocio";
@@ -2868,4 +2870,20 @@ export async function crearEnlaceDeLaLista(datos: FormData): Promise<void> {
     `${RUTA_DETAL}#enlace`,
     renovar ? "Enlace renovado: el anterior ya no funciona. Manda el nuevo." : "Enlace creado. Mándaselo por WhatsApp: con él ve la lista al día, sin clave.",
   );
+}
+
+// ---------- El delivery de la web ----------
+
+/**
+ * Las tarifas del delivery (`/admin/delivery`): cada fila, hasta cuántos kilómetros y cuántos dólares; y desde qué compra
+ * es gratis. Sin ninguna, la web dice «por confirmar».
+ */
+export async function guardarTarifasDelDelivery(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const filas = Array.from({ length: TARIFAS_MAXIMAS }, (_, i) => ({ hasta_km: texto(datos, `hasta_km_${i}`), precio_usd: texto(datos, `precio_usd_${i}`) }));
+  const resultado = ajustesDelFormulario(filas, texto(datos, "gratis_desde_usd"));
+  if ("error" in resultado) volverConError("/admin/delivery", resultado.error);
+  await ponerAjustesDelDelivery(resultado.ajustes);
+  const cuantas = resultado.ajustes.tarifas.length;
+  volverConExito("/admin/delivery", cuantas === 0 ? "Sin tarifas: la web dice que el delivery se confirma por WhatsApp." : `Tarifas guardadas (${cuantas}). La web ya calcula el delivery con ellas.`);
 }

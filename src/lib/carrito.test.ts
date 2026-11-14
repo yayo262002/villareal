@@ -116,3 +116,31 @@ test("el mensaje del pedido: cada producto con su precio, el total en dólares y
   assert.match(corto, /Total estimado: USD 6,25\.\n/);
   assert.doesNotMatch(corto, /A nombre de|Bs/);
 });
+
+test("el pedido dice cómo se recibe: en la tienda, o el delivery con su dirección, su ubicación, la distancia y su precio en el total", () => {
+  const totales = totalesDelCarrito([{ clave: "3", cantidad: 2 }], [huevos], 100);
+  const tienda = mensajeDePedido({ negocio: "Villa Real", totales, tasa: 100, entrega: { forma: "tienda" } });
+  assert.ok(tienda.includes(`Total estimado: ${usd(12.5)} (${bs(1250)} a la tasa BCV de hoy, ${bs(100)} por dólar).\nEntrega: lo busco en la tienda.\n`), tienda);
+
+  const conPrecio = mensajeDePedido({
+    negocio: "Villa Real",
+    totales,
+    tasa: 100,
+    entrega: { forma: "delivery", direccion: "Calle 30 entre carreras 20 y 21, casa 5", enlace: "https://www.google.com/maps?q=10.07,-69.32", km: 1.4, enZona: true, precio_usd: 1.5 },
+  });
+  assert.ok(conPrecio.includes(`Total estimado con el delivery: ${usd(14)} (${bs(1400)} a la tasa BCV de hoy`), conPrecio);
+  assert.ok(
+    conPrecio.includes(`Entrega: delivery a Calle 30 entre carreras 20 y 21, casa 5.\nMi ubicación: https://www.google.com/maps?q=10.07,-69.32\nDelivery: ${usd(1.5)} (a 1,4 km de la tienda).`),
+    conPrecio,
+  );
+
+  const porConfirmar = mensajeDePedido({ negocio: "Villa Real", totales, tasa: null, entrega: { forma: "delivery", direccion: "Urb. El Pedregal", enlace: null, km: 6.3, enZona: true, precio_usd: null } });
+  assert.ok(porConfirmar.includes(`Total estimado: ${usd(12.5)}.\nEntrega: delivery a Urb. El Pedregal.\nDelivery: por confirmar (a 6,3 km de la tienda).`), porConfirmar);
+
+  const gratis = mensajeDePedido({ negocio: "Villa Real", totales, tasa: null, entrega: { forma: "delivery", direccion: "", enlace: "https://www.google.com/maps?q=10,-69", km: 2, enZona: true, precio_usd: 0 } });
+  assert.ok(gratis.includes("Entrega: delivery.\nMi ubicación: https://www.google.com/maps?q=10,-69\nDelivery: gratis (a 2 km de la tienda)."), gratis);
+
+  const lejos = mensajeDePedido({ negocio: "Villa Real", totales, tasa: null, entrega: { forma: "delivery", direccion: "Quíbor", enlace: null, km: 33.5, enZona: false, precio_usd: null } });
+  assert.ok(lejos.includes("Estoy fuera de Barquisimeto y Cabudare (a 33,5 km de la tienda): ¿me confirman si llegan y cuánto cuesta?"), lejos);
+  assert.ok(lejos.includes(`Total estimado: ${usd(12.5)}.`), lejos);
+});

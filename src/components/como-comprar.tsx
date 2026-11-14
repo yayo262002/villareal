@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { enlaceMapa, negocio } from "@/config/negocio";
 import estilos from "@/app/page.module.css";
 
 /**
- * «Cómo comprar»: cómo se paga, dónde está la tienda, el horario y el
+ * «Cómo comprar»: cómo se paga, el delivery, dónde está la tienda, el horario y el
  * enlace para pedir precio al mayor. Lo comparten la página de cada
  * producto y la de cada marca.
  */
@@ -15,6 +16,13 @@ export function ComoComprar({ mayor }: { mayor: string | null }) {
         <div>
           <dt>Formas de pago</dt>
           <dd>Pago móvil, transferencia, efectivo, Zelle o Binance. En bolívares, a la tasa del día.</dd>
+        </div>
+        <div>
+          <dt>Delivery</dt>
+          <dd>
+            A Barquisimeto y Cabudare. En el <Link href="/carrito">carrito</Link>, con tu ubicación o tu dirección, te decimos el costo según la distancia. También
+            puedes buscarlo en la tienda.
+          </dd>
         </div>
         {(negocio.direccion || negocio.ciudad) && (
           <div>

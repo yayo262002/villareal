@@ -8,8 +8,9 @@ const CABECERAS_DE_SEGURIDAD = [
   { key: "X-Frame-Options", value: "DENY" },
   // Al salir hacia otra web se dice de qué sitio se viene, no de qué página.
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // La web no usa ubicación ni micrófono: se cierran. La cámara sí, para las fotos de las notas.
-  { key: "Permissions-Policy", value: "geolocation=(), microphone=(), camera=(self)" },
+  // El micrófono, cerrado. La ubicación, solo para la propia web: el carrito la pide para el delivery («Usar mi
+  // ubicación»). La cámara, también solo la propia web, para las fotos de las notas.
+  { key: "Permissions-Policy", value: "geolocation=(self), microphone=(), camera=(self)" },
 ];
 
 const nextConfig: NextConfig = {

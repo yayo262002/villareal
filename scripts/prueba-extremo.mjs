@@ -2072,13 +2072,51 @@ async function probarVitrina() {
   );
 }
 
+/**
+ * El delivery de la web: el carrito pregunta a /api/delivery por el GPS o por la dirección, y el panel pone las tarifas.
+ * Una dirección por calle y carrera se sitúa en el plano sin preguntar al mapa (en local el mapa está apagado).
+ */
+async function probarDelivery() {
+  const cerca30 = "Calle 30 entre carreras 20 y 21";
+  let d = await (await fetch(base + `/api/delivery?direccion=${encodeURIComponent(cerca30)}`)).json();
+  comprobar(
+    "delivery: una dirección por calle y carrera, a unos 1,4 km de la tienda, en la zona y, sin tarifas, por confirmar",
+    d.ok === true && d.km >= 1.2 && d.km <= 1.6 && d.en_zona === true && d.precio_usd === null && d.lugar.includes("calle 30") && Number.isFinite(d.punto?.lat),
+    JSON.stringify(d),
+  );
+  const lejos = await (await fetch(base + "/api/delivery?lat=10.48&lon=-66.9")).json();
+  comprobar("delivery: desde Caracas (GPS), fuera de Barquisimeto y Cabudare, sin precio", lejos.ok === true && lejos.en_zona === false && lejos.precio_usd === null && lejos.km > 200, JSON.stringify(lejos));
+  comprobar("delivery: una ubicación que no se entiende da 400", (await fetch(base + "/api/delivery?lat=abc&lon=1")).status === 400);
+  const nada = await (await fetch(base + "/api/delivery?direccion=" + encodeURIComponent("la casa azul de la esquina"))).json();
+  comprobar("delivery: una dirección que no se encuentra lo dice y ofrece la ubicación", nada.ok === false && nada.motivo.includes("Usar mi ubicación"), JSON.stringify(nada));
+
+  const panel = await pagina("/admin/delivery");
+  comprobar("panel: la pantalla del delivery, con las tarifas y probar una dirección", panel.status === 200 && panel.html.includes('name="hasta_km_0"') && panel.html.includes('name="probar"'));
+  let r = await enviar("/admin/delivery", 'name="hasta_km_0"', { hasta_km_0: "3", precio_usd_0: "" });
+  comprobar("panel: una tarifa a medias no se guarda y dice qué falta", r.destino.includes("falta el precio"), r.destino);
+  r = await enviar("/admin/delivery", 'name="hasta_km_0"', { hasta_km_0: "6", precio_usd_0: "2,5", hasta_km_1: "3", precio_usd_1: "1,50", gratis_desde_usd: "50" });
+  comprobar("panel: las tarifas se guardan", r.destino.includes("Tarifas guardadas (2)"), r.destino);
+  d = await (await fetch(base + `/api/delivery?direccion=${encodeURIComponent(cerca30)}`)).json();
+  comprobar("delivery: con tarifas, el precio del primer tramo que llega (1,4 km → 1,50 $) y el monto del gratis", cerca(d.precio_usd, 1.5) && cerca(d.gratis_desde_usd, 50), JSON.stringify(d));
+  const prueba = await pagina(`/admin/delivery?probar=${encodeURIComponent(cerca30)}`);
+  comprobar("panel: probar una dirección dice la distancia y lo que cobra la web", legible(prueba.html).includes("km de la tienda") && legible(prueba.html).includes(usd("1,50")));
+
+  const carrito = await fetch(base + "/carrito");
+  comprobar("el carrito puede pedir la ubicación del teléfono (solo la propia web)", (carrito.headers.get("permissions-policy") ?? "").includes("geolocation=(self)"));
+  comprobar("la portada dice que hay delivery", legible((await portadaCon("Delivery a Barquisimeto y Cabudare")).html).includes("Delivery a Barquisimeto y Cabudare"));
+}
+
 async function probarSinEscribir() {
+  // El delivery solo lee: una dirección por calle y carrera no pregunta al mapa.
+  const delivery = await (await fetch(base + `/api/delivery?direccion=${encodeURIComponent("Calle 30 entre carreras 20 y 21")}`)).json();
+  comprobar("delivery: la web calcula la distancia de una dirección por calle y carrera", delivery.ok === true && delivery.km > 1 && delivery.km < 2 && delivery.en_zona === true, JSON.stringify(delivery));
   const pantallas = [
     ["/admin", "Resumen", "Hoy,"],
     ["/admin/clientes", "Clientes", "Cliente nuevo"],
     ["/admin/ventas", "Ventas", "Agregar producto"],
     ["/admin/pagos", "Abonos", "Registrar abono"],
     ["/admin/despacho", "Despacho", "Ruta de despacho"],
+    ["/admin/delivery", "Delivery", "Tarifas por distancia"],
     ["/admin/cuentas", "Lo que te deben", "Notas que te deben"],
     ["/admin/inventario", "Inventario", "Recuento o merma"],
     ["/admin/estadisticas", "Estadísticas", "Por mes"],
@@ -3174,6 +3212,7 @@ try {
     await probarCostosUnidos();
     await probarLibroDeCompras();
     await probarVitrina();
+    await probarDelivery();
     await probarTareaDiaria();
     await probarRecuperacion();
     await probarFreno();

@@ -2,21 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { cuantoDe, mensajeDePedido, pasoDe, ponerCantidad, totalesDelCarrito, type ProductoDelCarrito } from "@/lib/carrito";
+import { cuantoDe, mensajeDePedido, pasoDe, ponerCantidad, totalesDelCarrito, type Entrega, type ProductoDelCarrito } from "@/lib/carrito";
 import { aBolivares, bs, usd } from "@/lib/dinero";
 import { IconoWhatsapp } from "@/components/icono-whatsapp";
 import { guardarCarrito, useCarrito } from "./almacen";
+import { ElegirEntrega } from "./entrega";
 import estilos from "./carrito.module.css";
 
 type Datos = { productos: ProductoDelCarrito[]; tasa: number | null };
 
 /**
  * El carrito: lo elegido con sus precios de hoy, cambiar cantidades o
- * quitar, el total estimado en dólares y en bolívares, y enviar el pedido
- * por WhatsApp con todo escrito. Enviarlo no registra nada: el negocio
+ * quitar, el total estimado en dólares y en bolívares, cómo lo recibe
+ * (delivery, con su costo según la distancia, o en la tienda) y enviar el
+ * pedido por WhatsApp con todo escrito. Enviarlo no registra nada: el negocio
  * contesta con la disponibilidad y el total.
  */
-export function PaginaCarrito({ negocio, whatsapp }: { negocio: string; whatsapp: string | null }) {
+export function PaginaCarrito({ negocio, whatsapp, direccionTienda }: { negocio: string; whatsapp: string | null; direccionTienda: string }) {
   const lineas = useCarrito();
   const [datos, setDatos] = useState<Datos | null>(null);
   const [fallo, setFallo] = useState(false);
@@ -24,6 +26,7 @@ export function PaginaCarrito({ negocio, whatsapp }: { negocio: string; whatsapp
   const [suNegocio, setSuNegocio] = useState("");
   const [nota, setNota] = useState("");
   const [vaciar, setVaciar] = useState(false);
+  const [entrega, setEntrega] = useState<Entrega>({ forma: "delivery", direccion: "", enlace: null, km: null, enZona: true, precio_usd: null });
   const claves = [...new Set(lineas.map((l) => l.clave))].sort().join(",");
 
   // Los nombres y los precios se piden cada vez: nunca se pide con un precio viejo.
@@ -59,7 +62,11 @@ export function PaginaCarrito({ negocio, whatsapp }: { negocio: string; whatsapp
   }
 
   const totales = totalesDelCarrito(lineas, datos.productos, datos.tasa);
-  const mensaje = mensajeDePedido({ negocio, totales, tasa: datos.tasa, nombre, negocioDelCliente: suNegocio, nota });
+  const mensaje = mensajeDePedido({ negocio, totales, tasa: datos.tasa, nombre, negocioDelCliente: suNegocio, nota, entrega });
+  // El delivery con precio entra en el total; por confirmar, o fuera de la zona, no.
+  const delivery = entrega.forma === "delivery" && entrega.enZona ? entrega.precio_usd : null;
+  const totalUsd = Math.round((totales.total_usd + (delivery ?? 0)) * 100) / 100;
+  const totalBs = totalUsd > 0 ? aBolivares(totalUsd, datos.tasa) : null;
   const enlace = whatsapp ? `https://wa.me/${whatsapp}?text=${encodeURIComponent(mensaje)}` : null;
   const disponibles = totales.lineas.filter((l) => l.producto);
   const cambiar = (clave: string, unidad: string, cantidad: number) => guardarCarrito(ponerCantidad(lineas, clave, cantidad, unidad));
@@ -134,9 +141,14 @@ export function PaginaCarrito({ negocio, whatsapp }: { negocio: string; whatsapp
       <section className={estilos.resumen} aria-label="Total del pedido">
         <p className={estilos.total}>
           {/* «Total estimado:» encima, el total en bolívares grande y los dólares debajo. */}
-          Total estimado: <strong>{totales.total_bs !== null ? bs(totales.total_bs) : usd(totales.total_usd)}</strong>
-          {totales.total_bs !== null && <span>{usd(totales.total_usd)}</span>}
+          {delivery ? "Total estimado con el delivery:" : "Total estimado:"} <strong>{totalBs !== null ? bs(totalBs) : usd(totalUsd)}</strong>
+          {totalBs !== null && <span>{usd(totalUsd)}</span>}
         </p>
+        {entrega.forma === "delivery" && (
+          <p className={estilos.lineaDelivery}>
+            Delivery: <strong>{delivery === 0 ? "gratis" : delivery !== null ? usd(delivery) : entrega.enZona ? "por confirmar" : "fuera de la zona, por confirmar"}</strong>
+          </p>
+        )}
         {datos.tasa && <p className={estilos.ayuda}>Bolívares a la tasa BCV de hoy: {bs(datos.tasa)} por dólar.</p>}
         {totales.sinPrecio > 0 && (
           <p className={estilos.ayuda}>
@@ -144,6 +156,8 @@ export function PaginaCarrito({ negocio, whatsapp }: { negocio: string; whatsapp
           </p>
         )}
         {totales.noDisponibles > 0 && <p className={estilos.ayuda}>Lo que ya no está en la web no entra en el pedido.</p>}
+
+        <ElegirEntrega compraUsd={totales.total_usd} tasa={datos.tasa} direccionTienda={direccionTienda} alCambiar={setEntrega} />
 
         <div className={estilos.quien}>
           <label>
@@ -156,7 +170,7 @@ export function PaginaCarrito({ negocio, whatsapp }: { negocio: string; whatsapp
           </label>
           <label className={estilos.nota}>
             <span>Nota (opcional)</span>
-            <input type="text" value={nota} onChange={(e) => setNota(e.target.value)} maxLength={200} placeholder="Para el viernes · Lo busco en la tienda" />
+            <input type="text" value={nota} onChange={(e) => setNota(e.target.value)} maxLength={200} placeholder="Para el viernes · Llamar al llegar" />
           </label>
         </div>
 

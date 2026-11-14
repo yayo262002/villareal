@@ -178,7 +178,11 @@ src/lib/portadas.ts       Qué familias traen su foto en public/familias/, y su 
 src/lib/cache-de-fotos.ts Cuánto se guardan las fotos que la web sirve desde la base (un año en el teléfono con su ?v=)
 src/lib/vitrina.ts        Lo que enseña la web: productos publicados con su precio, sus marcas, su foto y sus familias; buscar
 src/components/vitrina.tsx  Las piezas de la web: tarjetas de producto, de familia y de combo, la franja de confianza…
-src/lib/carrito.ts        El carrito: cantidades, totales y el mensaje del pedido para WhatsApp
+src/lib/carrito.ts        El carrito: cantidades, totales y el mensaje del pedido para WhatsApp (con la entrega)
+src/lib/delivery.ts       El delivery: la tienda en el plano, la distancia, la zona, el precio por tarifas (puro, con pruebas)
+src/lib/delivery-servidor.ts  El delivery de un sitio (GPS o dirección): el plano o el mapa libre, y las tarifas del panel
+src/components/carrito/entrega.tsx  «¿Cómo lo recibes?» en el carrito: delivery (con «Usar mi ubicación») o en la tienda
+src/app/admin/(panel)/delivery/  Las tarifas del delivery por distancia y «Probar una dirección»
 src/components/carrito/   «Agregar», el contador de la cabecera y la página del carrito (lo guarda el teléfono)
 src/app/api/carrito/      Dice al carrito los nombres y los precios de hoy de lo que lleva
 src/app/productos/, categoria/, ofertas/, carrito/  Las páginas de la vitrina
@@ -1351,6 +1355,26 @@ Binance y otro.
   hasta que el negocio responda**: abrir WhatsApp no registra nada, y el
   dueño anota la venta en el panel como siempre. Los buscadores no
   guardan esta página.
+- **El delivery** (lo más importante para el dueño, 13/11/2026). En el
+  carrito, «¿Cómo lo recibes?»: **delivery** a Barquisimeto y Cabudare o
+  **lo busco en la tienda**. Con delivery, «Usar mi ubicación» (el GPS del
+  teléfono; la web lo puede pedir porque `Permissions-Policy` deja
+  `geolocation=(self)`) o la dirección escrita: por calle y carrera se
+  sitúa en el plano del centro y, si no (una urbanización, un centro
+  comercial), se busca en el mapa libre (`/api/delivery`,
+  `src/lib/delivery-servidor.ts`). La web dice a cuántos kilómetros está
+  de la tienda, **en línea recta**, y el precio del delivery con las
+  **tarifas del panel** (`/admin/delivery`, en el menú «Delivery»: hasta
+  tantos km, tantos dólares, y si se quiere, gratis desde un monto de
+  compra; «Probar una dirección» dice la distancia y lo que cobraría). Sin
+  tarifas, o más allá de la última, «por confirmar»; fuera de
+  Barquisimeto y Cabudare (los alrededores del plano), se confirma por
+  WhatsApp. El delivery con precio entra en el total, y al pedido por
+  WhatsApp van la forma de entrega, la dirección, el enlace a su ubicación
+  en Google Maps, la distancia y el precio. El teléfono recuerda la forma,
+  la dirección y la ubicación para el próximo pedido. Las cuentas, con
+  pruebas, en `src/lib/delivery.ts`; la portada, «Cómo comprar» y el pie
+  dicen que hay delivery.
 - **Las fotos** de la portada, de las familias y de referencia de cada
   producto son fotos de comida con licencia libre (CC0 o dominio público),
   guardadas en `public/` con sus créditos (`public/familias/CREDITOS.md` y

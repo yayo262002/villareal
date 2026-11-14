@@ -117,10 +117,11 @@ export function CabeceraPublica({ actual = null }: { actual?: SeccionPublica | n
 }
 
 const PIE = [
-  { texto: "Pedidos al por mayor", trazo: '<path d="M2 6h11v10H2Z"/><path d="M13 9h4l3 3v4h-7"/><circle cx="6" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>' },
+  { texto: "Pedidos al por mayor", trazo: '<path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5Z"/><path d="m3 7.5 9 4.5 9-4.5M12 12v9"/>' },
   { texto: "Calidad garantizada", trazo: '<path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>' },
   { texto: "Múltiples formas de pago", trazo: '<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19M6 15h4"/>' },
-  { texto: "Barquisimeto", trazo: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>' },
+  // El delivery, que es lo que más se pregunta.
+  { texto: "Delivery a Barquisimeto y Cabudare", trazo: '<path d="M2 6h11v10H2Z"/><path d="M13 9h4l3 3v4h-7"/><circle cx="6" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>' },
 ];
 
 export function PiePublico() {

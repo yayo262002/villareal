@@ -24,8 +24,10 @@ export default function PaginaDelCarrito() {
         <section className={estilos.seccion} aria-labelledby="titulo-carrito">
           <EncabezadoDePagina
             id="titulo-carrito"
-            titulo="Tu pedido" entradilla="Revisa lo que llevas, ajusta las cantidades y envíanos el pedido por WhatsApp. Te respondemos con la disponibilidad y el total." />
-          <PaginaCarrito negocio={negocio.nombre} whatsapp={negocio.whatsapp || null} />
+            titulo="Tu pedido"
+            entradilla="Revisa lo que llevas, elige delivery o retiro en la tienda y envíanos el pedido por WhatsApp. Te respondemos con la disponibilidad y el total."
+          />
+          <PaginaCarrito negocio={negocio.nombre} whatsapp={negocio.whatsapp || null} direccionTienda={negocio.direccion.split(",")[0]} />
         </section>
       </PaginaDeVitrina>
       <PiePublico />

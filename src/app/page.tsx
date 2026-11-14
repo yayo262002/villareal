@@ -94,7 +94,9 @@ export default async function PaginaInicio() {
               <h1 id="titulo-portada" className={estilos.titulo}>
                 Todo para tu <span>burger &amp; pizzería</span>
               </h1>
-              <p className={estilos.subtitulo}>Tu proveedor de confianza para negocios de comida en {negocio.localidad}.</p>
+              <p className={estilos.subtitulo}>
+                Tu proveedor de confianza para negocios de comida en {negocio.localidad}. Delivery a Barquisimeto y Cabudare.
+              </p>
               <div className={estilos.botones}>
                 <Link href="/productos" className={`boton ${estilos.botonOro} ${estilos.botonGrande}`}>
                   Ver todos los productos
@@ -184,6 +186,12 @@ export default async function PaginaInicio() {
                   <dd>{[negocio.direccion, negocio.ciudad].filter(Boolean).join(", ")}</dd>
                 </div>
               )}
+              <div>
+                <dt>Delivery</dt>
+                <dd>
+                  A Barquisimeto y Cabudare. En el <Link href="/carrito">carrito</Link> te decimos el costo según la distancia.
+                </dd>
+              </div>
               {negocio.horario && (
                 <div>
                   <dt>Horario</dt>

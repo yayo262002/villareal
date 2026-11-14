@@ -4,6 +4,7 @@ import { fechaCorta, hoy } from "./dinero";
 import { esFinDeSemana, lunesDespuesDe } from "./tasa";
 import { IVA_GENERAL_POR_DEFECTO } from "./factura-calculo";
 import { CLAVES_REGLAS_DETAL, reglasDesdeAjustes, type ReglasDelDetal } from "./detal-calculo";
+import { leerAjustesDeDelivery, type AjustesDeDelivery } from "./delivery";
 
 /**
  * Ajustes sueltos del negocio, guardados como clave y valor. La tasa del
@@ -238,4 +239,13 @@ export async function enlaceDeLaLista(): Promise<string | null> {
 
 export async function ponerEnlaceDeLaLista(enlace: string): Promise<void> {
   await guardar("enlace_lista_detal", enlace);
+}
+
+/** Las tarifas del delivery de la web (`/admin/delivery`): sin poner, todo por confirmar. */
+export async function ajustesDelDelivery(): Promise<AjustesDeDelivery> {
+  return leerAjustesDeDelivery((await leer("delivery")).get("delivery")?.valor);
+}
+
+export async function ponerAjustesDelDelivery(ajustes: AjustesDeDelivery): Promise<void> {
+  await guardar("delivery", JSON.stringify(ajustes));
 }

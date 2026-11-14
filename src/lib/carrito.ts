@@ -127,12 +127,46 @@ export function cuantoDe(cantidad: number, producto: Pick<ProductoDelCarrito, "p
 }
 
 /**
+ * Cómo recibe el pedido: lo busca en la tienda, o se lo llevan (delivery) a su dirección, con su ubicación en el mapa
+ * si la dio, a cuántos kilómetros está y lo que cuesta (null: por confirmar; 0: gratis).
+ */
+export type Entrega =
+  | { forma: "tienda" }
+  | { forma: "delivery"; direccion: string; enlace: string | null; km: number | null; enZona: boolean; precio_usd: number | null };
+
+function km(n: number): string {
+  return `${new Intl.NumberFormat("es-VE", { maximumFractionDigits: 1 }).format(n)} km`;
+}
+
+/** Las líneas de la entrega en el pedido: cómo, a dónde y cuánto. */
+function lineasDeEntrega(entrega: Entrega): string[] {
+  if (entrega.forma === "tienda") return ["Entrega: lo busco en la tienda."];
+  const lineas = [`Entrega: delivery${entrega.direccion.trim() ? ` a ${entrega.direccion.trim()}` : ""}.`];
+  if (entrega.enlace) lineas.push(`Mi ubicación: ${entrega.enlace}`);
+  const distancia = entrega.km !== null ? ` (a ${km(entrega.km)} de la tienda)` : "";
+  if (!entrega.enZona && entrega.km !== null) lineas.push(`Estoy fuera de Barquisimeto y Cabudare${distancia}: ¿me confirman si llegan y cuánto cuesta?`);
+  else if (entrega.precio_usd === 0) lineas.push(`Delivery: gratis${distancia}.`);
+  else if (entrega.precio_usd !== null) lineas.push(`Delivery: ${usd(entrega.precio_usd)}${distancia}.`);
+  else lineas.push(`Delivery: por confirmar${distancia}.`);
+  return lineas;
+}
+
+/**
  * El mensaje del pedido para WhatsApp: cada producto con cuánto y su
- * precio, el total estimado (en dólares y, con tasa, en bolívares) y quién
+ * precio, el total estimado (en dólares y, con tasa, en bolívares), cómo
+ * lo recibe (con el delivery, si ya tiene precio, en el total) y quién
  * pide, si lo dijo. Los que no tienen precio van «por confirmar».
  */
-export function mensajeDePedido(datos: { negocio: string; totales: Totales; tasa: number | null; nombre?: string; negocioDelCliente?: string; nota?: string }): string {
-  const { totales } = datos;
+export function mensajeDePedido(datos: {
+  negocio: string;
+  totales: Totales;
+  tasa: number | null;
+  nombre?: string;
+  negocioDelCliente?: string;
+  nota?: string;
+  entrega?: Entrega;
+}): string {
+  const { totales, entrega } = datos;
   const lineas = [`Hola ${datos.negocio}, quiero hacer este pedido:`];
   for (const l of totales.lineas) {
     if (!l.producto) continue;
@@ -144,9 +178,14 @@ export function mensajeDePedido(datos: { negocio: string; totales: Totales; tasa
     );
   }
   if (totales.total_usd > 0) {
-    const enBs = totales.total_bs !== null && datos.tasa ? ` (${bs(totales.total_bs)} a la tasa BCV de hoy, ${bs(datos.tasa)} por dólar)` : "";
-    lineas.push(`Total estimado: ${usd(totales.total_usd)}${enBs}${totales.sinPrecio > 0 ? ", más lo que está por confirmar" : ""}.`);
+    // Con el delivery ya con precio, el total lo lleva.
+    const delivery = entrega?.forma === "delivery" && entrega.enZona && entrega.precio_usd !== null ? entrega.precio_usd : 0;
+    const total = redondear(totales.total_usd + delivery);
+    const totalBs = aBolivares(total, datos.tasa);
+    const enBs = totalBs !== null && datos.tasa ? ` (${bs(totalBs)} a la tasa BCV de hoy, ${bs(datos.tasa)} por dólar)` : "";
+    lineas.push(`Total estimado${delivery > 0 ? " con el delivery" : ""}: ${usd(total)}${enBs}${totales.sinPrecio > 0 ? ", más lo que está por confirmar" : ""}.`);
   }
+  if (entrega) lineas.push(...lineasDeEntrega(entrega));
   const quien = [datos.nombre?.trim(), datos.negocioDelCliente?.trim()].filter(Boolean).join(", ");
   if (quien) lineas.push(`A nombre de: ${quien}.`);
   if (datos.nota?.trim()) lineas.push(`Nota: ${datos.nota.trim()}`);
