@@ -155,7 +155,12 @@ export async function loQueTieneElCliente(id: number): Promise<{ ventas: number;
 export async function eliminarCliente(id: number): Promise<boolean> {
   return transaccion(async (tx) => {
     await tx.execute({ sql: "delete from venta_lineas where venta_id in (select id from ventas where cliente_id = ?)", args: [id] });
-    for (const tabla of ["adjuntos", "ventas", "pagos", "recordatorios", "contactos", "precios_especiales"]) {
+    // Lo que entró al banco de este cliente vuelve a la bandeja de Pago móvil: el dinero entró, aunque el cliente ya no esté.
+    await tx.execute({
+      sql: "update movimientos_banco set estado = 'por_conciliar', como = '', cliente_id = null, pago_id = null, resuelto_en = null where cliente_id = ? and estado = 'aplicado'",
+      args: [id],
+    });
+    for (const tabla of ["adjuntos", "ventas", "pagos", "recordatorios", "contactos", "precios_especiales", "pagadores", "avisos_de_pago"]) {
       await tx.execute({ sql: `delete from ${tabla} where cliente_id = ?`, args: [id] });
     }
     const r = await tx.execute({ sql: "delete from clientes where id = ?", args: [id] });

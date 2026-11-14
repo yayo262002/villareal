@@ -1,0 +1,111 @@
+/* Pago móvil: los pagos que entran al banco y esperan a que el dueño diga de quién son. */
+
+.estadoTelefono {
+  margin: 0 0 var(--espacio-4);
+  font-size: 15px;
+  color: var(--color-texto-suave);
+}
+
+.pagos {
+  display: grid;
+  gap: var(--espacio-4);
+  margin: var(--espacio-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pago {
+  display: grid;
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  border: 1px solid var(--color-aviso);
+  border-radius: var(--radio-grande);
+  background: var(--color-aviso-fondo);
+  scroll-margin-top: var(--espacio-6);
+}
+
+.pagoCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--espacio-2) var(--espacio-3);
+}
+
+.pagoMonto {
+  font-size: clamp(22px, 7vw, 28px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.pagoUsd {
+  font-size: 15px;
+  color: var(--color-texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.pagoDatos {
+  margin: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.propuestas {
+  display: grid;
+  gap: var(--espacio-2);
+}
+
+.propuestas form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-2);
+}
+
+.elegir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--espacio-2) var(--espacio-3);
+}
+
+.elegir .campo {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin: 0;
+}
+
+.otrasAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2) var(--espacio-4);
+}
+
+.apartados {
+  display: grid;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.apartados li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-1) var(--espacio-3);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.direccion {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+.pasos {
+  display: grid;
+  gap: var(--espacio-2);
+  margin: var(--espacio-3) 0;
+  padding-left: 1.4em;
+}

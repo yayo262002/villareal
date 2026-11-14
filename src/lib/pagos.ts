@@ -64,6 +64,11 @@ export async function buscarPago(id: number): Promise<Pago | null> {
 export async function eliminarPago(id: number): Promise<boolean> {
   // La captura se queda con el cliente, sin abono: en Turso no se puede contar con la clave foránea.
   await ejecutar("update adjuntos set pago_id = null where pago_id = ?", [id]);
+  // Si el pago entró por el banco, el movimiento vuelve a la bandeja de Pago móvil: el dinero entró, aunque el abono ya no esté.
+  await ejecutar(
+    "update movimientos_banco set estado = 'por_conciliar', como = '', cliente_id = null, pago_id = null, resuelto_en = null where pago_id = ?",
+    [id],
+  );
   const r = await ejecutar("delete from pagos where id = ?", [id]);
   return r.cambios > 0;
 }
@@ -117,7 +122,8 @@ export async function ultimaTasa(): Promise<number | null> {
 
 /**
  * Un abono igual (mismo cliente, fecha, método, moneda y monto) anotado hace
- * un momento: casi siempre es el botón pulsado dos veces, no dos abonos.
+ * un momento: casi siempre es el botón pulsado dos veces, no dos abonos. El
+ * que entró solo del banco no cuenta: el anotado a mano se une con él.
  */
 export async function pagoRepetidoReciente(
   datos: { cliente_id: number; fecha: string; metodo: string; moneda: string; monto: number },
@@ -126,6 +132,8 @@ export async function pagoRepetidoReciente(
   return fila<{ id: number; fecha: string; monto_usd: number }>(
     `select id, fecha, monto_usd from pagos
      where cliente_id = ? and fecha = ? and metodo = ? and moneda = ? and abs(monto - ?) < 0.005 and creado_en >= datetime('now', ?)
+       -- El que abonó solo el banco no cuenta: anotarlo a mano lo une con él (unirPagoConElBanco), no lo repite.
+       and not exists (select 1 from movimientos_banco m where m.pago_id = pagos.id and m.como <> 'anotado')
      order by id desc limit 1`,
     [datos.cliente_id, datos.fecha, datos.metodo, datos.moneda, datos.monto, `-${minutos} minutes`],
   );

@@ -75,6 +75,11 @@ export default function PaginaAyuda() {
           </li>
           <li>Cada abono se aplica a las notas más antiguas del cliente. En su ficha ves cada abono con lo que debía y lo que quedó, y su captura.</li>
           <li>
+            El pago móvil que entra al BDV se abona solo: el teléfono del banco lo manda a la web y se le abona a quien es (por su teléfono, porque ya
+            pagó antes desde ahí o porque lo avisó desde su enlace). Lo que no se sabe de quién es espera en <Link href="/admin/banco">Pago móvil</Link>:
+            eliges el cliente y el siguiente entra solo. Si además lo anotas a mano, no se cuenta dos veces.
+          </li>
+          <li>
             <Link href="/admin/cuentas">Te deben</Link> ordena a los clientes por lo que vence antes. «Recordar» abre WhatsApp con el mensaje y deja
             anotado el día.
           </li>

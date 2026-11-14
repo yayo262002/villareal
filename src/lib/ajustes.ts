@@ -249,3 +249,34 @@ export async function ajustesDelDelivery(): Promise<AjustesDeDelivery> {
 export async function ponerAjustesDelDelivery(ajustes: AjustesDeDelivery): Promise<void> {
   await guardar("delivery", JSON.stringify(ajustes));
 }
+
+/**
+ * La clave con la que el teléfono del negocio manda a la web los avisos del
+ * banco (`/api/banco`). Se crea desde Pago móvil y se cambia ahí si se
+ * compartió de más. null mientras no se haya creado: entonces no entra nada.
+ */
+export async function claveDelBanco(): Promise<string | null> {
+  return (await leer("banco_clave")).get("banco_clave")?.valor || null;
+}
+
+export async function ponerClaveDelBanco(clave: string): Promise<void> {
+  await guardar("banco_clave", clave);
+}
+
+/** La última vez que el teléfono mandó algo, para saber si sigue conectado. */
+export type ContactoDelBanco = { momento: string; era_un_pago: boolean; motivo: string };
+
+export async function ultimoContactoDelBanco(): Promise<ContactoDelBanco | null> {
+  const valor = (await leer("banco_ultimo_contacto")).get("banco_ultimo_contacto")?.valor;
+  if (!valor) return null;
+  try {
+    const c = JSON.parse(valor) as ContactoDelBanco;
+    return typeof c.momento === "string" ? c : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function ponerUltimoContactoDelBanco(contacto: ContactoDelBanco): Promise<void> {
+  await guardar("banco_ultimo_contacto", JSON.stringify(contacto));
+}

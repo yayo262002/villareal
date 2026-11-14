@@ -18,7 +18,8 @@ Tiene dos partes:
 - **El panel** (`/admin`): la cartera de clientes, con alta rápida por
   teléfono y dirección; las ventas, cada una con su nota de entrega para
   imprimir o mandar; los abonos en dólares o en bolívares con la tasa del
-  día, con su recibo por WhatsApp; lo que le deben, nota a nota, los
+  día, con su recibo por WhatsApp; el pago móvil del BDV, que se abona solo
+  al cliente que lo hizo; lo que le deben, nota a nota, los
   recordatorios de cobro y el estado de cuenta de cada cliente; el
   inventario, que entra con las compras y sale con las ventas; los pedidos
   por entregar y la ruta de
@@ -161,6 +162,11 @@ src/lib/conexion.ts       Dónde está la base, según el entorno
 src/lib/clientes.ts       Clientes y su saldo
 src/lib/ventas.ts         Ventas con sus líneas de producto
 src/lib/pagos.ts          Pagos: método, moneda, tasa, equivalente en USD
+src/lib/banco-calculo.ts  Lee el aviso del BDV (monto, teléfono o nombre, referencia, fecha) y las reglas para saber de quién es (puro, con pruebas)
+src/lib/banco.ts          El pago móvil que entra al banco: guardarlo, abonarlo solo a quien es, la bandeja, deshacer, «Ya pagué» y no contar dos veces
+src/app/api/banco/        Donde el teléfono del banco (MacroDroid) manda cada aviso del BDV, con su clave
+src/app/admin/(panel)/banco/  Pago móvil: los pagos por identificar, los abonados, pegar un aviso a mano y cómo se configura el teléfono
+src/app/cuenta/[enlace]/ya-pague/  «Ya pagué» desde el enlace del cliente: la referencia y el monto
 src/lib/ajustes.ts        La tasa del día y los demás ajustes
 src/lib/tasa.ts           Cuándo se acepta una tasa que llega de fuera
 src/lib/tasa-oficial.ts   Trae la tasa del BCV (el fin de semana, la del lunes, de la página del BCV)
@@ -1126,6 +1132,59 @@ Binance y otro.
   y 1 kg, cada peso subido de 5 en 5. Solo lee la base y usa las mismas
   cuentas que el panel; como los bolívares cambian con la tasa, el archivo
   vale para ese día.
+
+## Pago móvil: lo que entra al banco
+
+- **Qué hace** (pedido por el dueño el 14/11/2026: «hazlo automático
+  todo»). El teléfono del negocio que tiene el **BDVapp** (un Huawei Y5
+  2018) reenvía cada aviso de pago a la web con **MacroDroid**: disparador
+  «Notificación recibida» de BDVapp que contenga «Recibiste» (o «SMS
+  recibido», si el teléfono no deja leer las notificaciones), acción
+  «Petición HTTP» POST a `/api/banco?clave=…` con el título y el texto de
+  la notificación. La clave se crea en el panel (Pago móvil → «El teléfono
+  del banco»), se guarda en `ajustes.banco_clave` y se cambia ahí; sin
+  ella la web no acepta nada (401). Las instrucciones paso a paso están en
+  esa misma pantalla.
+- **Qué lee** (`leerAvisoDelBanco` en `src/lib/banco-calculo.ts`, con
+  pruebas): los dos avisos que manda el BDV, «Recibiste un PagomovilBDV por
+  Bs.57.158,84 del 0424-5550199 Ref: 012345678094 en fecha 14-11-26 hora:
+  08:30.» y «Recibiste un PagomovilBDV de PEDRO ANTONIO GOMEZ RIVAS por
+  Bs.2.500,00 bajo el numero de operacion 008000123554» (sin fecha: vale la
+  de cuando llegó), y las transferencias recibidas. Lo que no es un pago
+  recibido (un pago hecho, una clave del banco, una promoción) **no se
+  guarda**; solo se anota la hora, para saber que el teléfono sigue
+  conectado. La misma referencia dos veces es un solo pago.
+- **De quién es**, en este orden (`src/lib/banco.ts`): **ya estaba
+  anotado** (un abono a mano con su captura, o cobrado en la caja, por pago
+  móvil o transferencia, de esos días, con la misma referencia, o sin
+  referencia y el mismo monto), y entonces solo se une; **lo avisó el
+  cliente** desde su enlace de cuenta («¿Ya pagaste?», con la referencia y
+  el monto, `avisos_de_pago`); **ya pagó antes** desde ese teléfono o con
+  ese nombre en el banco (tabla `pagadores`, que se aprende cada vez que
+  el dueño dice de quién era); o es **el teléfono de un cliente**. Si se
+  sabe, se le abona como cualquier abono: en bolívares, con la tasa del día
+  del pago (`tasaEnFecha`), método pago móvil, la referencia del banco y
+  «Entró solo del banco». Si no, espera en **Pago móvil**
+  (`/admin/banco`, tabla `movimientos_banco`) con lo que se le parece
+  («Es de Pizzería La Esquina»: su nombre se parece o debe casi eso) y la
+  lista de clientes para elegir; también «No es de un cliente» y
+  «Descartar». Cada pago avisa en la campanita y en el teléfono del dueño, y
+  el Resumen dice cuántos esperan.
+- **Nunca dos veces.** Si un pago que entró solo se anota además a mano (o
+  en la caja), el abono del banco se borra y queda el anotado, unido al
+  movimiento (`unirPagoConElBanco`); el aviso de «abono repetido» no
+  cuenta los del banco. Borrar un abono que vino del banco (o «Deshacer»
+  en la bandeja) devuelve el pago a la bandeja, y deshacer olvida lo
+  aprendido de ese teléfono. Lo cobrado en el mostrador no enseña nada de
+  quién paga.
+- **Plan B.** Si el teléfono falla, en Pago móvil se pega el aviso (uno o
+  varios seguidos) y se trata igual. Y el cliente puede avisar su pago
+  desde su enlace: se le abona en cuanto llega (diez avisos al día como
+  mucho).
+- **Lo que no hace**: no lee el estado de cuenta del banco ni entra en el
+  BDV; depende de que el teléfono esté encendido, con datos, con la sesión
+  del BDVapp abierta y con MacroDroid fuera del ahorro de batería. Pago
+  móvil dice cuándo llegó lo último que mandó.
 
 ## Proveedores
 

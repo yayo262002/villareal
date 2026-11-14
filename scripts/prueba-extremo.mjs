@@ -2106,10 +2106,139 @@ async function probarDelivery() {
   comprobar("la portada dice que hay delivery", legible((await portadaCon("Delivery a Barquisimeto y Cabudare")).html).includes("Delivery a Barquisimeto y Cabudare"));
 }
 
+/** El pago móvil del BDV: el teléfono manda el aviso, la web lo abona solo o lo deja en la bandeja. Solo en local. */
+async function probarBanco() {
+  const hoyVe = new Date(Date.now() - 4 * 3600e3).toISOString().slice(0, 10);
+  const [anio, mes, dia] = hoyVe.split("-");
+  const conTelefono = (monto, telefono, ref) => `Recibiste un PagomovilBDV por Bs.${monto} del ${telefono} Ref: ${ref} en fecha ${dia}-${mes}-${anio.slice(2)} hora: 08:30.`;
+  const conNombre = (titular, monto, ref) => `Recibiste un PagomovilBDV de ${titular} por Bs.${monto} bajo el numero de operacion ${ref}`;
+  const movimiento = async (ref) => (await consultar("select * from movimientos_banco where referencia = ?", [ref]))[0];
+
+  let panel = await pagina("/admin/banco");
+  comprobar("pago móvil: la pantalla, sin el teléfono conectado todavía", panel.status === 200 && legible(panel.html).includes("todavía no está conectado") && panel.html.includes("Crear la dirección del teléfono"));
+  comprobar("pago móvil: sin clave creada, la web no acepta nada", (await fetch(base + "/api/banco", { method: "POST", body: conTelefono("1,00", "0424-5550199", "1") })).status === 401);
+  let r = await enviar("/admin/banco", ">Crear la dirección del teléfono<", {});
+  comprobar("pago móvil: se crea la dirección del teléfono con su clave", r.destino.includes("Clave nueva creada"), r.destino);
+  const clave = (await consultar("select valor from ajustes where clave = 'banco_clave'"))[0]?.valor ?? "";
+  panel = await pagina("/admin/banco");
+  comprobar("pago móvil: la pantalla enseña la dirección con la clave para MacroDroid", clave.length >= 20 && panel.html.includes(`/api/banco?clave=${clave}`));
+  const avisar = async (cuerpo, cabeceras = {}, conClave = true) =>
+    (await fetch(base + "/api/banco" + (conClave ? `?clave=${clave}` : ""), { method: "POST", headers: cabeceras, body: cuerpo })).json();
+  comprobar("pago móvil: con la clave, el GET dice que la dirección está bien", (await (await fetch(base + `/api/banco?clave=${clave}`)).json()).ok === true);
+
+  r = await enviar("/admin/clientes", 'name="cedula_rif"', { nombre: "Cliente del banco", telefono: "0424-5550199", direccion: "Calle 30 con carrera 20" });
+  const clienteId = Number(r.destino.match(/nuevo=(\d+)/)?.[1]);
+  comprobar("pago móvil: un cliente con el teléfono del que paga", clienteId > 0, r.destino);
+
+  // 1. El aviso con el teléfono de un cliente: entra solo.
+  let a = await avisar(conTelefono("57.158,84", "0424-5550199", "012345678094"));
+  let m = await movimiento("012345678094");
+  const [pago] = m ? await consultar("select * from pagos where id = ?", [m.pago_id]) : [];
+  comprobar(
+    "pago móvil: el aviso con el teléfono de un cliente se le abona solo, en bolívares, con la tasa del día",
+    a.estado === "aplicado" && m?.como === "telefono" && m.cliente_id === clienteId && pago?.cliente_id === clienteId && pago.metodo === "pago_movil" && pago.moneda === "VES" && cerca(pago.monto, 57158.84) && pago.tasa > 0 && pago.fecha === hoyVe,
+    JSON.stringify({ a, m, pago }),
+  );
+  a = await avisar(conTelefono("57.158,84", "0424-5550199", "012345678094"));
+  comprobar(
+    "pago móvil: el mismo aviso dos veces es uno solo",
+    a.estado === "repetido" && (await consultar("select count(*) as n from pagos where referencia = '012345678094'"))[0].n === 1,
+    JSON.stringify(a),
+  );
+  comprobar("pago móvil: cada pago avisa en la campanita", (await consultar("select count(*) as n from avisos where clave = ?", [`banco-${m.id}`]))[0].n === 1);
+
+  // 2. Lo que no es un pago recibido no se guarda, pero dice que el teléfono está conectado.
+  const antes = (await consultar("select count(*) as n from movimientos_banco"))[0].n;
+  a = await avisar("Tu clave de operaciones especiales es 482913. No la compartas.");
+  comprobar(
+    "pago móvil: una clave del banco (no es un pago) no se guarda",
+    a.leido === false && (await consultar("select count(*) as n from movimientos_banco"))[0].n === antes && !JSON.stringify(await consultar("select * from movimientos_banco")).includes("482913"),
+    JSON.stringify(a),
+  );
+  comprobar("pago móvil: la pantalla dice que el teléfono mandó algo hace un momento", legible((await pagina("/admin/banco")).html).includes("hace un momento"));
+
+  // 3. Con el nombre de quien pagó, que nadie conoce: espera en la bandeja, en JSON como lo manda MacroDroid.
+  a = await avisar(JSON.stringify({ titulo: "BDVapp", texto: conNombre("PEDRO ANTONIO GOMEZ RIVAS", "2.500,00", "008000123554") }), { "content-type": "application/json", "x-clave": clave }, false);
+  m = await movimiento("008000123554");
+  comprobar("pago móvil: un pago de alguien que no se conoce espera en la bandeja (clave en la cabecera, cuerpo JSON)", a.estado === "por_conciliar" && m?.estado === "por_conciliar" && m.titular === "PEDRO ANTONIO GOMEZ RIVAS" && m.pago_id === null, JSON.stringify(a));
+  comprobar("pago móvil: el Resumen avisa de que hay un pago por identificar", legible((await pagina("/admin")).html).includes("1 pago móvil por identificar"));
+  panel = await pagina("/admin/banco");
+  comprobar("pago móvil: la bandeja lo enseña con quién lo mandó, para elegir el cliente", legible(panel.html).includes("1 pago por identificar") && panel.html.includes("PEDRO ANTONIO GOMEZ RIVAS") && panel.html.includes("Bs 2.500,00"));
+  r = await enviar("/admin/banco", ">Abonar<", { id: String(m.id), cliente_id: String(clienteId) }, cookie, {}, `value="${m.id}"`);
+  m = await movimiento("008000123554");
+  comprobar(
+    "pago móvil: el dueño dice de quién es y se le abona; se recuerda su nombre",
+    r.destino.includes("Abonado a Cliente del banco") && r.destino.includes("entra solo") && m.estado === "aplicado" && m.como === "a_mano" && m.cliente_id === clienteId &&
+      (await consultar("select cliente_id from pagadores where clave = 'nombre:pedro antonio gomez rivas'"))[0]?.cliente_id === clienteId,
+    r.destino,
+  );
+  a = await avisar(conNombre("PEDRO ANTONIO GOMEZ RIVAS", "1.000,00", "008000123999"));
+  m = await movimiento("008000123999");
+  comprobar("pago móvil: el siguiente pago con ese nombre entra solo", a.estado === "aplicado" && m.como === "conocido" && m.cliente_id === clienteId, JSON.stringify(a));
+
+  // 4. Deshacer: el abono se borra y el pago vuelve a la bandeja; después, «no es de un cliente».
+  r = await enviar("/admin/banco", ">Deshacer<", { id: String(m.id) }, cookie, {}, `value="${m.id}"`);
+  const deshecho = await movimiento("008000123999");
+  comprobar(
+    "pago móvil: deshacer borra el abono y el pago vuelve a esperar",
+    r.destino.includes("Deshecho") && deshecho.estado === "por_conciliar" && deshecho.pago_id === null && (await consultar("select count(*) as n from pagos where id = ?", [m.pago_id]))[0].n === 0,
+    r.destino,
+  );
+  r = await enviar("/admin/banco", ">No es de un cliente<", { id: String(m.id), estado: "no_es_abono" }, cookie, {}, `value="${m.id}"`);
+  comprobar("pago móvil: «no es de un cliente» lo aparta", r.destino.includes("no es de un cliente") && (await movimiento("008000123999")).estado === "no_es_abono", r.destino);
+
+  // 5. Anotado a mano después de entrar solo: queda uno, el anotado (con su captura).
+  const ficha = `/admin/clientes/${clienteId}`;
+  await avisar(conTelefono("1.234,56", "0424-5550199", "111122223333"));
+  const solo = await movimiento("111122223333");
+  r = await enviar(ficha, 'name="monto"', { cliente_id: String(clienteId), fecha: hoyVe, metodo: "pago_movil", monto: "1234,56", tasa: "", referencia: "3333", volver_a: ficha, foto: fotoFirmada() });
+  const unido = await movimiento("111122223333");
+  comprobar(
+    "pago móvil: anotar a mano un pago que ya entró solo no lo cuenta dos veces",
+    solo?.como === "telefono" && r.destino.includes("ya había entrado solo del banco") && unido.como === "anotado" && unido.pago_id !== solo.pago_id &&
+      (await consultar("select count(*) as n from pagos where cliente_id = ? and abs(monto - 1234.56) < 0.005", [clienteId]))[0].n === 1,
+    r.destino,
+  );
+
+  // 6. Anotado a mano un pago que esperaba en la bandeja: se unen.
+  await avisar(conNombre("MARIA PEREZ GOMEZ", "500,00", "777788889999"));
+  r = await enviar(ficha, 'name="monto"', { cliente_id: String(clienteId), fecha: hoyVe, metodo: "pago_movil", monto: "500", tasa: "", referencia: "889999", volver_a: ficha, foto: fotoFirmada() });
+  m = await movimiento("777788889999");
+  comprobar("pago móvil: anotar a mano el pago que esperaba en la bandeja lo une", r.destino.includes("esperaba en la bandeja del banco") && m.estado === "aplicado" && m.como === "anotado" && m.cliente_id === clienteId, r.destino);
+
+  // 7. «Ya pagué» desde el enlace del cliente.
+  escribirEnLocal("update clientes set enlace = 'bancprueabcdef' where id = ?", [clienteId]);
+  const cuenta = await pagina("/cuenta/bancprueabcdef", "");
+  comprobar("pago móvil: la cuenta del cliente ofrece «Ya pagué»", cuenta.status === 200 && cuenta.html.includes("/cuenta/bancprueabcdef/ya-pague") && legible(cuenta.html).includes("¿Ya pagaste por pago móvil o transferencia?"));
+  const yaPague = async (campos) => {
+    const datos = new FormData();
+    for (const [k, v] of Object.entries(campos)) datos.set(k, v);
+    const res = await fetch(base + "/cuenta/bancprueabcdef/ya-pague", { method: "POST", body: datos, redirect: "manual" });
+    return decodeURIComponent(res.headers.get("location") ?? "");
+  };
+  await avisar(conNombre("JOSE RAMIREZ", "800,00", "555566667777"));
+  let destino = await yaPague({ referencia: "7777", monto: "800,00" });
+  m = await movimiento("555566667777");
+  comprobar("pago móvil: el cliente avisa un pago que ya entró y se le abona en el momento", destino.includes("pago=abonado") && m.estado === "aplicado" && m.como === "aviso" && m.cliente_id === clienteId, destino);
+  destino = await yaPague({ referencia: "9999", monto: "Bs. 100,00" });
+  comprobar("pago móvil: un pago avisado que aún no llega queda esperando", destino.includes("pago=esperando") && (await consultar("select count(*) as n from avisos_de_pago where cliente_id = ? and estado = 'pendiente'", [clienteId]))[0].n === 1, destino);
+  a = await avisar(conTelefono("100,00", "0414-0000001", "123400009999"));
+  m = await movimiento("123400009999");
+  comprobar("pago móvil: cuando llega, se le abona solo por su aviso", a.estado === "aplicado" && m.como === "aviso" && m.cliente_id === clienteId, JSON.stringify(a));
+  destino = await yaPague({ referencia: "12", monto: "100" });
+  comprobar("pago móvil: sin referencia que sirva, se le pide", destino.includes("pago=sin_referencia"), destino);
+  comprobar("pago móvil: un enlace que no existe no acepta avisos", (await fetch(base + "/cuenta/zzzzzzzzzzzzzz/ya-pague", { method: "POST", body: new FormData(), redirect: "manual" })).status === 404);
+  const final = legible((await pagina("/admin/banco")).html);
+  comprobar("pago móvil: lo abonado sale en la pantalla, con cómo se supo", final.includes("lo avisó el cliente") && final.includes("ya estaba anotado") && final.includes("por su teléfono"));
+}
+
 async function probarSinEscribir() {
   // El delivery solo lee: una dirección por calle y carrera no pregunta al mapa.
   const delivery = await (await fetch(base + `/api/delivery?direccion=${encodeURIComponent("Calle 30 entre carreras 20 y 21")}`)).json();
   comprobar("delivery: la web calcula la distancia de una dirección por calle y carrera", delivery.ok === true && delivery.km > 1 && delivery.km < 2 && delivery.en_zona === true, JSON.stringify(delivery));
+  // El aviso del banco con una clave equivocada no se lee ni se guarda: solo se comprueba que la puerta está cerrada.
+  const sinClave = await fetch(base + "/api/banco?clave=equivocada", { method: "POST", body: "Recibiste un PagomovilBDV por Bs.1,00" });
+  comprobar("pago móvil: sin la clave buena, la web no acepta avisos del banco (401)", sinClave.status === 401, String(sinClave.status));
   const pantallas = [
     ["/admin", "Resumen", "Hoy,"],
     ["/admin/clientes", "Clientes", "Cliente nuevo"],
@@ -2117,6 +2246,7 @@ async function probarSinEscribir() {
     ["/admin/pagos", "Abonos", "Registrar abono"],
     ["/admin/despacho", "Despacho", "Ruta de despacho"],
     ["/admin/delivery", "Delivery", "Tarifas por distancia"],
+    ["/admin/banco", "Pago móvil", "El teléfono del banco"],
     ["/admin/cuentas", "Lo que te deben", "Notas que te deben"],
     ["/admin/inventario", "Inventario", "Recuento o merma"],
     ["/admin/estadisticas", "Estadísticas", "Por mes"],
@@ -3213,6 +3343,7 @@ try {
     await probarLibroDeCompras();
     await probarVitrina();
     await probarDelivery();
+    await probarBanco();
     await probarTareaDiaria();
     await probarRecuperacion();
     await probarFreno();

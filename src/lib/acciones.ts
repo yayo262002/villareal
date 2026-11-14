@@ -126,6 +126,16 @@ import { NOMBRE_ESTADO_PRODUCTO, claveDe, esEstadoDeProducto, estadoDeProducto, 
 import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
 import { buscarPago, eliminarPago, pagoRepetidoReciente, pagosDeVenta, registrarPago } from "./pagos";
+import {
+  abonarMovimientoA,
+  cambiarEstadoDelMovimiento,
+  crearClaveDelBanco,
+  deshacerMovimiento,
+  quitarAvisoDePago,
+  recibirDelBanco,
+  unirPagoConElBanco,
+  unirVentaConElBanco,
+} from "./banco";
 import { anotarContacto, esTipoDeContacto, TIPOS_DE_CONTACTO } from "./contactos";
 import { duenoDelCodigo, limpiarCodigo, limpiarSku, ponerCodigoAProducto, ponerCodigoAVariante } from "./codigos";
 import { guardarPrecioEspecial, listarPreciosEspecialesDe, quitarPrecioEspecial } from "./precios-especiales";
@@ -1777,6 +1787,7 @@ export async function guardarPago(datos: FormData): Promise<void> {
   }
 
   let pagoId = 0;
+  let delBanco = "";
   try {
     pagoId = await registrarPago({
       cliente_id: clienteId,
@@ -1789,12 +1800,14 @@ export async function guardarPago(datos: FormData): Promise<void> {
       nota: texto(datos, "nota"),
     });
     if (p.foto) await pasarFotoAAdjuntos(p.foto.id, clienteId, null, `Captura del abono del ${fechaCorta(p.fecha)}`, pagoId);
+    // Si este pago ya entró del banco, se unen: no se cuenta dos veces.
+    delBanco = await unirPagoConElBanco(pagoId).catch(() => "");
   } catch (error) {
     // Si el abono ya entró y solo falló la captura, no se vuelve al formulario: se anotaría dos veces.
     if (pagoId) volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado, pero la captura no se guardó: ${mensajeDe(error)}`);
     p.volver(mensajeDe(error));
   }
-  volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado${p.foto ? " con su captura" : ""}.${p.notaDeTasa}${comentarioDeLaCaptura(p)} Abajo, en Abonos, puedes mandarle el recibo.`);
+  volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado${p.foto ? " con su captura" : ""}.${p.notaDeTasa}${comentarioDeLaCaptura(p)}${delBanco} Abajo, en Abonos, puedes mandarle el recibo.`);
 }
 
 /** Igual que `borrarVenta`: la confirmación está en `/admin/pagos/[id]/eliminar`. */
@@ -2375,6 +2388,12 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     if (resultado) volverConExito(`/admin/ventas/${resultado.ventaId}/nota?${vendida}`, `Venta registrada, pero la foto de la nota no se guardó: ${mensajeDe(error)} Súbela desde la nota.`);
     volver(mensajeDe(error));
   }
+  // Lo cobrado por pago móvil o transferencia que ya entró del banco se une a esta venta: no se cuenta dos veces.
+  try {
+    await unirVentaConElBanco(resultado.ventaId);
+  } catch {
+    // La venta ya está guardada; si falla, el pago del banco sigue en su bandeja.
+  }
   const partes = [`Venta registrada: nota ${numeroDeNota(resultado.ventaId)}.`];
   if (resultado.pagado > 0) partes.push(`Cobrados ${usd(resultado.pagado)}.`);
   if (!mostrador && resultado.pendiente > 0) {
@@ -2886,4 +2905,115 @@ export async function guardarTarifasDelDelivery(datos: FormData): Promise<void> 
   await ponerAjustesDelDelivery(resultado.ajustes);
   const cuantas = resultado.ajustes.tarifas.length;
   volverConExito("/admin/delivery", cuantas === 0 ? "Sin tarifas: la web dice que el delivery se confirma por WhatsApp." : `Tarifas guardadas (${cuantas}). La web ya calcula el delivery con ellas.`);
+}
+
+// ---------- Pago móvil: lo que entra al banco ----------
+
+const BANDEJA_DEL_BANCO = "/admin/banco";
+
+/**
+ * Plan B, si el teléfono no manda los avisos: el dueño pega aquí el aviso del
+ * banco (la notificación o el SMS, uno o varios seguidos) y se trata igual
+ * que si hubiera llegado solo.
+ */
+export async function pegarAvisoDelBanco(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const pegado = texto(datos, "texto").slice(0, 20000);
+  // Varios avisos pegados seguidos: cada uno empieza por «Recibiste».
+  const trozos = pegado
+    .split(/(?=Recibiste)/i)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  if (trozos.length === 0) volverConError(BANDEJA_DEL_BANCO, "Pega el aviso del banco: «Recibiste un PagomovilBDV por Bs. …».");
+  const cuenta = { abonados: 0, esperan: 0, repetidos: 0, sin_leer: 0 };
+  let motivo = "";
+  for (const trozo of trozos.slice(0, 50)) {
+    const r = await recibirDelBanco(trozo, "a_mano");
+    if (r.tipo === "no_es_pago") {
+      cuenta.sin_leer++;
+      motivo = r.motivo;
+    } else if (r.tipo === "repetido") cuenta.repetidos++;
+    else if (r.movimiento.estado === "aplicado") cuenta.abonados++;
+    else cuenta.esperan++;
+  }
+  const partes: string[] = [];
+  if (cuenta.abonados) partes.push(cuenta.abonados === 1 ? "Un pago abonado solo a su cliente." : `${cuenta.abonados} pagos abonados solos a sus clientes.`);
+  if (cuenta.esperan) partes.push(cuenta.esperan === 1 ? "Un pago espera abajo a que digas de quién es." : `${cuenta.esperan} pagos esperan abajo a que digas de quién son.`);
+  if (cuenta.repetidos) partes.push(cuenta.repetidos === 1 ? "Uno ya estaba (la misma referencia): no se repite." : `${cuenta.repetidos} ya estaban: no se repiten.`);
+  if (cuenta.sin_leer) {
+    const mensaje = `${cuenta.sin_leer === 1 ? "Un aviso no se pudo leer" : `${cuenta.sin_leer} avisos no se pudieron leer`}: ${motivo}`;
+    if (partes.length === 0) volverConError(BANDEJA_DEL_BANCO, mensaje);
+    partes.push(mensaje);
+  }
+  volverConExito(BANDEJA_DEL_BANCO, partes.join(" "));
+}
+
+/** El dueño dice de quién es un pago que entró y nadie reconoció. */
+export async function abonarPagoDelBanco(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const clienteId = numero(datos, "cliente_id");
+  if (!id) volverConError(BANDEJA_DEL_BANCO, "No se encontró ese pago del banco.");
+  if (!clienteId) volverConError(`${BANDEJA_DEL_BANCO}#pago-${id}`, "Elige de quién es el pago.");
+  let mov: Awaited<ReturnType<typeof abonarMovimientoA>>;
+  try {
+    mov = await abonarMovimientoA(id, clienteId);
+  } catch (error) {
+    volverConError(BANDEJA_DEL_BANCO, mensajeDe(error));
+  }
+  const desde = mov.telefono ? `desde el ${mov.telefono}` : mov.titular ? `a nombre de ${mov.titular}` : "";
+  volverConExito(
+    BANDEJA_DEL_BANCO,
+    `Abonado a ${mov.cliente_nombre}: ${bs(mov.monto_bs)}${mov.monto_usd !== null ? ` (${usd(Number(mov.monto_usd))})` : ""}.${desde ? ` La próxima vez que pague ${desde}, entra solo.` : ""}`,
+  );
+}
+
+/** Deshace un abono que hizo el banco: el pago vuelve a la bandeja. */
+export async function deshacerPagoDelBanco(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  if (!id) volverConError(BANDEJA_DEL_BANCO, "No se encontró ese pago del banco.");
+  let mov: Awaited<ReturnType<typeof deshacerMovimiento>>;
+  try {
+    mov = await deshacerMovimiento(id);
+  } catch (error) {
+    volverConError(BANDEJA_DEL_BANCO, mensajeDe(error));
+  }
+  volverConExito(`${BANDEJA_DEL_BANCO}#pago-${id}`, `Deshecho: el pago de ${bs(mov.monto_bs)} vuelve a esperar arriba a que digas de quién es.`);
+}
+
+/** «No es un abono», «Descartar» o «Volver a la bandeja». */
+export async function marcarPagoDelBanco(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  const estado = texto(datos, "estado");
+  if (!id || !["no_es_abono", "descartado", "por_conciliar"].includes(estado)) volverConError(BANDEJA_DEL_BANCO, "No se encontró ese pago del banco.");
+  try {
+    await cambiarEstadoDelMovimiento(id, estado as "no_es_abono" | "descartado" | "por_conciliar");
+  } catch (error) {
+    volverConError(BANDEJA_DEL_BANCO, mensajeDe(error));
+  }
+  volverConExito(
+    BANDEJA_DEL_BANCO,
+    estado === "por_conciliar"
+      ? "Ese pago vuelve a esperar arriba."
+      : estado === "no_es_abono"
+        ? "Anotado: ese dinero no es de un cliente. Está abajo, en «No eran abonos»."
+        : "Descartado. Está abajo, por si te equivocaste.",
+  );
+}
+
+/** Crea o cambia la clave con que el teléfono manda los avisos del banco. */
+export async function crearClaveDelTelefonoDelBanco(): Promise<void> {
+  await exigirSesion();
+  await crearClaveDelBanco();
+  volverConExito(`${BANDEJA_DEL_BANCO}#telefono`, "Clave nueva creada. Copia la dirección de abajo en MacroDroid: la anterior ya no vale.");
+}
+
+/** Quita un «ya pagué» de un cliente que no va a llegar (se equivocó al escribirlo). */
+export async function quitarAvisoDePagoDelCliente(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id");
+  if (id) await quitarAvisoDePago(id);
+  volverConExito(BANDEJA_DEL_BANCO, "Aviso quitado.");
 }

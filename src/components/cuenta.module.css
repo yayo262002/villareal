@@ -368,3 +368,17 @@
   line-height: 1.5;
   color: var(--color-texto-suave);
 }
+
+/* «¿Ya pagaste?»: la referencia y el monto, para que el pago se abone solo al llegar al banco. */
+.yaPague {
+  display: grid;
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  scroll-margin-top: var(--espacio-5);
+}
+.yaPague .aviso {
+  margin: 0;
+}

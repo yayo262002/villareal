@@ -588,6 +588,59 @@ export const ESQUEMA = `
   create unique index if not exists facturas_compra_unica on facturas_compra(proveedor collate nocase, numero);
   create index if not exists facturas_compra_fecha on facturas_compra(fecha);
 
+  -- Lo que entra al banco (el pago móvil del BDV), tal como lo avisa el
+  -- teléfono del negocio (/api/banco) o como lo pegó el dueño. Cada uno se
+  -- abona solo a quien se sabe que es (estado «aplicado», con el abono en
+  -- pago_id y cómo se supo en «como»), o espera en la bandeja de Pago móvil
+  -- («por_conciliar») a que el dueño diga de quién es. «no_es_abono»: dinero
+  -- que entró y no es de un cliente; «descartado»: repetido o de prueba. La
+  -- referencia del banco no se repite.
+  create table if not exists movimientos_banco (
+    id integer primary key autoincrement,
+    banco text not null default 'BDV',
+    metodo text not null default 'pago_movil',
+    referencia text not null default '',
+    monto_bs real not null,
+    telefono text not null default '',
+    titular text not null default '',
+    fecha text not null,
+    hora text not null default '',
+    texto text not null default '',
+    origen text not null default 'telefono',
+    estado text not null default 'por_conciliar',
+    como text not null default '',
+    cliente_id integer,
+    pago_id integer,
+    creado_en text not null default (datetime('now')),
+    resuelto_en text
+  );
+  create unique index if not exists movimientos_banco_referencia on movimientos_banco(banco, referencia) where referencia <> '';
+  create index if not exists movimientos_banco_estado on movimientos_banco(estado);
+  create index if not exists movimientos_banco_pago on movimientos_banco(pago_id);
+
+  -- Quién paga desde qué teléfono o con qué nombre en el banco: se aprende
+  -- cuando el dueño dice de quién era un pago, y el siguiente entra solo.
+  -- clave: «tel:584245550199» o «nombre:pedro antonio gomez rivas».
+  create table if not exists pagadores (
+    id integer primary key autoincrement,
+    clave text not null unique,
+    cliente_id integer not null,
+    creado_en text not null default (datetime('now'))
+  );
+
+  -- «Ya pagué»: lo que avisa el cliente desde su enlace de cuenta (la
+  -- referencia y el monto). Cuando ese pago entra al banco, se le abona solo.
+  create table if not exists avisos_de_pago (
+    id integer primary key autoincrement,
+    cliente_id integer not null,
+    referencia text not null,
+    monto_bs real not null,
+    estado text not null default 'pendiente',
+    movimiento_id integer,
+    creado_en text not null default (datetime('now'))
+  );
+  create index if not exists avisos_de_pago_cliente on avisos_de_pago(cliente_id);
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (
@@ -647,6 +700,9 @@ export const TABLAS = [
   "facturas",
   "lista_detal",
   "facturas_compra",
+  "movimientos_banco",
+  "pagadores",
+  "avisos_de_pago",
 ] as const;
 
 /**

@@ -1,0 +1,76 @@
+import { claveDelBancoValida, recibirDelBanco } from "@/lib/banco";
+import { bs } from "@/lib/dinero";
+
+/**
+ * POST /api/banco: el teléfono del negocio (el que tiene el BDVapp) manda aquí
+ * cada aviso del banco, con MacroDroid o una app parecida. La clave va en la
+ * dirección (`?clave=…`), en la cabecera `X-Clave` o como `Authorization:
+ * Bearer …`; se crea en el panel, en Pago móvil. El cuerpo puede ser el texto
+ * del aviso tal cual, un formulario o un JSON: se juntan todos sus textos
+ * (el título y el cuerpo de la notificación) y se lee el pago. Lo que no es
+ * un pago recibido no se guarda. Contesta siempre 200 con lo que hizo, salvo
+ * con la clave equivocada (401), para que la app no lo reintente.
+ *
+ * GET /api/banco?clave=…: para comprobar desde el teléfono que la dirección
+ * y la clave están bien. No guarda nada.
+ */
+
+const SIN_CACHE = { "cache-control": "no-store" };
+
+function claveDe(peticion: Request): string {
+  const autorizacion = peticion.headers.get("authorization") ?? "";
+  return (
+    peticion.headers.get("x-clave") ||
+    (autorizacion.startsWith("Bearer ") ? autorizacion.slice(7) : "") ||
+    new URL(peticion.url).searchParams.get("clave") ||
+    ""
+  ).trim();
+}
+
+/** Todos los textos de un JSON (el título, el cuerpo, la app…), en orden, sin entrar demasiado hondo. */
+function textosDe(valor: unknown, hondo = 0): string[] {
+  if (typeof valor === "string") return [valor];
+  if (typeof valor === "number") return [String(valor)];
+  if (hondo > 3 || valor === null || typeof valor !== "object") return [];
+  return Object.values(valor as Record<string, unknown>).flatMap((v) => textosDe(v, hondo + 1));
+}
+
+async function textoDelCuerpo(peticion: Request): Promise<string> {
+  const crudo = (await peticion.text()).slice(0, 8000);
+  const tipo = peticion.headers.get("content-type") ?? "";
+  if (tipo.includes("json") || /^\s*[{[]/.test(crudo)) {
+    try {
+      return textosDe(JSON.parse(crudo)).join(" ");
+    } catch {
+      return crudo;
+    }
+  }
+  if (tipo.includes("application/x-www-form-urlencoded")) {
+    return [...new URLSearchParams(crudo).values()].join(" ");
+  }
+  return crudo;
+}
+
+export async function POST(peticion: Request): Promise<Response> {
+  if (!(await claveDelBancoValida(claveDe(peticion)))) {
+    return Response.json({ ok: false, mensaje: "La clave no es la buena. Cópiala otra vez del panel (Pago móvil)." }, { status: 401, headers: SIN_CACHE });
+  }
+  const texto = await textoDelCuerpo(peticion);
+  const r = await recibirDelBanco(texto, "telefono");
+  if (r.tipo === "no_es_pago") return Response.json({ ok: true, leido: false, mensaje: r.motivo }, { headers: SIN_CACHE });
+  const m = r.movimiento;
+  const mensaje =
+    r.tipo === "repetido"
+      ? `Ya estaba: ${bs(m.monto_bs)}, ref. ${m.referencia || "sin referencia"}.`
+      : m.estado === "aplicado"
+        ? `${bs(m.monto_bs)} abonados a ${m.cliente_nombre}.`
+        : `${bs(m.monto_bs)} por identificar en el panel.`;
+  return Response.json({ ok: true, leido: true, estado: r.tipo === "repetido" ? "repetido" : m.estado, mensaje }, { headers: SIN_CACHE });
+}
+
+export async function GET(peticion: Request): Promise<Response> {
+  if (!(await claveDelBancoValida(claveDe(peticion)))) {
+    return Response.json({ ok: false, mensaje: "La clave no es la buena. Cópiala otra vez del panel (Pago móvil)." }, { status: 401, headers: SIN_CACHE });
+  }
+  return Response.json({ ok: true, mensaje: "La dirección y la clave están bien. El teléfono tiene que mandar cada aviso del banco con POST." }, { headers: SIN_CACHE });
+}

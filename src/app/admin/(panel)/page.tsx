@@ -16,6 +16,7 @@ import { anotarContactoAccion, copiarAhora } from "@/lib/acciones";
 import { estudioDeClientes } from "@/lib/estudio-de-clientes";
 import { describirTrato } from "@/lib/seguimiento";
 import { generarAvisosSiFaltan } from "@/lib/avisos";
+import { resumenDelBanco } from "@/lib/banco";
 import { negocio } from "@/config/negocio";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "./panel.module.css";
@@ -44,7 +45,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
       existencias(),
       estudioDeClientes(hoy()),
     ]);
-  const [hoyCierre, entregas] = await Promise.all([cierreDelDia(hoy()), listarVentasPorEntregar().then(conLineas)]);
+  const [hoyCierre, entregas, banco] = await Promise.all([cierreDelDia(hoy()), listarVentasPorEntregar().then(conLineas), resumenDelBanco()]);
   const fecha = hoy();
   const atrasoDe = (e: (typeof entregas)[number]) => (e.entrega_prevista ? diasEntre(e.entrega_prevista, fecha) : null);
   const atrasadas = entregas.filter((e) => (atrasoDe(e) ?? -1) > 0).length;
@@ -108,6 +109,22 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
           </div>
         </dl>
       </section>
+
+      {banco.por_identificar > 0 && (
+        <section className={`tarjeta ${estilos.tarjetaAviso}`}>
+          <div className={estilos.encabezado}>
+            <h2 className={estilos.subtitulo} style={{ marginBottom: 0 }}>
+              {banco.por_identificar === 1 ? "1 pago móvil por identificar" : `${banco.por_identificar} pagos móviles por identificar`}
+            </h2>
+            <Link href="/admin/banco" className="boton">
+              Decir de quién son
+            </Link>
+          </div>
+          <p className="ayuda" style={{ marginBottom: 0 }}>
+            Entraron al banco y no se sabe de quién son: hasta que lo digas, no están abonados a nadie.
+          </p>
+        </section>
+      )}
 
       {entregas.length > 0 && (
         <section className={`tarjeta ${atrasadas > 0 ? estilos.tarjetaAviso : ""}`}>
