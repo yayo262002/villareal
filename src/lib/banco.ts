@@ -134,7 +134,11 @@ export type Recibido =
  * recibido no se guarda (puede ser una clave del banco). El mismo aviso dos
  * veces (la misma referencia) es uno solo.
  */
-export async function recibirDelBanco(texto: string, origen: "telefono" | "a_mano"): Promise<Recibido> {
+/**
+ * Un aviso del banco. `encabezado`: el día (y la hora) que dice la notificación en la captura, para el aviso que no
+ * trae «en fecha» (la transferencia): sin él vale el día en que llegó al panel.
+ */
+export async function recibirDelBanco(texto: string, origen: "telefono" | "a_mano", encabezado: { fecha: string; hora: string | null } | null = null): Promise<Recibido> {
   const lectura = leerAvisoDelBanco(texto);
   if (origen === "telefono") {
     await ponerUltimoContactoDelBanco({ momento: new Date().toISOString(), era_un_pago: lectura.leido, motivo: lectura.leido ? "" : lectura.motivo });
@@ -144,8 +148,10 @@ export async function recibirDelBanco(texto: string, origen: "telefono" | "a_man
   const ahora = new Date();
   // Sin fecha en el aviso, o con una que no puede ser (de mañana), vale la de cuando llegó.
   const hoyEnVenezuela = fechaEnVenezuela(ahora);
-  const fecha = m.fecha && m.fecha <= hoyEnVenezuela ? m.fecha : hoyEnVenezuela;
-  const hora = m.fecha && m.fecha <= hoyEnVenezuela && m.hora ? m.hora : horaDeLaBase(ahora.toISOString());
+  const delAviso = m.fecha && m.fecha <= hoyEnVenezuela ? m.fecha : null;
+  const delEncabezado = !delAviso && encabezado && encabezado.fecha <= hoyEnVenezuela ? encabezado : null;
+  const fecha = delAviso ?? delEncabezado?.fecha ?? hoyEnVenezuela;
+  const hora = (delAviso && m.hora) || delEncabezado?.hora || horaDeLaBase(ahora.toISOString());
 
   const igual = await movimientoIgual(m.banco, m.referencia, m.monto_bs, m.telefono, m.titular, fecha);
   if (igual) return { tipo: "repetido", movimiento: igual };

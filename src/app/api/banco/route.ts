@@ -1,5 +1,6 @@
 import { claveDelBancoValida, recibirDelBanco } from "@/lib/banco";
-import { bs } from "@/lib/dinero";
+import { bs, fechaEnVenezuela } from "@/lib/dinero";
+import { separarAvisos } from "@/lib/banco-calculo";
 
 /**
  * POST /api/banco: el teléfono del negocio (el que tiene el BDVapp) manda aquí
@@ -58,13 +59,10 @@ export async function POST(peticion: Request): Promise<Response> {
   const texto = await textoDelCuerpo(peticion);
   // El texto leído de una captura de la pantalla puede traer varios avisos: cada uno empieza por «Recibiste». Lo que va
   // antes (la hora, el nombre de la app) se deja; sin ningún aviso, el texto entero (para anotar que el teléfono habló).
-  const avisos = texto
-    .split(/(?=Recibiste)/i)
-    .map((t) => t.trim())
-    .filter((t) => /^recibiste/i.test(t))
-    .slice(0, 20);
+  // Cada uno con el día que dice el encabezado de su notificación («mié, 20:45»), para la transferencia, que no lo trae.
+  const avisos = separarAvisos(texto, fechaEnVenezuela(new Date())).slice(0, 20);
   const resultados = [];
-  for (const aviso of avisos.length > 0 ? avisos : [texto]) resultados.push(await recibirDelBanco(aviso, "telefono"));
+  for (const { aviso, encabezado } of avisos.length > 0 ? avisos : [{ aviso: texto, encabezado: null }]) resultados.push(await recibirDelBanco(aviso, "telefono", encabezado));
   const leidos = resultados.filter((r) => r.tipo !== "no_es_pago");
   if (leidos.length === 0) {
     const primero = resultados[0];

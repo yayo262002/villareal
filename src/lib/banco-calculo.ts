@@ -120,6 +120,62 @@ export function leerAvisoDelBanco(texto: string): LecturaDelBanco {
   return { leido: true, movimiento: { banco: "BDV", metodo, monto_bs: monto, telefono, titular, referencia, fecha, hora } };
 }
 
+const DIAS_DE_LA_SEMANA: Record<string, number> = { dom: 0, lun: 1, mar: 2, mie: 3, jue: 4, vie: 5, sab: 6 };
+
+function sumarDiasA(fecha: string, dias: number): string {
+  const d = new Date(fecha + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * El día que dice el encabezado de la notificación en una captura de la pantalla del teléfono: «PagomóvilBDV
+ * recibido 8:30» (hoy), «… recibido ayer, 18:25», «Transferencia BDV recibida mié, 20:45» (el miércoles pasado),
+ * «… recibido 11/11». Es lo que sabe el teléfono de cuándo llegó cada aviso, y la transferencia, que no trae «en
+ * fecha», no tiene otra cosa: sin esto, una capturada días después se pasaba a dólares con la tasa del día de la
+ * captura. `previo` es el texto que va justo antes del aviso; vale el último encabezado. `hoy`: AAAA-MM-DD en Venezuela.
+ */
+export function fechaDelEncabezado(previo: string, hoy: string): { fecha: string; hora: string | null } | null {
+  const n = normalizar(previo.replace(/\s+/g, " "));
+  const encabezados = [...n.matchAll(/recibid[oa]\s+(hoy|ayer|lun|mar|mie|jue|vie|sab|dom|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)?[\s,.]*(?:a las\s*)?(\d{1,2}:\d{2})?/g)];
+  const ultimo = encabezados[encabezados.length - 1];
+  if (!ultimo || (!ultimo[1] && !ultimo[2])) return null;
+  const [, cuando, horaLeida] = ultimo;
+  const hora = horaLeida && Number(horaLeida.split(":")[0]) < 24 ? horaLeida.padStart(5, "0") : null;
+  let fecha: string | null = null;
+  if (!cuando || cuando === "hoy") fecha = hoy;
+  else if (cuando === "ayer") fecha = sumarDiasA(hoy, -1);
+  else if (cuando in DIAS_DE_LA_SEMANA) {
+    // El día de la semana es de la semana pasada: entre ayer y hace seis días (el de hoy sale solo con la hora).
+    const hoyEs = new Date(hoy + "T00:00:00Z").getUTCDay();
+    const atras = (hoyEs - DIAS_DE_LA_SEMANA[cuando] + 7) % 7 || 7;
+    fecha = sumarDiasA(hoy, -atras);
+  } else {
+    const [d, m, a] = cuando.split(/[/-]/);
+    const anio = a ? a : hoy.slice(0, 4);
+    fecha = leerFecha(d, m, anio);
+    // «11/11» sin año: si cae después de hoy, es del año pasado.
+    if (fecha && !a && fecha > hoy) fecha = leerFecha(d, m, String(Number(hoy.slice(0, 4)) - 1));
+  }
+  if (!fecha || fecha > hoy) return null;
+  return { fecha, hora };
+}
+
+/**
+ * Los avisos que trae un texto (una captura puede traer varios, cada uno empieza por «Recibiste»), cada uno con el día
+ * que dice el encabezado de su notificación, si se ve. Lo que no es un aviso (la hora del teléfono, otras apps) se deja.
+ */
+export function separarAvisos(texto: string, hoy: string): { aviso: string; encabezado: { fecha: string; hora: string | null } | null }[] {
+  const trozos = texto.split(/(?=Recibiste)/i);
+  const avisos: { aviso: string; encabezado: { fecha: string; hora: string | null } | null }[] = [];
+  for (let i = 0; i < trozos.length; i++) {
+    const aviso = trozos[i].trim();
+    if (!/^recibiste/i.test(aviso)) continue;
+    avisos.push({ aviso, encabezado: i > 0 ? fechaDelEncabezado(trozos[i - 1], hoy) : null });
+  }
+  return avisos;
+}
+
 /**
  * Si dos referencias son la misma: la que se escribió a mano suele ser solo
  * las últimas cifras («8094»), así que basta que una termine en la otra, con

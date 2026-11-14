@@ -137,6 +137,7 @@ import {
   unirPagoConElBanco,
   unirVentaConElBanco,
 } from "./banco";
+import { separarAvisos } from "./banco-calculo";
 import { anotarContacto, esTipoDeContacto, TIPOS_DE_CONTACTO } from "./contactos";
 import { duenoDelCodigo, limpiarCodigo, limpiarSku, ponerCodigoAProducto, ponerCodigoAVariante } from "./codigos";
 import { guardarPrecioEspecial, listarPreciosEspecialesDe, quitarPrecioEspecial } from "./precios-especiales";
@@ -2987,15 +2988,13 @@ export async function pegarAvisoDelBanco(datos: FormData): Promise<void> {
   await exigirSesion();
   const pegado = texto(datos, "texto").slice(0, 20000);
   // Varios avisos pegados seguidos: cada uno empieza por «Recibiste».
-  const trozos = pegado
-    .split(/(?=Recibiste)/i)
-    .map((t) => t.trim())
-    .filter(Boolean);
+  const avisos = separarAvisos(pegado, hoy());
+  const trozos = avisos.length > 0 ? avisos : pegado.trim() ? [{ aviso: pegado.trim(), encabezado: null }] : [];
   if (trozos.length === 0) volverConError(BANDEJA_DEL_BANCO, "Pega el aviso del banco: «Recibiste un PagomovilBDV por Bs. …».");
   const cuenta = { abonados: 0, esperan: 0, repetidos: 0, sin_leer: 0 };
   let motivo = "";
-  for (const trozo of trozos.slice(0, 50)) {
-    const r = await recibirDelBanco(trozo, "a_mano");
+  for (const { aviso, encabezado } of trozos.slice(0, 50)) {
+    const r = await recibirDelBanco(aviso, "a_mano", encabezado);
     if (r.tipo === "no_es_pago") {
       cuenta.sin_leer++;
       motivo = r.motivo;

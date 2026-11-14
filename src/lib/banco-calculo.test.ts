@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   clavesDelPagador,
+  fechaDelEncabezado,
   leerAvisoDelBanco,
   leerMontoBs,
   mismaReferencia,
@@ -9,6 +10,7 @@ import {
   montosParecidos,
   nombreParecido,
   referenciaUtil,
+  separarAvisos,
 } from "./banco-calculo.ts";
 
 const CON_TELEFONO = "Recibiste un PagomovilBDV por Bs.57.158,84 del 0424-5550199 Ref: 012345678094 en fecha 14-11-26 hora: 08:30.";
@@ -150,4 +152,31 @@ test("el monto cuadra con lo que debe o con una nota", () => {
   assert.equal(montoCuadra(250, [248.52]), true, "un 1 % de margen por la tasa");
   assert.equal(montoCuadra(260, [248.52]), false);
   assert.equal(montoCuadra(10, [0, -5]), false);
+});
+
+test("el día del encabezado de la notificación: hoy, ayer, el día de la semana pasada o la fecha", () => {
+  // El sábado 14/11/2026.
+  const hoy = "2026-11-14";
+  assert.deepEqual(fechaDelEncabezado("PagomovilBDV recibido 8:30", hoy), { fecha: "2026-11-14", hora: "08:30" });
+  assert.deepEqual(fechaDelEncabezado("… PagomóvilBDV recibido ayer, 18:25", hoy), { fecha: "2026-11-13", hora: "18:25" });
+  assert.deepEqual(fechaDelEncabezado("Transferencia BDV recibida mié, 20:45", hoy), { fecha: "2026-11-11", hora: "20:45" });
+  assert.deepEqual(fechaDelEncabezado("PagomóvilBDV recibido jue, 13:33", hoy), { fecha: "2026-11-12", hora: "13:33" });
+  // El mismo día de la semana que hoy es la semana pasada (el de hoy sale solo con la hora).
+  assert.deepEqual(fechaDelEncabezado("PagomóvilBDV recibido sáb, 09:10", hoy), { fecha: "2026-11-07", hora: "09:10" });
+  assert.deepEqual(fechaDelEncabezado("PagomóvilBDV recibido 9/11", hoy), { fecha: "2026-11-09", hora: null });
+  // Sin encabezado, nada.
+  assert.equal(fechaDelEncabezado("Ajustes Calculadora Contactos", hoy), null);
+});
+
+test("una captura con varios avisos: cada uno con el día de su notificación", () => {
+  const captura =
+    "19:10 Transferencia BDV recibida mié, 20:45 \"Recibiste una transferencia BDV de PEDRO ANTONIO GOMEZ RIVAS por Bs.70.686,22 bajo el numero de operacion 008000123554\" " +
+    "PagomóvilBDV recibido mié, 19:21 Recibiste un PagomovilBDV por Bs.17.852,03 del 0424-5550199 Ref: 012345678094 en fecha 11-11-26 hora: 19:20.";
+  const avisos = separarAvisos(captura, "2026-11-14");
+  assert.equal(avisos.length, 2);
+  assert.deepEqual(avisos[0].encabezado, { fecha: "2026-11-11", hora: "20:45" });
+  assert.match(avisos[0].aviso, /^Recibiste una transferencia/);
+  assert.deepEqual(avisos[1].encabezado, { fecha: "2026-11-11", hora: "19:21" });
+  // El aviso pegado sin encabezado sigue valiendo.
+  assert.deepEqual(separarAvisos("Recibiste un PagomovilBDV por Bs.10,00 del 0424-5550199 Ref: 1234", "2026-11-14")[0].encabezado, null);
 });
