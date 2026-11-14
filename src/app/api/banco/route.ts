@@ -68,7 +68,12 @@ export async function POST(peticion: Request): Promise<Response> {
   const leidos = resultados.filter((r) => r.tipo !== "no_es_pago");
   if (leidos.length === 0) {
     const primero = resultados[0];
-    return Response.json({ ok: true, leido: false, mensaje: primero?.tipo === "no_es_pago" ? primero.motivo : "Llegó vacío." }, { headers: SIN_CACHE });
+    // Lo lee el dueño en el iPhone al terminar el atajo: que diga que está conectado, no solo que no era un pago.
+    const motivo = primero?.tipo === "no_es_pago" ? primero.motivo : "Llegó vacío.";
+    return Response.json(
+      { ok: true, leido: false, mensaje: `Conectado con el panel. En lo que se veía no había ningún pago recibido del BDV (${motivo.replace(/\.$/, "").toLowerCase()}).` },
+      { headers: SIN_CACHE },
+    );
   }
   const mensajes = leidos.map((r) => {
     const m = r.movimiento;
