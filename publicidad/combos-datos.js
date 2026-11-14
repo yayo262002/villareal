@@ -129,12 +129,12 @@ globalThis.COMBOS = [
   },
   {
     // Una bandeja de 200 g con los recortes de las piezas que se rebanan (el dueño, 14/11: «que aparezcan todas las piezas»).
-    // Es un mix: no siempre hay de todo, lleva lo que se esté rebanando en ese momento (el dueño, el mismo día). Las fotos
-    // enseñan las piezas de las que salen los recortes; las palabras dicen que varía.
+    // Surtidos: no siempre hay de todo, lleva lo que se esté rebanando en ese momento (el dueño, el mismo día). Las fotos
+    // enseñan las piezas de las que salen los recortes; las palabras dicen que varía. Sin la palabra «mix»: no le gusta.
     // Al final, con los especiales: no es la pareja de un jamón y un queso, y así no se corre ningún número (ni las etiquetas
     // de las bandejas con su código de barras).
     n: 15,
-    titulo: "Mix de recortes",
+    titulo: "Recortes surtidos",
     productos: [
       ["bolona-de-pollo", "Boloña de pollo"],
       ["jamon-de-espalda", "Jamón de espalda"],
