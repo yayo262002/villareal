@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aplicarPagos, movimientosDeCuenta, repartoDeAbonos } from "./cuentas.ts";
+import { aplicarPagos, centimosDeLaTasa, movimientosDeCuenta, repartoDeAbonos } from "./cuentas.ts";
 
 const ventas = [
   { id: 3, fecha: "2026-09-20", total_usd: 30 },
@@ -116,4 +116,27 @@ test("el reparto deja lo mismo pendiente que aplicarPagos, y lo que sobra queda 
     { venta_id: 1, usd: 10 },
     { venta_id: 2, usd: 2.5 },
   ]);
+});
+
+test("los céntimos de la tasa: un abono en bolívares que paga notas enteras vale justo esas notas", () => {
+  // 70.686,22 Bs a 901,6175 son 78,40 $ por una nota de 78,41: vale 78,41.
+  assert.deepEqual(centimosDeLaTasa([78.41, 135.72], 78.4), { usd: 78.41, diferencia: 0.01, notas: 1 });
+  // Pagó dos notas con 0,40 de más: vale lo que sumaban (y no queda nada a favor).
+  assert.deepEqual(centimosDeLaTasa([387.66, 120.5, 166], 508.56), { usd: 508.16, diferencia: -0.4, notas: 2 });
+  // Lo que le quedaba a una nota pagada por partes: 28,00 por los 28,04 que faltaban.
+  assert.deepEqual(centimosDeLaTasa([28.04, 59.4], 28), { usd: 28.04, diferencia: 0.04, notas: 1 });
+  // Exacto: nada que acomodar.
+  assert.equal(centimosDeLaTasa([78.41], 78.41), null);
+});
+
+test("lo que no son céntimos no se toca: un abono parcial, o más de 0,50 $ o del 1 %", () => {
+  // Abona la mitad de la nota: es un abono parcial, no céntimos.
+  assert.equal(centimosDeLaTasa([100], 50), null);
+  // 1,14 $ de diferencia: el cliente sí lo debe (El Patrón).
+  assert.equal(centimosDeLaTasa([38.19], 37.05), null);
+  // 0,40 $ en una nota de 20 $ es el 2 %: no.
+  assert.equal(centimosDeLaTasa([20], 19.6), null);
+  // Sin notas por pagar, o pagando más de lo que se debe por más de céntimos: no.
+  assert.equal(centimosDeLaTasa([], 50), null);
+  assert.equal(centimosDeLaTasa([40], 45), null);
 });

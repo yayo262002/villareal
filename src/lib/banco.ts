@@ -2,7 +2,7 @@ import "server-only";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { ejecutar, fila, filas } from "./db";
 import { claveDelBanco, ponerClaveDelBanco, ponerUltimoContactoDelBanco, tasaEnFecha } from "./ajustes";
-import { eliminarPago, registrarPago } from "./pagos";
+import { eliminarPago, registrarAbono } from "./pagos";
 import { buscarClientePorTelefono, listarClientes, type ClienteConSaldo } from "./clientes";
 import { listarVentas, type Venta } from "./ventas";
 import { aplicarPagos } from "./cuentas";
@@ -312,7 +312,7 @@ async function unir(movId: number, pagoId: number, clienteId: number, como: Como
 async function abonar(mov: MovimientoBanco, clienteId: number, como: ComoSeSupo): Promise<boolean> {
   const tasa = await tasaEnFecha(mov.fecha);
   if (!tasa) return false;
-  const pagoId = await registrarPago({
+  const { id: pagoId } = await registrarAbono({
     cliente_id: clienteId,
     fecha: mov.fecha,
     metodo: mov.metodo === "transferencia" ? "transferencia" : "pago_movil",

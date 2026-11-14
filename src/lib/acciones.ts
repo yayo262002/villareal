@@ -126,7 +126,7 @@ import { buscarMarca, eliminarMarca, marcaPorNombre, renombrarMarca, unirMarcas 
 import { NOMBRE_ESTADO_PRODUCTO, claveDe, esEstadoDeProducto, estadoDeProducto, nombreDeVenta, vendiblesDe, type EstadoProducto } from "./catalogo";
 import { nuevoEnlace } from "./enlace-cuenta";
 import { numeroDeNota } from "./entregas";
-import { buscarPago, eliminarPago, pagoRepetidoReciente, pagosDeVenta, registrarPago } from "./pagos";
+import { buscarPago, eliminarPago, lasNotasDel, pagoRepetidoReciente, pagosDeVenta, registrarAbono, type Acomodo } from "./pagos";
 import {
   abonarMovimientoA,
   cambiarEstadoDelMovimiento,
@@ -1817,8 +1817,9 @@ export async function guardarPago(datos: FormData): Promise<void> {
 
   let pagoId = 0;
   let delBanco = "";
+  let acomodo: Acomodo | null = null;
   try {
-    pagoId = await registrarPago({
+    ({ id: pagoId, acomodo } = await registrarAbono({
       cliente_id: clienteId,
       fecha: p.fecha,
       metodo: p.metodo,
@@ -1827,7 +1828,7 @@ export async function guardarPago(datos: FormData): Promise<void> {
       tasa: p.tasa,
       referencia: texto(datos, "referencia"),
       nota: texto(datos, "nota"),
-    });
+    }));
     if (p.foto) await pasarFotoAAdjuntos(p.foto.id, clienteId, null, `Captura del abono del ${fechaCorta(p.fecha)}`, pagoId);
     // Si este pago ya entró del banco, se unen: no se cuenta dos veces.
     delBanco = await unirPagoConElBanco(pagoId).catch(() => "");
@@ -1836,7 +1837,10 @@ export async function guardarPago(datos: FormData): Promise<void> {
     if (pagoId) volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado, pero la captura no se guardó: ${mensajeDe(error)}`);
     p.volver(mensajeDe(error));
   }
-  volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado${p.foto ? " con su captura" : ""}.${p.notaDeTasa}${comentarioDeLaCaptura(p)}${delBanco} Abajo, en Abonos, puedes mandarle el recibo.`);
+  const centimos = acomodo
+    ? ` Pagó ${lasNotasDel(acomodo.fechas)}: vale ${usd(acomodo.usd)} (a la tasa daba ${usd(acomodo.antes)}), sin céntimos colgando.`
+    : "";
+  volverConExito(`/admin/clientes/${clienteId}`, `Abono registrado${p.foto ? " con su captura" : ""}.${p.notaDeTasa}${centimos}${comentarioDeLaCaptura(p)}${delBanco} Abajo, en Abonos, puedes mandarle el recibo.`);
 }
 
 /** Igual que `borrarVenta`: la confirmación está en `/admin/pagos/[id]/eliminar`. */

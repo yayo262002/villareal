@@ -88,6 +88,46 @@ export function movimientosDeCuenta(ventas: VentaMinima[], abonos: AbonoMinimo[]
   });
 }
 
+/**
+ * Los céntimos que deja la tasa (el dueño, 14/11/2026: «toda la gente que tenga un poquito a favor, así céntimos, lo
+ * acomodas»). Un abono en bolívares casi nunca da justo lo que se debía en dólares: el cliente paga 70.686,22 Bs por una
+ * nota de 78,41 $ y, a la tasa del día, son 78,40. Si el abono paga notas enteras (las más antiguas por pagar, con lo
+ * que les queda) y la diferencia es de céntimos —hasta 0,50 $ y hasta el 1 %—, vale exactamente esas notas: ni queda un
+ * centavo colgando ni un saldo a favor que no existe. Más que eso no son céntimos: el abono vale lo que vale.
+ */
+export const CENTIMOS_MAXIMOS_USD = 0.5;
+export const CENTIMOS_MAXIMOS_PCT = 1;
+
+export type CentimosDeLaTasa = {
+  /** Lo que pasa a valer el abono: lo que les quedaba a esas notas. */
+  usd: number;
+  /** Lo que se acomodó: positivo si el abono quedaba corto, negativo si pasaba. */
+  diferencia: number;
+  /** Cuántas notas paga, empezando por la más antigua por pagar. */
+  notas: number;
+};
+
+/**
+ * `pendientes`: lo que le queda a cada nota por pagar, de la más antigua a la más nueva. Devuelve null si el abono ya es
+ * exacto o si no paga notas enteras con una diferencia de céntimos.
+ */
+export function centimosDeLaTasa(pendientes: number[], abonoUsd: number): CentimosDeLaTasa | null {
+  const abono = redondear(abonoUsd);
+  let suma = 0;
+  let mejor: CentimosDeLaTasa | null = null;
+  for (let i = 0; i < pendientes.length && i < 12; i++) {
+    suma = redondear(suma + Number(pendientes[i]));
+    if (suma <= 0) continue;
+    const diferencia = redondear(suma - abono);
+    if (Math.abs(diferencia) < 0.005) return null;
+    const cabe = Math.abs(diferencia) <= CENTIMOS_MAXIMOS_USD && Math.abs(diferencia) <= (suma * CENTIMOS_MAXIMOS_PCT) / 100 + 1e-9;
+    if (cabe && (!mejor || Math.abs(diferencia) < Math.abs(mejor.diferencia))) mejor = { usd: suma, diferencia, notas: i + 1 };
+    // Ya pasado de largo: las notas siguientes solo alejan la suma.
+    if (suma > abono + CENTIMOS_MAXIMOS_USD) break;
+  }
+  return mejor;
+}
+
 /** A qué notas fue cada abono, y qué abonos pagaron cada nota. */
 export type RepartoDeAbonos = {
   /** De cada abono, las notas que pagó (de la más antigua a la más nueva) y cuánto a cada una. */
