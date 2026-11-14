@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Aviso de la calle · Villa Real</title>
+<style>
+  @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
+  @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
+
+  /* El aviso de afuera, para la fachada (el dueño, 14/11: «llévate tus combos, algo para traer gente que pase en el carro»):
+     una lona de 300 × 100 cm, todo en milímetros, al tamaño real. Lo lee alguien que pasa manejando: pocas palabras y muy
+     grandes (las letras del título miden unos 15 cm: se leen a más de 50 m), rojo y dorado como las hojas de los combos de
+     la charcutería, y los productos de verdad en su mostrador. Lo importante queda a más de 6 cm del borde, por los
+     ojales de la lona. generar.mjs saca el PDF para la imprenta y la vista previa. */
+  @page { margin: 0; }
+  html, body { margin: 0; background: #777; }
+  body { font-family: "Open Sans", Arial, sans-serif; padding: 20px; }
+
+  .aviso {
+    --rojo: #a50d14; --rojo-oscuro: #6a060b; --oro: #f2c14e; --oro-claro: #fff1b8; --crema: #fff6e3; --tinta: #5e0a0c;
+    position: relative; box-sizing: border-box; width: 3000mm; height: 1000mm; overflow: hidden;
+    background: radial-gradient(ellipse 70% 120% at 65% 35%, #cf141c 0%, var(--rojo) 50%, #7a070c 100%);
+    display: grid; grid-template-columns: 1180mm minmax(0, 1fr); column-gap: 90mm; align-items: stretch;
+    padding: 75mm 110mm 75mm 75mm;
+  }
+  /* Un marco dorado a 30 mm del borde, como el sello de las hojas. */
+  .aviso::before {
+    content: ""; position: absolute; inset: 30mm; border: 9mm solid var(--oro); border-radius: 40mm; pointer-events: none;
+    box-shadow: inset 0 0 0 3mm #8a5a08, 0 0 0 3mm #8a5a08;
+  }
+  /* Una trama de rayas finas, como la cabecera de las hojas. */
+  .aviso::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.035) 0 4mm, transparent 4mm 12mm);
+  }
+
+  /* A la izquierda, el mostrador de las hojas: los estantes desenfocados, la madera y los productos encima. */
+  .mostrador {
+    position: relative; z-index: 1; border-radius: 30mm; overflow: hidden; border: 7mm solid var(--oro);
+    box-shadow: 0 10mm 24mm rgba(40, 5, 0, 0.45);
+    background: #f6e5c2;
+  }
+  .mostrador .estante { position: absolute; left: 0; top: 0; width: 100%; height: 62%; object-fit: cover; }
+  .mostrador .madera { position: absolute; left: 0; bottom: 0; width: 100%; height: 40%; object-fit: cover; }
+  .mostrador .luz { position: absolute; left: 0; bottom: 0; width: 100%; height: 40%; background: radial-gradient(ellipse 62% 70% at 50% 45%, rgba(255, 251, 238, 0.75), rgba(255, 251, 238, 0)); }
+  .mostrador .productos { position: absolute; inset: 40mm 24mm 110mm; display: flex; align-items: flex-end; justify-content: center; }
+  .mostrador .grupo { width: 100%; }
+  .grupo .miembro::after {
+    content: ""; position: absolute; left: -6%; right: -6%; bottom: -8mm; height: 22mm; z-index: -1;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(70, 35, 10, 0.5), rgba(70, 35, 10, 0));
+  }
+
+  /* A la derecha, lo que se lee desde el carro. */
+  .texto { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; gap: 34mm; min-width: 0; }
+  .marca { display: flex; align-items: center; gap: 30mm; }
+  .marca img { width: 118mm; height: auto; display: block; filter: drop-shadow(0 4mm 6mm rgba(40, 5, 0, 0.45)); }
+  .marca span { font-family: "Archivo Black", Arial, sans-serif; font-size: 66mm; line-height: 1; letter-spacing: 0.12em; color: var(--oro); white-space: nowrap; }
+  .titulo { margin: 0; display: grid; gap: 6mm; }
+  .titulo span {
+    display: block; width: fit-content; font-family: "Archivo Black", Arial, sans-serif; font-size: 236mm; line-height: 0.92; letter-spacing: -0.01em;
+    color: var(--crema); white-space: nowrap; text-shadow: 0 9mm 0 var(--rojo-oscuro), 0 16mm 24mm rgba(0, 0, 0, 0.35);
+  }
+  .titulo .combos { color: var(--oro); text-shadow: 0 9mm 0 #7a4a06, 0 16mm 24mm rgba(0, 0, 0, 0.35); }
+  .pildora {
+    width: fit-content; box-sizing: border-box; padding: 16mm 60mm 20mm; border-radius: 999mm; border: 4mm solid #a8740f;
+    background: linear-gradient(180deg, #f9dd86 0%, #edbb49 55%, #cf961f 100%); box-shadow: 0 8mm 16mm rgba(40, 5, 0, 0.4), inset 0 4mm 0 rgba(255, 255, 255, 0.45);
+    font-family: "Archivo Black", Arial, sans-serif; font-size: 84mm; line-height: 1.1; color: var(--tinta); white-space: nowrap;
+  }
+  .whatsapp { font-weight: 700; font-size: 58mm; line-height: 1.1; color: var(--crema); white-space: nowrap; }
+  .whatsapp b { font-family: "Archivo Black", Arial, sans-serif; font-weight: 400; color: var(--oro); letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+<script src="combos-datos.js"></script>
+<script>
+  document.head.insertAdjacentHTML("beforeend", `<style>${ESTILO_DEL_GRUPO}</style>`);
+  // Los productos de los combos en el mostrador, en una fila y en su proporción real, un jamón y un queso, apenas solapados: así
+  // se ven todas las etiquetas y salen grandes desde la calle (con dos filas, los quesos tapaban la etiqueta de los jamones).
+  const escena = {
+    grupo: [{ base: 0, separacion: -2, piezas: ["jamon-de-pierna", "queso-amarillo", "jamon-de-espalda", "mozzarella"] }],
+  };
+  const aviso = document.createElement("article");
+  aviso.className = "aviso";
+  aviso.dataset.archivo = "aviso-combos-300x100";
+  aviso.dataset.formato = "jpeg";
+  aviso.innerHTML = `
+    <div class="mostrador">
+      <img class="estante" src="fondos/estante.jpg" alt="">
+      <img class="madera" src="fondos/madera.jpg" alt="">
+      <div class="luz"></div>
+      <div class="productos">${grupoDe(escena)}</div>
+    </div>
+    <div class="texto">
+      <div class="marca"><img src="../public/marca/leon.svg" alt=""><span>CHARCUTERÍA VILLA REAL</span></div>
+      <h1 class="titulo"><span>¡LLÉVATE</span><span class="combos">TUS COMBOS!</span></h1>
+      <div class="pildora">JAMÓN + QUESO · LISTOS PARA LLEVAR</div>
+      <div class="whatsapp">Pedidos por WhatsApp <b>0424-6343236</b></div>
+    </div>`;
+  document.body.append(aviso);
+
+  // Que nada se salga: lo escrito encoge lo justo para caber en su columna, y los productos, en su mostrador.
+  window.listo = false;
+  window.addEventListener("load", () => {
+    document.fonts.ready.then(() => {
+      const columna = aviso.querySelector(".texto").getBoundingClientRect().width;
+      for (const el of aviso.querySelectorAll(".marca span, .titulo span, .pildora, .whatsapp")) {
+        let tamano = parseFloat(getComputedStyle(el).fontSize);
+        const ancho = () => (el.closest(".marca") ?? el).getBoundingClientRect().width;
+        while (ancho() > columna && tamano > 10) {
+          tamano *= 0.98;
+          el.style.fontSize = `${tamano}px`;
+        }
+      }
+      const caja = aviso.querySelector(".productos");
+      const grupo = caja.querySelector(".grupo");
+      const [ancho, alto] = grupo.style.aspectRatio.split("/").map(Number);
+      const c = caja.getBoundingClientRect();
+      grupo.style.width = `${Math.min(c.width, (c.height * ancho) / alto)}px`;
+      window.listo = true;
+    });
+  });
+</script>
+</body>
+</html>
