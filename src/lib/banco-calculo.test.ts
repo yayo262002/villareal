@@ -103,6 +103,9 @@ test("de una captura, solo la fecha del aviso: la de lo que se ve detrás no cue
   );
   assert.equal(conHistorial.leido, true);
   if (conHistorial.leido) assert.equal(conHistorial.movimiento.fecha, null);
+  // Una transferencia con el título del aviso siguiente detrás sigue siendo transferencia.
+  const conTitulo = leerAvisoDelBanco('Recibiste una transferencia BDV de PEDRO ANTONIO GOMEZ RIVAS por Bs.70.686,22 bajo el numero de operacion 008000123554" PagomóvilBDV recibido mié, 19:27');
+  if (conTitulo.leido) assert.equal(conTitulo.movimiento.metodo, "transferencia");
   // Con su «en fecha», esa, aunque detrás haya otra.
   const conFecha = leerAvisoDelBanco(`${CON_TELEFONO} Nota N.° 000088 20/10/2026`);
   if (conFecha.leido) assert.equal(conFecha.movimiento.fecha, "2026-11-14");

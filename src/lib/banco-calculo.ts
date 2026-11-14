@@ -76,7 +76,18 @@ export function leerAvisoDelBanco(texto: string): LecturaDelBanco {
   if (!/recibi(ste|do|da)|te (enviaron|transfirieron|pagaron)/.test(n)) {
     return { leido: false, motivo: "No es un pago recibido (o no se entiende)." };
   }
-  const metodo: MetodoDelBanco | null = /pago\s*movil/.test(n) ? "pago_movil" : /transferencia/.test(n) ? "transferencia" : null;
+  // Lo que dice el propio aviso («Recibiste una transferencia…»), antes que lo que se vea detrás en la captura: el
+  // título del aviso siguiente («PagomóvilBDV recibido») hacía pasar una transferencia por pago móvil.
+  const delAviso = n.match(/recibi(?:ste|do|da)\s+(?:un|una)?\s*(pago\s*movil|transferencia)/)?.[1];
+  const metodo: MetodoDelBanco | null = delAviso
+    ? delAviso.startsWith("transf")
+      ? "transferencia"
+      : "pago_movil"
+    : /pago\s*movil/.test(n)
+      ? "pago_movil"
+      : /transferencia/.test(n)
+        ? "transferencia"
+        : null;
   if (!metodo) return { leido: false, motivo: "No dice que sea un pago móvil ni una transferencia." };
 
   const conMonto = limpio.match(/Bs\.?\s*S?\.?\s*(\d[\d.,]*\d)/i);
