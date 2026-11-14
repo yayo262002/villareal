@@ -50,6 +50,7 @@ npm run verificar    typecheck + lint + pruebas unitarias
 npm run build        que compila
 npm run prueba:local   la web entera con una base temporal (después de build)
 npm run prueba:web     la web publicada, solo mirando: no crea ni borra nada
+npm run fotos-web      las fotos de la portada y de las familias: la mercancía recortada sobre color (después, npm run miniaturas)
 npm run miniaturas     las fotos de public/familias/ y public/productos/ en pequeño (public/miniaturas/), al añadir o cambiar una
 npm run combos         la lista personal de los precios de los combos de hoy, desglosada (con lo que cuesta y lo que deja), y el flier del estado (en listas/)
 npm run lista          las listas del detal y del mayor de hoy en PDF y en pantallas JPG para el teléfono, y la hoja de la rebanadora (en listas/)
@@ -187,7 +188,8 @@ src/components/carrito/   «Agregar», el contador de la cabecera y la página d
 src/app/api/carrito/      Dice al carrito los nombres y los precios de hoy de lo que lleva
 src/app/productos/, categoria/, ofertas/, carrito/  Las páginas de la vitrina
 src/components/menu-movil.tsx  El menú del teléfono, que se cierra solo al cambiar de página
-public/portada/, public/familias/  Las fotos de comida de la portada y de las familias (CREDITOS.md)
+public/portada/, public/familias/  Las fotos de la portada y de las familias: la mercancía sobre color (npm run fotos-web, CREDITOS.md)
+scripts/fotos-web.ts      npm run fotos-web: esas fotos y las referencias sobre blanco, con los productos recortados de publicidad/fotos/
 src/components/formulario-producto.tsx  El formulario completo de un producto, con «Crear nueva familia»
 src/components/marcas-producto.tsx  Los artículos de un tipo, en su ficha del panel, y sus campos (también en «Agregar producto»)
 src/app/foto-producto/, foto-familia/  Sirven la foto de un producto y la portada de una familia
@@ -1375,12 +1377,24 @@ Binance y otro.
   la dirección y la ubicación para el próximo pedido. Las cuentas, con
   pruebas, en `src/lib/delivery.ts`; la portada, «Cómo comprar» y el pie
   dicen que hay delivery.
-- **Las fotos** de la portada, de las familias y de referencia de cada
-  producto son fotos de comida con licencia libre (CC0 o dominio público),
-  guardadas en `public/` con sus créditos (`public/familias/CREDITOS.md` y
-  `public/productos/CREDITOS.md`); no son de la mercancía del negocio. Una
-  portada de familia o una foto de producto subidas en el panel sustituyen
-  a las incluidas.
+- **Las fotos** de la portada y de las familias son, desde el 13/11/2026,
+  **la mercancía del negocio sobre color** (al dueño no le gustaban las
+  fotos de comida de internet: «nada, ni el de la hamburguesa, quesos,
+  nada»): sus productos recortados (los de las hojas de los combos y los
+  de las marcas, en `publicidad/fotos/`) sobre un fondo liso verde, oro o
+  crema, con su sombra y una luz suave, al estilo de un catálogo de una app
+  de pedidos. Las hace `npm run fotos-web` (`scripts/fotos-web.ts`, que
+  dice qué productos van en cada una y dónde). Las de las familias llevan
+  los productos en la franja de arriba, entre el 15 % y el 55 % del alto,
+  porque la misma foto sale en la tarjeta (cuadrada o apaisada) y en la
+  cabecera de su página, con el nombre encima de la mitad de abajo; las
+  familias sin mercancía con foto (salsas, papas, bebidas…), el color con
+  el león. Las referencias de los huevos, el jamón arepero y los quesos
+  blancos son también la mercancía recortada sobre blanco; las demás
+  referencias (de productos aún en borrador) siguen siendo fotos de comida
+  libres. Créditos en `public/familias/CREDITOS.md` y
+  `public/productos/CREDITOS.md`. Una portada de familia o una foto de
+  producto subidas en el panel sustituyen a las incluidas.
 - **Diseño** (rehecho en noviembre de 2026, porque el de antes al dueño no
   le gustaba): el de una marca de alimentos para negocios, con los colores
   de la fachada y de las franelas llevados a más contraste

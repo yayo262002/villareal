@@ -63,6 +63,8 @@ export const FOTOS_REFERENCIALES: { foto: string; palabras: string[] }[] = [
   { foto: "mortadela", palabras: ["mortadela"] },
   { foto: "chorizo", palabras: ["chorizo"] },
   { foto: "salchichas", palabras: ["salchicha", "salchichas", "perro caliente"] },
+  // El jamón arepero, con la foto del de verdad (El Drago, recortado sobre blanco); los demás jamones, con la de referencia.
+  { foto: "jamon-arepero", palabras: ["jamon arepero"] },
   { foto: "jamon", palabras: ["jamon"] },
   // Congelados y complementos
   { foto: "nuggets", palabras: ["nuggets", "nugget", "tenders"] },

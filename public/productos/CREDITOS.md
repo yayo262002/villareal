@@ -7,12 +7,13 @@ Todas son **CC0** o de **dominio público**: se pueden usar, también en un come
 - `productos/queso-amarillo.webp`: «Chesses gouda affinage.JPG», de Alpha.prim, dominio público. https://commons.wikimedia.org/wiki/File:Chesses_gouda_affinage.JPG (ruedas de gouda amarillo; antes, un cheddar curado con vetas azules, que no se parecía al queso amarillo de aquí)
 - `productos/queso-cheddar.webp`: «Olives Cheese», de ISO Republic, CC0. https://stocksnap.io/photo/olives-cheese-VUAQNMLAPF
 - `productos/mozzarella.webp`: «White cheddar cheese.jpg», de Jon Sullivan, dominio público. https://commons.wikimedia.org/wiki/File:White_cheddar_cheese.jpg (un bloque blanco y cuadrado, entero y con sus lonjas, como la mozzarella que se vende aquí; no una bola)
-- `productos/queso-blanco.webp` (el queso arepero, el llanero, el de mano, el paisa…): «Queso llanero.jpg», de Muago, CC0. https://commons.wikimedia.org/wiki/File:Queso_llanero.jpg (un queso llanero venezolano sobre una tabla; recortado al cuadrado y algo más luminoso). Antes, «Greek feta.jpg» (sobre fondo negro, no casaba con las demás).
+- `productos/queso-blanco.webp` (el queso arepero, el llanero, el de mano, el paisa…): «Queso llanero.jpg», de Muago, CC0. https://commons.wikimedia.org/wiki/File:Queso_llanero.jpg (un queso llanero venezolano, recortado y sobre blanco como las fotos de la mercancía; `npm run fotos-web`). Antes, «Greek feta.jpg» (sobre fondo negro, no casaba con las demás).
+- `productos/jamon-arepero.webp` (el jamón arepero): el jamón arepero El Drago del negocio, recortado sobre blanco (`npm run fotos-web`).
 - `productos/crema.webp` (el suero y la crema de leche): «Milk Splash», de George Desipris, CC0. https://stocksnap.io/photo/milk-splash-0PIWORZOK5
 - `productos/queso-rallado.webp`: «Food Spaghetti», de Krzysztof Puszczyński, CC0. https://stocksnap.io/photo/food-spaghetti-T6J8OZBM38
 - `productos/queso-de-ano.webp`: «Cheese Food», de Jakub Rostkowski, CC0. https://stocksnap.io/photo/cheese-food-ABFRSZL8XB
 - `productos/parmesano.webp`: «Close up of parmesan cheese.jpg», de Monika Grabkowska, CC0. https://commons.wikimedia.org/wiki/File:Close_up_of_parmesan_cheese.jpg
-- `productos/huevos.webp`: «Brown-eggs.jpg», de Photos public domain.com, dominio público. https://commons.wikimedia.org/wiki/File:Brown-eggs.jpg
+- `productos/huevos.webp`: medio cartón de huevos recortado sobre blanco (`npm run fotos-web`), de «Eggs, hen's egg», de Pixabay, https://pixabay.com/photos/egg-2913054/ (licencia de contenido de Pixabay). Antes, «Brown-eggs.jpg» (dominio público).
 - `productos/tocineta.webp`: «Bacon Meat», de Daria Nepriakhina, CC0. https://stocksnap.io/photo/bacon-meat-GI3XTVX4EQ
 - `productos/jamon.webp`: «Ham (4).jpg», de Renee Comet, dominio público. https://commons.wikimedia.org/wiki/File:Ham_(4).jpg (un jamón cocido entero, como el que se rebana aquí; antes, una pata de jamón curado)
 - `productos/pepperoni.webp`: «Ham sausage slices.jpg», de Fumikas Sagisavas, CC0. https://commons.wikimedia.org/wiki/File:Ham_sausage_slices.jpg

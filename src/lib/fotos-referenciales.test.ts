@@ -38,7 +38,8 @@ test("los quesos blancos de aquí llevan el bloque de queso blanco, y el jamón 
   assert.equal(foto("Queso llanero"), "queso-blanco");
   assert.equal(foto("Queso de mano"), "queso-blanco");
   assert.equal(foto("Queso paisa El Lucero"), "queso-blanco");
-  assert.equal(foto("Jamon Arepero Drago"), "jamon");
+  assert.equal(foto("Jamon Arepero Drago"), "jamon-arepero");
+  assert.equal(foto("Jamón de pierna"), "jamon");
   // Un queso sin más señas, con el queso amarillo.
   assert.equal(foto("Queso gouda"), "queso-amarillo");
 });

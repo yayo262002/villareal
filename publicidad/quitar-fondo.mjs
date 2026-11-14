@@ -43,6 +43,9 @@ const ENDEREZAR = new Set(["mortadela-extra", "queso-amarillo", "queso-amarillo-
  *  la tira del plástico de la izquierda y, abajo, los reflejos blancos de la bolsa y la banda azulada de su cierre (el
  *  dueño, 13/11: «se ve raro por abajo»); y las esquinas redondeadas de un bloque de verdad, no un corte recto. */
 const RECORTAR = new Map([["queso-paisa", { izquierda: 36, abajo: 137, radio: 18 }]]);
+/** Fotos que ya vienen con buena luz sobre un fondo oscuro (la de referencia del queso llanero): estirar sus niveles las
+ *  dejaba duras y grisáceas. Se quedan con su color. */
+const SIN_NIVELES = new Set(["queso-llanero"]);
 
 if (argumentos[0] === "--recortar") {
   // El proceso hijo: solo el recorte, con el recortador y nada más.
@@ -142,7 +145,7 @@ for (const archivo of fs.readdirSync(origen).sort()) {
     // Cada canal sube hasta dejar el fondo en blanco, sin pasarse; un fondo ya blanco no se toca.
     ganancias = mediasDelFondo.map((m) => Math.min(1.35, Math.max(1, 250 / Math.max(m, 1))));
     como = `blanco de referencia ×${ganancias.map((g) => g.toFixed(2)).join("/")}`;
-  } else if (luces.length > 100) {
+  } else if (luces.length > 100 && !SIN_NIVELES.has(nombre)) {
     luces.sort((x, y) => x - y);
     const oscuro = luces[Math.floor(luces.length * 0.01)];
     const claro = luces[Math.floor(luces.length * 0.99)];

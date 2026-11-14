@@ -1,18 +1,18 @@
 # Créditos de las fotos
 
-Fotos de comida de la portada y de las familias. Todas son **CC0** o de **dominio público** (se pueden usar, también en un comercio, sin pedir permiso ni citar): de Unsplash, guardadas en Wikimedia Commons, y de StockSnap. Se recortan y se pasan a WebP; no son fotos de la mercancía del negocio. La portada de escritorio junta dos en una sola escena oscura: la hamburguesa con papas y, a su derecha, la pizza saliendo del horno, fundidas con bordes suaves. Una portada de familia subida en el panel sustituye a la de aquí.
+Desde el 13/11/2026 la portada y las familias no llevan fotos de comida de internet (al dueño no le gustaban: «nada, ni el
+de la hamburguesa, quesos, nada»): son la **mercancía del negocio**, recortada, sobre un fondo de color liso de la marca
+(verde, oro o crema) con su sombra y una luz suave detrás. Las hace `npm run fotos-web` (`scripts/fotos-web.ts`) con las
+fotos recortadas de `publicidad/fotos/` (las de las hojas de los combos y las de las marcas de la web), que son del dueño;
+ver `publicidad/fotos/CREDITOS.md`. La única que no es suya es la del medio cartón de huevos (`familias/huevos.webp`):
+«Eggs, hen's egg», de Pixabay, https://pixabay.com/photos/egg-2913054/ (licencia de contenido de Pixabay: uso libre, también
+comercial, sin atribución).
 
-- `portada/heroe.webp (hamburguesa)`: «Eugene, United States (Unsplash).jpg», de Edward Franklin eugeneeddie, CC0. https://commons.wikimedia.org/wiki/File:Eugene,_United_States_(Unsplash).jpg
-- `portada/heroe.webp (pizza)`: «Rustic Pizza», de Eneida Nieves, CC0. https://stocksnap.io/photo/rustic-pizza-F7EPDH2L1A
-- `portada/heroe-movil.webp`: «Hamburger and cooking table, Manizales, Colombia (Unsplash).jpg», de Pablo Merchán Montes pablomerchanm, CC0. https://commons.wikimedia.org/wiki/File:Hamburger_and_cooking_table,_Manizales,_Colombia_(Unsplash).jpg
-- `familias/lacteos.webp` (Familia Lácteos): «Milk Splash», de George Desipris, CC0. https://stocksnap.io/photo/milk-splash-0PIWORZOK5
-- `familias/quesos.webp` (Familia Quesos): «Chesses gouda affinage.JPG», de Alpha.prim, dominio público. https://commons.wikimedia.org/wiki/File:Chesses_gouda_affinage.JPG (ruedas de gouda amarillo, más luminosas que las de queso curado de antes)
-- `familias/huevos.webp` (Familia Huevos): «Making an Omelet (Unsplash).jpg», de Caroline Attwood carolineattwood, CC0. https://commons.wikimedia.org/wiki/File:Making_an_Omelet_(Unsplash).jpg
-- `familias/embutidos.webp` (Familia Embutidos): «California, United States (Unsplash AbuQX0g4cdU).jpg», de Jessica Ruscello jruscello, CC0. https://commons.wikimedia.org/wiki/File:California,_United_States_(Unsplash_AbuQX0g4cdU).jpg
-- `familias/salsas-y-aderezos.webp` (Familia Salsas y aderezos): «Fresh Tomato Sauce (Unsplash).jpg», de Dennis Klein klein2, CC0. https://commons.wikimedia.org/wiki/File:Fresh_Tomato_Sauce_(Unsplash).jpg
-- `familias/papas-y-congelados.webp` (Familia Papas y congelados): «Truffle Fries (Unsplash).jpg», de Stephanie McCabe stephaniemccabe, CC0. https://commons.wikimedia.org/wiki/File:Truffle_Fries_(Unsplash).jpg
-- `familias/complementos-gastronomicos.webp` (Familia Complementos gastronómicos): «Olive Oil (Unsplash).jpg», de Roberta Sorge robertina, CC0. https://commons.wikimedia.org/wiki/File:Olive_Oil_(Unsplash).jpg
-- `familias/burger.webp`: «Burger Food», de Sebastián LP, CC0. https://stocksnap.io/photo/burger-food-BN2YAQSIU1
-- `familias/pizzeria.webp`: «Rustic Pizza», de Eneida Nieves, CC0. https://stocksnap.io/photo/rustic-pizza-F7EPDH2L1A
-- `familias/bebidas.webp`: «Francesco Gallarotti 2016-09-09 (Unsplash turH7sYoKOo).jpg», de Francesco Gallarotti gallarotti, CC0. https://commons.wikimedia.org/wiki/File:Francesco_Gallarotti_2016-09-09_(Unsplash_turH7sYoKOo).jpg
-- `familias/otros-productos.webp`: «Chef's Station (Unsplash).jpg», de Todd Quackenbush toddquackenbush, CC0. https://commons.wikimedia.org/wiki/File:Chef%27s_Station_(Unsplash).jpg
+- `portada/heroe.webp`, `portada/heroe-movil.webp`: jamón de pierna, espalda, tocineta y pechuga de pavo El Drago, queso
+  amarillo Kemmental, queso cheddar El Legado, mozzarella y pecorino Sortilegio, sobre verde.
+- `familias/quesos.webp`, `embutidos.webp`, `lacteos.webp`, `huevos.webp`, `burger.webp`, `pizzeria.webp`: los productos de
+  cada una, sobre oro, crema o verde.
+- `familias/salsas-y-aderezos.webp`, `papas-y-congelados.webp`, `bebidas.webp`, `complementos-gastronomicos.webp`,
+  `otros-productos.webp`: el color con el león, mientras el negocio no tenga mercancía con foto de esas familias.
+
+Una portada de familia subida en el panel sustituye a la de aquí.
