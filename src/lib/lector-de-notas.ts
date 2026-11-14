@@ -27,9 +27,10 @@ Te llega la foto de una hoja de talonario escrita a mano: arriba «Sello» y las
 Los productos que vende el negocio, cada uno con su clave:
 ${catalogo.map((p) => `- ${p.clave}: ${p.nombre}`).join("\n")}
 Contesta SOLO con un JSON con esta forma exacta, sin texto alrededor:
-{"es_nota": true, "fecha": "AAAA-MM-DD", "lineas": [{"descripcion": "mozzarella cuadrada", "clave": "2", "piezas": 2, "cantidad": 5, "precio": 7.7, "importe": 38.5}], "total": 38.5, "firmada": true}
+{"es_nota": true, "cliente": {"nombre": "Pizzería La Esquina", "rif": "J-12345678-9", "direccion": "Calle 30 con carrera 22"}, "fecha": "AAAA-MM-DD", "lineas": [{"descripcion": "mozzarella cuadrada", "clave": "2", "piezas": 2, "cantidad": 5, "precio": 7.7, "importe": 38.5}], "total": 38.5, "firmada": true}
 Reglas:
 - "es_nota" es true solo si la foto es una nota o factura de este tipo (una hoja con tabla de cantidades e importes). Otra cosa (una persona, un producto, una pantalla, un papel distinto) es false.
+- "cliente": "nombre" es lo escrito en «Señor(es)», tal cual (el negocio o la persona); "rif" lo escrito en «RIF» (o una cédula); "direccion" lo escrito en «Dirección». Lo que no se lea, null; si no se lee nada, "cliente": null. No confundas el sello o los datos impresos del negocio que emite la nota con los del cliente.
 - "fecha" sale de las casillas DIA / MES / AÑO. Un año de dos cifras es 20AA. Si no se lee, null.
 - "lineas": una por renglón escrito de la tabla. "descripcion" es lo que dice el renglón, tal cual. "clave" es la clave del producto de la lista que corresponde a ese renglón, por el tipo de queso y por la marca si la nombra; si no corresponde a ninguno o no estás seguro de la marca, null. "piezas" son las piezas o bloques si se anotan («2 pza»). "cantidad" son los kilos (o cartones, o unidades) por los que se cobra; si el renglón solo dice piezas, null. "precio" es el precio unitario e "importe" el importe, como números (la coma es el decimal: «38,5» es 38.5). Lo que no se lea, null.
 - Ignora lo que se transparenta de otras hojas, los sellos y lo tachado.
@@ -75,7 +76,8 @@ async function preguntar(instrucciones: string, foto: FotoParaLeer, que: string)
       signal: AbortSignal.timeout(ESPERA_MAXIMA_MS),
       body: JSON.stringify({
         model: process.env.MODELO_LECTOR_DE_NOTAS || MODELO_POR_DEFECTO,
-        max_tokens: 800,
+        // Una nota con muchas líneas y los datos del cliente pasa de 800.
+        max_tokens: 1500,
         temperature: 0,
         system: instrucciones,
         messages: [

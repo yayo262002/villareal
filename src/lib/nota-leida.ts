@@ -1,4 +1,5 @@
 import { cantidad as cantidadLegible, fechaCorta, redondear, usd } from "./dinero.ts";
+import { reparoDelCliente, type ClienteParaLaNota, type NombreAprendido } from "./cliente-de-la-nota.ts";
 
 /**
  * Lo que se lee en la foto de una nota de papel, y en qué no cuadra con lo
@@ -23,9 +24,14 @@ export type LineaLeida = {
   importe: number | null;
 };
 
+/** A quién va la nota: lo que dice en «Señor(es)», «RIF» y «Dirección». Lo que no se lee, null. */
+export type ClienteLeido = { nombre: string | null; rif: string | null; direccion: string | null };
+
 export type NotaLeida = {
   /** Si la foto es una nota de entrega (la hoja del talonario) y no otra cosa. */
   esNota: boolean;
+  /** A quién va, si se lee (las lecturas guardadas antes de leerlo no lo traen). */
+  cliente?: ClienteLeido | null;
   /** La fecha que lleva, AAAA-MM-DD, si se lee. */
   fecha: string | null;
   lineas: LineaLeida[];
@@ -48,8 +54,16 @@ export type LineaAnotada = {
   importe: number;
 };
 
-/** Con lo que se compara: la fecha de la nota, el total y, si se dan, las líneas de lo anotado. */
-export type VentaAnotada = { fecha: string; total: number; lineas?: LineaAnotada[] };
+/**
+ * Con lo que se compara: la fecha de la nota, el total y, si se dan, las líneas de lo anotado y el cliente de la venta
+ * (con lo aprendido de sus otras notas). Si el dueño ya dijo en la caja que la nota es de ese cliente, `confirmado`.
+ */
+export type VentaAnotada = {
+  fecha: string;
+  total: number;
+  lineas?: LineaAnotada[];
+  cliente?: { datos: ClienteParaLaNota; aprendidos: NombreAprendido[]; confirmado?: boolean };
+};
 
 /** La diferencia que se pasa por alto: un centavo de redondeo. */
 const CENTAVO = 0.011;
@@ -119,7 +133,22 @@ export function interpretarLectura(texto: string): NotaLeida | null {
           importe: numeroLeido(l.importe),
         }))
     : [];
-  return { esNota, fecha: fechaLeida(o.fecha), lineas, total: numeroLeido(o.total), firmada: booleanoLeido(o.firmada) };
+  const cliente = clienteLeido(o.cliente);
+  return { esNota, ...(cliente ? { cliente } : {}), fecha: fechaLeida(o.fecha), lineas, total: numeroLeido(o.total), firmada: booleanoLeido(o.firmada) };
+}
+
+function textoLeido(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const limpio = valor.replace(/\s+/g, " ").trim().slice(0, 160);
+  return limpio === "" ? null : limpio;
+}
+
+/** El «Señor(es)», el RIF y la dirección de la nota; null si no se leyó ninguno. */
+function clienteLeido(valor: unknown): ClienteLeido | null {
+  if (!valor || typeof valor !== "object") return null;
+  const c = valor as Record<string, unknown>;
+  const cliente = { nombre: textoLeido(c.nombre ?? c.senores), rif: textoLeido(c.rif), direccion: textoLeido(c.direccion) };
+  return cliente.nombre || cliente.rif || cliente.direccion ? cliente : null;
 }
 
 /** Sin tildes, en minúsculas y sin letras repetidas: «Mozzarella» y «mozarela» quedan iguales. */
@@ -191,7 +220,8 @@ function compararLineas(nota: NotaLeida, anotadas: LineaAnotada[]): string[] {
 /**
  * En qué no cuadra la nota con lo anotado. Si no es una nota, solo eso: lo
  * demás no tiene sentido. Después, la fecha, las líneas (si se dan), la
- * suma de la propia nota, el total contra lo anotado y la firma. Sin
+ * suma de la propia nota, el total contra lo anotado y la firma (y antes de
+ * todo, si se da el cliente, que la nota sea suya). Sin
  * reparos, la nota cuadra y se acepta.
  */
 export function compararNota(nota: NotaLeida, venta: VentaAnotada): string[] {
@@ -199,6 +229,12 @@ export function compararNota(nota: NotaLeida, venta: VentaAnotada): string[] {
     return ["Esa foto no parece una nota de entrega: no se ve la hoja del talonario con la fecha, lo entregado y los importes."];
   }
   const avisos: string[] = [];
+
+  // Lo primero, de quién es: «Nelson» en una venta de la Pizzería La Esquina se dice antes que nada.
+  if (venta.cliente && !venta.cliente.confirmado) {
+    const reparo = reparoDelCliente(nota.cliente, venta.cliente.datos, venta.cliente.aprendidos);
+    if (reparo) avisos.push(reparo);
+  }
 
   if (nota.fecha === null) avisos.push("En la foto no se lee la fecha de la nota.");
   else if (nota.fecha !== venta.fecha) {

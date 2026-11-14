@@ -140,3 +140,26 @@ test("varios reparos salen todos, en orden: fecha, líneas, suma, firma", () => 
   assert.match(avisos[3], /revisa la suma/);
   assert.match(avisos[4], /firma/);
 });
+
+test("de quién es: si la nota dice «Nelson» y la venta es de otro cliente, se dice antes que nada", () => {
+  const deNelson: NotaLeida = { ...panaderia, cliente: { nombre: "Nelson", rif: null, direccion: null } };
+  const esquina = { id: 2, rotulo: "Pizzería La Esquina", nombre: "Luis", cedula_rif: "" };
+  const nels = { id: 1, rotulo: "Pizzería NEL's", nombre: "Nelson", cedula_rif: "" };
+  assert.deepEqual(compararNota(deNelson, { ...pedido, cliente: { datos: esquina, aprendidos: [] } }), [
+    "La nota dice «Nelson» y la venta es de Pizzería La Esquina (Luis): revisa que sea de ese cliente.",
+  ]);
+  // Con la fecha mal también, el cliente va primero.
+  assert.match(compararNota({ ...deNelson, fecha: "2026-09-28" }, { ...pedido, cliente: { datos: esquina, aprendidos: [] } })[0], /La nota dice «Nelson»/);
+  // Es la suya, o el dueño ya dijo en la caja que sí: nada.
+  assert.deepEqual(compararNota(deNelson, { ...pedido, cliente: { datos: nels, aprendidos: [] } }), []);
+  assert.deepEqual(compararNota(deNelson, { ...pedido, cliente: { datos: esquina, aprendidos: [], confirmado: true } }), []);
+  // Una lectura de antes, sin el cliente, tampoco dice nada.
+  assert.deepEqual(compararNota(panaderia, { ...pedido, cliente: { datos: esquina, aprendidos: [] } }), []);
+});
+
+test("lo que dice la nota en «Señor(es)» y «RIF» se lee; si no dice nada, no se guarda", () => {
+  const leida = interpretarLectura('{"es_nota": true, "cliente": {"nombre": "  Nelson ", "rif": null, "direccion": "c/30 cra 22"}, "fecha": "2026-09-29", "lineas": [], "total": null, "firmada": true}');
+  assert.deepEqual(leida?.cliente, { nombre: "Nelson", rif: null, direccion: "c/30 cra 22" });
+  assert.equal(interpretarLectura('{"es_nota": true, "cliente": {"nombre": "", "rif": null}, "lineas": []}')?.cliente, undefined);
+  assert.equal(interpretarLectura('{"es_nota": true, "cliente": null, "lineas": []}')?.cliente, undefined);
+});

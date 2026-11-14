@@ -160,7 +160,7 @@ export async function eliminarCliente(id: number): Promise<boolean> {
       sql: "update movimientos_banco set estado = 'por_conciliar', como = '', cliente_id = null, pago_id = null, resuelto_en = null where cliente_id = ? and estado = 'aplicado'",
       args: [id],
     });
-    for (const tabla of ["adjuntos", "ventas", "pagos", "recordatorios", "contactos", "precios_especiales", "pagadores", "avisos_de_pago"]) {
+    for (const tabla of ["adjuntos", "ventas", "pagos", "recordatorios", "contactos", "precios_especiales", "pagadores", "avisos_de_pago", "nombres_en_notas"]) {
       await tx.execute({ sql: `delete from ${tabla} where cliente_id = ?`, args: [id] });
     }
     const r = await tx.execute({ sql: "delete from clientes where id = ?", args: [id] });

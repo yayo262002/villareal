@@ -61,6 +61,19 @@ export function EntradaFoto({ nombre, id, opcional = false, soloFoto = false, la
   );
 }
 
+/**
+ * La foto lista para subir sin pasar por el campo: reducida igual que en él (la que ya pesa poco, tal cual); si el
+ * navegador no puede, la original. La usa «Leer una nota» de la caja.
+ */
+export async function prepararFoto(archivo: File, ladoMaximo = LADO_MAXIMO): Promise<File> {
+  if (!archivo.type.startsWith("image/") || (archivo.size <= TAMANO_SIN_TOCAR && ladoMaximo >= LADO_MAXIMO)) return archivo;
+  try {
+    return await reducirImagen(archivo, ladoMaximo);
+  } catch {
+    return archivo;
+  }
+}
+
 async function reducirImagen(archivo: File, ladoMaximo: number): Promise<File> {
   const imagen = await createImageBitmap(archivo);
   const escala = Math.min(1, ladoMaximo / Math.max(imagen.width, imagen.height));

@@ -235,8 +235,12 @@ src/lib/mapa.ts           Pregunta al mapa libre por una dirección sin calle y 
 src/lib/entregas.ts       Pedidos por entregar: qué lleva cada cliente y qué cargar
 src/lib/adjuntos.ts       Fotos de las notas de entrega y capturas de los pagos (de clientes y a proveedores)
 src/lib/fotos-en-espera.ts  La foto de la nota mientras el formulario va y vuelve
-src/lib/lector-de-notas.ts  Le enseña la foto de la nota a Claude: fecha, líneas, total, firma
-src/lib/nota-leida.ts     Interpreta lo leído y dice en qué no cuadra con lo anotado
+src/lib/lector-de-notas.ts  Le enseña la foto de la nota a Claude: a quién va, fecha, líneas, total, firma
+src/lib/nota-leida.ts     Interpreta lo leído y dice en qué no cuadra con lo anotado (también si no es de ese cliente)
+src/lib/nota-a-venta.ts   De la nota leída a la venta en la caja: las líneas, lo que hay que elegir y los avisos (puro, con pruebas)
+src/lib/cliente-de-la-nota.ts  De quién es una nota: «Nelson» es la Pizzería NEL's, por el negocio, la persona, el RIF y lo aprendido (puro, con pruebas)
+src/lib/nombres-en-notas.ts  Cómo se escribe a cada cliente en sus notas, aprendido al guardar cada venta con su nota
+src/components/nota-en-la-caja.tsx  «Leer una nota de papel» en la caja y «Lo que leí de la nota»: de quién es, renglón a renglón
 src/lib/captura-leida.ts  Lo leído en la captura de un pago: rellena el abono o avisa si no cuadra
 src/lib/whatsapp.ts       Mensajes para WhatsApp: cobro, nota, recibo, en camino, pedir reseña, el enlace de cuenta
 src/lib/enlace-cuenta.ts  El enlace personal de cada cliente y cada proveedor: cómo se hace y adónde lleva
@@ -724,7 +728,11 @@ Binance y otro.
   - **La foto se lee y se coteja con el pedido.** Con la clave
     `ANTHROPIC_API_KEY` puesta, al guardar se le enseña la foto a Claude
     junto con la lista de productos y marcas (`src/lib/lector-de-notas.ts`)
-    y se comprueba que sea una nota y no otra cosa, que su fecha sea la
+    y se comprueba que sea una nota y no otra cosa, **que sea de ese
+    cliente** (lo que dice en «Señor(es)» y en «RIF» contra su negocio, su
+    nombre, su RIF y cómo se le escribió en otras notas: «La nota dice
+    "Nelson" y la venta es de Pizzería La Esquina»; `src/lib/cliente-de-la-nota.ts`),
+    que su fecha sea la
     fecha de la nota, y **línea a línea** que lo anotado sea lo que dice
     la nota: qué producto (y qué marca), los kilos, las piezas, el precio y
     el importe. Lo que falte en la nota, lo que sobre o lo que no coincida
@@ -836,6 +844,40 @@ Binance y otro.
   y pulsa Enter), pero cabe en el teléfono. Es la pantalla del panel con
   JavaScript de verdad (`src/components/pos.tsx`); nunca enseña la lista
   entera de productos.
+  - **Leer una nota de papel** (pedido por el dueño el 14/11/2026: «que
+    yo le tome foto a la nota y él rellene todo», «que sea muy
+    inteligente»). Arriba de todo, el botón toma la foto de la nota (o la
+    elige de las fotos del teléfono, para una nota de días atrás), la lee
+    (`leerNotaEnLaCaja`, con el mismo lector de siempre) y **la caja se
+    llena sola**: cada renglón con su producto, sus kilos y piezas y el
+    precio de la nota (que es lo que se cobró, y no cambia al cambiar de
+    cliente), la fecha de la nota, «Ya entregada» si va firmada, con esa
+    foto como la de la nota firmada, y «Queda pendiente» (si pagó, se
+    cambia en «Cómo paga»: no se inventa un pago). Nada se guarda solo:
+    debajo del botón, «Lo que leí de la nota» enseña la foto, cada renglón
+    con su ✓, lo que no se sabe qué producto es (con los que se le parecen,
+    para elegir y «Agregar», o «No va»), si el total de la nota cuadra con
+    la caja y los avisos (`src/lib/nota-a-venta.ts`, con pruebas), y se
+    confirma como cualquier venta. Si el carrito ya tenía algo, pregunta
+    antes de cambiarlo.
+  - **De quién es la nota.** La nota se escribe con el nombre con que se
+    trata al cliente: «Nelson» por la Pizzería NEL's, cuyo dueño se llama
+    Nelson. Lo escrito en «Señor(es)» y en «RIF» se compara con el
+    negocio, el nombre de la persona y el RIF de cada cliente, sin tildes,
+    con la letra de mano mal leída y sin el tipo de negocio («Pizzería»
+    sola no dice quién es), y con **lo aprendido**: cada venta guardada con
+    su nota leída enseña cómo se le escribe a ese cliente (tabla
+    `nombres_en_notas`, `src/lib/nombres-en-notas.ts`). La caja nunca lo
+    elige sola: **lo pregunta** («La nota dice "Nelson". ¿Es Pizzería
+    NEL's? se llama Nelson · Debe USD 38,50 — Sí, es este»), con los otros
+    parecidos debajo; si no se parece a ninguno, lo dice y deja buscarlo o
+    registrarlo. Si la caja ya tenía otro cliente (abierta desde su
+    ficha), avisa «La nota dice "Nelson" y elegiste a Pizzería La Esquina»
+    y propone en grande al que se parece, con «No, es de Pizzería La
+    Esquina: dejarla así». Sin decir de quién es, «Confirmar» no sigue
+    (`src/lib/cliente-de-la-nota.ts`, con pruebas; la pantalla, en
+    `src/components/nota-en-la-caja.tsx`). Lo dicho en la caja viaja con
+    la venta (`cliente_de_la_nota`) y al guardar no se vuelve a preguntar.
   - **Cliente**: se busca escribiendo el nombre, la razón social o el
     teléfono (F4), mientras se escribe y **aunque falte, sobre o cambie
     una letra** («kleider» encuentra a Cleiderman; `src/lib/parecido.ts`:

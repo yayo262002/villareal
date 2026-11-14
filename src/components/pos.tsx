@@ -17,11 +17,15 @@ import {
   type ModoDePago,
   type PagoDelPos,
 } from "@/lib/pos-calculo";
-import { asignarCodigo, guardarVentaPos } from "@/lib/acciones";
-import { EntradaFoto } from "@/components/entrada-foto";
+import { asignarCodigo, guardarVentaPos, leerNotaEnLaCaja } from "@/lib/acciones";
+import { EntradaFoto, prepararFoto } from "@/components/entrada-foto";
 import { sumarDias } from "@/lib/credito";
 import { buscarParecidos } from "@/lib/parecido";
 import { leerDocumento, problemaDelDocumento } from "@/lib/documento";
+import type { NotaLeida } from "@/lib/nota-leida";
+import { ventaDeLaNota } from "@/lib/nota-a-venta";
+import { clientesParecidos, notaDiceElCliente, type NombreAprendido } from "@/lib/cliente-de-la-nota";
+import { BotonLeerNota, LeyendoNota, PanelDeLaNota, type EstadoDelCliente, type NotaEnLaCaja } from "@/components/nota-en-la-caja";
 import estilos from "./pos.module.css";
 import panel from "@/app/admin/(panel)/panel.module.css";
 
@@ -62,6 +66,8 @@ export type ClienteParaLaCaja = {
   id: number;
   rotulo: string;
   nombre: string;
+  /** La razón social, si la hay: con ella y con el nombre se reconoce de quién es una nota de papel. */
+  razon_social?: string;
   telefono: string;
   /** La cédula o el RIF, que hace falta para facturar. */
   cedula_rif: string;
@@ -93,8 +99,10 @@ type Props = {
   hoy: string;
   /** El número que llevará esta nota. */
   siguienteNota: string;
-  /** Si hay lector de notas (la foto se lee y se coteja). */
+  /** Si hay lector de notas (la foto se lee y se coteja, y «Leer una nota» llena la caja). */
   seLee: boolean;
+  /** Cómo se escribió a cada cliente en sus notas de otras veces: «Nelson» por la Pizzería NEL's. */
+  aprendidos: NombreAprendido[];
   /** Las claves de las ventas ya guardadas: un carrito con una de ellas ya se vendió y no se vuelve a enseñar. */
   clavesVendidas: string[];
   /** La clave de una venta que volvió con un aviso: ese carrito se conserva. */
@@ -172,6 +180,10 @@ type Guardado = {
   local?: boolean;
   documento?: string;
   nombreComprador?: string;
+  /** La foto de la nota leída en la caja, ya guardada en el servidor. */
+  fotoEspera?: string;
+  /** El cliente que se dijo que es el de esa nota. */
+  clienteDeLaNota?: number | null;
 };
 
 export function Pos({
@@ -185,6 +197,7 @@ export function Pos({
   hoy,
   siguienteNota,
   seLee,
+  aprendidos,
   clavesVendidas,
   claveDevuelta,
   fotoEnEspera,
@@ -231,6 +244,16 @@ export function Pos({
   const [confirmando, setConfirmando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [cargado, setCargado] = useState(false);
+  // La nota de papel leída con «Leer una nota»: lo leído, de quién es, y su foto, que ya está guardada en el servidor.
+  const [notaEnLaCaja, setNotaEnLaCaja] = useState<NotaEnLaCaja | null>(null);
+  const [leyendo, setLeyendo] = useState<{ vista: string | null } | null>(null);
+  const [errorDeLaNota, setErrorDeLaNota] = useState("");
+  // La foto leída, y la que traía la dirección cuando se leyó: si después la dirección trae otra (se puso otra foto
+  // en «Entrega» y la venta volvió con un aviso), manda la de la dirección.
+  const [fotoLeida, setFotoLeida] = useState<{ id: string; antes: string | undefined } | null>(null);
+  const [clienteDeLaNota, setClienteDeLaNota] = useState<number | null>(null);
+  const fotoAparcada = fotoLeida && (fotoEnEspera === undefined || fotoEnEspera === fotoLeida.antes) ? fotoLeida.id : fotoEnEspera;
+  const panelDeLaNota = useRef<HTMLDivElement>(null);
   const buscador = useRef<HTMLInputElement>(null);
   const buscadorCliente = useRef<HTMLInputElement>(null);
   const resumen = useRef<HTMLElement>(null);
@@ -260,6 +283,9 @@ export function Pos({
           setDocumento(guardado.documento ?? "");
           setNombreComprador(guardado.nombreComprador ?? "");
           setLocal(guardado.local ?? (guardado.clienteId || mostradorId) === mostradorId);
+          // La foto de la nota leída sigue guardada en el servidor; la que traiga la dirección, si trae, es más nueva.
+          if (guardado.fotoEspera && !fotoEnEspera) setFotoLeida({ id: guardado.fotoEspera, antes: undefined });
+          setClienteDeLaNota(guardado.clienteDeLaNota ?? null);
         } else {
           setClave(nuevaClave());
           if (yaVendido) localStorage.removeItem(GUARDADO);
@@ -270,7 +296,7 @@ export function Pos({
       }
       setCargado(true);
     }
-  }, [clavesVendidas, mostradorId, claveDevuelta, hoy]);
+  }, [clavesVendidas, mostradorId, claveDevuelta, hoy, fotoEnEspera]);
 
   // Si el navegador vuelve a esta pantalla desde su memoria (el botón «atrás» del iPhone después de guardar), se
   // recarga: lo que había era de una venta ya guardada y con su clave no se podría registrar otra.
@@ -287,16 +313,34 @@ export function Pos({
     try {
       if (lineas.length === 0) localStorage.removeItem(GUARDADO);
       else {
-        const guardado: Guardado = { clave, clienteId, lineas, descuento, nota, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local, documento, nombreComprador };
+        const guardado: Guardado = {
+          clave,
+          clienteId,
+          lineas,
+          descuento,
+          nota,
+          fecha,
+          modo,
+          entrega,
+          entregaPrevista,
+          diasCredito,
+          facturar,
+          local,
+          documento,
+          nombreComprador,
+          fotoEspera: fotoAparcada,
+          clienteDeLaNota,
+        };
         localStorage.setItem(GUARDADO, JSON.stringify(guardado));
       }
       localStorage.setItem(CAJERO, cajero);
     } catch {
       // Sin sitio para guardar no pasa nada.
     }
-  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local, documento, nombreComprador]);
+  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local, documento, nombreComprador, fotoAparcada, clienteDeLaNota]);
 
   const porClave = useMemo(() => new Map(catalogo.map((a) => [a.clave, a])), [catalogo]);
+  const clientesPorId = useMemo(() => new Map(clientes.map((c) => [c.id, c])), [clientes]);
   // El precio de siempre es el especial del cliente o el de la lista; de contado en el local, el costo más el 10 % si es menor.
   const precioDe = useCallback(
     (articulo: ArticuloParaLaCaja, cliente: number, enElLocal: boolean) => {
@@ -430,19 +474,168 @@ export function Pos({
     setLineas((actuales) => actuales.map((l) => (l.clave === claveLinea ? { ...l, ...cambios } : l)));
   const quitarLinea = (claveLinea: string) => setLineas((actuales) => actuales.filter((l) => l.clave !== claveLinea));
 
-  const elegirCliente = (nuevo: number) => {
+  /**
+   * Elegir el cliente. Con una nota de papel leída, la venta es la de esa nota: se entregó y se anota a su cuenta, así
+   * que queda pendiente y al precio de siempre (si pagó, se cambia en «Cómo paga»).
+   */
+  const elegirCliente = (nuevo: number, deLaNota = Boolean(notaEnLaCaja?.venta.esNota)) => {
     setClienteId(nuevo);
     setBusquedaCliente("");
     setListaClientes(false);
     setClienteMarcado(0);
+    const aCredito = deLaNota && nuevo !== mostradorId;
     if (nuevo === mostradorId && modo !== "ahora") setModo("ahora");
+    if (aCredito) {
+      setModo("credito");
+      setPagosTocados(false);
+    }
     // El mostrador es quien compra en el local y paga en el momento: de contado.
-    const enElLocal = nuevo === mostradorId ? true : local;
+    const enElLocal = nuevo === mostradorId ? true : aCredito ? false : local;
     setLocal(enElLocal);
     setDiasCredito("");
     // Los precios que no se tocaron a mano siguen al cliente (su precio especial, o el de la lista) y al contado.
     setLineas((actuales) => actuales.map((l) => (l.precioManual ? l : { ...l, precio_usd: precioDe(porClave.get(l.clave)!, nuevo, enElLocal) })));
-    enfocarBuscador();
+    if (!notaEnLaCaja) enfocarBuscador();
+  };
+
+  // De quién es la nota leída: ya se sabe (se dijo, o el elegido casa con ella), hay que preguntarlo, el elegido no
+  // casa, o la nota no lo dice.
+  const estadoDelCliente: EstadoDelCliente = !notaEnLaCaja
+    ? "ok"
+    : !notaDiceElCliente(notaEnLaCaja.nota.cliente)
+      ? "sin_dato"
+      : clienteDeLaNota === clienteId
+        ? "ok"
+        : clienteId === mostradorId
+          ? "pregunta"
+          : notaEnLaCaja.parecidos.some((c) => c.id === clienteId)
+            ? "ok"
+            : "no_casa";
+
+  /** Lo leído pasa al carrito: cada renglón con sus kilos, piezas y el precio de la nota, la fecha, y si se entregó. */
+  const pasarNotaAlCarrito = (venta: NotaEnLaCaja["venta"], cliente: number) => {
+    const conCliente = cliente !== mostradorId;
+    const enElLocal = conCliente ? false : local;
+    setLineas(
+      venta.lineas
+        .map((l): Linea | null => {
+          const a = porClave.get(l.clave);
+          if (!a) return null;
+          return {
+            clave: a.clave,
+            producto_id: a.producto_id,
+            variante_id: a.variante_id,
+            nombre: a.nombre,
+            unidad: a.unidad,
+            cantidad: l.cantidad,
+            // El precio de la nota es lo que se le cobró: va como escrito a mano, y no cambia al cambiar de cliente.
+            precio_usd: l.precio ?? precioDe(a, cliente, enElLocal),
+            precioManual: l.precio !== null,
+            piezas: l.piezas,
+          };
+        })
+        .filter((l): l is Linea => l !== null),
+    );
+    if (venta.fecha) setFecha(venta.fecha);
+    if (conCliente) {
+      setLocal(false);
+      setModo("credito");
+      setPagosTocados(false);
+    }
+    if (venta.firmada) setEntrega("ahora");
+    setDescuento("");
+  };
+
+  /** Lo que vuelve del lector: se enseña, se pregunta de quién es y, si el carrito está vacío (o se acepta), se llena. */
+  const aplicarNota = (nota: NotaLeida, vista: string | null) => {
+    const venta = ventaDeLaNota(nota, catalogo, hoy);
+    const parecidos = clientesParecidos(
+      nota.cliente,
+      clientes.filter((c) => c.id !== mostradorId),
+      aprendidos,
+    );
+    // El cliente ya elegido (la caja abierta desde su ficha) se queda si casa con la nota; si no, se pregunta.
+    const casaElElegido = clienteId !== mostradorId && parecidos.some((c) => c.id === clienteId);
+    const enElCarrito = venta.esNota && (lineas.length === 0 || window.confirm("El carrito ya tiene productos. ¿Cambiarlos por los de la nota?"));
+    if (notaEnLaCaja?.vista && notaEnLaCaja.vista !== vista) URL.revokeObjectURL(notaEnLaCaja.vista);
+    setNotaEnLaCaja({ vista, nota, venta, parecidos, confirmadoPara: casaElElegido ? clienteId : null, enElCarrito, resueltos: [] });
+    setClienteDeLaNota(casaElElegido ? clienteId : null);
+    if (enElCarrito) pasarNotaAlCarrito(venta, clienteId);
+    setTimeout(() => panelDeLaNota.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
+
+  /** Toma la foto, la reduce, la manda a leer y llena la caja con lo leído. La foto queda guardada como la de la nota firmada. */
+  const leerFoto = async (archivo: File) => {
+    if (leyendo) return;
+    const vista = typeof URL !== "undefined" ? URL.createObjectURL(archivo) : null;
+    setLeyendo({ vista });
+    setErrorDeLaNota("");
+    setTimeout(() => panelDeLaNota.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    try {
+      const datos = new FormData();
+      datos.set("foto", await prepararFoto(archivo));
+      const r = await leerNotaEnLaCaja(datos);
+      if (r.fotoId) setFotoLeida({ id: String(r.fotoId), antes: fotoEnEspera });
+      if (!r.ok) {
+        setErrorDeLaNota(r.error);
+        if (vista) URL.revokeObjectURL(vista);
+        pitar(false);
+        return;
+      }
+      aplicarNota(r.nota, vista);
+      pitar(true);
+    } catch {
+      setErrorDeLaNota("No se pudo leer la nota: revisa la conexión e inténtalo otra vez.");
+      if (vista) URL.revokeObjectURL(vista);
+      pitar(false);
+    } finally {
+      setLeyendo(null);
+    }
+  };
+
+  /** «Sí, es este»: la nota es de ese cliente. */
+  const elegirClienteDeLaNota = (id: number) => {
+    elegirCliente(id, true);
+    setClienteDeLaNota(id);
+    setNotaEnLaCaja((n) => (n ? { ...n, confirmadoPara: id } : n));
+    avisar(`La nota es de ${clientes.find((c) => c.id === id)?.rotulo ?? "ese cliente"}`);
+  };
+
+  /** Un renglón que no se sabía qué producto era, ya elegido: entra al carrito con lo que dice la nota. */
+  const agregarRenglon = (renglon: number, claveArticulo: string) => {
+    const r = notaEnLaCaja?.venta.sinProducto.find((x) => x.renglon === renglon);
+    const a = porClave.get(claveArticulo);
+    if (!r || !a) return;
+    const cuanto = r.cantidad ?? (a.unidad !== "kg" && r.piezas ? r.piezas : 0);
+    const precio = r.precio ?? (r.importe !== null && cuanto > 0 ? Math.round((r.importe / cuanto) * 100) / 100 : null);
+    setLineas((actuales) => {
+      const ya = actuales.find((l) => l.clave === a.clave);
+      if (ya) return actuales.map((l) => (l.clave === a.clave ? { ...l, cantidad: Math.round((l.cantidad + cuanto) * 1000) / 1000 } : l));
+      return [
+        ...actuales,
+        {
+          clave: a.clave,
+          producto_id: a.producto_id,
+          variante_id: a.variante_id,
+          nombre: a.nombre,
+          unidad: a.unidad,
+          cantidad: cuanto,
+          precio_usd: precio ?? precioDe(a, clienteId, local),
+          precioManual: precio !== null,
+          piezas: a.unidad === "kg" && r.piezas ? r.piezas : null,
+        },
+      ];
+    });
+    setNotaEnLaCaja((n) => (n ? { ...n, resueltos: [...n.resueltos, renglon] } : n));
+    setRecien(a.clave);
+    setTimeout(() => setRecien((x) => (x === a.clave ? null : x)), 1000);
+    avisar(`Añadido: ${a.nombre}`);
+  };
+
+  const cerrarNota = () => {
+    if (notaEnLaCaja?.vista) URL.revokeObjectURL(notaEnLaCaja.vista);
+    setNotaEnLaCaja(null);
+    setErrorDeLaNota("");
   };
 
   /** Pone o quita el contado en el local: los precios que no se tocaron a mano cambian, y de contado se paga todo ahora. */
@@ -456,7 +649,7 @@ export function Pos({
   };
 
   const cancelar = () => {
-    if (lineas.length === 0 && !busqueda) return;
+    if (lineas.length === 0 && !busqueda && !notaEnLaCaja) return;
     if (!window.confirm("¿Cancelar esta venta y vaciar el carrito?")) return;
     setLineas([]);
     setDescuento("");
@@ -472,6 +665,9 @@ export function Pos({
     setDocumento("");
     setNombreComprador("");
     setNombreAutomatico(false);
+    cerrarNota();
+    setFotoLeida(null);
+    setClienteDeLaNota(null);
     setClave(nuevaClave());
     avisar("Venta cancelada");
     enfocarBuscador();
@@ -491,9 +687,16 @@ export function Pos({
       tasa,
       metodosEnBolivares: METODOS_EN_BOLIVARES,
     });
+    // Con una nota leída, antes que nada: de quién es, y qué producto es cada renglón que no se supo.
+    if (notaEnLaCaja?.venta.esNota) {
+      const sinElegir = notaEnLaCaja.venta.sinProducto.filter((r) => !notaEnLaCaja.resueltos.includes(r.renglon));
+      if (estadoDelCliente === "pregunta") motivos.unshift("Dime de quién es la nota: arriba, en «Lo que leí de la nota».");
+      else if (estadoDelCliente === "no_casa") motivos.unshift("El nombre de la nota no es el del cliente elegido: dime arriba si de verdad es suya o de quién es.");
+      else if (sinElegir.length > 0) motivos.unshift(`Falta decir qué producto es «${sinElegir[0].descripcion || "un renglón"}» (arriba, en «Lo que leí de la nota»), o tocar «No va».`);
+    }
     if (!entrega) motivos.push("Di si ya la entregaste o si queda por entregar (abajo, en «Entrega»).");
     else if (entrega === "despacho" && !entregaPrevista) motivos.push("Escribe el día previsto de entrega.");
-    else if (entrega === "ahora" && !esMostrador && !fotoEnEspera && !((document.getElementById("pos-foto") as HTMLInputElement | null)?.files?.length ?? 0)) {
+    else if (entrega === "ahora" && !esMostrador && !fotoAparcada && !((document.getElementById("pos-foto") as HTMLInputElement | null)?.files?.length ?? 0)) {
       // En el mostrador se paga y se lleva en el momento: no hay nota firmada que fotografiar.
       motivos.push("Ya entregada: adjunta la foto de la nota firmada (abajo, en «Entrega»).");
     }
@@ -504,7 +707,8 @@ export function Pos({
     }
     if (motivos.length > 0) {
       avisar(motivos[0], true);
-      resumen.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const deLaNota = notaEnLaCaja?.venta.esNota && motivos[0].includes("«Lo que leí de la nota»");
+      (deLaNota ? panelDeLaNota.current : resumen.current)?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     setConfirmando(true);
@@ -559,6 +763,8 @@ export function Pos({
     facturar,
     comprador: pideComprador ? { documento, nombre: esMostrador ? nombreComprador : "" } : undefined,
     local,
+    // Si el dueño dijo (o se vio) que la nota leída es de este cliente, al guardar no se vuelve a avisar.
+    cliente_de_la_nota: (notaEnLaCaja && estadoDelCliente === "ok" && notaDiceElCliente(notaEnLaCaja.nota.cliente)) || clienteDeLaNota === clienteId ? clienteId : null,
     lineas: lineas.map((l) => ({
       clave: l.clave,
       producto_id: l.producto_id,
@@ -606,6 +812,47 @@ export function Pos({
       <input type="hidden" name="venta" value={JSON.stringify(venta)} />
 
       <div className={estilos.izquierda}>
+        <section className={`tarjeta ${estilos.tarjetaNota}`} ref={panelDeLaNota} aria-label="Leer una nota de papel">
+          <BotonLeerNota seLee={seLee} leyendo={Boolean(leyendo)} hayNota={Boolean(notaEnLaCaja)} onFoto={leerFoto} />
+          {leyendo && <LeyendoNota vista={leyendo.vista} />}
+          {errorDeLaNota && !leyendo && (
+            <p className="aviso aviso--error" role="alert" style={{ margin: 0 }}>
+              {errorDeLaNota}
+            </p>
+          )}
+          {notaEnLaCaja && !leyendo && (
+            <PanelDeLaNota
+              nota={notaEnLaCaja}
+              estado={estadoDelCliente}
+              clientes={clientesPorId}
+              clienteId={clienteId}
+              mostradorId={mostradorId}
+              articulos={porClave}
+              catalogo={catalogo}
+              totalDeLaCaja={totales.total}
+              aCredito={modo === "credito"}
+              entregada={entrega === "ahora" && Boolean(fotoAparcada)}
+              onElegirCliente={elegirClienteDeLaNota}
+              onEsElElegido={() => {
+                setClienteDeLaNota(clienteId);
+                setNotaEnLaCaja((n) => (n ? { ...n, confirmadoPara: clienteId } : n));
+              }}
+              onBuscarCliente={() => {
+                buscadorCliente.current?.focus();
+                setListaClientes(true);
+                buscadorCliente.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+              onPasarAlCarrito={() => {
+                pasarNotaAlCarrito(notaEnLaCaja.venta, clienteId);
+                setNotaEnLaCaja((n) => (n ? { ...n, enElCarrito: true } : n));
+              }}
+              onAgregar={agregarRenglon}
+              onDescartar={(renglon) => setNotaEnLaCaja((n) => (n ? { ...n, resueltos: [...n.resueltos, renglon] } : n))}
+              onCerrar={cerrarNota}
+            />
+          )}
+        </section>
+
         <section className={`tarjeta ${estilos.cabecera}`}>
           <div className={estilos.clienteCampo}>
             <label htmlFor="pos-cliente-buscar">
@@ -873,7 +1120,7 @@ export function Pos({
             Entrega{" "}
             <span className="ayuda">
               {entrega === "" ? "¿ya la entregaste?" : entrega === "ahora" ? "ya entregada" : `queda por entregar${entregaPrevista ? ` el ${fechaCorta(entregaPrevista)}` : ""}`}
-              {fotoEnEspera ? " · con la foto de la nota" : ""}
+              {fotoAparcada ? " · con la foto de la nota" : ""}
             </span>
           </summary>
           <div className={estilos.plegableCuerpo}>
@@ -921,10 +1168,14 @@ export function Pos({
             {entrega === "ahora" && (
               <div className="campo">
                 <label htmlFor="pos-foto">Foto de la nota firmada (obligatoria)</label>
-                {fotoEnEspera && <input type="hidden" name="foto_espera" value={fotoEnEspera} />}
+                {fotoAparcada && <input type="hidden" name="foto_espera" value={fotoAparcada} />}
+                {fotoAparcada && notaEnLaCaja?.vista && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={notaEnLaCaja.vista} alt="La foto de la nota, ya guardada" className={estilos.fotoGuardada} />
+                )}
                 <EntradaFoto nombre="foto" id="pos-foto" opcional soloFoto />
                 <span className="ayuda">
-                  {fotoEnEspera ? "La foto que pusiste ya está guardada; solo pon otra si quieres cambiarla. " : "La hoja firmada por el cliente. "}
+                  {fotoAparcada ? "La foto de la nota ya está guardada; solo pon otra si quieres cambiarla. " : "La hoja firmada por el cliente. "}
                   {seLee && "Se lee sola: si no es la nota, o su fecha o su suma no cuadran con lo anotado, avisa."}
                 </span>
                 {pideConfirmarNota && (

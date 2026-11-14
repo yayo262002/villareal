@@ -628,6 +628,18 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- Cómo se escribe a cada cliente en las notas de papel: «Nelson» por la
+  -- Pizzería NEL's. Se aprende al guardar una venta con la foto de su nota
+  -- leída, y la caja lo usa para reconocerlo en la siguiente nota.
+  -- nombre: lo escrito sin tildes, mayúsculas ni tratamiento (claveDeNombre).
+  create table if not exists nombres_en_notas (
+    nombre text not null,
+    cliente_id integer not null,
+    veces integer not null default 1,
+    ultima_vez text not null default (datetime('now')),
+    primary key (nombre, cliente_id)
+  );
+
   -- «Ya pagué»: lo que avisa el cliente desde su enlace de cuenta (la
   -- referencia y el monto). Cuando ese pago entra al banco, se le abona solo.
   create table if not exists avisos_de_pago (

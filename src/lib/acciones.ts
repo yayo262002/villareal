@@ -13,6 +13,7 @@ import {
   crearCliente,
   eliminarCliente,
   guardarSitio,
+  type ClienteConSaldo,
   type SitioDelMapa,
   type TipoCliente,
   ponerEnlace,
@@ -157,7 +158,9 @@ import { negocio } from "@/config/negocio";
 import { TAMANO_MAXIMO_ADJUNTO, buscarAdjunto, eliminarAdjunto, esTipoAdjunto, guardarAdjunto } from "./adjuntos";
 import { anotarLecturaDeFoto, aparcarFoto, buscarFotoEnEspera, olvidarFotoEnEspera, pasarFotoAAdjuntos, pasarFotoAAdjuntosDeProveedor } from "./fotos-en-espera";
 import { lectorDisponible, leerCaptura, leerNota, type ProductoDelCatalogo } from "./lector-de-notas";
-import { compararNota, interpretarLectura, type NotaLeida } from "./nota-leida";
+import { compararNota, interpretarLectura, type NotaLeida, type VentaAnotada } from "./nota-leida";
+import { aprenderNombreDeNota, nombresAprendidosDe } from "./nombres-en-notas";
+import type { LecturaParaLaCaja } from "./nota-a-venta";
 import { compararCaptura, describirCaptura, interpretarCaptura, propuestaDesdeCaptura, type CapturaLeida } from "./captura-leida";
 import { guardarCopiaNube } from "./copias-nube";
 import {
@@ -336,6 +339,24 @@ function avisoDeLaNota(reparos: string[], despues: string): string {
 /** La foto aparcada pasa a ser la de esa venta. */
 async function guardarFotoDeLaNota(foto: FotoDeLaNota, clienteId: number, ventaId: number): Promise<void> {
   await pasarFotoAAdjuntos(foto.id, clienteId, ventaId, `Nota N.º ${numeroDeNota(ventaId)} firmada`);
+}
+
+/**
+ * El cliente de la venta, para cotejar con él lo que dice la nota en «Señor(es)» y en «RIF», con lo aprendido de sus
+ * otras notas. `confirmado`: el dueño ya dijo en la caja que la nota es suya.
+ */
+async function clienteParaCotejar(cliente: ClienteConSaldo, confirmado = false): Promise<NonNullable<VentaAnotada["cliente"]>> {
+  return {
+    datos: { id: cliente.id, rotulo: cliente.rotulo, nombre: cliente.nombre, razon_social: cliente.razon_social, cedula_rif: cliente.cedula_rif },
+    aprendidos: await nombresAprendidosDe(cliente.id),
+    confirmado,
+  };
+}
+
+/** Lo que decía la nota de una venta ya guardada es de su cliente: la próxima nota con ese nombre ya sabe de quién es. */
+async function aprenderDeLaNota(lectura: Lectura, cliente: ClienteConSaldo): Promise<void> {
+  if (esMostrador(cliente) || !lectura.nota?.cliente?.nombre) return;
+  await aprenderNombreDeNota(lectura.nota.cliente.nombre, cliente.id);
 }
 
 type Volver = (mensaje: string, como?: "error" | "ok", casilla?: "confirmar_captura" | "confirmar_monto" | "confirmar_repetido") => never;
@@ -1655,7 +1676,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
       precio: l.precio!,
       importe: redondear(l.cantidad! * l.precio!),
     }));
-    reparos = lectura.nota ? compararNota(lectura.nota, { fecha, total, lineas: anotadas }) : [];
+    reparos = lectura.nota ? compararNota(lectura.nota, { fecha, total, lineas: anotadas, cliente: await clienteParaCotejar(cliente) }) : [];
     if (reparos.length > 0 && texto(datos, "confirmar_nota") !== "1") volver(avisoDeLaNota(reparos, "guarda otra vez"), "confirmar_nota");
   } else if (!/^\d{4}-\d{2}-\d{2}$/.test(entregaPrevista) || Number.isNaN(new Date(entregaPrevista + "T00:00:00Z").getTime())) {
     volver("Escribe el día previsto de entrega, para que el resumen te lo recuerde.");
@@ -1672,6 +1693,7 @@ export async function guardarVenta(datos: FormData): Promise<void> {
     ventaId = await crearVenta(clienteId, fecha, lineas, texto(datos, "nota"), tasa?.valor ?? null, porEntregar, porEntregar ? entregaPrevista : null);
     if (!porEntregar && foto) await guardarFotoDeLaNota(foto, clienteId, ventaId);
     else if (foto) await olvidarFotoEnEspera(foto.id);
+    await aprenderDeLaNota(lectura, cliente);
   } catch (error) {
     // Si la venta ya entró y solo falló la foto, no se vuelve al formulario: se anotaría dos veces.
     if (ventaId) volverConExito(`/admin/ventas/${ventaId}/nota`, `Venta registrada, pero la foto de la nota no se guardó: ${mensajeDe(error)} Súbela desde la ficha del cliente.`);
@@ -1716,7 +1738,10 @@ export async function cambiarEntrega(datos: FormData): Promise<void> {
       precio: Number(l.precio_unitario_usd),
       importe: Number(l.subtotal_usd),
     }));
-    reparos = lectura.nota ? compararNota(lectura.nota, { fecha: venta.fecha, total: venta.total_usd, lineas: anotadas }) : [];
+    const cliente = await buscarCliente(venta.cliente_id);
+    reparos = lectura.nota
+      ? compararNota(lectura.nota, { fecha: venta.fecha, total: venta.total_usd, lineas: anotadas, cliente: cliente ? await clienteParaCotejar(cliente) : undefined })
+      : [];
     if (reparos.length > 0 && texto(datos, "confirmar_nota") !== "1") {
       // A la nota, que enseña la foto ya guardada y la casilla para confirmar, y sabe adónde volver después.
       volverConError(
@@ -1728,6 +1753,10 @@ export async function cambiarEntrega(datos: FormData): Promise<void> {
   await marcarEntrega(id, entregada);
   if (entregada && foto) await guardarFotoDeLaNota(foto, venta.cliente_id, id);
   else if (foto) await olvidarFotoEnEspera(foto.id);
+  if (entregada && lectura.nota?.cliente?.nombre) {
+    const cliente = await buscarCliente(venta.cliente_id);
+    if (cliente) await aprenderDeLaNota(lectura, cliente);
+  }
   volverConExito(
     destino,
     entregada
@@ -2232,6 +2261,7 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
       nombre: limpiarNombreDeComprador(String(cruda.comprador?.nombre ?? "")),
     },
     local: cruda.local === true,
+    cliente_de_la_nota: Number(cruda.cliente_de_la_nota) || null,
     lineas: (Array.isArray(cruda.lineas) ? cruda.lineas : []).map((l) => ({
       clave: String(l.clave ?? ""),
       producto_id: Number(l.producto_id) || 0,
@@ -2364,7 +2394,9 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
       precio: l.precio_usd,
       importe: redondear(l.cantidad * l.precio_usd),
     }));
-    reparos = lectura.nota ? compararNota(lectura.nota, { fecha: venta.fecha, total, lineas: anotadas }) : [];
+    reparos = lectura.nota
+      ? compararNota(lectura.nota, { fecha: venta.fecha, total, lineas: anotadas, cliente: await clienteParaCotejar(cliente, venta.cliente_de_la_nota === cliente.id) })
+      : [];
     if (reparos.length > 0 && !venta.confirmar_nota) volver(avisoDeLaNota(reparos, "confirma otra vez"), "confirmar_nota");
   }
 
@@ -2383,6 +2415,9 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     resultado = await guardarVentaDelPos(venta, tasa?.valor ?? null);
     if (foto && venta.entrega === "ahora") await guardarFotoDeLaNota(foto, cliente.id, resultado.ventaId);
     else if (foto) await olvidarFotoEnEspera(foto.id);
+    if (venta.entrega === "ahora") await aprenderDeLaNota(lectura, cliente);
+    // Una nota leída en la caja que queda por entregar no se coteja, pero si el dueño dijo de quién era, se aprende igual.
+    else if (foto?.lectura && venta.cliente_de_la_nota === cliente.id) await aprenderDeLaNota({ nota: interpretarLectura(foto.lectura), intentada: true }, cliente);
   } catch (error) {
     // Si la venta ya entró y solo falló la foto, no se vuelve a la caja: se anotaría dos veces.
     if (resultado) volverConExito(`/admin/ventas/${resultado.ventaId}/nota?${vendida}`, `Venta registrada, pero la foto de la nota no se guardó: ${mensajeDe(error)} Súbela desde la nota.`);
@@ -2431,6 +2466,34 @@ async function esLaMismaVenta(guardada: Venta, nueva: VentaDelPos): Promise<bool
   const guardadas = lineas.map((l) => firma({ producto_id: Number(l.producto_id), variante_id: l.variante_id ? Number(l.variante_id) : null, cantidad: l.cantidad, precio: l.precio_unitario_usd })).sort();
   const nuevas = nueva.lineas.map((l) => firma({ producto_id: l.producto_id, variante_id: l.variante_id, cantidad: l.cantidad, precio: l.precio_usd })).sort();
   return guardadas.every((f, i) => f === nuevas[i]);
+}
+
+/**
+ * Lee la foto de una nota de papel para llenar la caja con ella (el botón «Leer una nota», en Ventas). No guarda
+ * ninguna venta: la foto queda aparcada para ser la de la nota firmada cuando el dueño confirme, lo leído se guarda con
+ * ella (al confirmar no se vuelve a leer) y vuelve a la caja, que lo enseña y pregunta de quién es.
+ */
+export async function leerNotaEnLaCaja(datos: FormData): Promise<LecturaParaLaCaja> {
+  await exigirSesion();
+  if (!lectorDisponible()) {
+    return { ok: false, error: "Para leer la nota sola falta la clave del lector (ANTHROPIC_API_KEY en Vercel). Mientras tanto, anota la venta a mano." };
+  }
+  const { foto, mala } = await recogerFotoDeLaNota(datos);
+  if (mala) return { ok: false, error: mala };
+  if (!foto) return { ok: false, error: "Toma la foto de la nota, o elígela de tus fotos." };
+  try {
+    const { nota } = await leerLaNota(foto, await catalogoDelPos());
+    if (!nota) {
+      return {
+        ok: false,
+        fotoId: foto.id,
+        error: "Esta vez no se pudo leer la nota. Prueba con otra foto (la hoja entera, derecha y con buena luz) o anota la venta a mano: la foto queda guardada como la de la nota firmada.",
+      };
+    }
+    return { ok: true, fotoId: foto.id, nota };
+  } catch (error) {
+    return { ok: false, fotoId: foto.id, error: `No se pudo leer la nota: ${mensajeDe(error)}` };
+  }
 }
 
 /** El código de barras y el SKU de un artículo («3-7») o de un tipo («3»), desde la pantalla de códigos o desde la caja. */

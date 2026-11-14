@@ -13,6 +13,7 @@ import { precioDeContado } from "@/lib/pos-calculo";
 import { preciosEspecialesPorCliente } from "@/lib/precios-especiales";
 import { lectorDisponible } from "@/lib/lector-de-notas";
 import { compradoresConocidos } from "@/lib/compradores";
+import { nombresAprendidos } from "@/lib/nombres-en-notas";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { Pos, type ArticuloParaLaCaja, type ClienteParaLaCaja } from "@/components/pos";
 import estilos from "../panel.module.css";
@@ -34,7 +35,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const parametros = await searchParams;
   const texto = (campo: string) => (typeof parametros[campo] === "string" ? (parametros[campo] as string) : "");
   const busqueda = texto("q").trim();
-  const [catalogo, clientes, tasa, precios, sinTope, mostrador, siguiente, ventas, compradores] = await Promise.all([
+  const [catalogo, clientes, tasa, precios, sinTope, mostrador, siguiente, ventas, compradores, aprendidos] = await Promise.all([
     catalogoDelPos(),
     listarClientes(),
     leerTasa(),
@@ -48,6 +49,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
       : listarVentas(50)
     ).then(conLineas),
     compradoresConocidos(),
+    nombresAprendidos(),
   ]);
   // La foto de la nota firmada de cada venta, para enlazarla desde su fila.
   const [fotos, facturas] = await Promise.all([adjuntosDeVentas(ventas.map((v) => v.id)), facturasDeVentas(ventas.map((v) => v.id))]);
@@ -70,7 +72,16 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
     precio_contado: precioDeContado(a.costo_usd),
     esCombo: a.esCombo,
   }));
-  const paraElegir = (c: (typeof clientes)[number]): ClienteParaLaCaja => ({ id: c.id, rotulo: c.rotulo, nombre: c.nombre, telefono: c.telefono, cedula_rif: c.cedula_rif, saldo_usd: c.saldo_usd, dias_credito: c.dias_credito });
+  const paraElegir = (c: (typeof clientes)[number]): ClienteParaLaCaja => ({
+    id: c.id,
+    rotulo: c.rotulo,
+    nombre: c.nombre,
+    razon_social: c.razon_social,
+    telefono: c.telefono,
+    cedula_rif: c.cedula_rif,
+    saldo_usd: c.saldo_usd,
+    dias_credito: c.dias_credito,
+  });
   const listaDeClientes = [paraElegir(mostrador), ...clientes.filter((c) => c.id !== mostrador.id).map(paraElegir)];
   // Las ventas recientes ya guardadas desde la caja: un carrito con una de esas claves ya se vendió.
   const clavesVendidas = [...ventas.map((v) => v.clave_pos), texto("vendida")].filter((c): c is string => Boolean(c));
@@ -103,6 +114,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         hoy={hoy()}
         siguienteNota={numeroDeNota(siguiente)}
         seLee={lectorDisponible()}
+        aprendidos={aprendidos}
         clavesVendidas={clavesVendidas}
         claveDevuelta={texto("clave") || undefined}
         fotoEnEspera={texto("foto_espera") || undefined}

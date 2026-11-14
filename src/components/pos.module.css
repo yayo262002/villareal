@@ -621,3 +621,435 @@
   border-radius: var(--radio);
   background: var(--color-aviso-fondo);
 }
+
+/*
+ * La nota de papel en la caja: el botón «Leer una nota» arriba de todo y,
+ * leída, una ficha como la hoja del talonario (crema, con el canto dorado):
+ * de quién es (la pregunta, grande), lo que dice renglón a renglón con su ✓
+ * o su ?, si el total cuadra, y lo que hay que mirar.
+ */
+.tarjetaNota {
+  display: grid;
+  gap: var(--espacio-3);
+  scroll-margin-top: var(--espacio-4);
+}
+.lector {
+  display: grid;
+  gap: var(--espacio-2);
+  align-items: center;
+}
+@media (min-width: 700px) {
+  .lector {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--espacio-4);
+  }
+}
+.botonLeer {
+  min-height: 54px;
+  padding: 0 var(--espacio-5);
+  font-size: 17px;
+  border-radius: 999px;
+  background: var(--color-verde-profundo);
+  box-shadow: inset 0 0 0 2px var(--color-oro-linea), var(--sombra);
+}
+.botonLeer:hover {
+  background: var(--color-marca-oscuro);
+}
+.botonLeer:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.botonLeerIcono {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-left: calc(-1 * var(--espacio-2));
+  border-radius: 50%;
+  background: var(--color-dorado);
+  color: var(--color-verde-profundo);
+}
+.lectorAyuda {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.nota {
+  position: relative;
+  display: grid;
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  padding-left: calc(var(--espacio-4) + 6px);
+  border: 1px solid var(--color-arena-borde);
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie-suave);
+  overflow: hidden;
+}
+/* El canto dorado de la hoja. */
+.nota::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: var(--color-oro);
+}
+.nota--mal::before {
+  background: var(--color-error);
+}
+/* La foto, el título y, en la esquina, la ✕ (sin columna propia, para que el título quepa en una línea). */
+.notaCabecera {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--espacio-3);
+  align-items: center;
+  padding-right: 36px;
+}
+.notaVista {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: var(--radio);
+  border: 2px solid var(--color-superficie);
+  box-shadow: var(--sombra-web);
+  transform: rotate(-3deg);
+}
+.notaTitulo {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.notaTitulo strong {
+  font-size: 17px;
+}
+.notaCerrar {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-texto-suave);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+.notaCerrar:hover {
+  background: var(--color-arena);
+  color: var(--color-texto);
+}
+/* Mientras se lee: una raya dorada que avanza. */
+.leyendo {
+  display: block;
+  height: 4px;
+  margin-top: var(--espacio-2);
+  border-radius: 4px;
+  background: linear-gradient(90deg, transparent, var(--color-oro), transparent) var(--color-arena) no-repeat;
+  background-size: 40% 100%;
+  animation: leyendo 1.2s ease-in-out infinite;
+}
+@keyframes leyendo {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .leyendo {
+    animation: none;
+    background-size: 100% 100%;
+  }
+}
+
+.notaSeccion {
+  display: grid;
+  gap: var(--espacio-2);
+  padding-top: var(--espacio-3);
+  border-top: 1px dashed var(--color-arena-borde);
+}
+.notaEtiqueta {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-oro-hondo);
+}
+.notaTexto {
+  margin: 0;
+  line-height: 1.45;
+}
+.escrito {
+  font-size: 18px;
+  color: var(--color-tinta);
+}
+.enlaceBoton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-marca);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.clienteOk {
+  display: flex;
+  gap: var(--espacio-2);
+  align-items: baseline;
+  margin: 0;
+  padding: var(--espacio-2) var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-exito-fondo);
+  color: var(--color-texto);
+  line-height: 1.45;
+}
+.clienteOk > span:first-child {
+  color: var(--color-exito);
+  font-weight: 800;
+}
+
+/* La pregunta: «¿Es Pizzería NEL's?», con el porqué y el «Sí». */
+.pregunta {
+  display: grid;
+  gap: var(--espacio-3);
+  align-items: center;
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 2px solid var(--color-oro);
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-oro);
+}
+@media (min-width: 560px) {
+  .pregunta {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+.preguntaQuien {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.preguntaEs {
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+.preguntaQuien strong {
+  font-size: 20px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.preguntaPor {
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+.preguntaPor span {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.preguntaSi {
+  min-height: 48px;
+  border-radius: 999px;
+}
+.otros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+  align-items: center;
+}
+.otro {
+  display: grid;
+  gap: 1px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 6px var(--espacio-3);
+  border: 1px solid var(--color-arena-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.otro:hover {
+  border-color: var(--color-oro);
+}
+.otro span {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+.notaAlerta {
+  display: grid;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: var(--espacio-3);
+  border: 1px solid var(--color-aviso);
+  border-radius: var(--radio);
+  background: var(--color-aviso-fondo);
+  color: var(--color-texto);
+  line-height: 1.45;
+}
+.notaAlerta .preguntaSi {
+  justify-self: start;
+}
+
+/* Renglón a renglón. */
+.renglones {
+  display: grid;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.renglon {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: var(--espacio-2);
+  align-items: start;
+  padding: var(--espacio-2) var(--espacio-3);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+.renglonMarca {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+  font-weight: 800;
+  font-size: 14px;
+}
+.renglon--duda {
+  border: 1px dashed var(--color-aviso);
+  background: var(--color-aviso-fondo);
+}
+.renglon--duda .renglonMarca {
+  background: var(--color-aviso);
+  color: var(--color-superficie);
+}
+.renglonCuerpo {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.renglonDetalle {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-texto);
+}
+.renglonLista {
+  color: var(--color-aviso);
+  font-size: 14px;
+}
+.renglonLeido {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.falta {
+  color: var(--color-error);
+  font-weight: 700;
+}
+/* Qué producto es: la lista a todo lo ancho y, debajo, «Agregar» y «No va». La lista no se estira con los nombres largos. */
+.renglonElegir {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2) var(--espacio-3);
+  align-items: center;
+  min-width: 0;
+  margin-top: var(--espacio-1);
+}
+.renglonElegir select {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  text-overflow: ellipsis;
+}
+@media (min-width: 560px) {
+  .renglonElegir select {
+    flex-basis: 220px;
+    width: auto;
+  }
+}
+.dejarAsi {
+  justify-self: start;
+  max-width: 100%;
+  min-height: 44px;
+  font-size: 15px;
+  white-space: normal;
+}
+.botonChico {
+  min-height: 44px;
+  padding: 0 var(--espacio-4);
+}
+.cuadre {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--espacio-1) var(--espacio-3);
+  margin: 0;
+  padding: var(--espacio-2) var(--espacio-3);
+  border-radius: var(--radio);
+  font-variant-numeric: tabular-nums;
+}
+.cuadre--bien {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+.cuadre--mal {
+  background: var(--color-error-fondo);
+  color: var(--color-error-oscuro);
+}
+.cuadre > span:last-child {
+  font-weight: 700;
+}
+.notaAvisos {
+  display: grid;
+  gap: var(--espacio-1);
+  margin: 0;
+  padding: var(--espacio-3) var(--espacio-3) var(--espacio-3) calc(var(--espacio-3) + 18px);
+  border-radius: var(--radio);
+  background: var(--color-aviso-fondo);
+  color: var(--color-texto);
+  line-height: 1.4;
+}
+.notaPie {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+.notaPie li::before {
+  content: "→ ";
+  color: var(--color-oro-hondo);
+  font-weight: 700;
+}
+.notaPie li:last-child {
+  color: var(--color-tinta);
+  font-weight: 600;
+}
+.fotoGuardada {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: var(--radio);
+  border: 1px solid var(--color-borde);
+}

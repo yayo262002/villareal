@@ -673,7 +673,21 @@ async function probarNegocio() {
   const confirmadaId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
   comprobar("una foto que el lector no entiende no frena la venta, y se dice", (await enviar("/admin/ventas/clasica", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoFirmada() })).destino.includes("no se pudo leer esta vez"));
   const sinLeerId = Number((await consultar("select max(id) as id from ventas"))[0].id);
-  for (const id of [leidaId, confirmadaId, sinLeerId]) await enviar(`/admin/ventas/${id}/eliminar`, 'name="id"', { id: String(id) });
+  // De quién es: «Nelson» en una nota de Cliente Detal avisa; revisada y guardada, se aprende y la siguiente ya no avisa.
+  const deNelson = { ...cuadra, cliente: { nombre: "Nelson", rif: null, direccion: null } };
+  r = await enviar("/admin/ventas/clasica", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida(deNelson) });
+  comprobar("la nota dice otro nombre que el del cliente: lo avisa antes que nada", r.destino.includes("La nota dice «Nelson» y la venta es de Cliente Detal") && r.destino.includes("confirmar_nota=1"), r.destino);
+  r = await enviar("/admin/ventas/clasica", 'name="cantidad_1"', { ...mediaMozzarella, foto_espera: r.destino.match(/foto_espera=(\d+)/)?.[1] ?? "", confirmar_nota: "1" });
+  const deNelsonId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  const aprendido = await consultar("select nombre, veces from nombres_en_notas where cliente_id = ?", [detalId]);
+  comprobar("revisada y guardada, «Nelson» queda aprendido como Cliente Detal", deNelsonId > 0 && aprendido.length === 1 && aprendido[0].nombre === "nelson", `${r.destino} ${JSON.stringify(aprendido)}`);
+  r = await enviar("/admin/ventas/clasica", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida(deNelson) });
+  comprobar("la siguiente nota de «Nelson» ya sabe que es suya: cuadra", r.destino.includes("se leyó y cuadra con lo anotado"), r.destino);
+  const deNelsonOtraId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  r = await enviar("/admin/ventas/clasica", 'name="cantidad_1"', { ...mediaMozzarella, foto: fotoLeida({ ...cuadra, cliente: { nombre: "Cliente Detal", rif: null, direccion: null } }) });
+  comprobar("con su propio nombre en la nota, cuadra sin más", r.destino.includes("se leyó y cuadra con lo anotado"), r.destino);
+  const conSuNombreId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  for (const id of [leidaId, confirmadaId, sinLeerId, deNelsonId, deNelsonOtraId, conSuNombreId]) await enviar(`/admin/ventas/${id}/eliminar`, 'name="id"', { id: String(id) });
   comprobar("las ventas de la prueba de lectura se borran y la cuenta vuelve a como estaba", cerca((await cuentasDe(detalId)).ventas, 17 + 8.5 + 3.5), JSON.stringify(await cuentasDe(detalId)));
 
   // La captura del pago se lee sola: sin monto, rellena el abono; con monto, lo comprueba; y queda guardada con el abono.

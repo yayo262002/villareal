@@ -148,6 +148,11 @@ export type VentaDelPos = {
   comprador?: { documento: string; nombre: string };
   /** Una venta de contado en el local, al precio de contado: se guarda con «Local» en el cajero. */
   local: boolean;
+  /**
+   * El cliente que el dueño dijo en la caja que es el de la nota leída («Sí, es él»): con ese cliente no se vuelve a
+   * avisar de que el nombre de la nota no casa. Null si no se leyó una nota o no se dijo.
+   */
+  cliente_de_la_nota?: number | null;
   lineas: LineaDelPos[];
   pagos: PagoDelPos[];
 };
