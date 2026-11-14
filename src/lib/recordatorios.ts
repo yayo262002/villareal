@@ -24,3 +24,8 @@ export async function ultimosRecordatorios(): Promise<Map<number, string>> {
   const lista = await filas<{ cliente_id: number; fecha: string }>("select cliente_id, max(fecha) as fecha from recordatorios group by cliente_id");
   return new Map(lista.map((r) => [Number(r.cliente_id), r.fecha]));
 }
+
+/** Todos los recordatorios de un cliente, del más nuevo al más viejo: para su historial. */
+export async function recordatoriosDe(clienteId: number): Promise<{ id: number; fecha: string; saldo_usd: number }[]> {
+  return filas<{ id: number; fecha: string; saldo_usd: number }>("select id, fecha, saldo_usd from recordatorios where cliente_id = ? order by fecha desc, id desc", [clienteId]);
+}

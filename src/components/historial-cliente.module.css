@@ -1,0 +1,333 @@
+/* El historial del cliente en su ficha: cada operación, una ficha, con su detalle plegado. */
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+  margin: var(--espacio-3) 0 var(--espacio-4);
+}
+
+.filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.filtroElegido {
+  border-color: var(--color-marca);
+  background: var(--color-marca);
+  color: var(--color-marca-texto);
+}
+
+.cuantos {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.lista {
+  display: grid;
+  gap: var(--espacio-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entrada {
+  display: grid;
+  gap: var(--espacio-2);
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-left-width: 4px;
+  border-radius: var(--radio-grande);
+  background: var(--color-superficie);
+  scroll-margin-top: var(--espacio-6);
+  min-width: 0;
+}
+
+.venta {
+  border-left-color: var(--color-marca);
+}
+
+.abono {
+  border-left-color: var(--color-exito);
+}
+
+.trato {
+  border-left-color: var(--color-borde);
+  background: var(--color-superficie-suave);
+  padding-block: var(--espacio-2);
+}
+
+.fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--espacio-2) var(--espacio-4);
+}
+
+.queEs {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.titulo {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.tipo {
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tipoVenta {
+  background: var(--color-marca);
+  color: var(--color-marca-texto);
+}
+
+.tipoAbono {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+
+.tipoTrato {
+  background: var(--color-borde);
+  color: var(--color-texto-suave);
+}
+
+.fecha {
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+
+.resumen {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-texto-suave);
+  overflow-wrap: anywhere;
+}
+
+.chips {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.chips:empty {
+  display: none;
+}
+
+.chipSuave,
+.chipBanco {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--color-superficie-suave);
+  color: var(--color-texto-suave);
+  border: 1px solid var(--color-borde);
+}
+
+.chipBanco {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+  border-color: transparent;
+}
+
+.cifras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+
+@media (min-width: 640px) {
+  .cifras {
+    display: grid;
+    justify-items: end;
+    gap: 2px;
+    text-align: right;
+  }
+}
+
+.monto {
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.montoAbono {
+  color: var(--color-exito);
+}
+
+.queda {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+  white-space: nowrap;
+}
+
+.detalle summary {
+  cursor: pointer;
+  width: fit-content;
+  font-weight: 700;
+  color: var(--color-marca);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.detalle[open] summary {
+  margin-bottom: var(--espacio-3);
+}
+
+.cuerpo {
+  display: grid;
+  gap: var(--espacio-3);
+  min-width: 0;
+}
+
+.lineas {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-borde);
+}
+
+.lineas li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px var(--espacio-3);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-borde);
+  font-size: 15px;
+}
+
+.lineaNombre {
+  grid-column: 1 / -1;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.lineaCuenta {
+  color: var(--color-texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.lineaImporte {
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.piezas {
+  color: var(--color-texto-suave);
+}
+
+.datos {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.datos div {
+  display: grid;
+  gap: 0;
+}
+
+@media (min-width: 640px) {
+  .datos div {
+    grid-template-columns: minmax(84px, 120px) minmax(0, 1fr);
+    gap: var(--espacio-3);
+  }
+}
+
+.datos dt {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+
+.datos dd {
+  margin: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.fotos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: var(--espacio-3);
+}
+
+.foto {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.imagen {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border-radius: var(--radio);
+  border: 1px solid var(--color-borde);
+  background: var(--color-superficie-suave);
+}
+
+.foto figcaption {
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+
+.pdf {
+  display: block;
+  padding: var(--espacio-4);
+  border: 1px dashed var(--color-borde);
+  border-radius: var(--radio);
+  text-align: center;
+  font-weight: 700;
+}
+
+.sinFoto {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-texto-suave);
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-2) var(--espacio-4);
+}
+
+.mas {
+  margin: var(--espacio-4) 0 0;
+}

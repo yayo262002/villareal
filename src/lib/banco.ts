@@ -581,3 +581,16 @@ export async function resumenDelBanco(): Promise<{ por_identificar: number; hoy_
   );
   return { por_identificar: Number(f?.por_identificar ?? 0), hoy_bs: Number(f?.hoy_bs ?? 0), hoy_cuantos: Number(f?.hoy_cuantos ?? 0) };
 }
+
+/** Lo que dijo el banco de un abono que entró por ahí: para enseñarlo en el historial del cliente. */
+export type DelBanco = { pago_id: number; banco: string; como: ComoSeSupo | ""; fecha: string; hora: string; telefono: string; titular: string; referencia: string };
+
+export async function delBancoPorPago(pagoIds: number[]): Promise<Map<number, DelBanco>> {
+  if (pagoIds.length === 0) return new Map();
+  const huecos = pagoIds.map(() => "?").join(", ");
+  const lista = await filas<DelBanco>(
+    `select pago_id, banco, como, fecha, hora, telefono, titular, referencia from movimientos_banco where estado = 'aplicado' and pago_id in (${huecos})`,
+    pagoIds,
+  );
+  return new Map(lista.map((m) => [Number(m.pago_id), m]));
+}

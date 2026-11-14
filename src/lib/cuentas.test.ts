@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aplicarPagos, movimientosDeCuenta } from "./cuentas.ts";
+import { aplicarPagos, movimientosDeCuenta, repartoDeAbonos } from "./cuentas.ts";
 
 const ventas = [
   { id: 3, fecha: "2026-09-20", total_usd: 30 },
@@ -79,4 +79,41 @@ test("el orden de entrada se respeta y el resultado no modifica las ventas origi
   const cuentas = aplicarPagos(ventas, 5);
   assert.deepEqual(cuentas.map((v) => v.id), [3, 1, 2]);
   assert.deepEqual(ventas, copia);
+});
+
+test("el reparto abono por abono: cada uno paga las notas más antiguas que quedan", () => {
+  const abonos = [
+    { id: 8, fecha: "2026-09-15", monto_usd: 25 },
+    { id: 7, fecha: "2026-09-05", monto_usd: 5 },
+  ];
+  const r = repartoDeAbonos(ventas, abonos);
+  // El del 5/09 va a la nota 1 (10 $); el del 15/09 termina la 1 (5 $) y pone 20 $ en la 2.
+  assert.deepEqual(r.porAbono.get(7), [{ venta_id: 1, usd: 5 }]);
+  assert.deepEqual(r.porAbono.get(8), [
+    { venta_id: 1, usd: 5 },
+    { venta_id: 2, usd: 20 },
+  ]);
+  assert.deepEqual(r.porVenta.get(1), [
+    { abono_id: 7, usd: 5 },
+    { abono_id: 8, usd: 5 },
+  ]);
+  assert.equal(r.porVenta.get(3), undefined, "la nota 3 no la ha pagado nadie");
+  assert.equal(r.aFavor.size, 0);
+});
+
+test("el reparto deja lo mismo pendiente que aplicarPagos, y lo que sobra queda a favor", () => {
+  const abonos = [
+    { id: 1, fecha: "2026-09-02", monto_usd: 12.5 },
+    { id: 2, fecha: "2026-09-30", monto_usd: 60 },
+  ];
+  const r = repartoDeAbonos(ventas, abonos);
+  for (const v of aplicarPagos(ventas, 72.5)) {
+    const pagado = (r.porVenta.get(v.id) ?? []).reduce((s, p) => s + p.usd, 0);
+    assert.equal(Math.round(pagado * 100) / 100, v.pagado_usd, `nota ${v.id}`);
+  }
+  assert.equal(r.aFavor.get(2), 12.5);
+  assert.deepEqual(r.porAbono.get(1), [
+    { venta_id: 1, usd: 10 },
+    { venta_id: 2, usd: 2.5 },
+  ]);
 });

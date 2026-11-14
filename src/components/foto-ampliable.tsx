@@ -8,9 +8,10 @@ import estilos from "./foto-ampliable.module.css";
  * abre a pantalla entera, sobre la misma pantalla, con una flecha para
  * volver. Antes la foto era un enlace al archivo, y en el panel puesto como
  * app del teléfono eso abría el archivo solo, sin ninguna forma de volver.
- * Sin JavaScript queda la foto tal cual, que ya se ve entera.
+ * Sin JavaScript queda la foto tal cual, que ya se ve entera. Con «perezosa»
+ * no se baja hasta que se ve (dentro de un «Ver detalle» cerrado, nunca).
  */
-export function FotoAmpliable({ src, alt, className }: { src: string; alt: string; className?: string }) {
+export function FotoAmpliable({ src, alt, className, perezosa = false }: { src: string; alt: string; className?: string; perezosa?: boolean }) {
   const [ampliada, setAmpliada] = useState(false);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export function FotoAmpliable({ src, alt, className }: { src: string; alt: strin
     <>
       <button type="button" className={estilos.boton} onClick={() => setAmpliada(true)} title="Tocar para ampliar">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} className={className} />
+        <img src={src} alt={alt} className={className} loading={perezosa ? "lazy" : undefined} />
       </button>
       {ampliada && (
         <div className={estilos.fondo} role="dialog" aria-modal="true" aria-label={alt}>

@@ -273,6 +273,7 @@ src/components/nav-panel.tsx     El menú del panel, con la sección abierta mar
 src/components/aviso-de-carga.tsx  La raya dorada mientras llega la pantalla que se tocó en el panel
 src/components/un-solo-envio.tsx   Que un toque doble no registre dos veces una venta o un abono
 src/components/fotos-de-nota.tsx   Las fotos de la nota firmada de una venta, en la nota, en Ventas y en el despacho
+src/components/historial-cliente.tsx  El historial de la ficha del cliente: ventas, abonos, llamadas y recordatorios juntos, con su detalle, sus fotos y sus capturas
 src/app/admin/(panel)/adjuntos/[id]/ver/  Una foto vista entera, con su fecha, de quién es y la vuelta a donde se estaba
 src/lib/avisos.ts         La campanita: los avisos de lo que el sistema sabe antes que el dueño, y los del día
 src/lib/aviso-manana.ts   El texto del aviso de cada mañana (puro, con pruebas)
@@ -652,6 +653,23 @@ Binance y otro.
     que no cuadre vuelve como aviso con la casilla «Ya revisé la captura»
     (`src/lib/captura-leida.ts`). Nada se guarda sin que el dueño pulse.
     Sin la clave, la captura solo se guarda.
+- **Historial** (pedido por el dueño el 14/11/2026: «que aparezcan todas
+  las operaciones de una manera más detallada»). En la ficha del cliente,
+  en lugar de las listas sueltas de notas y de abonos, todo junto y de lo
+  más nuevo a lo más viejo: cada venta, cada abono, cada llamada o visita
+  anotada y cada recordatorio de cobro, cada uno con cómo quedó su cuenta
+  después («Quedó debiendo USD 78,00»). Se filtra por Ventas, Abonos, Por
+  pagar o Llamadas y recordatorios (`?ver=`, sin JavaScript), y enseña las
+  30 últimas con «Ver todo el historial». Cada venta y cada abono tienen
+  **«Ver detalle»**, que se abre ahí mismo: de la venta, sus productos
+  (cantidad × precio = importe), el total en bolívares a la tasa de la nota,
+  lo pagado y con qué abonos, lo que queda y cuándo vence, la entrega, la
+  caja, la factura, la observación y **la foto de la nota firmada**; del
+  abono, cómo pagó, la tasa, la referencia, «Debía → quedó», **a qué notas
+  fue** (`repartoDeAbonos` en `src/lib/cuentas.ts`, con pruebas: el mismo
+  reparto de siempre, de la nota más antigua a la más nueva, abono por
+  abono), si entró del banco y **la captura del pago**. Las fotos se
+  amplían al tocarlas y no se bajan hasta abrir el detalle.
 - **Estado de cuenta.** En la ficha del cliente, «Estado de cuenta»
   (`/admin/clientes/7/estado`): cada compra y cada abono en su orden, con
   el saldo que deja cada uno (`movimientosDeCuenta` en `src/lib/cuentas.ts`).

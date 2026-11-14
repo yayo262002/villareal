@@ -2430,7 +2430,7 @@ async function probarAvisos() {
   comprobar("confirmado que es otro abono, se guarda", r.destino.includes("Abono registrado") && (await abonosDe7()) === 2, r.destino);
   // La ficha numera los abonos y dice lo que debía y lo que quedó; la captura lleva el mismo número.
   const fichaConAbonos = legible((await pagina(ficha)).html);
-  comprobar("la ficha numera los abonos y dice el saldo de ese momento", /N\.º<\/th>/.test(fichaConAbonos) && fichaConAbonos.includes("Debía") && fichaConAbonos.includes("quedó"));
+  comprobar("la ficha numera los abonos y dice el saldo de ese momento", /Abono<\/span> N\.º \d/.test(fichaConAbonos) && fichaConAbonos.includes("Debía") && fichaConAbonos.includes("quedó"));
   for (const p of await consultar("select id from pagos where cliente_id = ? and monto = 7", [cliente.id])) await enviar(`/admin/pagos/${p.id}/eliminar`, 'name="id"', { id: String(p.id) });
   comprobar("los dos abonos de la prueba se borran", (await abonosDe7()) === 0);
 
@@ -2585,6 +2585,24 @@ async function probarCaja() {
   );
   const fichaDespues = legible((await pagina(ficha)).html);
   comprobar("la venta y sus dos abonos salen en la ficha del cliente, con la referencia del pago móvil", fichaDespues.includes(`/admin/ventas/${ventaId}/nota`) && fichaDespues.includes("Pago móvil") && fichaDespues.includes("1234"));
+  const partesDelHistorial = {
+    historial: fichaDespues.includes('id="historial"'),
+    venta: fichaDespues.includes(`id="venta-${ventaId}"`),
+    detalle: fichaDespues.includes("Ver detalle") && fichaDespues.includes("Mozzarella"),
+    aplicado: fichaDespues.includes("Se aplicó a") && /la nota N\.º \d{6} \(USD/.test(fichaDespues),
+    caja: fichaDespues.includes(`Cobrado con la <a href="#venta-${ventaId}">nota ${numeroDeNota(ventaId)}</a>`),
+    foto: fichaDespues.includes("Con foto de la nota") && fichaDespues.includes('loading="lazy"'),
+  };
+  comprobar(
+    "historial: la venta con su detalle y su foto, y cada abono dice a qué nota fue y con qué venta se cobró en la caja",
+    Object.values(partesDelHistorial).every(Boolean),
+    JSON.stringify(partesDelHistorial),
+  );
+  const soloAbonos = legible((await pagina(`${ficha}?ver=abonos`)).html);
+  comprobar(
+    "historial: el filtro «Abonos» deja solo los abonos",
+    soloAbonos.includes('aria-current="true"') && /Abono<\/span> N\.º/.test(soloAbonos) && !soloAbonos.includes(`id="venta-${ventaId}"`),
+  );
   comprobar("Ventas la marca como de la caja", (await pagina("/admin/ventas")).html.includes("· caja"));
   r = await mandar({});
   comprobar("la misma venta dos veces es una sola: vuelve a su nota", r.destino.includes("ya estaba registrada") && r.destino.includes(`/admin/ventas/${ventaId}/nota`) && (await consultar("select count(*) as n from ventas where clave_pos = ?", [clave]))[0].n == 1, r.destino);

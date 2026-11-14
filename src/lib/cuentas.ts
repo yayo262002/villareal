@@ -87,3 +87,48 @@ export function movimientosDeCuenta(ventas: VentaMinima[], abonos: AbonoMinimo[]
     return { ...m, saldo_usd: saldo };
   });
 }
+
+/** A qué notas fue cada abono, y qué abonos pagaron cada nota. */
+export type RepartoDeAbonos = {
+  /** De cada abono, las notas que pagó (de la más antigua a la más nueva) y cuánto a cada una. */
+  porAbono: Map<number, { venta_id: number; usd: number }[]>;
+  /** De cada nota, los abonos que la pagaron y cuánto puso cada uno. */
+  porVenta: Map<number, { abono_id: number; usd: number }[]>;
+  /** Lo que sobró de un abono cuando ya no quedaba nada por pagar: queda a favor del cliente. */
+  aFavor: Map<number, number>;
+};
+
+/**
+ * El mismo reparto que `aplicarPagos`, abono por abono: cada abono, en su
+ * orden (fecha y número), paga las notas más antiguas que queden por pagar,
+ * aunque sean de después (lo que sobra de un abono cubre la nota
+ * siguiente). Lo pendiente de cada nota sale igual que con `aplicarPagos`.
+ */
+export function repartoDeAbonos(ventas: VentaMinima[], abonos: AbonoMinimo[]): RepartoDeAbonos {
+  const orden = <T extends { fecha: string; id: number }>(lista: T[]) => [...lista].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.id - b.id);
+  const notas = orden(ventas).map((v) => ({ id: v.id, falta: redondear(Number(v.total_usd)) }));
+  const porAbono = new Map<number, { venta_id: number; usd: number }[]>();
+  const porVenta = new Map<number, { abono_id: number; usd: number }[]>();
+  const aFavor = new Map<number, number>();
+  let i = 0;
+  for (const abono of orden(abonos)) {
+    let queda = redondear(Number(abono.monto_usd));
+    const partes: { venta_id: number; usd: number }[] = [];
+    while (queda > 0 && i < notas.length) {
+      const nota = notas[i];
+      if (nota.falta <= 0) {
+        i++;
+        continue;
+      }
+      const usd = redondear(Math.min(queda, nota.falta));
+      nota.falta = redondear(nota.falta - usd);
+      queda = redondear(queda - usd);
+      partes.push({ venta_id: nota.id, usd });
+      porVenta.set(nota.id, [...(porVenta.get(nota.id) ?? []), { abono_id: abono.id, usd }]);
+      if (nota.falta <= 0) i++;
+    }
+    porAbono.set(abono.id, partes);
+    if (queda > 0) aFavor.set(abono.id, queda);
+  }
+  return { porAbono, porVenta, aFavor };
+}

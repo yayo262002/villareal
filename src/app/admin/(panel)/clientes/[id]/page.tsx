@@ -10,14 +10,17 @@ import { listarProductos } from "@/lib/productos";
 import { listarVariantes } from "@/lib/variantes";
 import { vendiblesDe } from "@/lib/catalogo";
 import { describirTrato, estudiarCliente } from "@/lib/seguimiento";
-import { NOMBRE_ESTADO, aplicarPagos, movimientosDeCuenta } from "@/lib/cuentas";
-import { conVencimiento, describirVencimiento } from "@/lib/credito";
+import { aplicarPagos, movimientosDeCuenta, repartoDeAbonos } from "@/lib/cuentas";
+import { conVencimiento } from "@/lib/credito";
 import { anotarContactoAccion, cambiarEnlaceDeCuenta, editarCliente, guardarPrecioEspecialAccion, quitarPrecioEspecialAccion, situarClienteEnElMapa, subirAdjunto } from "@/lib/acciones";
-import { numeroDeNota, resumenDeLineas } from "@/lib/entregas";
+import { numeroDeNota } from "@/lib/entregas";
 import { leerTasa } from "@/lib/ajustes";
-import { METODOS_PAGO, fechaCorta, fechaDeLaBase, formatearMonto, hoy, redondear, usd, tasaLegible } from "@/lib/dinero";
+import { METODOS_PAGO, fechaCorta, fechaDeLaBase, hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
-import { ultimoRecordatorioDe } from "@/lib/recordatorios";
+import { recordatoriosDe, ultimoRecordatorioDe } from "@/lib/recordatorios";
+import { facturasDeVentas } from "@/lib/facturas";
+import { delBancoPorPago } from "@/lib/banco";
+import { HistorialDelCliente, leerFiltroDelHistorial } from "@/components/historial-cliente";
 import { FormularioPago } from "@/components/formulario-pago";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { negocio } from "@/config/negocio";
@@ -43,18 +46,20 @@ export default async function PaginaCliente({
   const cliente = await buscarCliente(Number(id));
   if (!cliente) notFound();
 
-  const [ventas, pagos, adjuntos, tasa, tasaDelDia, recordadoEl, contactos, preciosEspeciales, productos, variantes] = await Promise.all([
+  const [ventas, pagos, adjuntos, tasa, tasaDelDia, recordadoEl, contactos, preciosEspeciales, productos, variantes, recordatorios] = await Promise.all([
     listarVentasDeCliente(cliente.id).then(conLineas),
     listarPagosDeCliente(cliente.id),
     listarAdjuntosDeCliente(cliente.id),
     ultimaTasa(),
     leerTasa(),
     ultimoRecordatorioDe(cliente.id),
-    listarContactosDe(cliente.id),
+    listarContactosDe(cliente.id, 500),
     listarPreciosEspecialesDe(cliente.id),
     listarProductos(true),
     listarVariantes(),
+    recordatoriosDe(cliente.id),
   ]);
+  const [facturas, delBanco] = await Promise.all([facturasDeVentas(ventas.map((v) => v.id)), delBancoPorPago(pagos.map((p) => p.id))]);
   // Lo que se le puede poner a precio especial: todo lo que se vende, con su nombre de venta.
   const vendibles = vendiblesDe(productos, variantes);
   const nombreDeVendible = new Map(vendibles.map((v) => [v.clave, v.nombre]));
@@ -64,20 +69,12 @@ export default async function PaginaCliente({
   const situacion = situar(cliente, ciudad);
   const mapa = enlaceAlMapa(cliente, ciudad);
   const ventaDeAdjunto = new Map(ventas.map((v) => [v.id, v]));
-  // La captura de cada abono, para enlazarla desde su fila.
-  const capturaDe = new Map(adjuntos.filter((a) => a.pago_id).map((a) => [a.pago_id, a.id]));
-  // La foto de la nota firmada de cada venta (la más reciente, si hay varias), para enlazarla desde su fila.
-  const fotoDeVenta = new Map<number, number>();
-  for (const a of [...adjuntos].reverse()) if (a.venta_id && !a.pago_id) fotoDeVenta.set(a.venta_id, a.id);
   const aqui = (ancla: string) => encodeURIComponent(`/admin/clientes/${cliente.id}#${ancla}`);
   // Cada abono con su número (del más antiguo al más nuevo) y lo que debía el cliente antes y lo que quedó después.
   const abonosEnOrden = [...pagos].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.id - b.id);
   const numeroDeAbono = new Map(abonosEnOrden.map((p, i) => [p.id, i + 1]));
-  const saldoTrasAbono = new Map(movimientosDeCuenta(ventas, pagos).filter((m) => m.tipo === "abono").map((m) => [m.id, m.saldo_usd]));
-  const saldoDelAbono = (p: { id: number; monto_usd: number }) => {
-    const despues = saldoTrasAbono.get(p.id);
-    return despues === undefined ? "—" : `Debía ${usd(redondear(despues + Number(p.monto_usd)))} → quedó ${usd(despues)}`;
-  };
+  const saldoTras = new Map(movimientosDeCuenta(ventas, pagos).map((m) => [`${m.tipo}-${m.id}`, m.saldo_usd]));
+  const reparto = repartoDeAbonos(ventas, pagos);
   // El seguimiento: cuándo fue el último trato con este cliente, sea el que sea.
   const trato = estudiarCliente({ alta: cliente.creado_en, ventas, abonos: pagos, ultimoRecordatorio: recordadoEl, ultimoContacto: contactos[0]?.fecha ?? null }, hoy());
 
@@ -398,7 +395,7 @@ export default async function PaginaCliente({
         </form>
         {contactos.length > 0 && (
           <ul className={estilos.pedidos} style={{ marginTop: "var(--espacio-3)" }}>
-            {contactos.map((c) => (
+            {contactos.slice(0, 10).map((c) => (
               <li key={c.id}>
                 <p>
                   <strong>{fechaCorta(c.fecha)}</strong> · {TIPOS_DE_CONTACTO[c.tipo]}
@@ -467,82 +464,23 @@ export default async function PaginaCliente({
         </form>
       </section>
 
-      <section className="tarjeta" id="cuentas">
-        <h2 className={estilos.subtitulo}>Cuentas</h2>
-        {cuentas.length === 0 ? (
-          <p className="vacio">Sin ventas todavía.</p>
-        ) : (
-          <div className="tabla-envoltorio">
-            <table className="tabla tabla--fichas">
-              <thead>
-                <tr>
-                  <th>Nota</th>
-                  <th>Fecha</th>
-                  <th>Productos</th>
-                  <th className="numero">Total</th>
-                  <th className="numero">Pendiente</th>
-                  <th>Estado</th>
-                  <th>Vence</th>
-                  <th>Observación</th>
-                  <th>
-                    <span className="visualmente-oculto">Acciones</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {cuentas.map((v) => (
-                  <tr key={v.id}>
-                    <td data-label="Nota">
-                      <Link href={`/admin/ventas/${v.id}/nota`}>{numeroDeNota(v.id)}</Link>
-                    </td>
-                    <td data-label="Fecha">{fechaCorta(v.fecha)}</td>
-                    <td data-label="Productos">{resumenDeLineas(v.lineas)}</td>
-                    <td data-label="Total" className="numero">{usd(v.total_usd)}</td>
-                    <td data-label="Pendiente" className="numero">{v.pendiente_usd > 0 ? usd(v.pendiente_usd) : "—"}</td>
-                    <td data-label="Estado">
-                      <span className={`${estilos.estado} ${estilos[`estado--${v.estado}`]}`}>
-                        {NOMBRE_ESTADO[v.estado]}
-                      </span>
-                      {v.por_entregar ? (
-                        <>
-                          {" "}
-                          <Link href="/admin/despacho" className={`${estilos.estado} ${estilos["estado--parcial"]}`}>
-                            Por entregar
-                          </Link>
-                        </>
-                      ) : null}
-                    </td>
-                    <td data-label="Vence">
-                      {v.pendiente_usd > 0 ? (
-                        <span className={v.vencida ? estilos.vencida : undefined}>{describirVencimiento(v.atraso)}</span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td data-label="Observación" data-vacio={v.nota ? undefined : ""}>{v.nota || "—"}</td>
-                    <td className={estilos.accionesFila}>
-                      <Link href={`/admin/ventas/${v.id}/nota`}>Ver nota</Link>
-                      {fotoDeVenta.has(v.id) && (
-                        <Link href={`/admin/adjuntos/${fotoDeVenta.get(v.id)}/ver?volver_a=${aqui("cuentas")}`} title="La foto de la nota firmada">
-                          Foto
-                        </Link>
-                      )}
-                      {enlaceNota(v) && (
-                        <a href={enlaceNota(v)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
-                          Enviar nota
-                        </a>
-                      )}
-                      <Link href={`/admin/ventas/${v.id}/eliminar`} className="enlace-fila">
-                        Eliminar
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <HistorialDelCliente
+        clienteId={cliente.id}
+        ventas={cuentas}
+        pagos={pagos}
+        adjuntos={adjuntos}
+        facturas={facturas}
+        delBanco={delBanco}
+        contactos={contactos}
+        recordatorios={recordatorios}
+        numeroDeAbono={numeroDeAbono}
+        saldoTras={saldoTras}
+        reparto={reparto}
+        enlaceNota={enlaceNota}
+        enlaceRecibo={enlaceRecibo}
+        ver={leerFiltroDelHistorial(parametros.ver)}
+        todo={parametros.todo === "1"}
+      />
 
       {pedirResena.length > 0 && (
         <section className="tarjeta">
@@ -560,63 +498,6 @@ export default async function PaginaCliente({
           </div>
         </section>
       )}
-
-      <section className="tarjeta" id="abonos">
-        <h2 className={estilos.subtitulo}>Abonos</h2>
-        <p className={estilos.ayuda}>Cada abono con su número, lo que debía el cliente en ese momento y lo que quedó; su captura lleva el mismo número.</p>
-        {pagos.length === 0 ? (
-          <p className="vacio">Sin abonos todavía.</p>
-        ) : (
-          <div className="tabla-envoltorio">
-            <table className="tabla tabla--fichas">
-              <thead>
-                <tr>
-                  <th>N.º</th>
-                  <th>Fecha</th>
-                  <th>Método</th>
-                  <th className="numero">Monto</th>
-                  <th className="numero">Tasa</th>
-                  <th className="numero">En USD</th>
-                  <th>Saldo</th>
-                  <th>Referencia</th>
-                  <th>
-                    <span className="visualmente-oculto">Acciones</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagos.map((p) => (
-                  <tr key={p.id}>
-                    <td data-label="N.º">{numeroDeAbono.get(p.id)}</td>
-                    <td data-label="Fecha">{fechaCorta(p.fecha)}</td>
-                    <td data-label="Método">{METODOS_PAGO[p.metodo]}</td>
-                    <td data-label="Monto" className="numero">{formatearMonto(p.monto, p.moneda)}</td>
-                    <td data-label="Tasa" className="numero" data-vacio={p.tasa ? undefined : ""}>{p.tasa ? tasaLegible(p.tasa) : "—"}</td>
-                    <td data-label="En USD" className="numero">{usd(p.monto_usd)}</td>
-                    <td data-label="Saldo">{saldoDelAbono(p)}</td>
-                    <td data-label="Referencia" data-vacio={p.referencia ? undefined : ""}>{p.referencia || "—"}</td>
-                    <td className={estilos.accionesFila}>
-                      {enlaceRecibo(p) && (
-                        <a href={enlaceRecibo(p)!} target="_blank" rel="noopener" className={estilos.whatsapp}>
-                          Enviar recibo
-                        </a>
-                      )}
-                      {capturaDe.has(p.id) && (
-                        <Link href={`/admin/adjuntos/${capturaDe.get(p.id)}/ver?volver_a=${aqui("abonos")}`} className="enlace-fila">
-                          Captura N.º {numeroDeAbono.get(p.id)}
-                        </Link>
-                      )}
-                      <Link href={`/admin/pagos/${p.id}/eliminar`} className="enlace-fila">
-                        Eliminar
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
 
       {/* El enlace personal con el que el cliente ve su cuenta, sin clave. */}
       <section className="tarjeta" id="enlace">
