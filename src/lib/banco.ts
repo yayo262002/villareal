@@ -10,6 +10,7 @@ import { crearAviso } from "./avisos";
 import { empujarAviso } from "./push";
 import { ROTULO_DEL_CLIENTE } from "./rotulo";
 import { esMostrador } from "./pos";
+import { telefonoLegible } from "./whatsapp";
 import { pagosDeVenta } from "./pagos";
 import { bs, fechaCorta, fechaEnVenezuela, horaDeLaBase, hoy, redondear, usd } from "./dinero";
 import {
@@ -65,7 +66,8 @@ export type MovimientoBanco = {
   texto: string;
   origen: "telefono" | "a_mano";
   estado: EstadoDelMovimiento;
-  como: ComoSeSupo | "";
+  /** Cómo se supo de quién era; «de_la_casa» si es de la familia del dueño (apartado, no es un abono). */
+  como: ComoSeSupo | "" | "de_la_casa";
   cliente_id: number | null;
   pago_id: number | null;
   creado_en: string;
@@ -166,6 +168,11 @@ export async function recibirDelBanco(texto: string, origen: "telefono" | "a_man
     const otro = await movimientoIgual(m.banco, m.referencia, m.monto_bs, m.telefono, m.titular, fecha);
     if (otro) return { tipo: "repetido", movimiento: otro };
   }
+  // El pago de alguien de la casa (la familia del dueño) no es un abono: se aparta solo y no se avisa.
+  if (await esDeLaCasa(m)) {
+    await ejecutar("update movimientos_banco set estado = 'no_es_abono', como = 'de_la_casa', resuelto_en = datetime('now') where id = ?", [r.ultimoId]);
+    return { tipo: "nuevo", movimiento: (await buscarMovimiento(r.ultimoId))! };
+  }
   await conciliar(r.ultimoId);
   const movimiento = (await buscarMovimiento(r.ultimoId))!;
   await avisarDelMovimiento(movimiento);
@@ -246,6 +253,8 @@ async function aprender(mov: { telefono: string; titular: string }, clienteId: n
   const cliente = await fila<{ nombre: string; telefono: string }>("select nombre, telefono from clientes where id = ?", [clienteId]);
   if (!cliente || esMostrador(cliente)) return;
   for (const clave of clavesDelPagador(mov)) {
+    // Quien paga a nombre de un cliente no es de la casa.
+    await ejecutar("delete from pagadores_de_la_casa where clave = ?", [clave]);
     await ejecutar(
       `insert into pagadores (clave, cliente_id) values (?, ?)
        on conflict(clave) do update set cliente_id = excluded.cliente_id`,
@@ -371,11 +380,68 @@ export async function deshacerMovimiento(movId: number): Promise<MovimientoBanco
   return (await buscarMovimiento(movId))!;
 }
 
+// ---------- Los de la casa ----------
+
+/** Si quien pagó es de la casa (la familia del dueño): por su teléfono o su nombre en el banco. */
+async function esDeLaCasa(mov: { telefono: string; titular: string }): Promise<boolean> {
+  const claves = clavesDelPagador(mov);
+  if (claves.length === 0) return false;
+  const f = await fila<{ n: number }>(`select count(*) as n from pagadores_de_la_casa where clave in (${claves.map(() => "?").join(", ")})`, claves);
+  return Number(f?.n ?? 0) > 0;
+}
+
+/** Quienes pagan y son de la casa, como se ven: el nombre o el teléfono. */
+export async function pagadoresDeLaCasa(): Promise<{ clave: string; quien: string }[]> {
+  const lista = await filas<{ clave: string }>("select clave from pagadores_de_la_casa order by clave");
+  return lista.map(({ clave }) => ({
+    clave,
+    quien: clave.startsWith("tel:")
+      ? telefonoLegible(clave.slice(4))
+      : clave
+          .replace(/^nombre:/, "")
+          .split(" ")
+          .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+          .join(" "),
+  }));
+}
+
+/**
+ * «Es de la casa»: ese pago no es de un cliente y quien lo hizo tampoco lo será; sus pagos siguientes se apartan solos.
+ * Los que esperan del mismo pagador se apartan también. Devuelve cuántos se apartaron.
+ */
+export async function marcarDeLaCasa(movId: number): Promise<number> {
+  const mov = await buscarMovimiento(movId);
+  if (!mov) throw new Error("No se encontró ese pago del banco.");
+  if (mov.estado !== "por_conciliar" && mov.estado !== "no_es_abono") throw new Error("Ese pago ya está abonado: deshazlo primero.");
+  const claves = clavesDelPagador(mov);
+  if (claves.length === 0) throw new Error("Ese aviso no dice quién pagó (ni nombre ni teléfono): márcalo «No es de un cliente».");
+  for (const clave of claves) {
+    await ejecutar("insert or ignore into pagadores_de_la_casa (clave) values (?)", [clave]);
+    // Ya no se le tiene por quien paga a nombre de un cliente.
+    await ejecutar("delete from pagadores where clave = ?", [clave]);
+  }
+  let apartados = 0;
+  for (const otro of [mov, ...(await listarMovimientos("por_conciliar", 500))]) {
+    if (otro.id !== mov.id && !clavesDelPagador(otro).some((c) => claves.includes(c))) continue;
+    const r = await ejecutar(
+      "update movimientos_banco set estado = 'no_es_abono', como = 'de_la_casa', resuelto_en = datetime('now') where id = ? and estado in ('por_conciliar', 'no_es_abono')",
+      [otro.id],
+    );
+    apartados += r.cambios;
+  }
+  return apartados;
+}
+
+/** Deja de tener a alguien por de la casa: sus pagos siguientes vuelven a esperar en la bandeja. */
+export async function olvidarDeLaCasa(clave: string): Promise<void> {
+  await ejecutar("delete from pagadores_de_la_casa where clave = ?", [clave]);
+}
+
 /** «No es un abono», «Descartar» y «Volver a la bandeja». */
 export async function cambiarEstadoDelMovimiento(movId: number, estado: "no_es_abono" | "descartado" | "por_conciliar"): Promise<void> {
   const desde = estado === "por_conciliar" ? ["no_es_abono", "descartado"] : ["por_conciliar"];
   const r = await ejecutar(
-    `update movimientos_banco set estado = ?, resuelto_en = ${estado === "por_conciliar" ? "null" : "datetime('now')"}
+    `update movimientos_banco set estado = ?, resuelto_en = ${estado === "por_conciliar" ? "null, como = ''" : "datetime('now')"}
      where id = ? and estado in (?, ?)`,
     [estado, movId, desde[0], desde[1] ?? desde[0]],
   );
@@ -555,7 +621,7 @@ export function avisoDelMovimiento(mov: MovimientoBanco): { titulo: string; cuer
   if (mov.estado === "aplicado") {
     return {
       titulo: `Pago móvil de ${mov.cliente_nombre}: ${bs(mov.monto_bs)}`,
-      cuerpo: `Abonado solo a su cuenta${mov.monto_usd !== null ? ` (${usd(Number(mov.monto_usd))})` : ""}, ${COMO_SE_SUPO[mov.como || "a_mano"]}.${ref}`,
+      cuerpo: `Abonado solo a su cuenta${mov.monto_usd !== null ? ` (${usd(Number(mov.monto_usd))})` : ""}, ${COMO_SE_SUPO[mov.como && mov.como !== "de_la_casa" ? mov.como : "a_mano"]}.${ref}`,
       url: `/admin/clientes/${mov.cliente_id}`,
     };
   }

@@ -123,6 +123,7 @@ async function migrar(cliente: Client): Promise<void> {
     await añadirColumna(cliente, "clientes", "sitio text not null default ''");
   }
   if (!clientes.includes("enlace")) await añadirColumna(cliente, "clientes", "enlace text");
+  if (!clientes.includes("de_la_casa")) await añadirColumna(cliente, "clientes", "de_la_casa integer not null default 0");
   if (!(await definicionDe(cliente, "adjuntos")).includes("pago_id")) await añadirColumna(cliente, "adjuntos", "pago_id integer references pagos(id)");
   if (!(await definicionDe(cliente, "resenas")).includes("variante_id")) await añadirColumna(cliente, "resenas", "variante_id integer references variantes(id)");
   // El historial de tasas empieza con las que ya quedaron guardadas en los abonos y las notas de antes.

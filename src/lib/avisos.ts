@@ -2,6 +2,7 @@ import "server-only";
 import { ejecutar, filas } from "./db";
 import { listarVentasPorEntregar } from "./ventas";
 import { clientesConVencimiento } from "./vencimientos";
+import { seLeCobra } from "./clientes";
 import { existencias } from "./inventario";
 import { leerTasa } from "./ajustes";
 import { cierreDelDia } from "./caja";
@@ -112,7 +113,7 @@ async function candidatosDelDia(fecha: string): Promise<Candidatos> {
     avisos.push({ clave: `entrega-hoy:${e.id}`, tipo: "entrega", titulo: `Hoy toca entregar la nota ${numeroDeNota(e.id)} a ${e.cliente_nombre}`, cuerpo: "", url: "/admin/despacho" });
   }
 
-  const vencidos = clientes.filter((c) => c.saldo_usd > 0 && c.vencido_usd > 0);
+  const vencidos = clientes.filter((c) => c.saldo_usd > 0 && c.vencido_usd > 0 && seLeCobra(c));
   for (const c of vencidos) {
     avisos.push({
       clave: `vencido:${c.id}:${semana}`,

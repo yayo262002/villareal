@@ -17,6 +17,7 @@ import {
   type SitioDelMapa,
   type TipoCliente,
   ponerEnlace,
+  ponerDeLaCasa,
 } from "./clientes";
 import { buscarEnElMapa, necesitaElMapa } from "./mapa";
 import {
@@ -132,6 +133,8 @@ import {
   cambiarEstadoDelMovimiento,
   crearClaveDelBanco,
   deshacerMovimiento,
+  marcarDeLaCasa,
+  olvidarDeLaCasa,
   quitarAvisoDePago,
   recibirDelBanco,
   unirPagoConElBanco,
@@ -658,6 +661,7 @@ export async function editarCliente(datos: FormData): Promise<void> {
       ? { lat: anterior.lat, lon: anterior.lon, sitio: anterior.sitio }
       : await sitioDe(cliente.direccion);
   await actualizarCliente(id, cliente, sitio);
+  await ponerDeLaCasa(id, texto(datos, "de_la_casa") === "1");
   volverConExito(`/admin/clientes/${id}`, `Datos guardados.${avisoDeDireccion(cliente.direccion, sitio)}`);
 }
 
@@ -3067,6 +3071,30 @@ export async function marcarPagoDelBanco(datos: FormData): Promise<void> {
         ? "Anotado: ese dinero no es de un cliente. Está abajo, en «No eran abonos»."
         : "Descartado. Está abajo, por si te equivocaste.",
   );
+}
+
+/** «Es de la casa»: ese pago es de la familia del dueño; los siguientes de quien lo hizo se apartan solos. */
+export async function marcarPagoDeLaCasa(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id") ?? 0;
+  let apartados = 0;
+  try {
+    apartados = await marcarDeLaCasa(id);
+  } catch (error) {
+    volverConError(BANDEJA_DEL_BANCO, mensajeDe(error));
+  }
+  volverConExito(
+    BANDEJA_DEL_BANCO,
+    `Anotado: es de la casa${apartados > 1 ? ` (y ${apartados - 1} más de quien lo hizo)` : ""}. Sus pagos siguientes se apartan solos; está abajo, en «No eran abonos».`,
+  );
+}
+
+/** Deja de tener a alguien por de la casa. */
+export async function olvidarPagadorDeLaCasa(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const clave = texto(datos, "clave").slice(0, 120);
+  if (clave) await olvidarDeLaCasa(clave);
+  volverConExito(BANDEJA_DEL_BANCO, "Ya no es de la casa: sus pagos siguientes esperarán arriba a que digas de quién son.");
 }
 
 /** Crea o cambia la clave con que el teléfono manda los avisos del banco. */

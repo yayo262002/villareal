@@ -2273,6 +2273,52 @@ ${conNombre("ANA MARIA SOTO", "450,00", "008000777001")}
     a.estado === "repetido" && (await consultar("select count(*) as n from movimientos_banco where abs(monto_bs - 300) < 0.005"))[0].n === 1,
     JSON.stringify(a),
   );
+
+  // 9. Una transferencia (sin «en fecha») capturada días después: vale el día que dice el encabezado de su notificación.
+  const hace3 = new Date(Date.now() - 4 * 3600e3 - 3 * 86400e3);
+  const diaCorto = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"][hace3.getUTCDay()];
+  a = await avisar(`Transferencia BDV recibida ${diaCorto}, 20:45 "Recibiste una transferencia BDV de LUIS ALBERTO TORRES por Bs.4.321,00 bajo el numero de operacion 008000555123"`);
+  m = await movimiento("008000555123");
+  comprobar("pago móvil: la transferencia capturada días después toma el día de su notificación", m?.fecha === hace3.toISOString().slice(0, 10) && m?.hora === "20:45", JSON.stringify(m));
+
+  // 10. De la casa: un pago de la familia del dueño se marca una vez y los siguientes de esa persona se apartan solos.
+  m = await movimiento("008000555123");
+  r = await enviar("/admin/banco", ">Es de la casa (siempre)<", { id: String(m.id) }, cookie, {}, `value="${m.id}"`);
+  comprobar("pago móvil: «Es de la casa» lo aparta y recuerda a quien pagó", r.destino.includes("es de la casa") && (await movimiento("008000555123")).como === "de_la_casa", r.destino);
+  a = await avisar(conNombre("LUIS ALBERTO TORRES", "900,00", "008000555124"));
+  m = await movimiento("008000555124");
+  comprobar("pago móvil: el siguiente pago de alguien de la casa se aparta solo, sin abonar a nadie", m?.estado === "no_es_abono" && m.como === "de_la_casa" && m.pago_id === null && a.mensaje.includes("de la casa"), JSON.stringify(a));
+  const conCasa = legible((await pagina("/admin/banco")).html);
+  comprobar("pago móvil: la pantalla dice quiénes pagan de la casa", conCasa.includes("Pagan de la casa") && conCasa.includes("Luis Alberto Torres"));
+  r = await enviar("/admin/banco", 'name="clave" value="nombre:luis alberto torres"', { clave: "nombre:luis alberto torres" });
+  a = await avisar(conNombre("LUIS ALBERTO TORRES", "901,00", "008000555125"));
+  comprobar("pago móvil: quitado de la casa, su pago vuelve a esperar en la bandeja", (await movimiento("008000555125"))?.estado === "por_conciliar", JSON.stringify(a));
+
+  // 11. Los céntimos de la tasa: un abono en bolívares que paga su nota con unos céntimos de menos vale justo la nota.
+  escribirEnLocal("insert into clientes (nombre, telefono) values ('Cliente de los céntimos', '0414-0000321')");
+  const idCentimos = Number((await consultar("select id from clientes where telefono = '0414-0000321'"))[0].id);
+  escribirEnLocal("insert into ventas (cliente_id, fecha, total_usd, tasa, por_entregar) values (?, ?, 100, 36.5, 0)", [idCentimos, hoyVe]);
+  const fichaCentimos = `/admin/clientes/${idCentimos}`;
+  // 3.648,91 Bs a 36,5 son 99,97 $: tres céntimos menos que la nota.
+  r = await enviar(fichaCentimos, 'name="monto"', { cliente_id: String(idCentimos), fecha: hoyVe, metodo: "efectivo_bs", monto: "3648,91", tasa: "36.5", referencia: "", volver_a: fichaCentimos });
+  const [abonoCentimos] = await consultar("select monto_usd, tasa, nota from pagos where cliente_id = ?", [idCentimos]);
+  comprobar(
+    "céntimos: el abono en bolívares que paga su nota con 3 céntimos de menos vale justo la nota, y lo dice",
+    r.destino.includes("sin céntimos colgando") && Number(abonoCentimos?.monto_usd) === 100 && String(abonoCentimos?.nota).includes("céntimos de la tasa"),
+    `${r.destino} ${JSON.stringify(abonoCentimos)}`,
+  );
+
+  // 12. Los de la casa: lo que deben no se cobra (no sale en «Lo que te deben» ni en «Quién debe» del Resumen).
+  escribirEnLocal("insert into clientes (nombre, telefono, de_la_casa) values ('Mamá de prueba', '0414-0000322', 1)");
+  const idCasa = Number((await consultar("select id from clientes where telefono = '0414-0000322'"))[0].id);
+  escribirEnLocal("insert into ventas (cliente_id, fecha, total_usd, tasa, por_entregar) values (?, '2026-01-02', 61.25, 36.5, 0)", [idCasa]);
+  const cuentasCasa = legible((await pagina("/admin/cuentas")).html);
+  const resumenCasa = legible((await pagina("/admin")).html);
+  const fichaCasa = (await pagina(`/admin/clientes/${idCasa}`)).html;
+  comprobar(
+    "de la casa: su deuda no sale en lo que se cobra, y la ficha lo dice",
+    !cuentasCasa.includes("Mamá de prueba") && !resumenCasa.includes("Mamá de prueba") && /name="de_la_casa"[^>]*checked/.test(fichaCasa),
+  );
 }
 
 async function probarSinEscribir() {

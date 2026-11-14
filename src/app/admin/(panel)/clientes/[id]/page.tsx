@@ -339,6 +339,13 @@ export default async function PaginaCliente({
               <label htmlFor="nota">Nota</label>
               <input id="nota" name="nota" type="text" defaultValue={cliente.nota} />
             </div>
+            <label className={estilos.casilla}>
+              <input type="checkbox" name="de_la_casa" value="1" defaultChecked={Boolean(cliente.de_la_casa)} />
+              <span>
+                Es de la casa (la familia)
+                <span className="ayuda"> Lo que debe no se cobra: no sale en cobros, vencidos, avisos ni «por llamar».</span>
+              </span>
+            </label>
             <div className={estilos.accionesFila} style={{ flexWrap: "wrap", justifyContent: "space-between" }}>
               <button type="submit" className="boton boton--secundario">
                 Guardar cambios

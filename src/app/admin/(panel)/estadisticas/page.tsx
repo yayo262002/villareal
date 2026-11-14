@@ -2,6 +2,7 @@ import Link from "next/link";
 import { movimientosEntre } from "@/lib/caja";
 import { contarVentasPorEntregar, ventasPorMes } from "@/lib/ventas";
 import { clientesConVencimiento } from "@/lib/vencimientos";
+import { seLeCobra } from "@/lib/clientes";
 import { totalDebidoAProveedores } from "@/lib/proveedores";
 import { listarExportaciones } from "@/lib/exportaciones";
 import { leerFecha } from "@/lib/exportar";
@@ -76,9 +77,11 @@ export default async function PaginaEstadisticas({ searchParams }: { searchParam
   const semana = porDiaDeLaSemana(movimientos);
   const dias = porDia(movimientos);
   const todos = todosLosMovimientos(movimientos);
-  const porCobrar = redondear(clientes.reduce((s, c) => s + Math.max(0, c.saldo_usd), 0));
-  const vencido = redondear(clientes.reduce((s, c) => s + c.vencido_usd, 0));
-  const quienesDeben = clientes.filter((c) => c.saldo_usd > 0).length;
+  // Lo que deben los de la casa (la familia del dueño) no se cobra: no cuenta como por cobrar.
+  const cobrables = clientes.filter(seLeCobra);
+  const porCobrar = redondear(cobrables.reduce((s, c) => s + Math.max(0, c.saldo_usd), 0));
+  const vencido = redondear(cobrables.reduce((s, c) => s + c.vencido_usd, 0));
+  const quienesDeben = cobrables.filter((c) => c.saldo_usd > 0).length;
   const maximoDia = Math.max(1, ...dias.map((d) => d.vendido));
   const maximoSemana = Math.max(1, ...semana.map((d) => d.vendido));
   const maximoMes = Math.max(1, ...meses.map((m) => Number(m.vendido_usd)));

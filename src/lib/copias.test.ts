@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { createClient } from "@libsql/client";
-import { ESQUEMA } from "./esquema.ts";
+import { ESQUEMA, TABLAS, TABLAS_FUERA_DE_LAS_COPIAS } from "./esquema.ts";
 import {
   copiarArchivo,
   esNombreDeCopia,
@@ -148,4 +148,14 @@ test("podar deja las copias más nuevas y no toca otros archivos", () => {
 
 test("podar una carpeta que no existe no falla", () => {
   assert.deepEqual(podarCopias(path.join(os.tmpdir(), "villareal-no-existe"), 5), []);
+});
+
+test("toda tabla de la base va en las copias, salvo las que se dejan fuera a propósito", () => {
+  const creadas = [...ESQUEMA.matchAll(/create table if not exists (\w+)/g)].map((m) => m[1]);
+  const conocidas = new Set<string>([...TABLAS, ...TABLAS_FUERA_DE_LAS_COPIAS]);
+  assert.deepEqual(
+    creadas.filter((t) => !conocidas.has(t)),
+    [],
+    "Una tabla nueva tiene que ir en TABLAS (o, si no es del negocio, en TABLAS_FUERA_DE_LAS_COPIAS)",
+  );
 });

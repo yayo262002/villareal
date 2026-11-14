@@ -23,6 +23,8 @@ export const ESQUEMA = `
     sitio text not null default '',
     -- El enlace personal con el que el cliente ve su cuenta sin clave. Null hasta que se crea.
     enlace text,
+    -- De la casa (la familia del dueño): lo que debe no se cobra; no sale en cobros, vencidos ni «por llamar».
+    de_la_casa integer not null default 0,
     creado_en text not null default (datetime('now'))
   );
 
@@ -640,6 +642,13 @@ export const ESQUEMA = `
     primary key (nombre, cliente_id)
   );
 
+  -- Quien paga por el banco y es de la casa (la familia del dueño): sus pagos no son
+  -- abonos de clientes y el banco los aparta solos. clave: como en pagadores.
+  create table if not exists pagadores_de_la_casa (
+    clave text primary key,
+    creado_en text not null default (datetime('now'))
+  );
+
   -- «Ya pagué»: lo que avisa el cliente desde su enlace de cuenta (la
   -- referencia y el monto). Cuando ese pago entra al banco, se le abona solo.
   create table if not exists avisos_de_pago (
@@ -715,7 +724,15 @@ export const TABLAS = [
   "movimientos_banco",
   "pagadores",
   "avisos_de_pago",
+  "nombres_en_notas",
+  "pagadores_de_la_casa",
 ] as const;
+
+/**
+ * Las tablas que no van en las copias: las copias de antes (una copia no contiene a las anteriores), lo de paso (las
+ * fotos mientras el formulario va y vuelve, los intentos fallidos de entrar) y los secretos del servidor.
+ */
+export const TABLAS_FUERA_DE_LAS_COPIAS = ["copias_automaticas", "fotos_en_espera", "entradas_fallidas", "secretos"] as const;
 
 /**
  * Cambio para bases creadas antes de que productos tuviera costo, margen y

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { negocio } from "@/config/negocio";
 import { clientesConVencimiento, type ClienteConVencimiento } from "@/lib/vencimientos";
+import { seLeCobra } from "@/lib/clientes";
 import { DIAS_DE_CREDITO_POR_DEFECTO, describirUrgencia, describirVencimiento, porUrgencia } from "@/lib/credito";
 import { guardarCliente, situarClientesQueFaltan } from "@/lib/acciones";
 import { necesitaElMapa } from "@/lib/mapa";
@@ -313,11 +314,12 @@ export default async function PaginaClientes({
                           {c.rotulo}
                           {sinNombre && <span className={estilos.sinNombre}> · sin nombre</span>}
                         </Link>
-                        <span className={c.vencido_usd > 0 ? estilos.vencida : c.saldo_usd > 0 ? estilos.deuda : estilos.saldado}>
+                        <span className={!seLeCobra(c) ? "ayuda" : c.vencido_usd > 0 ? estilos.vencida : c.saldo_usd > 0 ? estilos.deuda : estilos.saldado}>
                           {c.saldo_usd > 0 ? `Debe ${usd(c.saldo_usd)}` : c.saldo_usd < 0 ? `A favor ${usd(-c.saldo_usd)}` : "Al día"}
+                          {!seLeCobra(c) && " · de la casa"}
                         </span>
                       </div>
-                      {c.vencido_usd > 0 ? (
+                      {!seLeCobra(c) ? null : c.vencido_usd > 0 ? (
                         <p className={`${estilos.carteraDato} ${estilos.vencida}`}>
                           {describirVencimiento(c.mayor_atraso)}: {usd(c.vencido_usd)}
                         </p>

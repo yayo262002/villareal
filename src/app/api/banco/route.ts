@@ -79,7 +79,9 @@ export async function POST(peticion: Request): Promise<Response> {
       ? `Ya estaba: ${bs(m.monto_bs)}, ref. ${m.referencia || "sin referencia"}.`
       : m.estado === "aplicado"
         ? `${bs(m.monto_bs)} abonados a ${m.cliente_nombre}.`
-        : `${bs(m.monto_bs)} por identificar en el panel.`;
+        : m.como === "de_la_casa"
+          ? `${bs(m.monto_bs)} de la casa: apartado.`
+          : `${bs(m.monto_bs)} por identificar en el panel.`;
   });
   const estados = leidos.map((r) => (r.tipo === "repetido" ? "repetido" : r.movimiento.estado));
   return Response.json({ ok: true, leido: true, estado: estados[0], estados, mensaje: mensajes.join(" ") }, { headers: SIN_CACHE });

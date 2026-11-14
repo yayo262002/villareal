@@ -1,5 +1,5 @@
 import "server-only";
-import { listarClientes, type ClienteConSaldo } from "./clientes";
+import { listarClientes, seLeCobra, type ClienteConSaldo } from "./clientes";
 import { conLineas, listarVentas, type VentaConLineas } from "./ventas";
 import { listarPagos } from "./pagos";
 import { ultimosRecordatorios } from "./recordatorios";
@@ -43,5 +43,7 @@ export async function estudioDeClientes(fecha = hoy(), conLoQueCompra = true): P
         fecha,
       ),
     }))
+    // A los de la casa no hay que llamarlos para venderles.
+    .map((x) => (seLeCobra(x.cliente) ? x : { ...x, trato: { ...x.trato, porLlamar: false } }))
     .sort((a, b) => Number(b.trato.porLlamar) - Number(a.trato.porLlamar) || sinTrato(b.trato) - sinTrato(a.trato) || a.cliente.rotulo.localeCompare(b.cliente.rotulo));
 }

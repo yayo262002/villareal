@@ -24,6 +24,8 @@ export type Cliente = {
   sitio: string;
   /** El enlace personal con el que ve su cuenta sin clave (`enlace-cuenta.ts`); null hasta que se crea. */
   enlace: string | null;
+  /** 1 si es de la casa (la familia del dueño): lo que debe no se cobra. */
+  de_la_casa: number;
   creado_en: string;
 };
 
@@ -47,7 +49,17 @@ export type ClienteConSaldo = Cliente & {
   por_entregar: number;
 };
 
-export type DatosCliente = Omit<Cliente, "id" | "creado_en" | "lat" | "lon" | "sitio" | "enlace">;
+export type DatosCliente = Omit<Cliente, "id" | "creado_en" | "lat" | "lon" | "sitio" | "enlace" | "de_la_casa">;
+
+/** Si a ese cliente se le cobra: a los de la casa (la familia del dueño), no. */
+export function seLeCobra(c: { de_la_casa?: number | null }): boolean {
+  return !Number(c.de_la_casa ?? 0);
+}
+
+/** Marca o desmarca a un cliente como de la casa. */
+export async function ponerDeLaCasa(id: number, deLaCasa: boolean): Promise<void> {
+  await ejecutar("update clientes set de_la_casa = ? where id = ?", [deLaCasa ? 1 : 0, id]);
+}
 
 export type SitioDelMapa = { lat: number; lon: number; sitio: string } | null;
 

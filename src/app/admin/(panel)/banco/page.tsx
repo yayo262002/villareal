@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { negocio } from "@/config/negocio";
 import { claveDelBanco, tasaEnFecha, ultimoContactoDelBanco, type ContactoDelBanco } from "@/lib/ajustes";
-import { avisosDePagoPendientes, clientesParaElegir, listarMovimientos, sugerenciasPara, type MovimientoBanco } from "@/lib/banco";
+import { avisosDePagoPendientes, clientesParaElegir, listarMovimientos, pagadoresDeLaCasa, sugerenciasPara, type MovimientoBanco } from "@/lib/banco";
 import { COMO_SE_SUPO } from "@/lib/banco-calculo";
 import {
   abonarPagoDelBanco,
   crearClaveDelTelefonoDelBanco,
   deshacerPagoDelBanco,
+  marcarPagoDeLaCasa,
   marcarPagoDelBanco,
+  olvidarPagadorDeLaCasa,
   pegarAvisoDelBanco,
   quitarAvisoDePagoDelCliente,
 } from "@/lib/acciones";
@@ -47,7 +49,7 @@ function quienPago(m: MovimientoBanco): string {
  */
 export default async function PaginaBanco({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   const parametros = await searchParams;
-  const [porIdentificar, aplicados, noEran, descartados, avisos, clientes, clave, contacto] = await Promise.all([
+  const [porIdentificar, aplicados, noEran, descartados, avisos, clientes, clave, contacto, deLaCasa] = await Promise.all([
     listarMovimientos("por_conciliar"),
     listarMovimientos("aplicado", 40),
     listarMovimientos("no_es_abono", 20),
@@ -56,6 +58,7 @@ export default async function PaginaBanco({ searchParams }: { searchParams: Prom
     clientesParaElegir(),
     claveDelBanco(),
     ultimoContactoDelBanco(),
+    pagadoresDeLaCasa(),
   ]);
   const sugerencias = await sugerenciasPara(porIdentificar);
   const tasas = new Map(await Promise.all(porIdentificar.map(async (m) => [m.id, await tasaEnFecha(m.fecha)] as const)));
@@ -157,6 +160,14 @@ export default async function PaginaBanco({ searchParams }: { searchParams: Prom
                           No es de un cliente
                         </button>
                       </form>
+                      {(m.titular || m.telefono) && (
+                        <form action={marcarPagoDeLaCasa}>
+                          <input type="hidden" name="id" value={m.id} />
+                          <button type="submit" className={estilos.botonEnlace} title="Es de la familia: este y los siguientes de quien lo hizo se apartan solos">
+                            Es de la casa (siempre)
+                          </button>
+                        </form>
+                      )}
                       <form action={marcarPagoDelBanco}>
                         <input type="hidden" name="id" value={m.id} />
                         <input type="hidden" name="estado" value="descartado" />
@@ -252,7 +263,7 @@ export default async function PaginaBanco({ searchParams }: { searchParams: Prom
                         {m.monto_usd !== null && <span className="ayuda"> {usd(Number(m.monto_usd))}</span>}
                       </td>
                       <td data-label="Cliente">{m.cliente_id ? <Link href={`/admin/clientes/${m.cliente_id}`}>{m.cliente_nombre}</Link> : "—"}</td>
-                      <td data-label="Cómo se supo">{m.como ? COMO_SE_SUPO[m.como] : "—"}</td>
+                      <td data-label="Cómo se supo">{m.como && m.como !== "de_la_casa" ? COMO_SE_SUPO[m.como] : "—"}</td>
                       <td data-label="Del banco">
                         {quienPago(m)}
                         {m.referencia ? ` · Ref. ${m.referencia}` : ""}
@@ -274,6 +285,26 @@ export default async function PaginaBanco({ searchParams }: { searchParams: Prom
         )}
       </section>
 
+      {deLaCasa.length > 0 && (
+        <section className="tarjeta">
+          <h2 className={estilos.subtitulo}>Pagan de la casa</h2>
+          <p className="ayuda">Sus pagos no son abonos de clientes: se apartan solos, sin avisarte.</p>
+          <ul className={propios.apartados}>
+            {deLaCasa.map((p) => (
+              <li key={p.clave}>
+                <span>{p.quien}</span>
+                <form action={olvidarPagadorDeLaCasa}>
+                  <input type="hidden" name="clave" value={p.clave} />
+                  <button type="submit" className={estilos.botonEnlace}>
+                    Quitar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {noEran.length + descartados.length > 0 && (
         <section className="tarjeta">
           <h2 className={estilos.subtitulo}>No eran abonos</h2>
@@ -282,8 +313,16 @@ export default async function PaginaBanco({ searchParams }: { searchParams: Prom
               <li key={m.id}>
                 <span>
                   {fechaCorta(m.fecha)} · <strong>{bs(m.monto_bs)}</strong> · {quienPago(m)}
-                  {m.referencia ? ` · Ref. ${m.referencia}` : ""} · {m.estado === "no_es_abono" ? "no es de un cliente" : "descartado"}
+                  {m.referencia ? ` · Ref. ${m.referencia}` : ""} · {m.como === "de_la_casa" ? "de la casa" : m.estado === "no_es_abono" ? "no es de un cliente" : "descartado"}
                 </span>
+                {m.estado === "no_es_abono" && m.como !== "de_la_casa" && (m.titular || m.telefono) && (
+                  <form action={marcarPagoDeLaCasa}>
+                    <input type="hidden" name="id" value={m.id} />
+                    <button type="submit" className={estilos.botonEnlace}>
+                      Es de la casa (siempre)
+                    </button>
+                  </form>
+                )}
                 <form action={marcarPagoDelBanco}>
                   <input type="hidden" name="id" value={m.id} />
                   <input type="hidden" name="estado" value="por_conciliar" />

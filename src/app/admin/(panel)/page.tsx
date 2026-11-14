@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listarClientes, resumenDeudas } from "@/lib/clientes";
+import { listarClientes, resumenDeudas, seLeCobra } from "@/lib/clientes";
 import { clientesConVencimiento, proveedoresConVencimiento } from "@/lib/vencimientos";
 import { describirUrgencia, describirVencimiento, porUrgencia } from "@/lib/credito";
 import { cierreDelDia } from "@/lib/caja";
@@ -51,7 +51,8 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
   const atrasadas = entregas.filter((e) => (atrasoDe(e) ?? -1) > 0).length;
   const paraHoy = entregas.filter((e) => atrasoDe(e) === 0).length;
   // Quien debe, por lo que vence antes: el más atrasado arriba, después el que vence hoy, mañana…
-  const deudores = conVencimiento.filter((c) => c.saldo_usd > 0).sort(porUrgencia);
+  // Lo que deben los de la casa (la familia del dueño) no se cobra.
+  const deudores = conVencimiento.filter((c) => c.saldo_usd > 0 && seLeCobra(c)).sort(porUrgencia);
   const vencido = redondear(deudores.reduce((s, c) => s + c.vencido_usd, 0));
   const acreedores = proveedores.filter((p) => p.saldo_usd > 0).sort(porUrgencia);
   const debo = redondear(acreedores.reduce((s, p) => s + p.saldo_usd, 0));

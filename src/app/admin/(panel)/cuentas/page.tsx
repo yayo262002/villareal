@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listarClientes } from "@/lib/clientes";
+import { listarClientes, seLeCobra } from "@/lib/clientes";
 import { listarVentas, type Venta } from "@/lib/ventas";
 import { NOMBRE_ESTADO, aplicarPagos, type CuentaDeVenta } from "@/lib/cuentas";
 import { conVencimiento, describirUrgencia, describirVencimiento, porUrgencia, type ConVencimiento } from "@/lib/credito";
@@ -32,7 +32,10 @@ export default async function PaginaCuentas() {
   const diasDeCredito = new Map(clientes.map((c) => [c.id, c.dias_credito]));
   const fecha = hoy();
   const cuentas: ConVencimiento<CuentaDeVenta<Venta>>[] = [];
+  // Lo que deben los de la casa (la familia del dueño) no se cobra: no sale aquí.
+  const deLaCasa = new Set(clientes.filter((c) => !seLeCobra(c)).map((c) => c.id));
   for (const [clienteId, lista] of ventasPorCliente) {
+    if (deLaCasa.has(clienteId)) continue;
     cuentas.push(...conVencimiento(aplicarPagos(lista, pagadoPorCliente.get(clienteId) ?? 0), diasDeCredito.get(clienteId) ?? 7, fecha));
   }
   const ordenar = (a: Venta, b: Venta) => b.fecha.localeCompare(a.fecha) || b.id - a.id;
