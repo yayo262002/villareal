@@ -1175,6 +1175,15 @@ async function probarCartera() {
   comprobar("alta con nombre", r.destino.includes("Cliente guardado: Pizzería La Esquina."), r.destino);
   comprobar("buscar con una letra cambiada o de menos encuentra igual", legible((await pagina("/admin/clientes?q=piseria")).html).includes("Pizzería La Esquina") && legible((await pagina("/admin/clientes?q=bodega+pruena")).html).includes("Bodega Prueba") && legible((await pagina("/admin/clientes?q=zzzz")).html).includes("Ningún cliente coincide"));
 
+  // Desde la primera letra, y la «c» de «carrera» en la dirección no trae a quien no se llama con «c».
+  const conUnaLetra = legible((await pagina("/admin/clientes?q=p")).html);
+  comprobar(
+    "con una sola letra ya salen los que empiezan por ella; la dirección cuenta desde tres letras",
+    conUnaLetra.includes("Pizzería La Esquina") &&
+      !legible((await pagina("/admin/clientes?q=c")).html).includes("Pizzería La Esquina") &&
+      legible((await pagina("/admin/clientes?q=carrera+22")).html).includes("Pizzería La Esquina"),
+  );
+
   r = await alta({ telefono: "0416-5550103", direccion: "Urb. Del Este, casa 4" });
   comprobar("una dirección fuera de la cuadrícula se guarda, con aviso", r.destino.includes("Cliente guardado") && r.destino.includes("Ojo: queda fuera de la ruta de despacho. La dirección parece una urbanización"), r.destino);
   const conAviso = legible((await pagina(r.destino)).html);

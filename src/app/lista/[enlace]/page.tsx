@@ -132,7 +132,7 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
             </h2>
             <ul className={estilos.filas}>
               {g.articulos.map((a) => (
-                <li key={a.id} className={estilos.fila} data-busca={`${a.nombre} ${CATEGORIAS_DETAL[a.categoria] ?? ""}`}>
+                <li key={a.id} className={estilos.fila} data-busca={a.nombre} data-busca-mas={CATEGORIAS_DETAL[a.categoria] ?? ""}>
                   <span className={estilos.nombre}>
                     {pegarUnidad(a.nombre)}
                     {a.unidad === "kg" && <span className={estilos.unidad}>{" · el kilo"}</span>}

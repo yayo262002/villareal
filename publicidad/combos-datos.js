@@ -129,12 +129,10 @@ globalThis.COMBOS = [
   },
   {
     // Una bandeja de 200 g con los recortes de las piezas que se rebanan (el dueño, 14/11: «que aparezcan todas las piezas»).
-    // Surtidos: no siempre hay de todo, lleva lo que se esté rebanando en ese momento (el dueño, el mismo día). Las fotos
-    // enseñan las piezas de las que salen los recortes; las palabras dicen que varía. Sin la palabra «mix»: no le gusta.
     // Al final, con los especiales: no es la pareja de un jamón y un queso, y así no se corre ningún número (ni las etiquetas
     // de las bandejas con su código de barras).
     n: 15,
-    titulo: "Recortes surtidos",
+    titulo: "Combo de recortes",
     productos: [
       ["bolona-de-pollo", "Boloña de pollo"],
       ["jamon-de-espalda", "Jamón de espalda"],
@@ -149,11 +147,11 @@ globalThis.COMBOS = [
       ["pechuga-de-pavo-drago", "Pechuga de pavo"],
       ["pechuga-de-pavo-ahumada", "Pechuga de pavo ahumada"],
     ],
-    detalle: "Bandeja de 200 g",
-    lema: "Varía según lo que se esté rebanando",
-    destacar: "Varía",
+    detalle: "Bandeja de 200 g de recortes surtidos",
+    lema: "Un poquito de todo en una bandeja",
+    destacar: "Un poquito de todo",
     especial: true,
-    etiqueta: "Especial del día",
+    etiqueta: "Especial recortes",
     // Todas las piezas juntas, como en una foto de grupo: atrás, más arriba, las altas; delante, apoyadas en el mostrador, las
     // demás. Cada fila, con su altura sobre el mostrador (cm, a la escala de CM) y lo que se separan sus piezas (cm; negativo,
     // se solapan). Las piezas, por su foto, en el orden en que van de izquierda a derecha.

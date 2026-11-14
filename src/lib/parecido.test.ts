@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buscarParecidos, coincideParecido, distancia, puntuarParecido, simplificar } from "./parecido.ts";
+import { buscarParecidos, coincideParecido, distancia, ordenDeParecido, puntuarParecido, simplificar } from "./parecido.ts";
 
 test("simplificar junta lo que suena igual: tildes, mayúsculas, b/v, s/z/c, y/ll/i, h muda, letras repetidas; la ch aparte", () => {
   assert.equal(simplificar("Pizzería La Esquina"), "piseria la eskina");
@@ -58,4 +58,36 @@ test("los que empiezan igual van antes que los que solo se parecen", () => {
   assert.equal(puntuarParecido("pizeria", "Pizzería La Esquina"), 3);
   assert.deepEqual(buscarParecidos("", clientes, (c) => c, 2), ["Cheo Hot Dog", "Burger Cleiderman"]);
   assert.deepEqual(buscarParecidos("zzz", clientes, (c) => c), []);
+});
+
+test("desde la primera letra salen todos los que empiezan por ella, aunque al juntar sonidos empiecen distinto", () => {
+  const clientes = ["Cecilia Pérez", "Carlos Burger", "Cheo Hot Dog", "Héctor Lunch", "Pizzería Quintero", "Guillermo Arepas", "Llanos Grill", "Cindy Pizza"];
+  const busca = (q: string) => buscarParecidos(q, clientes, (c) => c);
+  // «Cecilia» suena con «s» y «Cheo» con «ch», pero se escriben con «c»; «Quintero» suena con «k» y no se escribe con «c».
+  assert.deepEqual(busca("c"), ["Cecilia Pérez", "Carlos Burger", "Cheo Hot Dog", "Cindy Pizza"]);
+  // La «h» muda no deja la búsqueda vacía: trae a quien la lleva.
+  assert.deepEqual(busca("h"), ["Héctor Lunch", "Cheo Hot Dog"]);
+  assert.deepEqual(busca("q"), ["Pizzería Quintero"]);
+  assert.deepEqual(busca("gu"), ["Guillermo Arepas"]);
+  assert.deepEqual(busca("l"), ["Llanos Grill", "Héctor Lunch"]);
+  // Con dos letras o más sigue valiendo lo que suena igual.
+  assert.deepEqual(busca("ze"), ["Cecilia Pérez"]);
+  assert.deepEqual(busca("ki"), ["Pizzería Quintero"]);
+});
+
+test("primero los que empiezan por lo escrito, y la dirección o la nota solo desde tres letras y después", () => {
+  const clientes = [
+    { nombre: "Pizzería Ana", direccion: "Calle 30 con carrera 20" },
+    { nombre: "Ana Panadería", direccion: "Carrera 19 con calle 25" },
+    { nombre: "Burger Cleiderman", direccion: "Avenida Libertador, Ana Maria" },
+  ];
+  const nombres = (q: string) => buscarParecidos(q, clientes, (c) => c.nombre, Infinity, (c) => c.direccion).map((c) => c.nombre);
+  assert.deepEqual(nombres("a"), ["Ana Panadería", "Pizzería Ana"]);
+  // Con una letra, la «c» de «calle» y «carrera» no trae a todos: solo a quien se llama con «c».
+  assert.deepEqual(nombres("c"), ["Burger Cleiderman"]);
+  // Con tres letras, también por la dirección, después de los que casan por el nombre.
+  assert.deepEqual(nombres("ana"), ["Ana Panadería", "Pizzería Ana", "Burger Cleiderman"]);
+  assert.equal(ordenDeParecido("c", "Ana", "Calle 30"), 0);
+  assert.ok(ordenDeParecido("calle 30", "Ana", "Calle 30") > 0);
+  assert.ok(ordenDeParecido("calle 30", "Ana", "Calle 30") < ordenDeParecido("ana", "Pizzería Ana"));
 });

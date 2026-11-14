@@ -7,7 +7,7 @@ import { necesitaElMapa } from "@/lib/mapa";
 import { enlaceAlMapa, planDeDespacho, situar } from "@/lib/despacho";
 import { explicarMotivo } from "@/lib/direcciones";
 import { sinNombre as leFaltaNombre } from "@/lib/rotulo";
-import { coincideParecido } from "@/lib/parecido";
+import { ordenDeParecido } from "@/lib/parecido";
 import { FiltroEnVivo } from "@/components/filtro-en-vivo";
 import { fechaCorta, hoy, redondear, usd } from "@/lib/dinero";
 import { estudioDeClientes } from "@/lib/estudio-de-clientes";
@@ -38,9 +38,16 @@ function mismoTexto(a: string, b: string): boolean {
   return limpiar(a) === limpiar(b);
 }
 
-/** Por qué se busca a un cliente: nombre, razón social, teléfono, cédula, dirección y nota. */
-function textoDeBusqueda(c: { nombre: string; razon_social: string; telefono: string; cedula_rif: string; direccion: string; nota: string }): string {
-  return [c.nombre, c.razon_social, c.telefono, c.cedula_rif, c.direccion, c.nota].join(" ");
+/**
+ * Por qué se busca a un cliente: lo principal es cómo se le llama (lo que va en grande primero, para que «a» traiga antes a
+ * quien empieza por «a»), su teléfono y su cédula; la dirección y la nota, solo desde tres letras y después
+ * (`ordenDeParecido`): con una letra, «c» no trae a todos los que viven en una calle o una carrera.
+ */
+function textoDeBusqueda(c: { rotulo: string; nombre: string; razon_social: string; telefono: string; cedula_rif: string }): string {
+  return [c.rotulo, c.nombre, c.razon_social, c.telefono, c.cedula_rif].join(" ");
+}
+function masDeBusqueda(c: { direccion: string; nota: string }): string {
+  return [c.direccion, c.nota].join(" ");
 }
 
 export default async function PaginaClientes({
@@ -60,8 +67,14 @@ export default async function PaginaClientes({
   // Recién guardado: si su dirección no se entiende, se avisa aquí mismo, sin deshacer nada.
   const situacionDelNuevo = nuevo ? situar(nuevo, CIUDAD) : null;
   const mapaDelNuevo = nuevo ? enlaceAlMapa(nuevo, CIUDAD) : null;
-  // Se busca «parecido»: una letra de más o de menos no esconde al cliente.
-  const filtrados = busqueda ? todos.filter((c) => coincideParecido(busqueda, textoDeBusqueda(c))) : todos;
+  // Se busca «parecido»: una letra de más o de menos no esconde al cliente. Por nombre, los que mejor casan primero.
+  const filtrados = busqueda
+    ? todos
+        .map((c, i) => ({ c, i, puntos: ordenDeParecido(busqueda, textoDeBusqueda(c), masDeBusqueda(c)) }))
+        .filter((x) => x.puntos > 0)
+        .sort((a, b) => (orden === "nombre" ? b.puntos - a.puntos : 0) || a.i - b.i)
+        .map((x) => x.c)
+    : todos;
 
   // El orden de la ruta sirve también para saber quién no está ubicado.
   const plan = planDeDespacho({ direccion: negocio.direccion, ciudad: CIUDAD }, filtrados);
@@ -272,8 +285,8 @@ export default async function PaginaClientes({
                 </Link>
               )}
             </form>
-            {/* Con JavaScript, la lista se filtra mientras se escribe, sin pulsar «Buscar». */}
-            <FiltroEnVivo entrada="buscar" lista="cartera" />
+            {/* Con JavaScript, la lista se filtra mientras se escribe, sin pulsar «Buscar»; por nombre, los que mejor casan, arriba. */}
+            <FiltroEnVivo entrada="buscar" lista="cartera" ordenar={orden === "nombre"} />
             <nav aria-label="Orden de la lista" className={estilos.pestanas}>
               {(Object.keys(ORDENES) as Orden[]).map((o) => (
                 <Link key={o} href={enlaceOrden(o)} aria-current={o === orden ? "true" : undefined}>
@@ -293,7 +306,7 @@ export default async function PaginaClientes({
                   const situacion = situar(c, CIUDAD);
                   const sinNombre = leFaltaNombre(c);
                   return (
-                    <li key={c.id} className={estilos.carteraCliente} data-busca={textoDeBusqueda(c)}>
+                    <li key={c.id} className={estilos.carteraCliente} data-busca={textoDeBusqueda(c)} data-busca-mas={masDeBusqueda(c)}>
                       <div className={estilos.carteraCabecera}>
                         <Link href={`/admin/clientes/${c.id}`} className={estilos.carteraNombre}>
                           {orden === "ruta" && !sinUbicar && <span className={estilos.carteraOrden}>{i + 1}</span>}
