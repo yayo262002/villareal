@@ -291,7 +291,7 @@ src/app/admin/(panel)/clientes/seguimiento/  La pantalla del estudio de clientes
 src/app/admin/(panel)/ayuda/  «Cómo se usa el panel»: la guía rápida, en el orden del día
 src/lib/pos-calculo.ts    Las cuentas de la caja: totales, descuento, cómo paga, cómo queda la cuenta del cliente, el precio de contado en el local y el SKU propuesto (puro, con pruebas)
 src/lib/pos.ts            La caja desde la base: el catálogo con existencias, el cliente de mostrador y el guardado de la venta con sus pagos
-src/lib/combos-detal.ts   Los catorce combos del detal: lo que lleva cada uno y su precio con la lista del detal (puro, con pruebas)
+src/lib/combos-detal.ts   Los quince combos del detal: lo que lleva cada uno y su precio con la lista del detal (puro, con pruebas)
 src/lib/combos-en-la-caja.ts  Los combos como artículos de la caja, ocultos en la web, con el precio del detal de hoy
 src/lib/codigo128.ts      El código de barras Code 128 de las etiquetas de los combos (puro, con pruebas)
 src/app/admin/(panel)/combos/etiquetas/  Las etiquetas de las bandejas de los combos, con su precio y su código de barras, para imprimir
@@ -319,7 +319,7 @@ scripts/stickers.ts       Los dibuja con Chrome en public/stickers/ (PNG y WebP,
 src/app/admin/(panel)/stickers/  La pantalla para guardarlos en el teléfono
 src/app/admin/            El panel (productos/nuevo y productos/[id], marcas, familias, ofertas…)
 sellos/                   Los modelos de los sellos de tinta (empresa, RECIBIDO, MERCANCÍA RECIBIDA, PAGADO): sellos.html los dibuja y generar.mjs saca los PNG a 600 ppp y el PDF para la sellería
-publicidad/               La inauguración del mayor, el viernes 20/11/2026 (inauguracion.html: el flier para el estado de WhatsApp, 1080 × 1920, y el pendón de la puerta, 80 × 200 cm a tamaño real, con el mismo diseño medido en «unidades»; verde, dorado y crema como el letrero, la foto de la portada y las de los productos). El flier de los combos para el estado de WhatsApp (estado-combos.html: 1080 × 1920, todos los combos con su foto y su precio en dólares, de combos-precios.js, que no va al repositorio). La pizarra de precios de la charcutería (pizarra.html, 90 × 60 cm: cada producto con su marca y una casilla con el «$» para el marcador). Los combos del detal: combos-datos.js (los combos, una sola vez), combos.html (el cartel de 60 × 90 cm para la pared, tres por fila y los de la última fila al centro) y combos-individuales.html (una hoja carta por combo; combo-horizontal.html, la prueba de una hoja acostada, 279 × 216 mm, con los productos a la izquierda y una casilla del precio mucho más grande a la derecha, en PDF y en JPG a 300 ppp, para imprimir y plastificar cada una, con el diseño de fondos/referencia-dueno.png y Open Sans, en fuentes/; el navideño y el pizzero, con el de fondos/referencia-navidad.png y referencia-pizza.jpg: placa verde, luces, la mitad de abajo roja y la frase en Kaushan Script; el pizzero, sin nada de Navidad); fondos.mjs saca los estantes y la madera de esas hojas; los productos separados y en su proporción real (en el cartel, en el flier y en las hojas), en cada hoja lo más grandes que caben sin tocar la cabecera, el sello del número ni los adornos de las esquinas (la mozzarella y los quesos amarillos, del mismo tamaño en todas las de todos los días: ALTO_EN_HOJA), la casilla del precio en blanco para el marcador; quitar-fondo.mjs le quita el fondo a cada foto de fotos/originales/ (red neuronal, se instala aparte), le limpia los bordes y le corrige el color (al queso paisa le quita además el plástico y la banda de la bolsa; fotos/CREDITOS.md dice cuál no es del dueño); generar.mjs saca el PDF para la imprenta y la vista previa
+publicidad/               La inauguración del mayor, el viernes 20/11/2026 (inauguracion.html: el flier para el estado de WhatsApp, 1080 × 1920, y el pendón de la puerta, 80 × 200 cm a tamaño real, con el mismo diseño medido en «unidades»; verde, dorado y crema como el letrero, la foto de la portada y las de los productos). El flier de los combos para el estado de WhatsApp (estado-combos.html: 1080 × 1920, todos los combos con su foto y su precio en dólares, de combos-precios.js, que no va al repositorio). La pizarra de precios de la charcutería (pizarra.html, 90 × 60 cm: cada producto con su marca y una casilla con el «$» para el marcador). Los combos del detal: combos-datos.js (los combos, una sola vez), combos.html (el cartel de 60 × 90 cm para la pared, tres por fila y los de la última fila al centro) y combos-individuales.html (una hoja carta por combo; combo-horizontal.html, la prueba de una hoja acostada, 279 × 216 mm, con los productos a la izquierda y una casilla del precio mucho más grande a la derecha, en PDF y en JPG a 300 ppp, para imprimir y plastificar cada una, con el diseño de fondos/referencia-dueno.png y Open Sans, en fuentes/; el navideño y el pizzero, con el de fondos/referencia-navidad.png y referencia-pizza.jpg: placa verde, luces, la mitad de abajo roja y la frase en Kaushan Script; el pizzero, sin nada de Navidad); el de recortes (el 15), con todas las piezas juntas como en una foto de grupo, las altas atrás y las anchas delante (`grupo` en combos-datos.js, también en el cartel y en el flier); fondos.mjs saca los estantes y la madera de esas hojas; los productos separados y en su proporción real (en el cartel, en el flier y en las hojas), en cada hoja lo más grandes que caben sin tocar la cabecera, el sello del número ni los adornos de las esquinas (la mozzarella y los quesos amarillos, del mismo tamaño en todas las de todos los días: ALTO_EN_HOJA), la casilla del precio en blanco para el marcador; quitar-fondo.mjs le quita el fondo a cada foto de fotos/originales/ (red neuronal, se instala aparte), le limpia los bordes y le corrige el color (al queso paisa le quita además el plástico y la banda de la bolsa; fotos/CREDITOS.md dice cuál no es del dueño); generar.mjs saca el PDF para la imprenta y la vista previa
 datos/                    La base de datos (fuera de Git)
 ```
 
@@ -851,8 +851,9 @@ Binance y otro.
     ¿Quieres registrarlo?») y deja ponérselo a un artículo o crear uno nuevo
     con el código puesto. Lo que no tiene código se vende igual por su
     nombre.
-  - **Los combos del detal** (las catorce bandejas de las hojas y el
-    cartel: 200 g de jamón y 200 g de queso, el solidario, el perrero…)
+  - **Los combos del detal** (las quince bandejas de las hojas y el
+    cartel: 200 g de jamón y 200 g de queso, el solidario, el perrero, la
+    de recortes…)
     también se venden en la caja, **al mismo precio que en la
     charcutería**: lo que suman sus productos en la lista del detal de
     hoy, subido al centavo, también de contado en el local. Se buscan por
@@ -860,6 +861,8 @@ Binance y otro.
     Códigos de barras se les puede poner uno para escanear la bandeja. Si
     a un producto del combo le falta el precio en la lista (el queso
     paisa, mientras no se compre), sale sin precio y se escribe a mano.
+    El de recortes (el 15, 200 g surtidos) cuesta 200 g de lo que diga
+    «Recortes» en la lista del detal, por kilo: mientras no esté, a mano.
     Cada combo es un producto del catálogo marcado con su clave
     (`productos.combo_detal`), que la caja crea la primera vez y pone al
     día si cambia su número o su nombre: **nunca sale en la web**, que es

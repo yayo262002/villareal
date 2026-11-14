@@ -76,6 +76,7 @@
 <script src="combos-datos.js"></script>
 <script src="combos-precios.js"></script>
 <script>
+  document.head.insertAdjacentHTML("beforeend", `<style>${ESTILO_DEL_GRUPO}</style>`);
   const PRECIOS = globalThis.COMBOS_PRECIOS ?? { precios: {} };
   const dolares = (n) => n.toFixed(2).replace(".", ",");
   /** El nombre corto de cada combo: los productos, o el nombre propio de los especiales. */
@@ -100,7 +101,7 @@
         return `<article class="${clases}">
           <div class="numero"><small>COMBO</small>${c.n}</div>
           ${c.especial ? `<div class="cinta">ESPECIAL</div>` : ""}
-          <div class="fotos">${c.productos.map(([foto]) => fotoDe(foto, c)).join("")}</div>
+          <div class="fotos">${c.grupo ? grupoDe(c) : c.productos.map(([foto]) => fotoDe(foto, c)).join("")}</div>
           <div class="nombre">${nombreDe(c)}<span class="detalle">${detalleDe(c)}</span></div>
           <div class="precio">${precio ? `<small>$</small>${dolares(precio)}` : "<small>Consulte</small>"}</div>
         </article>`;
@@ -129,6 +130,19 @@
           return f.top < c.top + 6 || f.left < c.left - 1 || f.right > c.right + 1 || (cinta && f.right > cinta.left - 4 && f.top < cinta.bottom + 4);
         });
       };
+      // El combo de recortes: la escena entera, lo más grande que cabe en su caja, y se achica igual si algo choca.
+      const grupo = caja.querySelector(".grupo");
+      if (grupo) {
+        const c = caja.getBoundingClientRect();
+        const [ancho, alto] = grupo.style.aspectRatio.split("/").map(Number);
+        let ancho_px = Math.min(c.width, ((c.height - parseFloat(getComputedStyle(caja).paddingTop) - 6) * ancho) / alto);
+        grupo.style.width = `${ancho_px}px`;
+        while (pasa() && ancho_px > 20) {
+          ancho_px *= 0.98;
+          grupo.style.width = `${ancho_px}px`;
+        }
+        continue;
+      }
       while (pasa() && px > 2) {
         px -= 0.1;
         combo.style.setProperty("--px-por-cm", px.toFixed(2));

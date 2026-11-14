@@ -74,6 +74,15 @@ export const COMBOS_DEL_DETAL: ComboDelDetal[] = [
     detalle: "1 pan de sándwich, 200 g de queso paisa y 200 g de pechuga de pavo ahumada",
     componentes: [{ detal: "Pan blanco enriquecido Viva Mejor 500 g", cantidad: 1 }, { detal: "Queso paisa", cantidad: g200 }, { detal: "Pechuga de pavo ahumada Drago", cantidad: g200 }],
   },
+  // Los recortes de las piezas que se rebanan, surtidos. Su precio por kilo es el de «Recortes» en la lista del detal: mientras
+  // no esté, el combo sale sin precio y se escribe a mano en la caja.
+  {
+    n: 15,
+    clave: "recortes",
+    nombre: "Combo de recortes",
+    detalle: "Bandeja de 200 g de recortes surtidos",
+    componentes: [{ detal: "Recortes", cantidad: g200 }],
+  },
 ];
 
 /** El nombre de un producto del detal, para buscarlo sin mirar tildes, mayúsculas ni espacios de más. */

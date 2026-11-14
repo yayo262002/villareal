@@ -2962,12 +2962,12 @@ async function probarCostosUnidos() {
 }
 
 async function probarCombosEnLaCaja() {
-  // Al abrir la caja, los catorce combos del detal entran en su catálogo: ocultos en la web, con el precio del detal de hoy.
+  // Al abrir la caja, los quince combos del detal entran en su catálogo: ocultos en la web, con el precio del detal de hoy.
   let p = await pagina("/admin/ventas");
   const combos = await consultar("select id, nombre, activo, borrador, sku from productos where combo_detal is not null order by id");
   comprobar(
-    "la caja crea los catorce combos del detal, ocultos en la web, con su número de SKU",
-    combos.length === 14 && combos.every((c) => Number(c.activo) === 0 && Number(c.borrador) === 0) && combos.some((c) => c.sku === "COMBO-3" && c.nombre === "Combo jamón de espalda + mozzarella"),
+    "la caja crea los quince combos del detal, ocultos en la web, con su número de SKU",
+    combos.length === 15 && combos.every((c) => Number(c.activo) === 0 && Number(c.borrador) === 0) && combos.some((c) => c.sku === "COMBO-3" && c.nombre === "Combo jamón de espalda + mozzarella"),
     JSON.stringify(combos.slice(0, 3)),
   );
   comprobar("la caja ofrece los combos", p.html.includes("Combo jamón de espalda + mozzarella") && p.html.includes("Combos del detal"));
@@ -2980,7 +2980,7 @@ async function probarCombosEnLaCaja() {
   );
   // Abrir la caja otra vez no los duplica.
   await pagina("/admin/ventas");
-  comprobar("abrir la caja otra vez no los duplica", Number((await consultar("select count(*) as n from productos where combo_detal is not null"))[0].n) === 14);
+  comprobar("abrir la caja otra vez no los duplica", Number((await consultar("select count(*) as n from productos where combo_detal is not null"))[0].n) === 15);
   // No salen en la web al mayor, y no se pueden publicar.
   p = await pagina("/productos?q=combo");
   comprobar("los combos del detal no salen en la web al mayor", p.status === 200 && !p.html.includes("Combo jamón de espalda + mozzarella"));

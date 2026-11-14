@@ -50,6 +50,13 @@
     background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(70, 35, 10, 0.55), rgba(70, 35, 10, 0));
   }
   .pieza + .pieza { margin-left: var(--separacion, 10mm); }
+  /* El combo de recortes: todas las piezas juntas (grupoDe, en combos-datos.js), cada una con su sombra donde se apoya. El
+     ancho de la escena lo pone la hoja (--ancho-grupo), lo más grande que cabe. */
+  .productos .grupo { width: var(--ancho-grupo, 190mm); }
+  .grupo .miembro::after {
+    content: ""; position: absolute; left: -6%; right: -6%; bottom: -1.6mm; height: 4.2mm; z-index: -1;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(70, 35, 10, 0.5), rgba(70, 35, 10, 0));
+  }
   /* Los adornos de los especiales, dibujados encima de la foto de cada producto. El gorro, el de cocinero, la porción y el
      sándwich van algo encajados en el producto, no subidos encima: lo que sobresale le quita alto a los productos. */
   .adorno { position: absolute; display: block; overflow: visible; pointer-events: none; filter: drop-shadow(0 0.6mm 0.9mm rgba(40, 10, 0, 0.35)); }
@@ -154,6 +161,7 @@
 <body>
 <script src="combos-datos.js"></script>
 <script>
+  document.head.insertAdjacentHTML("beforeend", `<style>${ESTILO_DEL_GRUPO}</style>`);
   // Una hoja por combo, con los datos de combos-datos.js. Los dibujos van en milímetros (viewBox de la hoja entera).
   /** Un dibujito de sándwich, muy tenue, como marca de agua sobre la madera. */
   const sandwich = (x, y, escala, giro = 0) => `
@@ -721,7 +729,9 @@
     const lineas = combo.titulo
       ? `<div class="etiqueta">${combo.etiqueta ?? "Combo especial"}</div><span class="linea">${combo.titulo}</span>${festiva ? estrellaTitulo(combo.n, "izquierda") + estrellaTitulo(combo.n, "derecha") : ""}`
       : combo.productos.map(([, nombre], i) => `<span class="linea">${nombre}${i < combo.productos.length - 1 ? " +" : ""}</span>`).join("");
-    const piezas = combo.productos.map(([foto, , adorno]) => `<span class="pieza" data-foto="${foto}" style="--cm: ${cmDe(foto, combo)}"><img src="fotos/${foto}.png" style="${estiloDeFoto(foto, combo)}" alt="">${adorno ? ADORNOS[adorno] : ""}</span>`).join("");
+    const piezas = combo.grupo
+      ? grupoDe(combo)
+      : combo.productos.map(([foto, , adorno]) => `<span class="pieza" data-foto="${foto}" style="--cm: ${cmDe(foto, combo)}"><img src="fotos/${foto}.png" style="${estiloDeFoto(foto, combo)}" alt="">${adorno ? ADORNOS[adorno] : ""}</span>`).join("");
     if (combo.alto) hoja.dataset.alto = combo.alto;
     // Separados: 10 mm entre dos productos, 6 mm entre tres; el combo puede decir otra cosa (negativa, solapados).
     const separacion = combo.separacion ?? (combo.productos.length > 2 ? 6 : 10);
@@ -780,7 +790,7 @@
   function choca(hoja, arriba, lado, esquinas) {
     const caja = hoja.getBoundingClientRect();
     const mm = caja.width / 216;
-    return [...hoja.querySelectorAll(".pieza > img, .pieza > .adorno")].some((el) => {
+    return [...hoja.querySelectorAll(".pieza > img, .pieza > .adorno, .grupo img")].some((el) => {
       const { x1, y1, x2, y2 } = recuadro(el, caja, mm);
       if (y1 < arriba || x1 < lado || x2 > 216 - lado) return true;
       const cerca = { x: Math.min(Math.max(SELLO.x, x1), x2), y: Math.min(Math.max(SELLO.y, y1), y2) };
@@ -795,6 +805,18 @@
       const arriba = festiva ? 50 : 48.5;
       const lado = 6;
       const esquinas = !festiva ? [] : hoja.classList.contains("hoja--navidad") ? ESQUINAS.navidad : ESQUINAS.otras;
+      // El combo de recortes: la escena entera, lo más ancha que cabe a lo ancho y a lo alto, y se achica hasta que nada choca.
+      const grupo = hoja.querySelector(".grupo");
+      if (grupo) {
+        const [ancho, alto] = grupo.style.aspectRatio.split("/").map(Number);
+        let mm = Math.min(216 - 2 * lado, ((Number(hoja.dataset.alto) || BASE_MM - arriba) * ancho) / alto);
+        hoja.style.setProperty("--ancho-grupo", `${mm.toFixed(2)}mm`);
+        while (choca(hoja, arriba, lado, esquinas) && mm > 40) {
+          mm *= 0.99;
+          hoja.style.setProperty("--ancho-grupo", `${mm.toFixed(2)}mm`);
+        }
+        continue;
+      }
       const separacion = Number(hoja.dataset.separacion);
       const piezas = [...hoja.querySelectorAll(".pieza")].map((p) => {
         const img = p.querySelector("img");

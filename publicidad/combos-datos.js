@@ -127,6 +127,40 @@ globalThis.COMBOS = [
     fondo: "sandwiches",
     estilo: "sandwich",
   },
+  {
+    // Una bandeja de 200 g con los recortes de las piezas que se rebanan (el dueño, 14/11: «que aparezcan todas las piezas»).
+    // Al final, con los especiales: no es la pareja de un jamón y un queso, y así no se corre ningún número (ni las etiquetas
+    // de las bandejas con su código de barras).
+    n: 15,
+    titulo: "Combo de recortes",
+    productos: [
+      ["bolona-de-pollo", "Boloña de pollo"],
+      ["jamon-de-espalda", "Jamón de espalda"],
+      ["jamon-arepero", "Jamón arepero"],
+      ["jamon-de-pierna", "Jamón de pierna"],
+      ["mortadela-extra", "Mortadela extra"],
+      ["mortadela-punta-de-monte", "Mortadela especial"],
+      ["queso-amarillo-vallecito", "Queso amarillo"],
+      ["queso-amarillo", "Queso amarillo tipo cheddar"],
+      ["jamon-ahumado", "Jamón ahumado"],
+      ["mozzarella", "Mozzarella"],
+      ["pechuga-de-pavo-drago", "Pechuga de pavo"],
+      ["pechuga-de-pavo-ahumada", "Pechuga de pavo ahumada"],
+    ],
+    detalle: "Bandeja de 200 g de recortes surtidos",
+    lema: "Un poquito de todo en una bandeja",
+    destacar: "Un poquito de todo",
+    especial: true,
+    etiqueta: "Especial recortes",
+    // Todas las piezas juntas, como en una foto de grupo: atrás, más arriba, las altas; delante, apoyadas en el mostrador, las
+    // demás. Cada fila, con su altura sobre el mostrador (cm, a la escala de CM) y lo que se separan sus piezas (cm; negativo,
+    // se solapan). Las piezas, por su foto, en el orden en que van de izquierda a derecha.
+    // Atrás, las altas y delgadas, tan arriba que su etiqueta asoma por encima de las de delante; delante, las anchas.
+    grupo: [
+      { base: 20, separacion: 0.6, piezas: ["bolona-de-pollo", "jamon-de-espalda", "jamon-arepero", "jamon-de-pierna", "mortadela-extra", "mortadela-punta-de-monte", "queso-amarillo-vallecito"] },
+      { base: 0, separacion: 2.5, piezas: ["queso-amarillo", "jamon-ahumado", "mozzarella", "pechuga-de-pavo-drago", "pechuga-de-pavo-ahumada"] },
+    ],
+  },
 ];
 
 // Lo que mide de alto un producto en las hojas de todos los días, en mm, igual en todas (el dueño, 13/11: «el mismo tamaño en
@@ -150,3 +184,71 @@ globalThis.estiloDeFoto = (nombre, combo) =>
 globalThis.fotoDe = function fotoDe(nombre, combo) {
   return `<img src="fotos/${nombre}.png" style="${estiloDeFoto(nombre, combo)}" alt="">`;
 };
+
+// ——— El combo de recortes: todas las piezas juntas ———
+
+// Lo ancho entre lo alto de las fotos del combo de recortes (sus píxeles): con eso se colocan antes de que carguen. Si
+// cambia una de estas fotos, se pone aquí su tamaño nuevo.
+const PROPORCION = {
+  "bolona-de-pollo": 245 / 776,
+  "jamon-de-espalda": 346 / 720,
+  "jamon-arepero": 146 / 761,
+  "jamon-de-pierna": 457 / 673,
+  "mortadela-extra": 536 / 1138,
+  "mortadela-punta-de-monte": 345 / 1080,
+  "pechuga-de-pavo-ahumada": 581 / 1009,
+  "queso-amarillo": 332 / 742,
+  "jamon-ahumado": 361 / 660,
+  mozzarella: 632 / 741,
+  "pechuga-de-pavo-drago": 691 / 1066,
+  "queso-amarillo-vallecito": 314 / 800,
+};
+
+/**
+ * Dónde va cada pieza de un combo con `grupo`, en centímetros de la vida real (a la escala de CM): cada fila centrada, con
+ * sus piezas una al lado de la otra; la de atrás, más arriba y debajo de la de delante. Devuelve lo que mide la escena y,
+ * de cada pieza, su centro, su ancho, su alto y lo alto que se apoya.
+ */
+globalThis.escenaDe = function escenaDe(combo) {
+  const filas = combo.grupo.map((fila, i) => {
+    const piezas = fila.piezas.map((foto) => {
+      const alto = cmDe(foto, combo);
+      const proporcion = ASPECTO[foto] ?? PROPORCION[foto];
+      if (!proporcion) throw new Error(`Falta la proporción de la foto ${foto} en PROPORCION (combos-datos.js).`);
+      return { foto, alto, ancho: alto * proporcion, base: fila.base, capa: i };
+    });
+    const ancho = piezas.reduce((suma, p) => suma + p.ancho, 0) + fila.separacion * (piezas.length - 1);
+    return { piezas, ancho, separacion: fila.separacion };
+  });
+  const ancho = Math.max(...filas.map((f) => f.ancho));
+  const piezas = filas.flatMap((fila) => {
+    let x = (ancho - fila.ancho) / 2;
+    return fila.piezas.map((p) => {
+      const centro = x + p.ancho / 2;
+      x += p.ancho + fila.separacion;
+      return { ...p, centro };
+    });
+  });
+  return { ancho, alto: Math.max(...piezas.map((p) => p.base + p.alto)), piezas };
+};
+
+/**
+ * Las piezas de un combo con `grupo`, en una caja con la proporción de la escena: todo en porcentajes, así la misma escena
+ * sirve en la hoja, en el cartel y en el flier, del tamaño que se le dé a la caja (su ancho; lo alto sale solo).
+ */
+globalThis.grupoDe = function grupoDe(combo) {
+  const { ancho, alto, piezas } = escenaDe(combo);
+  const por = (n, de) => `${((n / de) * 100).toFixed(3)}%`;
+  return `<div class="grupo" style="aspect-ratio: ${ancho.toFixed(2)} / ${alto.toFixed(2)}">${piezas
+    .map(
+      (p) =>
+        `<span class="miembro" data-foto="${p.foto}" style="left: ${por(p.centro - p.ancho / 2, ancho)}; width: ${por(p.ancho, ancho)}; bottom: ${por(p.base, alto)}; height: ${por(p.alto, alto)}; z-index: ${p.capa * 100 + Math.round(100 - p.alto)}"><img src="fotos/${p.foto}.png" alt=""></span>`,
+    )
+    .join("")}</div>`;
+};
+
+/** Lo que necesita la caja de un grupo, en cualquier página: las piezas, cada una en su sitio; su sombra la pone cada página. */
+globalThis.ESTILO_DEL_GRUPO = `
+  .grupo { position: relative; flex: none; max-width: 100%; }
+  .grupo .miembro { position: absolute; display: block; }
+  .grupo .miembro img { display: block; width: 100%; height: 100%; max-width: none; object-fit: fill; }`;

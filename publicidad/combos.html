@@ -133,6 +133,7 @@
 
 <script src="combos-datos.js"></script>
 <script>
+  document.head.insertAdjacentHTML("beforeend", `<style>${ESTILO_DEL_GRUPO}</style>`);
   // El cartel se arma con los combos de combos-datos.js (los mismos de las hojas de cada combo), menos los que van solo en su
   // hoja; en tres columnas.
   const tarjetaDe = (combo) => {
@@ -140,7 +141,7 @@
     const nombres = combo.titulo ? `<div class="producto">${combo.titulo}</div>` : combo.productos.map(([, nombre]) => `<div class="producto">${nombre.replace(" tipo ", " tipo\u00a0")}</div>`).join("");
     return `<article class="${clases}">
       <div class="numero"><small>Combo</small>${combo.n}</div>
-      <div class="fotos">${combo.productos.map(([foto]) => fotoDe(foto, combo)).join("")}</div>
+      <div class="fotos">${combo.grupo ? grupoDe(combo) : combo.productos.map(([foto]) => fotoDe(foto, combo)).join("")}</div>
       <div class="pie">
         <div class="que">${nombres}<div class="detalle">${combo.detalle.replace(/(\d) /g, "$1\u00a0")}</div></div>
         <div class="precio"><span class="moneda">$</span></div>
@@ -178,6 +179,19 @@
           return f.top < arriba || f.left < c.left - 1 || f.right > c.right + 1 || (cinta && f.right > cinta.izquierda && f.top < cinta.abajo);
         });
       };
+      // El combo de recortes: la escena entera, lo más grande que cabe en su caja, y se achica igual si algo choca.
+      const grupo = caja.querySelector(".grupo");
+      if (grupo) {
+        const c = caja.getBoundingClientRect();
+        const [ancho, alto] = grupo.style.aspectRatio.split("/").map(Number);
+        let px = Math.min(c.width, ((c.height - parseFloat(getComputedStyle(caja).paddingTop) - 2) * ancho) / alto);
+        grupo.style.width = `${px}px`;
+        while (pasa() && px > 20) {
+          px *= 0.98;
+          grupo.style.width = `${px}px`;
+        }
+        continue;
+      }
       let escala = 2.1;
       while (pasa() && escala > 0.8) {
         escala -= 0.05;
