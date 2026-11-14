@@ -2230,6 +2230,26 @@ async function probarBanco() {
   comprobar("pago móvil: un enlace que no existe no acepta avisos", (await fetch(base + "/cuenta/zzzzzzzzzzzzzz/ya-pague", { method: "POST", body: new FormData(), redirect: "manual" })).status === 404);
   const final = legible((await pagina("/admin/banco")).html);
   comprobar("pago móvil: lo abonado sale en la pantalla, con cómo se supo", final.includes("lo avisó el cliente") && final.includes("ya estaba anotado") && final.includes("por su teléfono"));
+
+  // 8. El texto leído de una captura de la pantalla (los dos toques del iPhone): varios avisos y otras cosas alrededor.
+  a = await avisar(
+    `BDVapp ahora
+${conTelefono("300,00", "0414-0000002", "998877665544")}
+WhatsApp Juan: hola
+${conNombre("ANA MARIA SOTO", "450,00", "008000777001")}
+14:05`,
+  );
+  comprobar(
+    "pago móvil: de una captura con dos avisos entran los dos, y lo demás no",
+    a.leido === true && a.estados?.length === 2 && Boolean(await movimiento("998877665544")) && Boolean(await movimiento("008000777001")),
+    JSON.stringify(a),
+  );
+  a = await avisar(conTelefono("300,00", "0414-0000002", "99887766"));
+  comprobar(
+    "pago móvil: el mismo aviso con la referencia cortada (la captura no lo enseñaba entero) no se cuenta dos veces",
+    a.estado === "repetido" && (await consultar("select count(*) as n from movimientos_banco where abs(monto_bs - 300) < 0.005"))[0].n === 1,
+    JSON.stringify(a),
+  );
 }
 
 async function probarSinEscribir() {

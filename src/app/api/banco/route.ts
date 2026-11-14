@@ -56,16 +56,30 @@ export async function POST(peticion: Request): Promise<Response> {
     return Response.json({ ok: false, mensaje: "La clave no es la buena. Cópiala otra vez del panel (Pago móvil)." }, { status: 401, headers: SIN_CACHE });
   }
   const texto = await textoDelCuerpo(peticion);
-  const r = await recibirDelBanco(texto, "telefono");
-  if (r.tipo === "no_es_pago") return Response.json({ ok: true, leido: false, mensaje: r.motivo }, { headers: SIN_CACHE });
-  const m = r.movimiento;
-  const mensaje =
-    r.tipo === "repetido"
+  // El texto leído de una captura de la pantalla puede traer varios avisos: cada uno empieza por «Recibiste». Lo que va
+  // antes (la hora, el nombre de la app) se deja; sin ningún aviso, el texto entero (para anotar que el teléfono habló).
+  const avisos = texto
+    .split(/(?=Recibiste)/i)
+    .map((t) => t.trim())
+    .filter((t) => /^recibiste/i.test(t))
+    .slice(0, 20);
+  const resultados = [];
+  for (const aviso of avisos.length > 0 ? avisos : [texto]) resultados.push(await recibirDelBanco(aviso, "telefono"));
+  const leidos = resultados.filter((r) => r.tipo !== "no_es_pago");
+  if (leidos.length === 0) {
+    const primero = resultados[0];
+    return Response.json({ ok: true, leido: false, mensaje: primero?.tipo === "no_es_pago" ? primero.motivo : "Llegó vacío." }, { headers: SIN_CACHE });
+  }
+  const mensajes = leidos.map((r) => {
+    const m = r.movimiento;
+    return r.tipo === "repetido"
       ? `Ya estaba: ${bs(m.monto_bs)}, ref. ${m.referencia || "sin referencia"}.`
       : m.estado === "aplicado"
         ? `${bs(m.monto_bs)} abonados a ${m.cliente_nombre}.`
         : `${bs(m.monto_bs)} por identificar en el panel.`;
-  return Response.json({ ok: true, leido: true, estado: r.tipo === "repetido" ? "repetido" : m.estado, mensaje }, { headers: SIN_CACHE });
+  });
+  const estados = leidos.map((r) => (r.tipo === "repetido" ? "repetido" : r.movimiento.estado));
+  return Response.json({ ok: true, leido: true, estado: estados[0], estados, mensaje: mensajes.join(" ") }, { headers: SIN_CACHE });
 }
 
 export async function GET(peticion: Request): Promise<Response> {

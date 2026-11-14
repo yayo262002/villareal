@@ -115,3 +115,10 @@
   font-size: 17px;
   font-weight: 800;
 }
+
+.pasos ul {
+  display: grid;
+  gap: 4px;
+  margin: var(--espacio-2) 0 0;
+  padding-left: 1.2em;
+}

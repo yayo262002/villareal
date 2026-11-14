@@ -118,6 +118,12 @@ export async function claveDelBancoValida(recibida: string): Promise<boolean> {
 
 // ---------- Lo que llega del banco ----------
 
+/** Si una referencia es el principio de la otra (con al menos seis cifras): la misma, cortada. */
+function referenciaCortada(a: string, b: string): boolean {
+  if (a.length < 6 || b.length < 6) return false;
+  return a.length >= b.length ? a.startsWith(b) : b.startsWith(a);
+}
+
 export type Recibido =
   | { tipo: "no_es_pago"; motivo: string }
   | { tipo: "repetido"; movimiento: MovimientoBanco }
@@ -168,7 +174,18 @@ async function movimientoIgual(
   titular: string,
   fecha: string,
 ): Promise<MovimientoBanco | null> {
-  if (referencia) return fila<MovimientoBanco>(`${CONSULTA} where m.banco = ? and m.referencia = ?`, [banco, referencia]);
+  if (referencia) {
+    const exacto = await fila<MovimientoBanco>(`${CONSULTA} where m.banco = ? and m.referencia = ?`, [banco, referencia]);
+    if (exacto) return exacto;
+    // Leído de una captura, el aviso puede venir cortado: la referencia a medias es el principio de la entera. El mismo
+    // monto ese mismo día con una referencia que empieza igual es el mismo pago.
+    const mismoMonto = await filas<MovimientoBanco>(`${CONSULTA} where m.banco = ? and m.fecha = ? and abs(m.monto_bs - ?) < 0.005 and m.referencia <> ''`, [
+      banco,
+      fecha,
+      monto,
+    ]);
+    return mismoMonto.find((m) => referenciaCortada(m.referencia, referencia)) ?? null;
+  }
   // Sin referencia: el mismo monto, de la misma persona, el mismo día y hace menos de media hora.
   return fila<MovimientoBanco>(
     `${CONSULTA} where m.referencia = '' and abs(m.monto_bs - ?) < 0.005 and m.telefono = ? and m.titular = ? and m.fecha = ?

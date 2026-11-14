@@ -1154,6 +1154,15 @@ Binance y otro.
   «texto» con la entrada del atajo). Sin el remitente, cualquiera podría mandar un SMS
   falso que se anotaría como abono. En el panel, «Copiar la dirección» la
   copia para pegarla en Atajos.
+- **Con el iPhone y sin SMS: dos toques** (a él no le llegan los SMS del
+  BDV, solo la notificación del BDVapp). Un atajo «Pago móvil al panel»
+  (hacer captura de pantalla → extraer texto de la imagen → POST JSON con
+  el texto) puesto en Ajustes → Accesibilidad → Tocar → Tocar atrás →
+  doble toque: con el aviso del BDV en la pantalla, dos toques en la parte
+  de atrás y entra. `/api/banco` separa los avisos por «Recibiste» (una
+  captura puede traer varios, y lo demás se deja) y un aviso con la
+  referencia cortada (el principio de una que ya está, el mismo monto y el
+  mismo día) es el mismo pago.
 - **Qué lee** (`leerAvisoDelBanco` en `src/lib/banco-calculo.ts`, con
   pruebas): los dos avisos que manda el BDV, «Recibiste un PagomovilBDV por
   Bs.57.158,84 del 0424-5550199 Ref: 012345678094 en fecha 14-11-26 hora:

@@ -323,9 +323,9 @@ export default async function PaginaBanco({ searchParams }: { searchParams: Prom
       <section className="tarjeta" id="telefono">
         <h2 className={estilos.subtitulo}>El teléfono del banco</h2>
         <p>
-          Un teléfono del negocio le manda a la web cada aviso de pago del banco. Puede ser un <strong>iPhone</strong>, con los <strong>SMS</strong> del BDV
-          y la app Atajos, o un <strong>Android</strong>, con las notificaciones del BDVapp y la app MacroDroid. Tiene que quedarse encendido y con datos o
-          wifi.
+          Un teléfono del negocio le manda a la web cada aviso de pago del banco. Con un <strong>iPhone</strong>: dos toques en la parte de atrás cuando
+          llega la notificación del BDVapp (el iPhone no deja que nada la lea sola), o, si te llegan, los <strong>SMS</strong> del BDV, que sí entran solos.
+          Con un <strong>Android</strong>: las notificaciones del BDVapp, solas, con la app MacroDroid.
         </p>
         {direccion ? (
           <>
@@ -347,7 +347,41 @@ export default async function PaginaBanco({ searchParams }: { searchParams: Prom
             </button>
           </form>
         )}
-        <h3 className={propios.subtituloTelefono}>Con un iPhone (los SMS del BDV)</h3>
+        <h3 className={propios.subtituloTelefono}>Con un iPhone: dos toques atrás (las notificaciones del BDVapp)</h3>
+        <ol className={propios.pasos}>
+          <li>
+            App <strong>Atajos</strong> → «+» (un atajo nuevo) y ponle de nombre <strong>Pago móvil al panel</strong>. Añade estas tres acciones, en este
+            orden:
+            <ul>
+              <li>
+                <strong>«Hacer captura de pantalla»</strong>.
+              </li>
+              <li>
+                <strong>«Extraer texto de la imagen»</strong> (de la captura).
+              </li>
+              <li>
+                <strong>«Obtener contenido de URL»</strong>: pega la dirección de arriba («Copiar la dirección»); toca la flechita «&gt;»: Método{" "}
+                <strong>POST</strong>; Cuerpo de la solicitud <strong>JSON</strong>; «Añadir nuevo campo» → «Texto», con la clave <strong>texto</strong> y,
+                de valor, la variable <strong>«Texto»</strong> (el que se extrajo).
+              </li>
+            </ul>
+          </li>
+          <li>
+            Ajustes → Accesibilidad → Tocar → <strong>Tocar atrás</strong> → «Doble toque» → elige <strong>Pago móvil al panel</strong>.
+          </li>
+          <li>
+            Cuando te llegue un pago: baja las notificaciones (o déjala en la pantalla) para que se vea el aviso del BDV <strong>entero</strong>, con la
+            referencia, y da <strong>dos toques</strong> en la parte de atrás del iPhone. Se manda todo lo que se ve; si salen varios pagos, entran todos, y
+            uno que ya estaba no se cuenta dos veces.
+          </li>
+          <li>Para probar: dos toques en cualquier pantalla. Arriba de esta página saldrá que llegó algo «(no era un pago recibido)».</li>
+        </ol>
+        <p className="ayuda">
+          Si el aviso sale cortado («Ref: 01234…»), mantenlo pulsado para verlo entero antes de los dos toques: con la referencia a medias puede quedar sin
+          identificar.
+        </p>
+
+        <h3 className={propios.subtituloTelefono}>Con un iPhone que recibe los SMS del BDV (entran solos)</h3>
         <ol className={propios.pasos}>
           <li>
             Que te lleguen a este iPhone los <strong>SMS del BDV</strong> de los pagos recibidos (al número que tiene registrado el banco). Si no te llegan,
