@@ -36,6 +36,8 @@ export type ProductoDeVitrina = {
   marcas: MarcaDeVitrina[];
   /** La sección en que sale en cada otra familia (id → sección), si el dueño la puso. */
   secciones: Map<number, string>;
+  /** En las listas, una tarjeta por artículo (`porArticulo`): el artículo que enseña esta; null, la tarjeta es del tipo. */
+  variante: Variante | null;
 };
 
 export type Vitrina = {
@@ -93,7 +95,20 @@ function armar(p: Producto, suyas: Variante[], familias: number[], secciones: Ma
     clave: suyas.length === 0 ? claveDe(p.id, null) : suyas.length === 1 ? claveDe(p.id, suyas[0].id) : null,
     marcas: marcasDe(p, suyas),
     secciones,
+    variante: null,
   };
+}
+
+/**
+ * Una tarjeta por artículo, para las listas de Productos y de cada categoría (el dueño, 15/11/2026: «no has añadido
+ * los productos»: el Mi Vallecito y las salchichas cóctel no se veían, metidos dentro de su tipo). Un tipo con dos o
+ * más artículos sale como una tarjeta por cada uno, con el tipo de título, su marca debajo, su foto, su precio y su
+ * «Agregar»; un tipo de una sola forma (o de un solo artículo) sale como siempre. La portada sigue con los tipos.
+ */
+export function porArticulo(items: ProductoDeVitrina[]): ProductoDeVitrina[] {
+  return items.flatMap((item) =>
+    item.variantes.length < 2 ? [item] : item.variantes.map((v) => ({ ...armar(item.producto, [v], item.familias, item.secciones), variante: v })),
+  );
 }
 
 /**
@@ -139,23 +154,30 @@ export function deLaFamilia(productos: ProductoDeVitrina[], familiaId: number): 
   return productos.filter((p) => p.familias.includes(familiaId)).sort((a, b) => b.producto.destacado - a.producto.destacado);
 }
 
+/** Lo que se mira al buscar un tipo (o un artículo): su nombre, sus marcas, su presentación, su descripción y sus familias. */
+function textoDe(p: ProductoDeVitrina, nombreDe: Map<number, string>): (string | undefined)[] {
+  return [
+    p.producto.nombre,
+    p.producto.marca,
+    p.producto.presentacion,
+    p.producto.contenido,
+    p.producto.descripcion,
+    ...p.variantes.flatMap((m) => [m.nombre, m.marca, m.presentacion, m.contenido, m.descripcion]),
+    ...p.familias.map((id) => nombreDe.get(id)),
+  ];
+}
+
 /** Lo que responde a una búsqueda: por su nombre, sus marcas, su presentación, su descripción o sus familias. */
 export function buscarEnLaVitrina(v: Pick<Vitrina, "productos" | "todasLasFamilias">, busqueda: string): ProductoDeVitrina[] {
   const nombreDe = new Map(v.todasLasFamilias.map((f) => [f.id, f.nombre]));
-  return v.productos.filter((p) =>
-    textoCoincide(
-      [
-        p.producto.nombre,
-        p.producto.marca,
-        p.producto.presentacion,
-        p.producto.contenido,
-        p.producto.descripcion,
-        ...p.variantes.flatMap((m) => [m.nombre, m.marca, m.presentacion, m.descripcion]),
-        ...p.familias.map((id) => nombreDe.get(id)),
-      ],
-      busqueda,
-    ),
-  );
+  return v.productos.filter((p) => textoCoincide(textoDe(p, nombreDe), busqueda));
+}
+
+/** De unas tarjetas por artículo, las que responden a la búsqueda: «vallecito» trae el Mi Vallecito, no el El Legado. */
+export function articulosQueCoinciden(items: ProductoDeVitrina[], v: Pick<Vitrina, "todasLasFamilias">, busqueda: string): ProductoDeVitrina[] {
+  if (!busqueda) return items;
+  const nombreDe = new Map(v.todasLasFamilias.map((f) => [f.id, f.nombre]));
+  return items.filter((p) => !p.variante || textoCoincide(textoDe(p, nombreDe), busqueda));
 }
 
 /** La página de cada producto publicado, por su número: para enlazar lo que lleva un combo. */

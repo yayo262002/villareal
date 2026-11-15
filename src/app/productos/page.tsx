@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { negocio } from "@/config/negocio";
-import { buscarEnLaVitrina, deLaFamilia, deLasMarcas, marcasDeLaLista, vitrina, type ProductoDeVitrina } from "@/lib/vitrina";
+import { articulosQueCoinciden, buscarEnLaVitrina, deLaFamilia, deLasMarcas, marcasDeLaLista, porArticulo, vitrina, type ProductoDeVitrina } from "@/lib/vitrina";
 import { marcasDelFiltro } from "@/lib/marcas-texto";
 import { CabeceraPublica, LineaTasa, PiePublico } from "@/components/publico";
 import { EncabezadoDePagina, FiltroDeMarcas, NotaDePrecios, PaginaDeVitrina, RejillaDeProductos, SinProductos } from "@/components/vitrina";
@@ -36,7 +36,9 @@ export default async function PaginaProductos({ searchParams }: Parametros) {
   let encontrados = busqueda ? buscarEnLaVitrina(v, busqueda) : v.productos;
   if (familiaElegida) encontrados = deLaFamilia(encontrados, familiaElegida.id);
   if (coleccionElegida) encontrados = deLaFamilia(encontrados, coleccionElegida.id);
-  const lista = encontrados.map((p) => deLasMarcas(p, elegidas)).filter((p): p is ProductoDeVitrina => p !== null);
+  const porTipo = encontrados.map((p) => deLasMarcas(p, elegidas)).filter((p): p is ProductoDeVitrina => p !== null);
+  // Una tarjeta por artículo; buscando, solo los artículos que responden («vallecito» trae el Mi Vallecito).
+  const lista = articulosQueCoinciden(porArticulo(porTipo), v, busqueda);
   const filtrando = Boolean(busqueda || familiaElegida || coleccionElegida);
   const conservar: Record<string, string> = {};
   if (busqueda) conservar.q = busqueda;

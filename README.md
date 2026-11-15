@@ -394,10 +394,16 @@ datos/                    La base de datos (fuera de Git)
   - En Productos, cada tipo tiene «Marcas y presentaciones» con sus
     artículos: marca, presentación, contenido, descripción (una línea por
     ventaja), costo y precio (con el costo salen del margen del tipo) y una
-    foto, que el teléfono reduce antes de subir. La tarjeta del tipo dice
-    «desde» con el precio más barato y «2 marcas para elegir»; con dos o
-    más no lleva «Agregar» (sería pedir a ciegas) sino «Ver opciones», y
-    en la página del tipo cada artículo tiene su «Agregar» y su «Pedir por
+    foto, que el teléfono reduce antes de subir. En la portada, la tarjeta
+    del tipo dice «desde» con el precio más barato y «2 marcas para
+    elegir»; con dos o más no lleva «Agregar» (sería pedir a ciegas) sino
+    «Ver opciones». **En Productos y en cada categoría, una tarjeta por
+    artículo** (el dueño, 15/11/2026: «no has añadido los productos»: el Mi
+    Vallecito y las salchichas cóctel no se veían, metidos en su tipo): el
+    tipo de título, su marca debajo, su foto, su precio y su «Agregar», y
+    lleva a la página de su marca (`porArticulo` en `src/lib/vitrina.ts`);
+    buscando, solo los artículos que responden («vallecito» trae el Mi
+    Vallecito, no el El Legado). En la página del tipo cada artículo tiene su «Agregar» y su «Pedir por
     WhatsApp», con su precio, para que el pedido diga cuál es. Con un solo
     artículo (el suero, de Guaralact) no hay nada que elegir: se pide
     directo desde arriba, como sin marcas, y su descripción y sus reseñas

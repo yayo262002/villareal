@@ -4,7 +4,7 @@ import { enlaceWhatsapp } from "@/config/negocio";
 import { nombreDeVenta, porQueSeCobra } from "@/lib/catalogo";
 import { direccionDePortada, type Familia } from "@/lib/familias";
 import { portadaMediana } from "@/lib/portadas";
-import { rutaProducto } from "@/lib/enlaces";
+import { rutaProducto, rutaVariante } from "@/lib/enlaces";
 import { aBolivares, bs, fechaCorta, unidadEnPalabras, usd } from "@/lib/dinero";
 import { claveDeOferta } from "@/lib/carrito";
 import { fotoDeCombo } from "@/lib/fotos-referenciales";
@@ -81,7 +81,8 @@ function detalleDe(item: ProductoDeVitrina): string {
 
 export function TarjetaDeProducto({ item, tasa, prioridad = false }: { item: ProductoDeVitrina; tasa: number | null; prioridad?: boolean }) {
   const { producto, variantes } = item;
-  const ruta = rutaProducto(producto);
+  // Una tarjeta por artículo lleva a la página de su marca; la del tipo, a la del tipo.
+  const ruta = item.variante ? rutaVariante(producto, item.variante) : rutaProducto(producto);
   const nombreParaElCarrito = variantes.length === 1 ? nombreDeVenta(producto.nombre, variantes[0].nombre) : producto.nombre;
   return (
     <li className={estilos.tarjeta}>
@@ -122,7 +123,7 @@ export function RejillaDeProductos({ items, tasa, prioridad = false }: { items: 
   return (
     <ul className={estilos.rejillaProductos}>
       {items.map((item, i) => (
-        <TarjetaDeProducto key={item.producto.id} item={item} tasa={tasa} prioridad={prioridad && i < 2} />
+        <TarjetaDeProducto key={`${item.producto.id}-${item.variante?.id ?? 0}`} item={item} tasa={tasa} prioridad={prioridad && i < 2} />
       ))}
     </ul>
   );

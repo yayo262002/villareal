@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { negocio } from "@/config/negocio";
 import { buscarFamiliaPorSlug, direccionDePortada, type Familia } from "@/lib/familias";
-import { deLaFamilia, deLasMarcas, marcasDeLaLista, porSecciones, vitrina, type ProductoDeVitrina } from "@/lib/vitrina";
+import { deLaFamilia, deLasMarcas, marcasDeLaLista, porArticulo, porSecciones, vitrina, type ProductoDeVitrina } from "@/lib/vitrina";
 import { marcasDelFiltro } from "@/lib/marcas-texto";
 import { CabeceraPublica, LineaTasa, PiePublico, type SeccionPublica } from "@/components/publico";
 import { CabeceraDeFamilia, ChipsDeFamilias, FiltroDeMarcas, NotaDePrecios, PaginaDeVitrina, SeccionesDeProductos, SinProductos } from "@/components/vitrina";
@@ -83,7 +83,7 @@ export default async function PaginaCategoria({ params, searchParams }: Parametr
             <SinProductos texto="Ninguno de estos productos se vende de esas marcas. Quita el filtro o pregúntanos por WhatsApp." pregunta={`Hola, ¿qué tienen de ${familia.nombre.toLowerCase()}?`} />
           ) : (
             <>
-              <SeccionesDeProductos secciones={porSecciones(lista, familia, v.todasLasFamilias)} tasa={tasa} />
+              <SeccionesDeProductos secciones={porSecciones(porArticulo(lista), familia, v.todasLasFamilias)} tasa={tasa} />
               <NotaDePrecios hayTasa={tasa !== null} items={lista} />
             </>
           )}
