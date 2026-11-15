@@ -6,7 +6,7 @@ import { buscarVenta } from "@/lib/ventas";
 import { buscarCliente } from "@/lib/clientes";
 import { pagosDeVenta } from "@/lib/pagos";
 import { ponerControlDeFactura } from "@/lib/acciones";
-import { NOMBRE_DOCUMENTO, cantidadDeLinea, descripcionDeLinea, numeroDeFactura } from "@/lib/factura-calculo";
+import { NOMBRE_DOCUMENTO, bolivaresDeLaFactura, cantidadDeLinea, descripcionDeLinea, numeroDeFactura } from "@/lib/factura-calculo";
 import { numeroDeNota } from "@/lib/entregas";
 import { sumarDias } from "@/lib/credito";
 import { bs, fechaCorta, fechaDeLaBase, usd } from "@/lib/dinero";
@@ -58,6 +58,8 @@ export default async function PaginaFactura({ params, searchParams }: Parametros
   const [pagos, cliente] = await Promise.all([venta ? pagosDeVenta(venta.id) : [], venta ? buscarCliente(venta.cliente_id) : null]);
   const cobrado = pagos.reduce((s, p) => s + Number(p.monto_usd), 0);
   const alContado = venta ? cobrado + 0.009 >= Number(venta.total_usd) : true;
+  // Los bolívares de la factura: la misma cuenta que el libro de ventas y el IVA del mes.
+  const enBolivares = bolivaresDeLaFactura(factura);
   const diasDeCredito = venta ? (venta.dias_credito ?? cliente?.dias_credito ?? 7) : null;
   const formatoTicket = parametros.formato === "ticket";
   const claveVendida = typeof parametros.vendida === "string" ? parametros.vendida : "";
@@ -270,6 +272,24 @@ export default async function PaginaFactura({ params, searchParams }: Parametros
                   <dt>Tasa BCV</dt>
                   <dd>{bs(factura.tasa)} / USD</dd>
                 </div>
+                {enBolivares && (
+                  <>
+                    {enBolivares.exento_bs > 0 && (
+                      <div>
+                        <dt>Exento Bs</dt>
+                        <dd>{bs(enBolivares.exento_bs)}</dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt>Base imponible Bs</dt>
+                      <dd>{bs(enBolivares.base_imponible_bs)}</dd>
+                    </div>
+                    <div>
+                      <dt>IVA Bs</dt>
+                      <dd>{bs(enBolivares.iva_bs)}</dd>
+                    </div>
+                  </>
+                )}
                 <div className={estilos.ticketTotal}>
                   <dt>TOTAL Bs</dt>
                   <dd>{bs(factura.total_bs)}</dd>
@@ -377,13 +397,15 @@ export default async function PaginaFactura({ params, searchParams }: Parametros
                 <dt>Total en bolívares, a {bs(factura.tasa)} por dólar (BCV)</dt>
                 <dd>{bs(factura.total_bs)}</dd>
               </div>
-              <div>
-                <dt>
-                  Base imponible Bs {bs(Math.round(factura.base_imponible_usd * factura.tasa * 100) / 100)} · IVA Bs{" "}
-                  {bs(Math.round(factura.iva_usd * factura.tasa * 100) / 100)}
-                </dt>
-                <dd />
-              </div>
+              {enBolivares && (
+                <div>
+                  <dt>
+                    {enBolivares.exento_bs > 0 ? `Exento Bs ${bs(enBolivares.exento_bs)} · ` : ""}Base imponible Bs {bs(enBolivares.base_imponible_bs)} · IVA Bs{" "}
+                    {bs(enBolivares.iva_bs)}
+                  </dt>
+                  <dd />
+                </div>
+              )}
             </>
           )}
         </dl>

@@ -267,14 +267,17 @@ export async function emitirFacturaDeVenta(ventaId: number, comprador: Comprador
   const fecha = hoy();
   const hora = horaDeLaBase(new Date().toISOString());
 
-  // El número se toma al guardar; si dos facturas se emiten a la vez, el índice único hace repetir a la segunda.
+  // El número se toma al guardar; si dos facturas se emiten a la vez, el índice único hace repetir a la segunda. Y la
+  // misma venta facturada dos veces a la vez (dos toques, dos teléfonos): el insert solo entra si la venta sigue sin
+  // factura vigente, en la misma sentencia, así que la segunda no entra.
   for (let intento = 0; intento < 3; intento++) {
     const numero = await siguienteNumeroDeFactura("factura");
     try {
       const r = await ejecutar(
         `insert into facturas (tipo, numero, venta_id, factura_id, cliente_id, fecha, hora, emisor, cliente, lineas,
                                subtotal_usd, descuento_usd, exento_usd, base_imponible_usd, iva_pct, iva_usd, total_usd, tasa, total_bs)
-         values ('factura', ?, ?, null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         select 'factura', ?, ?, null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+         where not exists (select 1 from facturas where venta_id = ? and tipo = 'factura' and estado = 'emitida')`,
         [
           numero,
           venta.id,
@@ -293,8 +296,17 @@ export async function emitirFacturaDeVenta(ventaId: number, comprador: Comprador
           cuentas.total_usd,
           cuentas.tasa,
           cuentas.total_bs,
+          venta.id,
         ],
       );
+      if (r.cambios === 0) {
+        const otra = await facturaVigenteDeVenta(ventaId);
+        throw new Error(
+          otra
+            ? `Esta venta ya tiene la factura N.º ${numeroDeFactura(otra.numero)}. Para hacerle otra, anula esa primero con una nota de crédito.`
+            : "No se pudo guardar la factura: inténtalo otra vez.",
+        );
+      }
       return {
         id: r.ultimoId,
         numero,
@@ -357,18 +369,24 @@ export async function anularConNotaDeCredito(facturaId: number, motivo: string):
             motivo,
           ],
         });
-        await tx.execute({
-          sql: "update facturas set estado = 'anulada', anulada_en = datetime('now'), motivo = ? where id = ?",
+        // Solo si sigue emitida: anularla dos veces a la vez dejaría dos notas de crédito por una factura. La segunda
+        // no encuentra nada que anular y se deshace entera.
+        const anulada = await tx.execute({
+          sql: "update facturas set estado = 'anulada', anulada_en = datetime('now'), motivo = ? where id = ? and estado = 'emitida'",
           args: [motivo, factura.id],
         });
+        if (anulada.rowsAffected === 0) throw new YaAnulada();
         return Number(r.lastInsertRowid);
       });
     } catch (error) {
+      if (error instanceof YaAnulada) throw new Error("Esa factura ya está anulada.");
       if (intento === 2 || !/unique/i.test(error instanceof Error ? error.message : String(error))) throw error;
     }
   }
   throw new Error("No se pudo dar número a la nota de crédito: inténtalo otra vez.");
 }
+
+class YaAnulada extends Error {}
 
 /** Todas las de un mes («2026-10»), las más nuevas primero; sin mes, todas. */
 export async function listarFacturas(mes: string | null = null): Promise<Factura[]> {
@@ -416,6 +434,27 @@ export async function documentosDelLibro(mes: string): Promise<DocumentoDelLibro
 export async function contarFacturas(): Promise<number> {
   const f = await fila<{ n: number }>("select count(*) as n from facturas");
   return Number(f?.n ?? 0);
+}
+
+export type DocumentoSinControl = { id: number; tipo: TipoDeDocumento; numero: number; fecha: string; cliente: string; total_usd: number; estado: EstadoDeFactura };
+
+/** Los documentos que esperan su número de control, en el orden en que se emitieron (el de la imprenta). */
+export async function documentosSinControl(): Promise<DocumentoSinControl[]> {
+  const lista = await filas<FilaDeFactura>("select * from facturas where numero_control = '' order by fecha, hora, id");
+  return lista.map((f) => {
+    const d = aFactura(f);
+    return { id: d.id, tipo: d.tipo, numero: d.numero, fecha: d.fecha, cliente: rotuloFacturado(d.cliente), total_usd: d.total_usd, estado: d.estado };
+  });
+}
+
+/** Otro documento que ya tiene ese número de control (dos con el mismo es un error al copiarlo). */
+export async function controlYaUsado(control: string, salvoId: number): Promise<{ id: number; tipo: TipoDeDocumento; numero: number } | null> {
+  if (!control) return null;
+  const f = await fila<{ id: number; tipo: string; numero: number }>(
+    "select id, tipo, numero from facturas where numero_control = ? collate nocase and id <> ? limit 1",
+    [control, salvoId],
+  );
+  return f ? { id: Number(f.id), tipo: f.tipo === "nota_credito" ? "nota_credito" : "factura", numero: Number(f.numero) } : null;
 }
 
 /** Cuántas facturas emitidas esperan su número de control. */

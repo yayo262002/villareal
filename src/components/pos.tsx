@@ -113,8 +113,23 @@ type Props = {
   pideConfirmarNota?: boolean;
   /** El cliente con el que se abrió la caja (desde su ficha). */
   clienteInicial?: number;
+  /** El pedido de la web con el que se abrió la caja («Pasar a la caja», en Pedidos web). */
+  pedidoWeb?: PedidoParaLaCaja;
   /** Lo que el servidor contestó al intentar guardar, para enseñarlo también junto a «Confirmar». */
   error?: string;
+};
+
+/** Un pedido de la web, para la caja: lo que lleva que está en la caja, cuántas cosas no (los combos de la web) y lo que escribió. */
+export type PedidoParaLaCaja = {
+  id: number;
+  /** «Luis · Pizzería La Esquina», como lo escribió en el carrito. */
+  quien: string;
+  /** Lo que se escribe en el buscador de clientes para encontrarlo. */
+  buscar: string;
+  lineas: { clave: string; cantidad: number }[];
+  noEstan: number;
+  nota: string;
+  mensaje: string;
 };
 
 const GUARDADO = "venta-carrito";
@@ -184,6 +199,8 @@ type Guardado = {
   fotoEspera?: string;
   /** El cliente que se dijo que es el de esa nota. */
   clienteDeLaNota?: number | null;
+  /** El pedido de la web que se pasó a la caja. */
+  pedidoWeb?: number | null;
 };
 
 export function Pos({
@@ -204,6 +221,7 @@ export function Pos({
   pideConfirmar = false,
   pideConfirmarNota = false,
   clienteInicial,
+  pedidoWeb,
   error,
 }: Props) {
   const [lineas, setLineas] = useState<Linea[]>([]);
@@ -252,6 +270,10 @@ export function Pos({
   // en «Entrega» y la venta volvió con un aviso), manda la de la dirección.
   const [fotoLeida, setFotoLeida] = useState<{ id: string; antes: string | undefined } | null>(null);
   const [clienteDeLaNota, setClienteDeLaNota] = useState<number | null>(null);
+  // El pedido de la web que está en el carrito, y si el carrito tenía otra venta cuando se abrió con uno (se pregunta).
+  const [pedidoWebId, setPedidoWebId] = useState<number | null>(null);
+  const [pedidoPorPoner, setPedidoPorPoner] = useState(false);
+  const pedidoMirado = useRef(false);
   const fotoAparcada = fotoLeida && (fotoEnEspera === undefined || fotoEnEspera === fotoLeida.antes) ? fotoLeida.id : fotoEnEspera;
   const panelDeLaNota = useRef<HTMLDivElement>(null);
   const buscador = useRef<HTMLInputElement>(null);
@@ -286,6 +308,7 @@ export function Pos({
           // La foto de la nota leída sigue guardada en el servidor; la que traiga la dirección, si trae, es más nueva.
           if (guardado.fotoEspera && !fotoEnEspera) setFotoLeida({ id: guardado.fotoEspera, antes: undefined });
           setClienteDeLaNota(guardado.clienteDeLaNota ?? null);
+          setPedidoWebId(guardado.pedidoWeb ?? null);
         } else {
           setClave(nuevaClave());
           if (yaVendido) localStorage.removeItem(GUARDADO);
@@ -330,6 +353,7 @@ export function Pos({
           nombreComprador,
           fotoEspera: fotoAparcada,
           clienteDeLaNota,
+          pedidoWeb: pedidoWebId,
         };
         localStorage.setItem(GUARDADO, JSON.stringify(guardado));
       }
@@ -337,7 +361,7 @@ export function Pos({
     } catch {
       // Sin sitio para guardar no pasa nada.
     }
-  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local, documento, nombreComprador, fotoAparcada, clienteDeLaNota]);
+  }, [cargado, clave, clienteId, lineas, descuento, nota, cajero, fecha, modo, entrega, entregaPrevista, diasCredito, facturar, local, documento, nombreComprador, fotoAparcada, clienteDeLaNota, pedidoWebId]);
 
   const porClave = useMemo(() => new Map(catalogo.map((a) => [a.clave, a])), [catalogo]);
   const clientesPorId = useMemo(() => new Map(clientes.map((c) => [c.id, c])), [clientes]);
@@ -546,6 +570,52 @@ export function Pos({
     setDescuento("");
   };
 
+  /**
+   * El pedido de la web pasa al carrito: cada producto con lo que pidió, al precio de hoy (el de la lista, o el especial
+   * del cliente que se elija: no es de contado en el local). La observación dice de qué pedido es, y el buscador de
+   * clientes queda con su nombre para elegirlo. Al guardar la venta, el pedido queda atendido.
+   */
+  const ponerPedido = () => {
+    if (!pedidoWeb) return;
+    const nuevas = pedidoWeb.lineas
+      .map((l): Linea | null => {
+        const a = porClave.get(l.clave);
+        if (!a) return null;
+        return {
+          clave: a.clave,
+          producto_id: a.producto_id,
+          variante_id: a.variante_id,
+          nombre: a.nombre,
+          unidad: a.unidad,
+          cantidad: l.cantidad,
+          precio_usd: precioDe(a, clienteId, false),
+          precioManual: false,
+          piezas: null,
+        };
+      })
+      .filter((l): l is Linea => l !== null);
+    setLineas(nuevas);
+    setLocal(false);
+    setPedidoWebId(pedidoWeb.id);
+    setPedidoPorPoner(false);
+    setNota(`Pedido de la web N.º ${pedidoWeb.id}${pedidoWeb.nota ? `: ${pedidoWeb.nota}` : ""}`.slice(0, 300));
+    if (clienteId === mostradorId && pedidoWeb.buscar) setBusquedaCliente(pedidoWeb.buscar);
+    avisar(`Pedido de la web: ${nuevas.length} ${nuevas.length === 1 ? "producto" : "productos"} en el carrito`);
+  };
+
+  // Al abrir la caja con un pedido de la web: si el carrito está vacío, se pone; si ya es ese pedido (la venta volvió
+  // con un aviso), se deja; si tiene otra venta a medias, se pregunta antes de cambiarla.
+  useEffect(() => {
+    if (!cargado || !pedidoWeb || pedidoMirado.current) return;
+    const tarea = setTimeout(() => {
+      pedidoMirado.current = true;
+      if (pedidoWebId === pedidoWeb.id) return;
+      if (lineas.length === 0) ponerPedido();
+      else setPedidoPorPoner(true);
+    });
+    return () => clearTimeout(tarea);
+  });
+
   /** Lo que vuelve del lector: se enseña, se pregunta de quién es y, si el carrito está vacío (o se acepta), se llena. */
   const aplicarNota = (nota: NotaLeida, vista: string | null) => {
     const venta = ventaDeLaNota(nota, catalogo, hoy);
@@ -649,7 +719,7 @@ export function Pos({
   };
 
   const cancelar = () => {
-    if (lineas.length === 0 && !busqueda && !notaEnLaCaja) return;
+    if (lineas.length === 0 && !busqueda && !notaEnLaCaja && !pedidoWebId) return;
     if (!window.confirm("¿Cancelar esta venta y vaciar el carrito?")) return;
     setLineas([]);
     setDescuento("");
@@ -668,6 +738,8 @@ export function Pos({
     cerrarNota();
     setFotoLeida(null);
     setClienteDeLaNota(null);
+    setPedidoWebId(null);
+    setPedidoPorPoner(false);
     setClave(nuevaClave());
     avisar("Venta cancelada");
     enfocarBuscador();
@@ -765,6 +837,7 @@ export function Pos({
     local,
     // Si el dueño dijo (o se vio) que la nota leída es de este cliente, al guardar no se vuelve a avisar.
     cliente_de_la_nota: (notaEnLaCaja && estadoDelCliente === "ok" && notaDiceElCliente(notaEnLaCaja.nota.cliente)) || clienteDeLaNota === clienteId ? clienteId : null,
+    pedido_web: pedidoWebId,
     lineas: lineas.map((l) => ({
       clave: l.clave,
       producto_id: l.producto_id,
@@ -812,6 +885,47 @@ export function Pos({
       <input type="hidden" name="venta" value={JSON.stringify(venta)} />
 
       <div className={estilos.izquierda}>
+        {pedidoWeb && (pedidoPorPoner || pedidoWebId === pedidoWeb.id) && (
+          <section className="tarjeta" aria-label="Pedido de la web" style={{ display: "grid", gap: "var(--espacio-2)" }}>
+            <strong>
+              Pedido de la web N.º {pedidoWeb.id}
+              {pedidoWeb.quien ? ` · ${pedidoWeb.quien}` : ""}
+            </strong>
+            {pedidoPorPoner ? (
+              <>
+                <p className="ayuda" style={{ margin: 0 }}>
+                  El carrito tiene otra venta a medias. Si la cambias, se quita lo que hay y se pone lo del pedido.
+                </p>
+                <div>
+                  <button
+                    type="button"
+                    className="boton"
+                    onClick={() => {
+                      if (window.confirm("¿Cambiar lo que hay en el carrito por el pedido de la web?")) ponerPedido();
+                    }}
+                  >
+                    Poner el pedido en el carrito
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="ayuda" style={{ margin: 0 }}>
+                Sus productos están en el carrito, a los precios de hoy. Elige el cliente, revisa cantidades y entrega, y cobra como siempre: al guardar, el pedido
+                queda atendido.
+              </p>
+            )}
+            {pedidoWeb.noEstan > 0 && (
+              <p className="aviso aviso--aviso" style={{ margin: 0 }}>
+                {pedidoWeb.noEstan === 1 ? "Una cosa del pedido no está en la caja" : `${pedidoWeb.noEstan} cosas del pedido no están en la caja`} (un combo de la web, o algo
+                que ya no se vende): mira lo que pidió y agrégalo a mano.
+              </p>
+            )}
+            <details>
+              <summary>Lo que pidió por WhatsApp</summary>
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere", font: "inherit", fontSize: 14 }}>{pedidoWeb.mensaje}</pre>
+            </details>
+          </section>
+        )}
         <section className={`tarjeta ${estilos.tarjetaNota}`} ref={panelDeLaNota} aria-label="Leer una nota de papel">
           <BotonLeerNota seLee={seLee} leyendo={Boolean(leyendo)} hayNota={Boolean(notaEnLaCaja)} onFoto={leerFoto} />
           {leyendo && <LeyendoNota vista={leyendo.vista} />}

@@ -3,6 +3,7 @@ import { listarPedidos, type PedidoWeb } from "@/lib/pedidos-web";
 import { marcarPedido } from "@/lib/acciones";
 import { fechaCorta, fechaDeLaBase, horaDeLaBase, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
+import { numeroDeNota } from "@/lib/entregas";
 import estilos from "../panel.module.css";
 import { exigirPanel } from "@/lib/panel";
 
@@ -67,9 +68,17 @@ export default async function PaginaPedidos({ searchParams }: { searchParams: Pr
             </button>
           </form>
         )}
-        <Link href="/admin/ventas" className={estilos.botonEnlace}>
-          Anotar la venta en la caja
-        </Link>
+        {p.venta_id ? (
+          <Link href={`/admin/ventas/${p.venta_id}/nota`} className={estilos.botonEnlace}>
+            Su venta: nota {numeroDeNota(p.venta_id)}
+          </Link>
+        ) : (
+          p.estado !== "descartado" && (
+            <Link href={`/admin/ventas?pedido=${p.id}`} className={`boton boton--secundario ${estilos.botonPequeno}`}>
+              Pasar a la caja
+            </Link>
+          )
+        )}
       </div>
     </li>
   );
@@ -82,7 +91,8 @@ export default async function PaginaPedidos({ searchParams }: { searchParams: Pr
       <Avisos parametros={parametros} />
       <p className="ayuda">
         Cuando un cliente pulsa «Enviar pedido por WhatsApp» en el carrito, el pedido te llega por WhatsApp y queda también aquí, para que no se pierda entre los
-        chats. No es una venta: cuando lo confirmes, anótala en la caja. Al contestarle, márcalo «Atendido».
+        chats. No es una venta: cuando lo confirmes, «Pasar a la caja» la abre con sus productos en el carrito, y al guardarla el pedido queda atendido. Si no
+        se vende, márcalo «Atendido» o «Descartar».
       </p>
 
       <section style={{ marginTop: "var(--espacio-3)" }}>

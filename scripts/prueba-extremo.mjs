@@ -175,6 +175,21 @@ async function enviar(ruta, marca, campos, conCookie = cookie, cabeceras = {}, s
   };
 }
 
+/** El mismo formulario mandado dos veces a la vez (dos toques, dos teléfonos): la página se pide una vez y los dos envíos salen juntos. */
+async function enviarDosVeces(ruta, marca, campos, segundaMarca = "") {
+  const { html, status } = await pagina(ruta, cookie);
+  if (status !== 200) throw new Error(`GET ${ruta} → ${status}`);
+  const accion = accionDe(html, marca, segundaMarca);
+  const uno = async () => {
+    const datos = new FormData();
+    datos.set(accion, "");
+    for (const [k, v] of Object.entries(campos)) datos.set(k, v);
+    const r = await fetch(base + ruta, { method: "POST", headers: { cookie }, body: datos, redirect: "manual" });
+    return { status: r.status, destino: decodeURIComponent(r.headers.get("location") ?? "") };
+  };
+  return Promise.all([uno(), uno()]);
+}
+
 // ---------- Arranque del servidor local ----------
 
 let servidor = null;
@@ -2123,6 +2138,46 @@ async function probarPedidosWeb() {
   comprobar("pedido de la web: la pantalla no se ve sin sesión", (await pagina("/admin/pedidos", "")).status !== 200);
   r = await enviar("/admin/pedidos", 'name="estado" value="atendido"', { id: String(guardados[0].id), estado: "atendido" });
   comprobar("pedido de la web: «Atendido» lo saca de los nuevos", r.destino.includes("atendido") && (await consultar("select estado from pedidos_web where id = ?", [guardados[0].id]))[0].estado === "atendido", r.destino);
+
+  // «Pasar a la caja»: la caja se abre con el pedido, y al guardar la venta el pedido queda atendido y unido a ella.
+  r = await mandar({ ...pedido, lineas: [{ clave: "2", cantidad: 3 }, { clave: "o1", cantidad: 1 }], mensaje: "Pedido-de-prueba-2: Mozzarella 3 kg y un combo", negocio: "Pizzería de prueba 2" });
+  const [segundo] = await consultar("select id from pedidos_web where negocio = 'Pizzería de prueba 2'");
+  comprobar("pedido de la web: la lista lleva «Pasar a la caja»", Boolean(segundo) && (await pagina("/admin/pedidos")).html.includes(`/admin/ventas?pedido=${segundo?.id}`));
+  const caja = await pagina(`/admin/ventas?pedido=${segundo?.id}`);
+  comprobar("pedido de la web: la caja se abre con él (lo que lleva y lo que no está en la caja)", caja.status === 200 && caja.html.includes("Pedido-de-prueba-2") && caja.html.includes("noEstan"), String(caja.status));
+  const [cliente] = await consultar("select id from clientes where telefono <> '' order by id limit 1");
+  const hoyVet = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  const venta = {
+    clave_pos: `pedido-web-${Date.now()}`,
+    cliente_id: cliente.id,
+    fecha: hoyVet,
+    cajero: "",
+    descuento_usd: 0,
+    nota: `Pedido de la web N.º ${segundo?.id}`,
+    modo: "credito",
+    entrega: "despacho",
+    entrega_prevista: hoyVet,
+    dias_credito: null,
+    confirmar: true,
+    confirmar_nota: false,
+    facturar: false,
+    local: false,
+    pedido_web: segundo?.id,
+    lineas: [{ clave: "2", producto_id: 2, variante_id: null, nombre: "Mozzarella", unidad: "kg", cantidad: 3, precio_usd: 7.7, piezas: null }],
+    pagos: [],
+  };
+  r = await enviar("/admin/ventas", 'name="venta"', { venta: JSON.stringify(venta) });
+  const ventaDelPedido = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  const [atendido] = await consultar("select estado, venta_id from pedidos_web where id = ?", [segundo?.id]);
+  comprobar(
+    "pedido de la web: al guardar la venta queda atendido y unido a ella",
+    Boolean(ventaDelPedido) && r.destino.includes("El pedido de la web queda atendido") && atendido?.estado === "atendido" && Number(atendido?.venta_id) === ventaDelPedido,
+    `${r.destino} ${JSON.stringify(atendido)}`,
+  );
+  comprobar("pedido de la web: la lista enlaza su venta", legible((await pagina("/admin/pedidos")).html).includes(`Su venta: nota ${String(ventaDelPedido).padStart(6, "0")}`));
+  comprobar("pedido de la web: abrirlo otra vez en la caja dice que ya se anotó", legible((await pagina(`/admin/ventas?pedido=${segundo?.id}`)).html).includes("ya se anotó"));
+  if (ventaDelPedido) await enviar(`/admin/ventas/${ventaDelPedido}/eliminar`, 'name="id"', { id: String(ventaDelPedido) });
+  comprobar("pedido de la web: borrar la venta suelta el pedido", (await consultar("select venta_id from pedidos_web where id = ?", [segundo?.id]))[0]?.venta_id === null);
 }
 
 async function probarDelivery() {
@@ -2925,11 +2980,24 @@ async function probarFacturas() {
   comprobar("la lista del mes enseña las dos", legible((await pagina("/admin/facturas")).html).includes("Nota de crédito N.º 000001"));
 
   // Anulada, la venta se puede facturar otra vez (con el número que sigue) y, anulada esa, borrar.
-  r = await enviar(`/admin/ventas/${ventaId}/nota`, 'name="venta_id"', { venta_id: String(ventaId), volver_a: `/admin/ventas/${ventaId}/nota`, formato: "" }, cookie, {}, ">Facturar<");
+  // Dos toques a la vez en «Facturar» (o dos teléfonos): una sola factura, y sin gastar un número.
+  const dosFacturas = await enviarDosVeces(`/admin/ventas/${ventaId}/nota`, 'name="venta_id"', { venta_id: String(ventaId), volver_a: `/admin/ventas/${ventaId}/nota`, formato: "" }, ">Facturar<");
+  r = dosFacturas.find((x) => x.destino.includes("emitida")) ?? dosFacturas[0];
   const segunda = facturaDe(r.destino);
   comprobar("desde la nota se vuelve a facturar, con el número que sigue", r.destino.includes("Factura N.º 000101 emitida") && Number((await consultar("select numero from facturas where id = ?", [segunda]))[0]?.numero) === 101, r.destino);
-  r = await enviar(`/admin/facturas/${segunda}/anular`, 'name="motivo"', { id: String(segunda), motivo: "" });
+  comprobar(
+    "dos «Facturar» a la vez de la misma venta hacen una sola factura",
+    dosFacturas.filter((x) => x.destino.includes("emitida")).length === 1 && Number((await consultar("select count(*) as n from facturas where venta_id = ? and tipo = 'factura' and estado = 'emitida'", [ventaId]))[0].n) === 1,
+    dosFacturas.map((x) => x.destino).join(" | "),
+  );
+  const dosAnulaciones = await enviarDosVeces(`/admin/facturas/${segunda}/anular`, 'name="motivo"', { id: String(segunda), motivo: "" });
+  r = dosAnulaciones.find((x) => x.destino.includes("nota de crédito N.º")) ?? dosAnulaciones[0];
   comprobar("la segunda nota de crédito sigue su propia numeración", r.destino.includes("nota de crédito N.º 000002"), r.destino);
+  comprobar(
+    "anular dos veces a la vez la misma factura deja una sola nota de crédito",
+    Number((await consultar("select count(*) as n from facturas where tipo = 'nota_credito' and factura_id = ?", [segunda]))[0].n) === 1,
+    dosAnulaciones.map((x) => x.destino).join(" | "),
+  );
   comprobar("los ajustes ya no dejan cambiar desde qué número se numera", (await enviar("/admin/facturas", 'name="iva_pct"', { iva_pct: "16", facturas_desde: "5" })).destino.includes("numeración sigue sola"));
 
   // En el mostrador, la nota pide la cédula y el nombre de quien compra; sin ellos no hay factura.
@@ -2971,6 +3039,34 @@ async function probarFacturas() {
     r.destino,
   );
   const ventaCaja = deCaja ? Number(deCaja.venta_id) : 0;
+
+  // Los números de control de los que faltan, de una vez.
+  p = await pagina("/admin/facturas/control");
+  comprobar(
+    "«Números de control» enseña los documentos que los esperan, cada uno con su casilla",
+    p.status === 200 && p.html.includes(`name="control_${facturaCaja}"`) && p.html.includes('name="desde"') && !p.html.includes(`name="control_${facturaId}"`),
+    String(p.status),
+  );
+  comprobar("Facturas enlaza la pantalla de los números de control", (await pagina("/admin/facturas")).html.includes("/admin/facturas/control"));
+  r = await enviar("/admin/facturas/control", `name="control_${facturaCaja}"`, { [`control_${facturaCaja}`]: "00-00000123" });
+  comprobar(
+    "un número de control que ya tiene otra factura no se guarda, y dice cuál",
+    r.destino.includes("ya lo tiene la factura N.º 000100") && (await consultar("select numero_control from facturas where id = ?", [facturaCaja]))[0].numero_control === "",
+    r.destino,
+  );
+  r = await enviar(`/admin/facturas/${facturaCaja}`, 'name="numero_control"', { id: String(facturaCaja), numero_control: "00-00000123", volver_a: `/admin/facturas/${facturaCaja}` });
+  comprobar("tampoco desde la factura", r.destino.includes("ya lo tiene la factura N.º 000100"), r.destino);
+  r = await enviar("/admin/facturas/control", `name="control_${facturaCaja}"`, { [`control_${facturaCaja}`]: " 00-00000200 " });
+  comprobar("uno escrito a mano se guarda, y los vacíos siguen pendientes", r.destino.includes("Número de control guardado") && (await consultar("select numero_control from facturas where id = ?", [facturaCaja]))[0].numero_control === "00-00000200", r.destino);
+  const faltan = await consultar("select id from facturas where numero_control = '' order by fecha, hora, id");
+  r = await enviar("/admin/facturas/control", 'name="desde"', { desde: "00-00000998" });
+  const puestos = await consultar(`select numero_control from facturas where id in (${faltan.map(() => "?").join(", ") || "0"}) order by fecha, hora, id`, faltan.map((f) => f.id));
+  comprobar(
+    "«Ponerlos seguidos» da a cada uno el siguiente, en el orden en que se emitieron, con sus ceros",
+    faltan.length >= 2 && r.destino.includes(`${faltan.length} números de control guardados`) && puestos[0].numero_control === "00-00000998" && puestos[2]?.numero_control === "00-00001000",
+    `${r.destino} ${JSON.stringify(puestos)}`,
+  );
+  comprobar("sin pendientes, la pantalla lo dice", legible((await pagina("/admin/facturas/control")).html).includes("Todos los documentos tienen su número de control"));
 
   // Se limpia: las facturas de prueba se anulan, las ventas se borran (ya sin factura vigente) y las existencias vuelven.
   for (const f of [facturaMostrador, facturaCaja]) if (f) await enviar(`/admin/facturas/${f}/anular`, 'name="motivo"', { id: String(f), motivo: "Prueba automática" });

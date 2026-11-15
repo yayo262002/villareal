@@ -26,7 +26,12 @@ export type PedidoWeb = {
   estado: EstadoDelPedido;
   creado_en: string;
   atendido_en: string | null;
+  /** La venta que se anotó con él en la caja, si se pasó a la caja. */
+  venta_id: number | null;
 };
+
+/** Un pedido con lo que lleva, para pasarlo a la caja. */
+export type PedidoConLineas = PedidoWeb & { lineas: LineaDelCarrito[] };
 
 export type PedidoQueLlega = { lineas: LineaDelCarrito[]; nombre: string; negocio: string; nota: string; mensaje: string; total_usd: number | null };
 
@@ -64,9 +69,30 @@ export async function guardarPedido(p: PedidoQueLlega): Promise<number> {
 
 export async function listarPedidos(limite = 100): Promise<PedidoWeb[]> {
   return filas<PedidoWeb>(
-    "select id, nombre, negocio, nota, mensaje, productos, total_usd, estado, creado_en, atendido_en from pedidos_web order by id desc limit ?",
+    "select id, nombre, negocio, nota, mensaje, productos, total_usd, estado, creado_en, atendido_en, venta_id from pedidos_web order by id desc limit ?",
     [limite],
   );
+}
+
+export async function buscarPedido(id: number): Promise<PedidoConLineas | null> {
+  const f = await fila<PedidoWeb & { lineas: string }>(
+    "select id, nombre, negocio, nota, mensaje, productos, total_usd, estado, creado_en, atendido_en, venta_id, lineas from pedidos_web where id = ?",
+    [id],
+  );
+  if (!f) return null;
+  let lineas: LineaDelCarrito[] = [];
+  try {
+    // Se guardó ya limpio (`leerPedido`), pero se vuelve a filtrar: es lo que mandó un navegador.
+    lineas = leerPedido({ lineas: JSON.parse(f.lineas), mensaje: "-" })?.lineas ?? [];
+  } catch {
+    lineas = [];
+  }
+  return { ...f, venta_id: f.venta_id === null || f.venta_id === undefined ? null : Number(f.venta_id), lineas };
+}
+
+/** El pedido pasado a la caja, ya vendido: queda atendido y unido a su venta. */
+export async function atenderPedidoConVenta(id: number, ventaId: number): Promise<void> {
+  await ejecutar("update pedidos_web set estado = 'atendido', atendido_en = coalesce(atendido_en, datetime('now')), venta_id = ? where id = ?", [ventaId, id]);
 }
 
 export async function contarPedidosNuevos(): Promise<number> {

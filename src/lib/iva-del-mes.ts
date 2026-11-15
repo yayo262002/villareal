@@ -1,5 +1,5 @@
 import { redondear } from "./dinero.ts";
-import type { DocumentoDelLibro } from "./factura-calculo.ts";
+import { bolivaresDeLaFactura, type DocumentoDelLibro } from "./factura-calculo.ts";
 import type { FacturaDeCompra } from "./libro-compras-calculo.ts";
 
 /**
@@ -23,12 +23,17 @@ export function ivaDeLasVentas(documentos: DocumentoDelLibro[]): IvaDeUnLibro & 
       continue;
     }
     const signo = d.tipo === "nota_credito" ? -1 : 1;
-    const enBs = (usd: number) => signo * redondear(usd * Number(d.tasa));
+    // Las mismas cifras que la factura impresa y el libro de ventas.
+    const enBs = bolivaresDeLaFactura(d);
+    if (!enBs) {
+      suma.sin_tasa++;
+      continue;
+    }
     suma.documentos++;
-    suma.exento_bs += enBs(d.exento_usd);
-    suma.base_bs += enBs(d.base_imponible_usd);
-    suma.iva_bs += enBs(d.iva_usd);
-    suma.total_bs += enBs(d.total_usd);
+    suma.exento_bs += signo * enBs.exento_bs;
+    suma.base_bs += signo * enBs.base_imponible_bs;
+    suma.iva_bs += signo * enBs.iva_bs;
+    suma.total_bs += signo * enBs.total_bs;
   }
   return { ...suma, exento_bs: redondear(suma.exento_bs), base_bs: redondear(suma.base_bs), iva_bs: redondear(suma.iva_bs), total_bs: redondear(suma.total_bs) };
 }

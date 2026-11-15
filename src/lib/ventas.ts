@@ -192,6 +192,8 @@ export async function crearVenta(
 export async function eliminarVenta(id: number): Promise<boolean> {
   return transaccion(async (tx) => {
     await tx.execute({ sql: "update adjuntos set venta_id = null where venta_id = ?", args: [id] });
+    // El pedido de la web que se anotó con ella sigue atendido, pero ya sin venta.
+    await tx.execute({ sql: "update pedidos_web set venta_id = null where venta_id = ?", args: [id] });
     await tx.execute({ sql: "delete from venta_lineas where venta_id = ?", args: [id] });
     const r = await tx.execute({ sql: "delete from ventas where id = ?", args: [id] });
     return r.rowsAffected > 0;

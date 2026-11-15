@@ -167,6 +167,7 @@ export async function loQueTieneElCliente(id: number): Promise<{ ventas: number;
 export async function eliminarCliente(id: number): Promise<boolean> {
   return transaccion(async (tx) => {
     await tx.execute({ sql: "delete from venta_lineas where venta_id in (select id from ventas where cliente_id = ?)", args: [id] });
+    await tx.execute({ sql: "update pedidos_web set venta_id = null where venta_id in (select id from ventas where cliente_id = ?)", args: [id] });
     // Lo que entró al banco de este cliente vuelve a la bandeja de Pago móvil: el dinero entró, aunque el cliente ya no esté.
     await tx.execute({
       sql: "update movimientos_banco set estado = 'por_conciliar', como = '', cliente_id = null, pago_id = null, resuelto_en = null where cliente_id = ? and estado = 'aplicado'",

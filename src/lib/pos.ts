@@ -153,6 +153,8 @@ export type VentaDelPos = {
    * avisar de que el nombre de la nota no casa. Null si no se leyó una nota o no se dijo.
    */
   cliente_de_la_nota?: number | null;
+  /** El pedido de la web que se pasó a la caja: al guardar la venta queda atendido, unido a ella. */
+  pedido_web?: number | null;
   lineas: LineaDelPos[];
   pagos: PagoDelPos[];
 };

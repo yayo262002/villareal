@@ -141,18 +141,18 @@ import {
   unirVentaConElBanco,
 } from "./banco";
 import { separarAvisos } from "./banco-calculo";
-import { cambiarEstadoDelPedido, esEstadoDePedido } from "./pedidos-web";
+import { atenderPedidoConVenta, cambiarEstadoDelPedido, esEstadoDePedido } from "./pedidos-web";
 import { anotarContacto, esTipoDeContacto, TIPOS_DE_CONTACTO } from "./contactos";
 import { duenoDelCodigo, limpiarCodigo, limpiarSku, ponerCodigoAProducto, ponerCodigoAVariante } from "./codigos";
 import { guardarPrecioEspecial, listarPreciosEspecialesDe, quitarPrecioEspecial } from "./precios-especiales";
 import { catalogoDelPos, esMostrador, guardarVentaDelPos, type VentaDelPos } from "./pos";
-import { FALTA_EL_COMPRADOR, FaltaElRif, anularConNotaDeCredito, buscarFactura, contarFacturas, emitirFacturaDeVenta, facturaVigenteDeVenta, ponerNumeroDeControl } from "./facturas";
+import { FALTA_EL_COMPRADOR, FaltaElRif, anularConNotaDeCredito, buscarFactura, contarFacturas, controlYaUsado, documentosSinControl, emitirFacturaDeVenta, facturaVigenteDeVenta, ponerNumeroDeControl } from "./facturas";
 import { limpiarNombreDeComprador } from "./compradores";
 import { igualarCostosDelMayor, unirAlMayor } from "./costos-unidos";
 import { borrarFacturaDeCompra, guardarFacturaDeCompra } from "./facturas-compra";
 import { revisarFacturaDeCompra, totalesDeLineas } from "./libro-compras-calculo";
 import { leerDocumento, problemaDelDocumento } from "./documento";
-import { esTipoIva, numeroDeFactura } from "./factura-calculo";
+import { NOMBRE_DOCUMENTO, controlesSeguidos, esTipoIva, limpiarControl, numeroDeFactura } from "./factura-calculo";
 import { revisarVentaPos, totalesDe } from "./pos-calculo";
 import { permitirStockNegativo, ponerPermitirStockNegativo } from "./ajustes";
 import { ponerAjustesDelDelivery } from "./ajustes";
@@ -2272,6 +2272,7 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     },
     local: cruda.local === true,
     cliente_de_la_nota: Number(cruda.cliente_de_la_nota) || null,
+    pedido_web: Number(cruda.pedido_web) > 0 ? Math.floor(Number(cruda.pedido_web)) : null,
     lineas: (Array.isArray(cruda.lineas) ? cruda.lineas : []).map((l) => ({
       clave: String(l.clave ?? ""),
       producto_id: Number(l.producto_id) || 0,
@@ -2440,6 +2441,15 @@ export async function guardarVentaPos(datos: FormData): Promise<void> {
     // La venta ya está guardada; si falla, el pago del banco sigue en su bandeja.
   }
   const partes = [`Venta registrada: nota ${numeroDeNota(resultado.ventaId)}.`];
+  // El pedido de la web que se pasó a la caja queda atendido, unido a su venta.
+  if (venta.pedido_web) {
+    try {
+      await atenderPedidoConVenta(venta.pedido_web, resultado.ventaId);
+      partes.push("El pedido de la web queda atendido.");
+    } catch {
+      // La venta ya está guardada; el pedido se marca a mano en Pedidos web.
+    }
+  }
   if (resultado.pagado > 0) partes.push(`Cobrados ${usd(resultado.pagado)}.`);
   if (!mostrador && resultado.pendiente > 0) {
     partes.push(`Quedan ${usd(resultado.pendiente)} pendientes en la cuenta de ${cliente.nombre}: vence el ${fechaCorta(sumarDias(venta.fecha, venta.dias_credito ?? cliente.dias_credito))}.`);
@@ -2594,9 +2604,52 @@ export async function ponerControlDeFactura(datos: FormData): Promise<void> {
   const factura = id ? await buscarFactura(id) : null;
   if (!id || !factura) volverConError("/admin/facturas", "No se encontró la factura.");
   const volverA = vueltaDeFactura(datos, `/admin/facturas/${id}`);
-  const control = texto(datos, "numero_control").replace(/\s+/g, " ").slice(0, 40);
+  const control = limpiarControl(texto(datos, "numero_control"));
+  const otro = await controlYaUsado(control, id);
+  if (otro) volverConError(volverA, `El número de control ${control} ya lo tiene la ${NOMBRE_DOCUMENTO[otro.tipo].toLowerCase()} N.º ${numeroDeFactura(otro.numero)}. Revisa cuál es de cuál.`);
   await ponerNumeroDeControl(id, control);
   volverConExito(volverA, control ? `Número de control ${control} guardado.` : "Número de control quitado.");
+}
+
+/**
+ * Los números de control de varios documentos de una vez (/admin/facturas/control): cada casilla «control_<id>», o
+ * todos seguidos desde uno («desde»), en el orden en que se emitieron. Lo que se deja vacío sigue pendiente. Un número
+ * repetido (con otro documento o entre los escritos) no se guarda: casi siempre es un error al copiarlo.
+ */
+export async function ponerControlesDeFacturas(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const volverA = "/admin/facturas/control";
+  const pendientes = await documentosSinControl();
+  const escritos = new Map<number, string>();
+  const desde = limpiarControl(texto(datos, "desde"));
+  if (desde) {
+    const seguidos = controlesSeguidos(desde, pendientes.length);
+    if (!seguidos) volverConError(volverA, `«${desde}» no termina en cifras: escribe el primer número de control tal como lo dio la imprenta (por ejemplo, 00-000123).`);
+    pendientes.forEach((d, i) => escritos.set(d.id, seguidos[i]));
+  } else {
+    for (const d of pendientes) {
+      const control = limpiarControl(texto(datos, `control_${d.id}`));
+      if (control) escritos.set(d.id, control);
+    }
+  }
+  if (escritos.size === 0) volverConError(volverA, "No escribiste ningún número de control.");
+  const vistos = new Map<string, number>();
+  for (const [id, control] of escritos) {
+    const clave = control.toLowerCase();
+    const documento = pendientes.find((d) => d.id === id);
+    const nombre = documento ? `${NOMBRE_DOCUMENTO[documento.tipo].toLowerCase()} N.º ${numeroDeFactura(documento.numero)}` : "otro documento";
+    if (vistos.has(clave)) volverConError(volverA, `Escribiste el número de control ${control} dos veces. No se guardó nada: revísalo.`);
+    vistos.set(clave, id);
+    const otro = await controlYaUsado(control, id);
+    if (otro) {
+      volverConError(
+        volverA,
+        `El número de control ${control} (para la ${nombre}) ya lo tiene la ${NOMBRE_DOCUMENTO[otro.tipo].toLowerCase()} N.º ${numeroDeFactura(otro.numero)}. No se guardó nada: revísalo.`,
+      );
+    }
+  }
+  for (const [id, control] of escritos) await ponerNumeroDeControl(id, control);
+  volverConExito(volverA, escritos.size === 1 ? "Número de control guardado." : `${escritos.size} números de control guardados.`);
 }
 
 /** Anula una factura con una nota de crédito; la confirmación está en /admin/facturas/[id]/anular. */

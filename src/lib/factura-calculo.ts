@@ -116,11 +116,11 @@ export function calcularFactura(datos: { lineas: LineaParaFacturar[]; descuento_
   const total = redondear(exento + base + iva);
 
   const tasa = datos.tasa && datos.tasa > 0 ? datos.tasa : null;
-  const totalBs = aBolivares(total, tasa);
-  const exentoBs = aBolivares(exento, tasa);
-  const baseBs = aBolivares(base, tasa);
-  // El IVA en bolívares sale por diferencia, para que las tres partes sumen el total exacto.
-  const ivaBs = totalBs === null || exentoBs === null || baseBs === null ? null : redondear(totalBs - exentoBs - baseBs);
+  const enBs = bolivaresDeLaFactura({ exento_usd: exento, base_imponible_usd: base, total_usd: total, tasa });
+  const totalBs = enBs?.total_bs ?? null;
+  const exentoBs = enBs?.exento_bs ?? null;
+  const baseBs = enBs?.base_imponible_bs ?? null;
+  const ivaBs = enBs?.iva_bs ?? null;
 
   return {
     lineas,
@@ -137,6 +137,26 @@ export function calcularFactura(datos: { lineas: LineaParaFacturar[]; descuento_
     iva_bs: ivaBs,
     total_bs: totalBs,
   };
+}
+
+/**
+ * Lo exento, la base, el IVA y el total de un documento en bolívares, a su tasa. Es la única cuenta de bolívares de la
+ * factura: la impresa, el libro de ventas y el IVA del mes la usan igual, así el contador ve en el libro las mismas
+ * cifras que en el papel. Cada parte se pasa a bolívares y el IVA sale por diferencia, para que las tres sumen el total
+ * exacto. Sin tasa no hay bolívares: null.
+ */
+export function bolivaresDeLaFactura(d: { exento_usd: number; base_imponible_usd: number; total_usd: number; tasa: number | null }): {
+  exento_bs: number;
+  base_imponible_bs: number;
+  iva_bs: number;
+  total_bs: number;
+} | null {
+  const tasa = d.tasa && d.tasa > 0 ? Number(d.tasa) : null;
+  const total = aBolivares(Number(d.total_usd), tasa);
+  const exento = aBolivares(Number(d.exento_usd), tasa);
+  const base = aBolivares(Number(d.base_imponible_usd), tasa);
+  if (total === null || exento === null || base === null) return null;
+  return { exento_bs: exento, base_imponible_bs: base, iva_bs: redondear(total - exento - base), total_bs: total };
 }
 
 /** «2 kg Mozzarella» o «1 cartón Huevos (E)»: la descripción de una línea, con la marca de exenta si lo es. */
@@ -200,7 +220,8 @@ export const CABECERA_DEL_LIBRO = [
 export function filasDelLibro(documentos: DocumentoDelLibro[]): (string | number)[][] {
   return documentos.map((d) => {
     const signo = d.tipo === "nota_credito" ? -1 : 1;
-    const enBs = (usd: number) => (d.tasa ? numeroParaExcel(signo * redondear(usd * d.tasa)) : "");
+    const bolivares = bolivaresDeLaFactura(d);
+    const enBs = (valor: number | undefined) => (bolivares && valor !== undefined ? numeroParaExcel(signo * valor) : "");
     return [
       fechaCorta(d.fecha),
       NOMBRE_DOCUMENTO[d.tipo],
@@ -209,11 +230,11 @@ export function filasDelLibro(documentos: DocumentoDelLibro[]): (string | number
       d.cliente_nombre,
       d.cliente_rif,
       d.factura_afectada === null ? "" : numeroDeFactura(d.factura_afectada),
-      enBs(d.total_usd),
-      enBs(d.exento_usd),
-      enBs(d.base_imponible_usd),
+      enBs(bolivares?.total_bs),
+      enBs(bolivares?.exento_bs),
+      enBs(bolivares?.base_imponible_bs),
       numeroParaExcel(d.iva_pct, 0),
-      enBs(d.iva_usd),
+      enBs(bolivares?.iva_bs),
       d.tasa ? numeroParaExcel(d.tasa, 4) : "",
       numeroParaExcel(signo * d.total_usd),
       numeroParaExcel(signo * d.exento_usd),
@@ -268,4 +289,23 @@ export function mesDe(fecha: string): string {
 export function avisoDePeriodo(fechaDeLaVenta: string, fechaDeHoy: string): string | null {
   if (mesDe(fechaDeLaVenta) === mesDe(fechaDeHoy)) return null;
   return `La nota es del ${fechaCorta(fechaDeLaVenta)} y la factura sale con fecha de hoy: la ley pide facturar en el mismo mes de la entrega. Coméntaselo a tu contador.`;
+}
+
+/** El número de control como se guarda: sin espacios de más ni saltos, de 40 caracteres como mucho. */
+export function limpiarControl(texto: string): string {
+  return texto.replace(/\s+/g, " ").trim().slice(0, 40);
+}
+
+/**
+ * Los números de control que siguen a uno, para anotarlos de una vez: la imprenta digital los da correlativos
+ * («00-000123», «00-000124»…). Se suma uno al último grupo de cifras y se conservan sus ceros y lo que va delante
+ * («00-»). Sin cifras al final no hay cómo seguir: null.
+ */
+export function controlesSeguidos(desde: string, cuantos: number): string[] | null {
+  const limpio = limpiarControl(desde);
+  const partes = /^(.*?)(\d+)$/.exec(limpio);
+  if (!partes || cuantos < 1) return null;
+  const [, prefijo, cifras] = partes;
+  const inicio = BigInt(cifras);
+  return Array.from({ length: cuantos }, (_, i) => `${prefijo}${(inicio + BigInt(i)).toString().padStart(cifras.length, "0")}`);
 }

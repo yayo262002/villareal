@@ -211,3 +211,52 @@ test("facturar una nota de otro mes avisa; del mismo mes, no", () => {
   assert.equal(avisoDePeriodo("2026-10-28", "2026-10-28"), null);
   assert.match(avisoDePeriodo("2026-09-30", "2026-10-01") ?? "", /mismo mes/);
 });
+
+test("los números de control seguidos conservan los ceros y lo de delante", async () => {
+  const { controlesSeguidos, limpiarControl } = await import("./factura-calculo.ts");
+  assert.deepEqual(controlesSeguidos("00-000123", 3), ["00-000123", "00-000124", "00-000125"]);
+  assert.deepEqual(controlesSeguidos(" 00-000999 ", 2), ["00-000999", "00-001000"]);
+  assert.deepEqual(controlesSeguidos("99", 2), ["99", "100"]);
+  assert.deepEqual(controlesSeguidos("A-12345678901234567890", 2), ["A-12345678901234567890", "A-12345678901234567891"]);
+  assert.equal(controlesSeguidos("sin cifras", 2), null);
+  assert.equal(controlesSeguidos("00-1", 0), null);
+  assert.equal(limpiarControl("  00 -\n 0001  "), "00 - 0001");
+});
+
+test("los bolívares de la factura: lo exento, la base y el IVA suman el total, igual en el papel y en el libro", async () => {
+  const { bolivaresDeLaFactura } = await import("./factura-calculo.ts");
+  // Con tasas de verdad, redondear cada parte por su lado se pasa o se queda en un céntimo: el IVA sale por diferencia.
+  for (const tasa of [233.0451, 236.4588, 241.6113, 248.7501]) {
+    const f = calcularFactura({ lineas: [mozzarella, huevos, { ...mozzarella, cantidad: 3.37, importe_usd: 28.17 }], descuento_usd: 1.13, iva_pct: 16, tasa });
+    const b = bolivaresDeLaFactura(f);
+    assert.ok(b);
+    assert.equal(Math.round((b.exento_bs + b.base_imponible_bs + b.iva_bs) * 100), Math.round(b.total_bs * 100));
+    assert.equal(b.total_bs, f.total_bs);
+    assert.equal(b.iva_bs, f.iva_bs);
+    const [fila] = filasDelLibro([
+      {
+        tipo: "factura",
+        numero: 1,
+        numero_control: "",
+        fecha: "2026-11-14",
+        cliente_nombre: "Pizzería de prueba",
+        cliente_rif: "J-12345678-9",
+        factura_afectada: null,
+        venta_id: 1,
+        exento_usd: f.exento_usd,
+        base_imponible_usd: f.base_imponible_usd,
+        iva_pct: 16,
+        iva_usd: f.iva_usd,
+        total_usd: f.total_usd,
+        tasa,
+        estado: "emitida",
+      },
+    ]);
+    const enLibro = (i: number) => Number(String(fila[i]).replace(/\./g, "").replace(",", "."));
+    assert.equal(enLibro(7), b.total_bs);
+    assert.equal(enLibro(8), b.exento_bs);
+    assert.equal(enLibro(9), b.base_imponible_bs);
+    assert.equal(enLibro(11), b.iva_bs);
+  }
+  assert.equal(bolivaresDeLaFactura({ exento_usd: 0, base_imponible_usd: 10, total_usd: 11.6, tasa: null }), null);
+});

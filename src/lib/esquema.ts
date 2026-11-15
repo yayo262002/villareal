@@ -683,7 +683,9 @@ export const ESQUEMA = `
     total_usd real,
     estado text not null default 'nuevo' check (estado in ('nuevo', 'atendido', 'descartado')),
     creado_en text not null default (datetime('now')),
-    atendido_en text
+    atendido_en text,
+    -- La venta que se anotó en la caja con este pedido («Pasar a la caja»).
+    venta_id integer references ventas(id) on delete set null
   );
   create index if not exists pedidos_web_estado on pedidos_web(estado);
 

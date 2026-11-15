@@ -14,8 +14,9 @@ import { preciosEspecialesPorCliente } from "@/lib/precios-especiales";
 import { lectorDisponible } from "@/lib/lector-de-notas";
 import { compradoresConocidos } from "@/lib/compradores";
 import { nombresAprendidos } from "@/lib/nombres-en-notas";
+import { buscarPedido } from "@/lib/pedidos-web";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
-import { Pos, type ArticuloParaLaCaja, type ClienteParaLaCaja } from "@/components/pos";
+import { Pos, type ArticuloParaLaCaja, type ClienteParaLaCaja, type PedidoParaLaCaja } from "@/components/pos";
 import estilos from "../panel.module.css";
 import { exigirPanel } from "@/lib/panel";
 
@@ -37,7 +38,9 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const parametros = await searchParams;
   const texto = (campo: string) => (typeof parametros[campo] === "string" ? (parametros[campo] as string) : "");
   const busqueda = texto("q").trim();
-  const [catalogo, clientes, tasa, precios, sinTope, mostrador, siguiente, ventas, compradores, aprendidos] = await Promise.all([
+  // «Pasar a la caja» desde Pedidos web: la caja se abre con ese pedido en el carrito.
+  const pedidoId = Number(texto("pedido")) || 0;
+  const [catalogo, clientes, tasa, precios, sinTope, mostrador, siguiente, ventas, compradores, aprendidos, pedido] = await Promise.all([
     catalogoDelPos(),
     listarClientes(),
     leerTasa(),
@@ -52,6 +55,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
     ).then(conLineas),
     compradoresConocidos(),
     nombresAprendidos(),
+    pedidoId > 0 ? buscarPedido(pedidoId) : Promise.resolve(null),
   ]);
   // La foto de la nota firmada de cada venta, para enlazarla desde su fila.
   const [fotos, facturas] = await Promise.all([adjuntosDeVentas(ventas.map((v) => v.id)), facturasDeVentas(ventas.map((v) => v.id))]);
@@ -88,6 +92,19 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   // Las ventas recientes ya guardadas desde la caja: un carrito con una de esas claves ya se vendió.
   const clavesVendidas = [...ventas.map((v) => v.clave_pos), texto("vendida")].filter((c): c is string => Boolean(c));
   const clienteInicial = Number(texto("cliente")) || undefined;
+  const enLaCaja = new Set(paraLaCaja.map((a) => a.clave));
+  const pedidoWeb: PedidoParaLaCaja | undefined =
+    pedido && !pedido.venta_id
+      ? {
+          id: pedido.id,
+          quien: [pedido.nombre, pedido.negocio].filter(Boolean).join(" · "),
+          buscar: pedido.negocio || pedido.nombre,
+          lineas: pedido.lineas.filter((l) => enLaCaja.has(l.clave)),
+          noEstan: pedido.lineas.filter((l) => !enLaCaja.has(l.clave)).length,
+          nota: pedido.nota,
+          mensaje: pedido.mensaje,
+        }
+      : undefined;
 
   return (
     <>
@@ -103,6 +120,12 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         </div>
       </div>
       <Avisos parametros={parametros} />
+      {pedidoId > 0 && !pedido && <p className="aviso aviso--error">No se encontró el pedido de la web N.º {pedidoId}.</p>}
+      {pedido?.venta_id && (
+        <p className="aviso aviso--aviso">
+          El pedido de la web N.º {pedido.id} ya se anotó: es la <Link href={`/admin/ventas/${pedido.venta_id}/nota`}>nota {numeroDeNota(pedido.venta_id)}</Link>.
+        </p>
+      )}
 
       <h2 className={estilos.subtitulo}>Registrar venta</h2>
       <Pos
@@ -123,6 +146,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         pideConfirmar={parametros.confirmar === "1"}
         pideConfirmarNota={parametros.confirmar_nota === "1"}
         clienteInicial={clienteInicial && clienteInicial !== mostrador.id ? clienteInicial : undefined}
+        pedidoWeb={pedidoWeb}
         error={texto("error") || undefined}
       />
 

@@ -308,7 +308,7 @@ src/lib/factura-calculo.ts  Las cuentas de la factura: lo exento, la base imponi
 src/lib/documento.ts      Leer una cédula o un RIF escrito de cualquier forma, como va en la factura (puro, con pruebas)
 src/lib/compradores.ts    Quien compró con factura en el mostrador, para reconocerlo por su cédula
 src/lib/facturas.ts       Las facturas y las notas de crédito desde la base: emitir, numerar, el número de control, anular, listar
-src/app/admin/(panel)/facturas/  Facturas: la lista del mes, los ajustes, cada factura (carta y ticket), anular, y el libro de ventas para Excel; en compras/, el libro de compras
+src/app/admin/(panel)/facturas/  Facturas: la lista del mes, los ajustes, cada factura (carta y ticket), anular, y el libro de ventas para Excel; en compras/, el libro de compras; en control/, los números de control de una vez; en iva/, el IVA mes a mes para Excel
 src/lib/libro-compras-calculo.ts  Las cuentas del libro de compras: los totales de una factura por sus líneas, revisar una factura, las filas para Excel (puro, con pruebas)
 src/lib/facturas-compra.ts  Las facturas de compra desde la base: anotar o corregir, listar el mes, quitar
 src/lib/detal-calculo.ts  Las cuentas de la lista del detal: IVA, margen, la charcutería (entre 0,80 y más un 10 % al mayor), dólares subidos al centavo, bolívares subidos de 5 en 5; las reglas guardadas; leer las líneas de una factura y una lista de costos en dólares (puro, con pruebas)
@@ -1097,7 +1097,11 @@ Binance y otro.
   1,16 (`calcularFactura` en `src/lib/factura-calculo.ts`). Así el total
   de la factura es el de la nota y el de la cuenta del cliente, y la caja
   no cambia. El descuento se reparte entre las líneas en proporción. Lo
-  exento, la base y el IVA suman el total exacto, también en bolívares.
+  exento, la base y el IVA suman el total exacto, también en bolívares:
+  cada parte se pasa a bolívares y el IVA sale por diferencia, con una sola
+  cuenta (`bolivaresDeLaFactura`) para la factura impresa (carta y ticket),
+  el libro de ventas y el IVA del mes, así el contador ve en el libro las
+  mismas cifras que en el papel.
 - **IVA de cada producto** (`productos.iva`: `general` o `exento`). Se
   marca en la ficha del producto («IVA (para la factura)»). Los huevos
   nacen exentos, que la ley los exime; lo demás, gravado. Qué más está
@@ -1112,11 +1116,19 @@ Binance y otro.
   numeración y la factura que anula en `factura_id`), y las dos quedan en
   el libro. La venta no se toca al anular: se puede facturar otra vez (con
   el número que sigue) o borrar. Una venta con factura vigente **no se
-  borra** hasta anularla.
+  borra** hasta anularla. Dos toques a la vez (o dos teléfonos) no hacen
+  dos facturas de la misma venta ni dos notas de crédito de la misma
+  factura: la factura solo entra si la venta sigue sin factura vigente, y
+  la anulación solo si la factura sigue emitida, en la misma sentencia.
 - **El número de control** lo asigna la imprenta digital autorizada por el
   SENIAT (o el servicio del propio SENIAT): cuando llega, se anota en la
   factura, que mientras tanto dice «pendiente» y el panel avisa de cuántas
-  faltan. Integrar la imprenta digital para que lo asigne sola es el paso
+  faltan. **Números de control** (`/admin/facturas/control`, desde ese
+  aviso): todos los que faltan en una pantalla, cada uno con su casilla, o
+  «Ponerlos seguidos» desde el primero, en el orden en que se emitieron
+  («00-00000123», «00-00000124»…, `controlesSeguidos`). Un número que ya
+  tiene otro documento no se guarda: casi siempre es un error al copiarlo.
+  Integrar la imprenta digital para que lo asigne sola es el paso
   siguiente, cuando el dueño elija una con su contador.
 - **El libro de ventas** (Facturas → «Libro de ventas (Excel)»,
   `/admin/facturas/libro?mes=2026-10`): una fila por factura y por nota
@@ -1558,7 +1570,13 @@ Binance y otro.
   también una copia del pedido en el panel (`navigator.sendBeacon` a
   `/api/pedido`, sin esperar: WhatsApp se abre igual), para que ninguno se
   pierda entre los chats: el Resumen dice cuántos hay nuevos, la campanita
-  y el teléfono avisan, y cada uno se marca «Atendido» o «Descartar». Es
+  y el teléfono avisan, y cada uno se marca «Atendido» o «Descartar».
+  **«Pasar a la caja»** abre la caja con sus productos en el carrito (a los
+  precios de hoy, no de contado; lo que no está en la caja, como un combo de
+  la web, lo dice), la observación «Pedido de la web N.º 12» y su nombre en
+  el buscador de clientes; si la caja tenía otra venta a medias, pregunta
+  antes de cambiarla. Al guardar la venta el pedido queda atendido y unido a
+  ella («Su venta: nota 000130»; `pedidos_web.venta_id`). Es
   público: lo que llega se limpia y se recorta, el mismo pedido dos veces es
   uno, y cada dirección puede mandar cinco por hora (tabla `pedidos_web`,
   `src/lib/pedidos-web.ts`).

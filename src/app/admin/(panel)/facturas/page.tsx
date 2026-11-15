@@ -65,8 +65,8 @@ export default async function PaginaFacturas({ searchParams }: { searchParams: P
       </p>
       {sinControl > 0 && (
         <p className="aviso aviso--aviso">
-          {sinControl === 1 ? "Hay una factura sin número de control" : `Hay ${sinControl} documentos sin número de control`}: hasta tenerlo no valen como factura fiscal.
-          Se anota en cada una.
+          {sinControl === 1 ? "Hay una factura sin número de control" : `Hay ${sinControl} documentos sin número de control`}: hasta tenerlo no valen como factura fiscal.{" "}
+          <Link href="/admin/facturas/control">Anotar los números de control</Link>
         </p>
       )}
 
