@@ -277,7 +277,7 @@ src/lib/resenas-texto.ts  Deja limpia una reseña escrita; las reseñas de ejemp
 src/components/resenas.tsx  Las reseñas, como se ven en la página del producto
 src/app/foto-resena/      Sirve la foto de una reseña a la web
 src/components/entrada-foto.tsx  Reduce la foto en el teléfono antes de subirla
-src/components/nav-panel.tsx     El menú del panel, con la sección abierta marcada
+src/components/nav-panel.tsx     El menú del panel en dos pisos: los grupos (Inicio, Vender, Cobrar, Clientes, Mercancía, Facturas, La web) y las pantallas del abierto; la lista, en el layout del panel
 src/components/aviso-de-carga.tsx  La raya dorada mientras llega la pantalla que se tocó en el panel
 src/components/un-solo-envio.tsx   Que un toque doble no registre dos veces una venta o un abono
 src/components/fotos-de-nota.tsx   Las fotos de la nota firmada de una venta, en la nota, en Ventas y en el despacho
@@ -1793,6 +1793,14 @@ Binance y otro.
   (`src/components/un-solo-envio.tsx`). Sin JavaScript todo sigue
   funcionando igual. No hay `loading.tsx`: con él la respuesta sale antes de
   saber si la página existe y los 404 y las redirecciones dejan de serlo.
+- **El menú, por lo que se quiere hacer** (el dueño, 15/11/2026: «quiero que
+  sea más fácil para las otras personas»). Arriba siete grupos en el orden
+  del día (Inicio, Vender, Cobrar, Clientes, Mercancía, Facturas, La web),
+  cada uno con su dibujo; debajo, solo las pantallas del grupo abierto, con
+  la abierta en dorado (`GRUPOS` en `src/app/admin/(panel)/layout.tsx`). En
+  el teléfono los grupos van en una cuadrícula de cuatro, sin deslizar de
+  lado. Una pantalla nueva va en su grupo; lo que cuelga de otra (la ficha
+  de una marca, de Productos) va en su `tambien`. «Cómo se usa» lo explica.
 - **Móvil primero.** El dueño usa el panel desde el teléfono en el local.
   Ninguna página se desborda a los lados. Las tablas del panel llevan la
   clase `tabla--fichas` y cada celda su `data-label`: en el teléfono cada

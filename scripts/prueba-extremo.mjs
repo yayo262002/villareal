@@ -1719,11 +1719,21 @@ async function probarInventario() {
     !resumen.includes(`data-recordar="${clienteId}"`) && legible((await pagina(`/admin/clientes/${clienteId}`)).html).includes(`Recordado el ${hoyCorta}`),
   );
 
+  // El menú en grupos, en el orden del día; debajo, solo las pantallas del grupo abierto, con la abierta marcada.
+  const conMenu = legible((await pagina("/admin/clientes/seguimiento")).html);
+  comprobar(
+    "el menú va por grupos (Inicio, Vender, Cobrar, Clientes, Mercancía, Facturas, La web) y enseña las pantallas del grupo abierto",
+    ["Inicio", "Vender", "Cobrar", "Clientes", "Mercancía", "Facturas", "La web"].every((g) => conMenu.includes(`<span>${g}</span>`)) &&
+      /aria-current="page"[^>]*>Por llamar</.test(conMenu) && conMenu.includes(">Cartera<") && conMenu.includes(">Reseñas<") && !conMenu.includes(">Lista del detal<"),
+  );
+  const facturasMenu = legible((await pagina("/admin/facturas/compras")).html);
+  comprobar("en Facturas, el menú enseña sus pantallas y marca el libro de compras", /aria-current="page"[^>]*>Libro de compras</.test(facturasMenu) && facturasMenu.includes(">Números de control<"));
+
   // Los nombres: «Lo que te deben» en vez de «Cuentas por pagar», también en el menú y en la cartera.
   const cuentas = legible((await pagina("/admin/cuentas")).html);
   comprobar(
     "«Cuentas por pagar» ahora es «Lo que te deben», también en el menú y en la cartera",
-    cuentas.includes("Lo que te deben") && cuentas.includes("Notas que te deben") && !cuentas.includes("Cuentas por pagar") && cuentas.includes(">Te deben<") && cuentas.includes(">Inventario<") &&
+    cuentas.includes("Lo que te deben") && cuentas.includes("Notas que te deben") && !cuentas.includes("Cuentas por pagar") && /aria-current="page"[^>]*>Lo que te deben</.test(cuentas) &&
       legible((await pagina("/admin/clientes")).html).includes("<dt>Te deben</dt>"),
   );
 }
@@ -2761,7 +2771,7 @@ async function probarCaja() {
   const soloAbonos = legible((await pagina(`${ficha}?ver=abonos`)).html);
   comprobar(
     "historial: el filtro «Abonos» deja solo los abonos",
-    soloAbonos.includes('aria-current="true"') && /Abono<\/span> N\.º/.test(soloAbonos) && !soloAbonos.includes(`id="venta-${ventaId}"`),
+    /aria-current="true"[^>]*>Abonos /.test(soloAbonos) && /Abono<\/span> N\.º/.test(soloAbonos) && !soloAbonos.includes(`id="venta-${ventaId}"`),
   );
   comprobar("Ventas la marca como de la caja", (await pagina("/admin/ventas")).html.includes("· caja"));
   r = await mandar({});

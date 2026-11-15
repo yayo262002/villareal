@@ -22,6 +22,34 @@ export default async function PaginaAyuda() {
       </div>
 
       <section className="tarjeta">
+        <h2 className={estilos.subtitulo}>El menú de arriba</h2>
+        <p>Va por lo que quieres hacer, en el orden del día. Toca un grupo y debajo salen sus pantallas; la que tienes abierta va en dorado.</p>
+        <ul className={estilos.pasos}>
+          <li>
+            <strong>Inicio</strong>: el Resumen del día, los avisos, las estadísticas y esta guía.
+          </li>
+          <li>
+            <strong>Vender</strong>: registrar una venta (la caja), los pedidos que llegan de la web, el despacho y las etiquetas de los combos.
+          </li>
+          <li>
+            <strong>Cobrar</strong>: lo que te deben, los abonos, el pago móvil que entra al banco y el cierre del día.
+          </li>
+          <li>
+            <strong>Clientes</strong>: la cartera, los que llevan días sin comprar (por llamar), las reseñas y los stickers de WhatsApp.
+          </li>
+          <li>
+            <strong>Mercancía</strong>: los productos y sus precios, el inventario, los proveedores, la lista del detal y los códigos de barras.
+          </li>
+          <li>
+            <strong>Facturas</strong>: las facturas, el libro de compras y los números de control.
+          </li>
+          <li>
+            <strong>La web</strong>: las ofertas y combos, las fotos y el delivery.
+          </li>
+        </ul>
+      </section>
+
+      <section className="tarjeta">
         <h2 className={estilos.subtitulo}>Al empezar el día</h2>
         <ol className={estilos.pasos}>
           <li>

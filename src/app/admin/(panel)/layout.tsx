@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { negocio } from "@/config/negocio";
 import { haySesion } from "@/lib/sesion";
 import { salir } from "@/lib/acciones";
-import { NavPanel } from "@/components/nav-panel";
+import { NavPanel, type GrupoDelPanel } from "@/components/nav-panel";
 import { UnSoloEnvio } from "@/components/un-solo-envio";
 import { AvisoDeCarga } from "@/components/aviso-de-carga";
 import { contarAvisosSinLeer } from "@/lib/avisos";
@@ -20,24 +20,85 @@ export const metadata = {
 // La barra del navegador, del verde de la cabecera del panel (la web pública va más oscura).
 export const viewport: Viewport = { themeColor: "#163f28" };
 
-const SECCIONES = [
-  { ruta: "/admin", nombre: "Resumen" },
-  { ruta: "/admin/clientes", nombre: "Clientes" },
-  { ruta: "/admin/ventas", nombre: "Ventas" },
-  { ruta: "/admin/facturas", nombre: "Facturas" },
-  { ruta: "/admin/pagos", nombre: "Abonos" },
-  { ruta: "/admin/banco", nombre: "Pago móvil" },
-  { ruta: "/admin/despacho", nombre: "Despacho" },
-  { ruta: "/admin/pedidos", nombre: "Pedidos web" },
-  { ruta: "/admin/delivery", nombre: "Delivery" },
-  { ruta: "/admin/cuentas", nombre: "Te deben" },
-  { ruta: "/admin/estadisticas", nombre: "Estadísticas" },
-  { ruta: "/admin/productos", nombre: "Productos" },
-  { ruta: "/admin/inventario", nombre: "Inventario" },
-  { ruta: "/admin/detal", nombre: "Lista del detal" },
-  { ruta: "/admin/resenas", nombre: "Reseñas" },
-  { ruta: "/admin/proveedores", nombre: "Proveedores" },
-] as const;
+/**
+ * El menú, por lo que se quiere hacer y en el orden del día: primero vender, después cobrar, los clientes, la
+ * mercancía, las facturas y la web. Cada grupo abre su primera pantalla y enseña debajo las demás. Una pantalla
+ * nueva va en su grupo; lo que cuelga de otra (la ficha de una marca, de Productos) va en su `tambien`.
+ */
+const GRUPOS: readonly GrupoDelPanel[] = [
+  {
+    nombre: "Inicio",
+    icono: "inicio",
+    secciones: [
+      { ruta: "/admin", nombre: "Resumen", tambien: ["/admin/copia", "/admin/copias", "/admin/app"] },
+      { ruta: "/admin/avisos", nombre: "Avisos" },
+      { ruta: "/admin/estadisticas", nombre: "Estadísticas", tambien: ["/admin/informe", "/admin/exportaciones"] },
+      { ruta: "/admin/ayuda", nombre: "Cómo se usa" },
+    ],
+  },
+  {
+    nombre: "Vender",
+    icono: "vender",
+    secciones: [
+      { ruta: "/admin/ventas", nombre: "Registrar venta", tambien: ["/admin/pos"] },
+      { ruta: "/admin/pedidos", nombre: "Pedidos de la web" },
+      { ruta: "/admin/despacho", nombre: "Despacho" },
+      { ruta: "/admin/combos/etiquetas", nombre: "Etiquetas de combos" },
+    ],
+  },
+  {
+    nombre: "Cobrar",
+    icono: "cobrar",
+    secciones: [
+      { ruta: "/admin/cuentas", nombre: "Lo que te deben", tambien: ["/admin/recordar"] },
+      { ruta: "/admin/pagos", nombre: "Abonos" },
+      { ruta: "/admin/banco", nombre: "Pago móvil" },
+      { ruta: "/admin/caja", nombre: "Cierre del día" },
+    ],
+  },
+  {
+    nombre: "Clientes",
+    icono: "clientes",
+    secciones: [
+      { ruta: "/admin/clientes", nombre: "Cartera", tambien: ["/admin/adjuntos"] },
+      { ruta: "/admin/clientes/seguimiento", nombre: "Por llamar" },
+      { ruta: "/admin/resenas", nombre: "Reseñas" },
+      { ruta: "/admin/stickers", nombre: "Stickers" },
+    ],
+  },
+  {
+    nombre: "Mercancía",
+    icono: "mercancia",
+    secciones: [
+      { ruta: "/admin/productos", nombre: "Productos", tambien: ["/admin/marcas", "/admin/familias", "/admin/tasas"] },
+      { ruta: "/admin/inventario", nombre: "Inventario" },
+      { ruta: "/admin/proveedores", nombre: "Proveedores", tambien: ["/admin/compras", "/admin/pagos-proveedor", "/admin/adjuntos-proveedor"] },
+      { ruta: "/admin/detal", nombre: "Lista del detal" },
+      { ruta: "/admin/codigos", nombre: "Códigos de barras" },
+    ],
+  },
+  {
+    nombre: "Facturas",
+    icono: "facturas",
+    secciones: [
+      { ruta: "/admin/facturas", nombre: "Facturas" },
+      { ruta: "/admin/facturas/compras", nombre: "Libro de compras" },
+      { ruta: "/admin/facturas/control", nombre: "Números de control" },
+    ],
+  },
+  {
+    nombre: "La web",
+    icono: "web",
+    secciones: [
+      { ruta: "/admin/ofertas", nombre: "Ofertas y combos" },
+      { ruta: "/admin/fotos", nombre: "Fotos" },
+      { ruta: "/admin/delivery", nombre: "Delivery" },
+    ],
+  },
+];
+
+/** Las clases del menú, nada más: es lo único de los estilos que viaja al navegador con él. */
+const ESTILOS_DEL_MENU = { nav: estilos.nav, navGrupos: estilos.navGrupos, navGrupoActivo: estilos.navGrupoActivo, navSecciones: estilos.navSecciones };
 
 /**
  * El grupo de rutas `(panel)` agrupa todo lo que exige sesión. La pantalla
@@ -71,7 +132,7 @@ export default async function LayoutPanel({ children }: { children: ReactNode })
             </form>
           </div>
         </div>
-        <NavPanel secciones={SECCIONES} className={estilos.nav} />
+        <NavPanel grupos={GRUPOS} estilos={ESTILOS_DEL_MENU} />
       </header>
       <main className={estilos.contenido}>{children}</main>
       <UnSoloEnvio />
