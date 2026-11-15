@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { negocio } from "@/config/negocio";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Cómo se usa el panel" };
 
@@ -9,7 +10,8 @@ export const metadata = { title: "Cómo se usa el panel" };
  * hace cada día y dónde está cada cosa, en el orden en que pasa el día.
  * Sin tecnicismos; lo técnico está en el README del código.
  */
-export default function PaginaAyuda() {
+export default async function PaginaAyuda() {
+  await exigirPanel();
   return (
     <>
       <div>

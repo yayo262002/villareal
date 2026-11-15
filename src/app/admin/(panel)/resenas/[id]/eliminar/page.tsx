@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { buscarResena } from "@/lib/resenas";
 import { borrarResena } from "@/lib/acciones";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Eliminar reseña" };
 
 /** Confirmación antes de borrar una reseña. Ver `ventas/[id]/eliminar`. */
 export default async function PaginaEliminarResena({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const resena = await buscarResena(Number(id));
   if (!resena) notFound();

@@ -4,6 +4,7 @@ import { skuPropuesto } from "@/lib/pos-calculo";
 import { asignarCodigo } from "@/lib/acciones";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Códigos de barras" };
 
@@ -14,6 +15,7 @@ export const metadata = { title: "Códigos de barras" };
  * opcional (se propone uno); el código tiene que ser único.
  */
 export default async function PaginaCodigos({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const catalogo = await catalogoDelPos();
   const sinCodigo = catalogo.filter((a) => !a.codigo_barras);

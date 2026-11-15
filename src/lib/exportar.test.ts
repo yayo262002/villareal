@@ -146,3 +146,12 @@ test("el nombre del archivo dice de qué fechas es", () => {
   assert.equal(nombreDelArchivo("movimientos", "2026-09-01", null), "movimientos-desde-2026-09-01.csv");
   assert.equal(nombreDelArchivo("movimientos", null, "2026-09-30"), "movimientos-hasta-2026-09-30.csv");
 });
+
+test("lo escrito que Excel ejecutaría como fórmula va con un apóstrofo; los números, también negativos, no", () => {
+  assert.equal(celda('=HYPERLINK("http://x","clic")'), `"'=HYPERLINK(""http://x"",""clic"")"`);
+  assert.equal(celda("+58 424"), "'+58 424");
+  assert.equal(celda("@SUMA(A1)"), "'@SUMA(A1)");
+  assert.equal(celda("-12,50"), "-12,50");
+  assert.equal(celda(-3), "-3");
+  assert.equal(celda("Panadería - Centro"), "Panadería - Centro");
+});

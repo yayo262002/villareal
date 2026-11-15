@@ -15,6 +15,7 @@ import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { BotonImprimir } from "@/components/boton-imprimir";
 import { DatosDelCliente } from "../../membrete";
 import estilos from "../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 type Parametros = {
   params: Promise<{ id: string }>;
@@ -22,6 +23,7 @@ type Parametros = {
 };
 
 export async function generateMetadata({ params }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   const factura = await buscarFactura(Number(id));
   return {
@@ -40,6 +42,7 @@ function formatearPct(n: number): string {
  * cambia aunque cambien el producto o el cliente.
  */
 export default async function PaginaFactura({ params, searchParams }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const factura = await buscarFactura(Number(id));

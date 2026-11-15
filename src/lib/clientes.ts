@@ -181,8 +181,9 @@ export async function eliminarCliente(id: number): Promise<boolean> {
 }
 
 /** Cuántos clientes deben algo y cuánto suman. Para el resumen del panel. */
-export async function resumenDeudas(): Promise<{ clientes_con_deuda: number; total_por_cobrar_usd: number }> {
-  const clientes = (await listarClientes()).filter((c) => c.saldo_usd > 0);
+/** `todos`: los clientes ya leídos, si se tienen (el Resumen los lee una sola vez). Los de la casa no cuentan. */
+export async function resumenDeudas(todos?: ClienteConSaldo[]): Promise<{ clientes_con_deuda: number; total_por_cobrar_usd: number }> {
+  const clientes = (todos ?? (await listarClientes())).filter((c) => c.saldo_usd > 0 && seLeCobra(c));
   return {
     clientes_con_deuda: clientes.length,
     total_por_cobrar_usd: redondear(clientes.reduce((s, c) => s + c.saldo_usd, 0)),

@@ -5,6 +5,7 @@ import { METODOS_PAGO, fechaCorta, formatearMonto, usd, tasaLegible } from "@/li
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioPago } from "@/components/formulario-pago";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Abonos" };
 
@@ -13,6 +14,7 @@ export default async function PaginaPagos({
 }: {
   searchParams: Promise<ParametrosAviso>;
 }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const [clientes, pagos, tasa] = await Promise.all([listarClientes(), listarPagos(100), ultimaTasa()]);
 

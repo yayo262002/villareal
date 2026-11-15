@@ -5,6 +5,7 @@ import { borrarCliente } from "@/lib/acciones";
 import { usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Eliminar cliente" };
 
@@ -19,6 +20,7 @@ export default async function PaginaEliminarCliente({
   params: Promise<{ id: string }>;
   searchParams: Promise<ParametrosAviso>;
 }) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const cliente = await buscarCliente(Number(id));

@@ -280,3 +280,17 @@ export async function ultimoContactoDelBanco(): Promise<ContactoDelBanco | null>
 export async function ponerUltimoContactoDelBanco(contacto: ContactoDelBanco): Promise<void> {
   await guardar("banco_ultimo_contacto", JSON.stringify(contacto));
 }
+
+/**
+ * La versión de las sesiones del panel: «Cerrar la sesión en todos los teléfonos» la sube y toda cookie de antes deja de
+ * valer (`sesion.ts`). No es un secreto: va en las copias como lo demás.
+ */
+export async function versionDeSesion(): Promise<number> {
+  return Number((await leer("sesion_version")).get("sesion_version")?.valor) || 1;
+}
+
+export async function subirVersionDeSesion(): Promise<number> {
+  const nueva = (await versionDeSesion()) + 1;
+  await guardar("sesion_version", String(nueva));
+  return nueva;
+}

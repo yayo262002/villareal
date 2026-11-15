@@ -7,10 +7,12 @@ import { numeroDeNota } from "@/lib/entregas";
 import { fechaCorta, fechaDeLaBase, horaDeLaBase, usd } from "@/lib/dinero";
 import { FotoAmpliable } from "@/components/foto-ampliable";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 type Parametros = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   const adjunto = await datosDelAdjunto(Number(id));
   return { title: adjunto?.descripcion || "Foto" };
@@ -22,6 +24,7 @@ export async function generateMetadata({ params }: Parametros) {
  * estaba. El archivo en sí lo sirve `/admin/adjuntos/[id]`.
  */
 export default async function PaginaAdjunto({ params, searchParams }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const numero = Number(id);

@@ -5,10 +5,12 @@ import { buscarProveedor } from "@/lib/proveedores";
 import { fechaCorta, fechaDeLaBase, horaDeLaBase } from "@/lib/dinero";
 import { FotoAmpliable } from "@/components/foto-ampliable";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 type Parametros = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   const adjunto = await datosDelAdjuntoDeProveedor(Number(id));
   return { title: adjunto?.descripcion || "Captura" };
@@ -16,6 +18,7 @@ export async function generateMetadata({ params }: Parametros) {
 
 /** La captura de un pago a un proveedor, vista entera, con su fecha y la vuelta a la ficha. */
 export default async function PaginaAdjuntoDeProveedor({ params, searchParams }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const numero = Number(id);

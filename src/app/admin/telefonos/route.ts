@@ -1,5 +1,5 @@
 import { haySesion } from "@/lib/sesion";
-import { clavesVapid, esSuscripcion, guardarTelefono, quitarTelefono } from "@/lib/push";
+import { clavesVapid, empujarAviso, esSuscripcion, guardarTelefono, quitarTelefono } from "@/lib/push";
 
 /**
  * Los teléfonos con los avisos activados. Lo usa el botón «Activar avisos
@@ -23,7 +23,16 @@ export async function POST(request: Request): Promise<Response> {
   if (corte) return corte;
   const datos = (await request.json().catch(() => null)) as { suscripcion?: unknown; aparato?: unknown } | null;
   if (!datos || !esSuscripcion(datos.suscripcion)) return Response.json({ error: "La suscripción no está completa." }, { status: 400 });
-  await guardarTelefono(datos.suscripcion, typeof datos.aparato === "string" ? datos.aparato : "");
+  const aparato = typeof datos.aparato === "string" ? datos.aparato : "";
+  const nuevo = await guardarTelefono(datos.suscripcion, aparato);
+  // Un teléfono nuevo recibirá también el enlace de «He olvidado la clave»: que lo sepan los que ya estaban.
+  if (nuevo) {
+    await empujarAviso({
+      titulo: "Avisos activados en un teléfono nuevo",
+      cuerpo: `${aparato || "Un teléfono"}. Si no fuiste tú, quítalo en Avisos y cierra la sesión en todos los teléfonos.`,
+      url: "/admin/avisos#telefono",
+    }).catch(() => undefined);
+  }
   return Response.json({ ok: true });
 }
 

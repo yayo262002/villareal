@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { cerrarSesion, claveEsCorrecta, exigirSesion, iniciarSesion } from "./sesion";
+import { cerrarSesion, cerrarTodasLasSesiones, claveEsCorrecta, exigirSesion, iniciarSesion } from "./sesion";
 import { MINUTOS_QUE_VALE_EL_ENLACE, crearEnlaceDeRecuperacion, enlaceDeRecuperacionVale, gastarEnlaceDeRecuperacion, guardarClaveNueva, revisarClaveNueva } from "./clave";
 import { correoConfigurado, correoDelDueno, correoDisimulado, enviarCorreo } from "./correo";
 import {
@@ -156,7 +156,7 @@ import { revisarVentaPos, totalesDe } from "./pos-calculo";
 import { permitirStockNegativo, ponerPermitirStockNegativo } from "./ajustes";
 import { ponerAjustesDelDelivery } from "./ajustes";
 import { TARIFAS_MAXIMAS, ajustesDelFormulario } from "./delivery";
-import { empujarAviso } from "./push";
+import { empujarAviso, quitarTelefonoPorId } from "./push";
 import { avisoDePrueba } from "./avisos";
 import { negocio } from "@/config/negocio";
 import { TAMANO_MAXIMO_ADJUNTO, buscarAdjunto, eliminarAdjunto, esTipoAdjunto, guardarAdjunto } from "./adjuntos";
@@ -3095,6 +3095,21 @@ export async function olvidarPagadorDeLaCasa(datos: FormData): Promise<void> {
   const clave = texto(datos, "clave").slice(0, 120);
   if (clave) await olvidarDeLaCasa(clave);
   volverConExito(BANDEJA_DEL_BANCO, "Ya no es de la casa: sus pagos siguientes esperarán arriba a que digas de quién son.");
+}
+
+/** Quita un teléfono de los que reciben avisos (y el enlace de «He olvidado la clave»). */
+export async function quitarTelefonoDelPanel(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id") ?? 0;
+  const quitado = id ? await quitarTelefonoPorId(id) : false;
+  volverConExito("/admin/avisos#telefono", quitado ? "Quitado: ese teléfono ya no recibe avisos ni el enlace de la clave." : "Ese teléfono ya no estaba.");
+}
+
+/** «Cerrar la sesión en todos los teléfonos»: las sesiones abiertas dejan de valer; este teléfono sigue dentro. */
+export async function cerrarSesionesEnTodosLados(): Promise<void> {
+  await exigirSesion();
+  await cerrarTodasLasSesiones();
+  volverConExito("/admin/avisos#seguridad", "Listo: en los demás teléfonos hay que volver a escribir la clave. Este sigue dentro.");
 }
 
 /** Crea o cambia la clave con que el teléfono manda los avisos del banco. */

@@ -17,6 +17,7 @@ import { nombresAprendidos } from "@/lib/nombres-en-notas";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { Pos, type ArticuloParaLaCaja, type ClienteParaLaCaja } from "@/components/pos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Ventas" };
 /** Guardar una venta puede incluir leer la foto de la nota, que tarda unos segundos. */
@@ -32,6 +33,7 @@ const MAXIMO_AL_BUSCAR = 100;
  * guardado vuelve al servidor con las reglas de siempre.
  */
 export default async function PaginaVentas({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const texto = (campo: string) => (typeof parametros[campo] === "string" ? (parametros[campo] as string) : "");
   const busqueda = texto("q").trim();

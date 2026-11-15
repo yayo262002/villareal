@@ -18,6 +18,7 @@ import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { BotonCopiar } from "@/components/boton-copiar";
 import estilos from "../panel.module.css";
 import propios from "./banco.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Pago móvil" };
 
@@ -48,6 +49,7 @@ function quienPago(m: MovimientoBanco): string {
  * teléfono. La lógica, en `src/lib/banco.ts`.
  */
 export default async function PaginaBanco({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const [porIdentificar, aplicados, noEran, descartados, avisos, clientes, clave, contacto, deLaCasa] = await Promise.all([
     listarMovimientos("por_conciliar"),

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { listarAvisos, marcarAvisosLeidos } from "@/lib/avisos";
-import { contarTelefonos } from "@/lib/push";
-import { probarAviso } from "@/lib/acciones";
+import { listarTelefonos } from "@/lib/push";
+import { cerrarSesionesEnTodosLados, probarAviso, quitarTelefonoDelPanel } from "@/lib/acciones";
 import { fechaCorta, fechaDeLaBase, horaDeLaBase, hoy } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { AvisosDelTelefono } from "@/components/avisos-del-telefono";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Avisos" };
 
@@ -24,8 +25,10 @@ function diaLegible(fecha: string, hoyIso: string): string {
  * recibirlos en el teléfono. Abrir esta pantalla los da por leídos.
  */
 export default async function PaginaAvisos({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
-  const [avisos, telefonos] = await Promise.all([listarAvisos(), contarTelefonos()]);
+  const [avisos, lista] = await Promise.all([listarAvisos(), listarTelefonos()]);
+  const telefonos = lista.length;
   const sinLeer = new Set(avisos.filter((a) => !a.leido_en).map((a) => a.id));
   if (sinLeer.size > 0) await marcarAvisosLeidos();
 
@@ -64,6 +67,37 @@ export default async function PaginaAvisos({ searchParams }: { searchParams: Pro
             {telefonos === 0 ? "Ningún teléfono tiene los avisos activados." : telefonos === 1 ? "1 teléfono con los avisos activados." : `${telefonos} teléfonos con los avisos activados.`}
           </span>
         </div>
+        {lista.length > 0 && (
+          <ul style={{ listStyle: "none", padding: 0, margin: "var(--espacio-3) 0 0", display: "grid", gap: "var(--espacio-2)" }}>
+            {lista.map((t) => (
+              <li key={t.id} style={{ display: "flex", flexWrap: "wrap", gap: "var(--espacio-2)", alignItems: "center", justifyContent: "space-between" }}>
+                <span>
+                  {t.aparato || "Un teléfono"} <span className="ayuda">· desde el {fechaCorta(fechaDeLaBase(t.creado_en))}</span>
+                </span>
+                <form action={quitarTelefonoDelPanel}>
+                  <input type="hidden" name="id" value={t.id} />
+                  <button type="submit" className={estilos.botonEnlace}>
+                    Quitar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="tarjeta" id="seguridad">
+        <h2 className={estilos.subtitulo}>Seguridad</h2>
+        <p className={estilos.ayuda}>
+          Los teléfonos de arriba reciben también el enlace de «He olvidado la clave»: si alguno no es tuyo, quítalo. Si perdiste un teléfono
+          con el panel abierto, o le dejaste la sesión a alguien, cierra la sesión en todos: tendrán que volver a escribir la clave (este
+          teléfono sigue dentro). Cada sesión dura 30 días.
+        </p>
+        <form action={cerrarSesionesEnTodosLados}>
+          <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+            Cerrar la sesión en todos los teléfonos
+          </button>
+        </form>
       </section>
 
       <section className="tarjeta">

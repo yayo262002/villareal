@@ -188,6 +188,17 @@ export function mismaReferencia(a: string, b: string): boolean {
   return ca.length >= cb.length ? ca.endsWith(cb) : cb.endsWith(ca);
 }
 
+/**
+ * Lo que tiene que escribir un cliente en «Ya pagué» para que su aviso se case solo con un pago del banco: al menos
+ * seis cifras de la referencia (con cuatro, quien vio la captura de otro podía quedarse con su pago; revisión de
+ * seguridad del 14/11/2026). El monto, además, tiene que ser el mismo al céntimo.
+ */
+export const CIFRAS_DE_REFERENCIA_DEL_CLIENTE = 6;
+
+export function referenciaDelClienteUtil(referencia: string): boolean {
+  return referencia.replace(/\D/g, "").length >= CIFRAS_DE_REFERENCIA_DEL_CLIENTE;
+}
+
 /** Si una referencia escrita tiene cifras suficientes para buscarla. */
 export function referenciaUtil(referencia: string): boolean {
   return referencia.replace(/\D/g, "").length >= 4;

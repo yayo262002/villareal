@@ -8,6 +8,7 @@ import { rutaProducto, rutaVariante } from "@/lib/enlaces";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioDeResena, ResenaDelPanel, enlacePedirResena } from "@/components/resenas-panel";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Reseñas" };
 
@@ -80,6 +81,7 @@ function GrupoDeResenas({
  * una marca, también en la página de esa marca.
  */
 export default async function PaginaResenas({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const elegido = typeof parametros.clave === "string" ? parametros.clave : typeof parametros.producto === "string" ? parametros.producto : "";
   const [productos, variantes, resenas] = await Promise.all([listarProductos(), listarVariantes(), listarResenas()]);

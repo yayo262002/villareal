@@ -13,7 +13,7 @@ const RESULTADO_DEL_AVISO: Record<string, { clase: string; texto: string }> = {
   abonado: { clase: "aviso aviso--exito", texto: "¡Listo! Tu pago ya había llegado y quedó abonado a tu cuenta." },
   ya_abonado: { clase: "aviso aviso--exito", texto: "Ese pago ya estaba abonado a tu cuenta. ¡Gracias!" },
   esperando: { clase: "aviso aviso--exito", texto: "Recibido. Cuando tu pago llegue al banco se abona solo a tu cuenta, y lo verás aquí." },
-  sin_referencia: { clase: "aviso aviso--error", texto: "Escribe la referencia del pago: por lo menos los últimos 4 números." },
+  sin_referencia: { clase: "aviso aviso--error", texto: "Escribe la referencia del pago: por lo menos los últimos 6 números." },
   sin_monto: { clase: "aviso aviso--error", texto: "Escribe el monto en bolívares, como sale en el comprobante (por ejemplo 2.500,00)." },
   muchos: { clase: "aviso aviso--error", texto: "Ya avisaste muchos pagos hoy. Si algo no cuadra, escríbenos por WhatsApp." },
   error: { clase: "aviso aviso--error", texto: "No se pudo leer lo que escribiste. Inténtalo otra vez." },

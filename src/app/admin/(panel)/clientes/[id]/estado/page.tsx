@@ -14,10 +14,12 @@ import { direccionDeCuenta } from "@/lib/enlace-cuenta";
 import { BotonImprimir } from "@/components/boton-imprimir";
 import { DatosDelCliente, Membrete } from "../../../membrete";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 type Parametros = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   const cliente = await buscarCliente(Number(id));
   return { title: cliente ? `Estado de cuenta de ${cliente.rotulo}` : "Estado de cuenta" };
@@ -33,6 +35,7 @@ export async function generateMetadata({ params }: Parametros) {
  * papel, una fila con sus columnas. Es la misma lista, colocada con CSS.
  */
 export default async function PaginaEstadoDeCuenta({ params }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   const cliente = await buscarCliente(Number(id));
   if (!cliente) notFound();

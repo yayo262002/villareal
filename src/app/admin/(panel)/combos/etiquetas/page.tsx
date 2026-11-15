@@ -7,6 +7,7 @@ import { BotonImprimir } from "@/components/boton-imprimir";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import panel from "../../panel.module.css";
 import estilos from "./etiquetas.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Etiquetas de los combos" };
 
@@ -44,6 +45,7 @@ function CodigoDeBarras({ texto }: { texto: string }) {
  * con los costos, se imprimen otra vez cuando cambie.
  */
 export default async function PaginaEtiquetas({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const combos = await combosEnLaCaja();
   const pedidas = (clave: string) => {

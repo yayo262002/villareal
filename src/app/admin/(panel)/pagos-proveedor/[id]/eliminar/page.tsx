@@ -4,11 +4,13 @@ import { buscarPagoProveedor } from "@/lib/proveedores";
 import { borrarPagoProveedor } from "@/lib/acciones";
 import { METODOS_PAGO, fechaCorta, formatearMonto, usd } from "@/lib/dinero";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Eliminar pago" };
 
 /** Confirmación antes de borrar un pago a un proveedor. Ver `pagos/[id]/eliminar`. */
 export default async function PaginaEliminarPagoProveedor({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const pago = await buscarPagoProveedor(Number(id));
   if (!pago) notFound();

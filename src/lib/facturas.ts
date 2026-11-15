@@ -3,7 +3,9 @@ import { negocio, whatsappLegible } from "@/config/negocio";
 import { ejecutar, fila, filas, transaccion } from "./db";
 import { buscarVenta } from "./ventas";
 import { buscarCliente } from "./clientes";
-import { rotuloDe } from "./rotulo";
+import { ROTULO_DEL_CLIENTE, rotuloDe } from "./rotulo";
+import { listarFacturasDeCompra, mesesConFacturasDeCompra } from "./facturas-compra";
+import { ivaDeLasCompras, ivaDeLasVentas, ivaMesAMes, type IvaDeUnLibro, type IvaDelMes } from "./iva-del-mes";
 import { alicuotaIva, leerTasa, numeracionDeFacturasDesde } from "./ajustes";
 import { horaDeLaBase, hoy } from "./dinero";
 import { esMostrador } from "./pos";
@@ -435,4 +437,38 @@ export async function resumenDeIva(): Promise<{
     exentos: exentos.length,
     exentos_nombres: exentos.map((p) => p.nombre),
   };
+}
+
+/** El IVA de cada mes con facturas (de venta o de compra), llevando el excedente de crédito de uno al siguiente. */
+export async function ivaDeLosMeses(): Promise<{ meses: IvaDelMes[]; ventas: Map<string, ReturnType<typeof ivaDeLasVentas>>; compras: Map<string, IvaDeUnLibro> }> {
+  const [deVenta, deCompra] = await Promise.all([mesesConFacturas(), mesesConFacturasDeCompra()]);
+  const todos = [...new Set([...deVenta, ...deCompra])].sort();
+  const ventas = new Map<string, ReturnType<typeof ivaDeLasVentas>>();
+  const compras = new Map<string, IvaDeUnLibro>();
+  await Promise.all(
+    todos.map(async (mes) => {
+      const [documentos, facturasDeCompra] = await Promise.all([documentosDelLibro(mes), listarFacturasDeCompra(mes)]);
+      ventas.set(mes, ivaDeLasVentas(documentos));
+      compras.set(mes, ivaDeLasCompras(facturasDeCompra));
+    }),
+  );
+  const meses = ivaMesAMes(todos.map((mes) => ({ mes, debito_bs: ventas.get(mes)!.iva_bs, credito_bs: compras.get(mes)!.iva_bs })));
+  return { meses, ventas, compras };
+}
+
+export type VentaSinFactura = { id: number; fecha: string; cliente_id: number; cliente_nombre: string; total_usd: number };
+
+/**
+ * Las ventas de un mes que no tienen factura vigente (nunca se facturaron, o su factura se anuló): desde la Providencia
+ * SNAT/2026/00093 cada venta lleva su factura, y esta lista dice cuáles faltan. Las de los de la casa no salen.
+ */
+export async function ventasSinFactura(mes: string): Promise<VentaSinFactura[]> {
+  return filas<VentaSinFactura>(
+    `select v.id, v.fecha, v.cliente_id, ${ROTULO_DEL_CLIENTE} as cliente_nombre, v.total_usd
+       from ventas v join clientes c on c.id = v.cliente_id
+      where v.fecha like ? and coalesce(c.de_la_casa, 0) = 0
+        and not exists (select 1 from facturas f where f.venta_id = v.id and f.tipo = 'factura' and f.estado = 'emitida')
+      order by v.fecha, v.id`,
+    [`${mes}%`],
+  );
 }

@@ -33,6 +33,7 @@ import { rutaProducto, rutaVariante } from "@/lib/enlaces";
 import { claveDe } from "@/lib/catalogo";
 import { direccionCompleta } from "@/config/negocio";
 import estilos from "../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export default async function PaginaCliente({
   params,
@@ -41,6 +42,7 @@ export default async function PaginaCliente({
   params: Promise<{ id: string }>;
   searchParams: Promise<ParametrosAviso>;
 }) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const cliente = await buscarCliente(Number(id));
@@ -623,6 +625,7 @@ export default async function PaginaCliente({
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const cliente = await buscarCliente(Number(id));
   return { title: cliente?.nombre ?? "Cliente" };

@@ -9,7 +9,11 @@ import { ejecutar, fila } from "./db";
  * demasiados en poco tiempo, esa dirección espera.
  *
  * También hay un tope para todos a la vez, por si los intentos vienen de
- * muchas direcciones distintas.
+ * muchas direcciones distintas. Ese tope frena (cada intento tarda unos
+ * segundos más), pero no bloquea: antes bloqueaba a todos, y cualquiera
+ * podía dejar al dueño sin entrar mandando 40 claves malas cada cuarto de
+ * hora (revisión de seguridad del 14/11/2026). La dirección que falla
+ * cinco veces sí espera.
  */
 
 export const VENTANA_MINUTOS = 15;
@@ -32,8 +36,14 @@ export async function entradaBloqueada(direccion: string): Promise<boolean> {
      where momento > datetime('now', ?)`,
     [direccion, `-${VENTANA_MINUTOS} minutes`],
   );
-  return Number(f?.suyos ?? 0) >= FALLOS_POR_DIRECCION || Number(f?.todos ?? 0) >= FALLOS_EN_TOTAL;
+  if (Number(f?.suyos ?? 0) >= FALLOS_POR_DIRECCION) return true;
+  // Muchos fallos de muchas direcciones a la vez: se frena a todos unos segundos, sin dejar fuera al dueño.
+  if (Number(f?.todos ?? 0) >= FALLOS_EN_TOTAL) await new Promise((r) => setTimeout(r, SEGUNDOS_DE_FRENO * 1000));
+  return false;
 }
+
+/** Lo que tarda de más cada intento cuando hay muchos fallos de muchas direcciones a la vez. */
+export const SEGUNDOS_DE_FRENO = 3;
 
 export async function anotarEntradaFallida(direccion: string): Promise<void> {
   await ejecutar("insert into entradas_fallidas (direccion) values (?)", [direccion]);

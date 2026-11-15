@@ -7,6 +7,7 @@ import { enlaceWhatsappA } from "@/lib/whatsapp";
 import { negocio } from "@/config/negocio";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Proveedores" };
 
@@ -17,6 +18,7 @@ export const metadata = { title: "Proveedores" };
  * quede por pagar está vencida.
  */
 export default async function PaginaProveedores({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const proveedores = await proveedoresConVencimiento();
   const debo = redondear(proveedores.reduce((s, p) => s + Math.max(0, p.saldo_usd), 0));

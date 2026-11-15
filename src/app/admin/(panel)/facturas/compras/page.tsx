@@ -6,6 +6,7 @@ import { mesDe } from "@/lib/factura-calculo";
 import { bs, fechaCorta, hoy, mesLegible } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Libro de compras" };
 
@@ -18,6 +19,7 @@ export const metadata = { title: "Libro de compras" };
  * salen solas al cargar una factura en la lista del detal con su número.
  */
 export default async function PaginaLibroDeCompras({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const mesDeHoy = mesDe(hoy());
   const mes = typeof parametros.mes === "string" && /^\d{4}-\d{2}$/.test(parametros.mes) ? parametros.mes : mesDeHoy;

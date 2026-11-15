@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { negocio } from "@/config/negocio";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Ponerlo como app" };
 
@@ -9,7 +10,8 @@ export const metadata = { title: "Ponerlo como app" };
  * mismo que tener una app: abre de un toque, a pantalla completa y con el
  * león de icono. No hay que instalar nada ni pagar nada.
  */
-export default function PaginaApp() {
+export default async function PaginaApp() {
+  await exigirPanel();
   return (
     <>
       <div>

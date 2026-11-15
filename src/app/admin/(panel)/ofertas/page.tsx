@@ -6,6 +6,7 @@ import { guardarOferta } from "@/lib/acciones";
 import { aBolivares, bs, fechaCorta, hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Ofertas" };
 
@@ -13,6 +14,7 @@ const CLASE: Record<EstadoOferta, string> = { activa: "estado--pagada", borrador
 
 /** Las ofertas y combos: cuáles salen hoy en la web, cuáles son borradores, y una nueva. Cada una se edita en su ficha. */
 export default async function PaginaOfertas({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const [ofertas, tasa] = await Promise.all([listarOfertas(), leerTasa()]);
   const fecha = hoy();

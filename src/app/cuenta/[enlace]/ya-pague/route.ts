@@ -1,6 +1,6 @@
 import { buscarClientePorEnlace } from "@/lib/clientes";
 import { avisoDePagoDelCliente, avisosRecientesDelCliente } from "@/lib/banco";
-import { leerMontoBs, referenciaUtil } from "@/lib/banco-calculo";
+import { leerMontoBs, referenciaDelClienteUtil } from "@/lib/banco-calculo";
 import { esEnlaceValido } from "@/lib/enlace-cuenta";
 
 /**
@@ -25,7 +25,7 @@ export async function POST(peticion: Request, { params }: { params: Promise<{ en
   }
   const referencia = String(datos.get("referencia") ?? "").trim().slice(0, 40);
   const monto = leerMontoBs(String(datos.get("monto") ?? "").replace(/^\s*bs\.?\s*/i, "").replace(/\s/g, "").slice(0, 30));
-  if (!referenciaUtil(referencia)) return volver("sin_referencia");
+  if (!referenciaDelClienteUtil(referencia)) return volver("sin_referencia");
   if (!monto || monto > 100_000_000) return volver("sin_monto");
   if ((await avisosRecientesDelCliente(cliente.id)) >= 10) return volver("muchos");
   return volver(await avisoDePagoDelCliente({ id: cliente.id, rotulo: cliente.rotulo }, referencia, monto));

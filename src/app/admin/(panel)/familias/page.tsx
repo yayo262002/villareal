@@ -6,6 +6,7 @@ import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { Icono } from "@/components/icono";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Familias" };
 
@@ -63,6 +64,7 @@ function CamposFamilia({ id, familia }: { id: string; familia: Familia | null })
  * borran; al borrar una con productos, se elige antes a qué familia pasan.
  */
 export default async function PaginaFamilias({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const familias = await listarFamiliasConCuentas();
 

@@ -7,9 +7,14 @@ import { METODOS_PAGO, fechaCorta, nombreUnidad, redondear } from "./dinero.ts";
  * punto, Excel lee «10.5» como una fecha. Cálculo puro, con pruebas.
  */
 
-/** Una celda del CSV: entre comillas si lleva punto y coma, comillas o salto de línea. */
+/**
+ * Una celda del CSV: entre comillas si lleva punto y coma, comillas o salto de línea. Un texto que empieza por «=»,
+ * «+», «-» o «@» (un nombre, una nota, una dirección escritos por cualquiera) Excel lo ejecutaría como fórmula: va con
+ * un apóstrofo delante. Los números no, también los negativos del libro de ventas (revisión de seguridad del 14/11/2026).
+ */
 export function celda(valor: string | number | null | undefined): string {
-  const texto = valor === null || valor === undefined ? "" : String(valor);
+  let texto = valor === null || valor === undefined ? "" : String(valor);
+  if (/^[=+\-@\t\r]/.test(texto) && !/^-?\d+([.,]\d+)?$/.test(texto)) texto = `'${texto}`;
   return /[";\n\r]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
 }
 

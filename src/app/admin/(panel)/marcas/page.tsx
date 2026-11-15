@@ -3,6 +3,7 @@ import { listarMarcasConCuentas } from "@/lib/marcas";
 import { borrarMarca, cambiarNombreDeMarca, juntarMarcas } from "@/lib/acciones";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Marcas" };
 
@@ -13,6 +14,7 @@ export const metadata = { title: "Marcas" };
  * ya no tiene nada.
  */
 export default async function PaginaMarcas({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const marcas = await listarMarcasConCuentas();
   return (

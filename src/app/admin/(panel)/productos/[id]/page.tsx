@@ -18,10 +18,12 @@ import { FotoDeProducto } from "@/components/foto-de-producto";
 import { unidosEnElDetal } from "@/lib/costos-unidos";
 import { imagenDeProducto } from "@/lib/fotos-referenciales";
 import estilos from "../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 const CLASE_DE_ESTADO: Record<EstadoProducto, string> = { activo: "estado--pagada", borrador: "estado--parcial", inactivo: "estado--por_pagar" };
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const producto = await buscarProducto(Number(id));
   return { title: producto?.nombre ?? "Producto" };
@@ -29,6 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 /** La ficha de un producto: todo lo suyo en un formulario, su foto, si está en la web, sus marcas y, al final, borrarlo. */
 export default async function PaginaProducto({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const numero = Number(id);

@@ -9,8 +9,10 @@ import { editarOferta } from "@/lib/acciones";
 import { aBolivares, bs, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const oferta = await buscarOferta(Number(id));
   return { title: oferta?.nombre ?? "Oferta" };
@@ -23,6 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
  * se activen.
  */
 export default async function PaginaOferta({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const numero = Number(id);

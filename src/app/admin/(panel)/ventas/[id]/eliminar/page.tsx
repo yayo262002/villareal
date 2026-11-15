@@ -6,6 +6,7 @@ import { METODOS_PAGO } from "@/lib/dinero";
 import { borrarVenta } from "@/lib/acciones";
 import { cantidad, fechaCorta, usd } from "@/lib/dinero";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Eliminar venta" };
 
@@ -15,6 +16,7 @@ export const metadata = { title: "Eliminar venta" };
  * cliente llega aquí, no borra nada.
  */
 export default async function PaginaEliminarVenta({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const venta = await buscarVenta(Number(id));
   if (!venta) notFound();

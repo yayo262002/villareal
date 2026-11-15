@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { buscarOferta } from "@/lib/ofertas";
 import { borrarOferta } from "@/lib/acciones";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Eliminar oferta" };
 
 /** La confirmación antes de borrar una oferta. Los productos que lleva no se tocan. */
 export default async function PaginaEliminarOferta({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const oferta = await buscarOferta(Number(id));
   if (!oferta) notFound();

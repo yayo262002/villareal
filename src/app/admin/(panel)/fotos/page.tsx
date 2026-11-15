@@ -17,6 +17,7 @@ import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { FotoDeProducto } from "@/components/foto-de-producto";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Fotos" };
 
@@ -40,6 +41,7 @@ function origenDe(producto: Producto, suyas: Variante[]): { propia: boolean; tex
  * fondo queda sobre blanco. Las portadas, en 4:3.
  */
 export default async function PaginaFotos({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const [productos, variantes, familias] = await Promise.all([listarProductos(), listarVariantes(), listarFamilias()]);
   const variantesDe = agruparPorProducto(variantes);

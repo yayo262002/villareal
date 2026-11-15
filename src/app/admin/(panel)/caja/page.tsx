@@ -8,6 +8,7 @@ import { METODOS_PAGO, fechaCorta, formatearMonto, hoy, usd } from "@/lib/dinero
 import { BotonImprimir } from "@/components/boton-imprimir";
 import type { ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Cierre del día" };
 
@@ -34,6 +35,7 @@ function PorMetodo({ entradas, vacio }: { entradas: EntradaPorMetodo[]; vacio: s
  * elige arriba; por defecto, hoy.
  */
 export default async function PaginaCaja({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const pedida = typeof parametros.fecha === "string" ? parametros.fecha : "";
   const fecha = /^\d{4}-\d{2}-\d{2}$/.test(pedida) ? pedida : hoy();

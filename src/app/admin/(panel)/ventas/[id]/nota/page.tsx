@@ -23,6 +23,7 @@ import { EntradaFoto } from "@/components/entrada-foto";
 import { FotosDeLaNota } from "@/components/fotos-de-nota";
 import { DatosDelCliente, Membrete } from "../../../membrete";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 type Parametros = { params: Promise<{ id: string }>; searchParams: Promise<ParametrosAviso> };
 
@@ -30,6 +31,7 @@ type Parametros = { params: Promise<{ id: string }>; searchParams: Promise<Param
 export const maxDuration = 60;
 
 export async function generateMetadata({ params }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   return { title: `Nota de entrega ${numeroDeNota(Number(id))}` };
 }
@@ -40,6 +42,7 @@ export async function generateMetadata({ params }: Parametros) {
  * lo que queda por pagar, y lo dice. No es una factura fiscal.
  */
 export default async function PaginaNota({ params, searchParams }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const venta = await buscarVenta(Number(id));

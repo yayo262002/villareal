@@ -662,6 +662,14 @@ export const ESQUEMA = `
   );
   create index if not exists avisos_de_pago_cliente on avisos_de_pago(cliente_id);
 
+  -- Secretos del servidor (el que firma las sesiones del panel): se crean solos y NO van en las copias,
+  -- así una copia de la base no sirve para entrar al panel. Si se pierden, se crean otros y hay que volver a entrar.
+  create table if not exists secretos (
+    clave text primary key,
+    valor text not null,
+    creado_en text not null default (datetime('now'))
+  );
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (

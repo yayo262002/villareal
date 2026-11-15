@@ -4,11 +4,13 @@ import { buscarCompra } from "@/lib/proveedores";
 import { borrarCompra } from "@/lib/acciones";
 import { fechaCorta, usd } from "@/lib/dinero";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Eliminar compra" };
 
 /** Confirmación antes de borrar una compra a un proveedor. Ver `ventas/[id]/eliminar`. */
 export default async function PaginaEliminarCompra({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const compra = await buscarCompra(Number(id));
   if (!compra) notFound();

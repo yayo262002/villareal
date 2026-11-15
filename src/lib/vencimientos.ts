@@ -29,8 +29,9 @@ function porDueno<V extends { id: number; fecha: string; total_usd: number }>(
   return grupos;
 }
 
-export async function clientesConVencimiento(fecha = hoy()): Promise<ClienteConVencimiento[]> {
-  const [clientes, ventas] = await Promise.all([listarClientes(), listarVentas(100000)]);
+/** `datos`: los clientes y las ventas ya leídos, si se tienen (el Resumen los lee una sola vez para todo). */
+export async function clientesConVencimiento(fecha = hoy(), datos: { clientes?: ClienteConSaldo[]; ventas?: Venta[] } = {}): Promise<ClienteConVencimiento[]> {
+  const [clientes, ventas] = await Promise.all([datos.clientes ?? listarClientes(), datos.ventas ?? listarVentas(100000)]);
   const suyas = porDueno<Venta>(ventas, (v) => v.cliente_id);
   return clientes.map((c) => ({
     ...c,

@@ -6,6 +6,7 @@ import { TARIFAS_MAXIMAS, ZONA_DE_DELIVERY, enlaceDeUbicacion, textoKm } from "@
 import { usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Delivery" };
 
@@ -17,6 +18,7 @@ const uno = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : (v 
  * kilómetros queda un cliente antes de poner los precios. Sin tarifas, la web dice la distancia y «por confirmar».
  */
 export default async function PaginaDelivery({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const ajustes = await ajustesDelDelivery();
   const probar = uno(parametros.probar);

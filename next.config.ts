@@ -11,6 +11,27 @@ const CABECERAS_DE_SEGURIDAD = [
   // El micrófono, cerrado. La ubicación, solo para la propia web: el carrito la pide para el delivery («Usar mi
   // ubicación»). La cámara, también solo la propia web, para las fotos de las notas.
   { key: "Permissions-Policy", value: "geolocation=(self), microphone=(), camera=(self)" },
+  // Qué puede cargar y ejecutar cada página: solo lo de la propia web (revisión de seguridad del 14/11/2026). Si algún
+  // día se colara un texto con código, el navegador no cargaría nada de fuera ni mandaría datos a otro sitio. Next mete
+  // sus propios scripts en la página, por eso «unsafe-inline»; «unsafe-eval» solo con `next dev`, que lo necesita.
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self'",
+      "worker-src 'self'",
+      "manifest-src 'self'",
+      "media-src 'self' blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join("; "),
+  },
 ];
 
 const nextConfig: NextConfig = {

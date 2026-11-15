@@ -59,16 +59,24 @@ export function esSuscripcion(valor: unknown): valor is SuscripcionDelNavegador 
   return typeof s.endpoint === "string" && s.endpoint.startsWith("https://") && typeof s.keys?.p256dh === "string" && typeof s.keys?.auth === "string";
 }
 
-export async function guardarTelefono(s: SuscripcionDelNavegador, aparato: string): Promise<void> {
+/** Guarda un teléfono con los avisos activados. Devuelve si es nuevo (no lo tenía ya). */
+export async function guardarTelefono(s: SuscripcionDelNavegador, aparato: string): Promise<boolean> {
+  const ya = await filas<{ id: number }>("select id from avisos_telefonos where endpoint = ?", [s.endpoint]);
   await ejecutar(
     `insert into avisos_telefonos (endpoint, p256dh, auth, aparato) values (?, ?, ?, ?)
      on conflict(endpoint) do update set p256dh = excluded.p256dh, auth = excluded.auth, aparato = excluded.aparato, fallos = 0`,
     [s.endpoint, s.keys.p256dh, s.keys.auth, aparato.slice(0, 120)],
   );
+  return ya.length === 0;
 }
 
 export async function quitarTelefono(endpoint: string): Promise<boolean> {
   const r = await ejecutar("delete from avisos_telefonos where endpoint = ?", [endpoint]);
+  return r.cambios > 0;
+}
+
+export async function quitarTelefonoPorId(id: number): Promise<boolean> {
+  const r = await ejecutar("delete from avisos_telefonos where id = ?", [id]);
   return r.cambios > 0;
 }
 

@@ -20,18 +20,23 @@ import { resumenDelBanco } from "@/lib/banco";
 import { negocio } from "@/config/negocio";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "./panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Resumen" };
 
 export default async function PaginaResumen({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const mes = hoy().slice(0, 7);
   // Los avisos del día en la campanita, por si la tarea de la mañana no corrió todavía (solo escribe si faltan).
   await generarAvisosSiFaltan();
-  const [clientes, deudas, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, porEntregar, vendidoEsteMes, conVencimiento, proveedores, recordados, inventario, estudio] =
+  // Los clientes, todas las ventas (con sus líneas), los abonos y los recordatorios se leen una sola vez y sirven para
+  // las deudas, los vencimientos y el estudio de clientes: antes cada uno los volvía a leer.
+  const [clientes, todasLasVentas, todosLosPagos, ultimasVentas, ultimosPagos, vendido, cobrado, copiasNube, porEntregar, vendidoEsteMes, proveedores, recordados, inventario] =
     await Promise.all([
       listarClientes(),
-      resumenDeudas(),
+      listarVentas(100000).then(conLineas),
+      listarPagos(100000),
       listarVentas(5),
       listarPagos(5),
       totalVendidoUsd(),
@@ -39,12 +44,15 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
       listarCopiasNube(),
       contarVentasPorEntregar(),
       vendidoDesde(`${mes}-01`),
-      clientesConVencimiento(),
       proveedoresConVencimiento(),
       ultimosRecordatorios(),
       existencias(),
-      estudioDeClientes(hoy()),
     ]);
+  const [deudas, conVencimiento, estudio] = await Promise.all([
+    resumenDeudas(clientes),
+    clientesConVencimiento(hoy(), { clientes, ventas: todasLasVentas }),
+    estudioDeClientes(hoy(), true, { clientes, ventas: todasLasVentas, pagos: todosLosPagos, recordados }),
+  ]);
   const [hoyCierre, entregas, banco] = await Promise.all([cierreDelDia(hoy()), listarVentasPorEntregar().then(conLineas), resumenDelBanco()]);
   const fecha = hoy();
   const atrasoDe = (e: (typeof entregas)[number]) => (e.entrega_prevista ? diasEntre(e.entrega_prevista, fecha) : null);
@@ -216,7 +224,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
               const whatsapp = ofrecer(e);
               return (
                 <li key={e.cliente.id}>
-                  <p>
+                  <div style={{ margin: "0 0 var(--espacio-2)" }}>
                     <Link href={`/admin/clientes/${e.cliente.id}`}>
                       <strong>{e.cliente.rotulo}</strong>
                     </Link>
@@ -240,7 +248,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
                         Lo llamé hoy
                       </button>
                     </form>
-                  </p>
+                  </div>
                 </li>
               );
             })}

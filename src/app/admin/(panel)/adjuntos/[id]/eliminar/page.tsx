@@ -5,11 +5,13 @@ import { buscarCliente } from "@/lib/clientes";
 import { borrarAdjunto } from "@/lib/acciones";
 import { fechaCorta, fechaDeLaBase } from "@/lib/dinero";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Eliminar foto" };
 
 /** Confirmación antes de borrar una foto de nota. Ver `ventas/[id]/eliminar`. */
 export default async function PaginaEliminarAdjunto({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const adjunto = await buscarAdjunto(Number(id));
   if (!adjunto) notFound();

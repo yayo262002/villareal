@@ -21,6 +21,7 @@ import {
   montoCuadra,
   montosParecidos,
   nombreParecido,
+  referenciaDelClienteUtil,
   referenciaUtil,
   type ComoSeSupo,
 } from "./banco-calculo";
@@ -303,10 +304,22 @@ async function avisoQueCuadra(mov: MovimientoBanco): Promise<AvisoDePago | null>
   const pendientes = await filas<AvisoDePago>(
     "select * from avisos_de_pago where estado = 'pendiente' and creado_en >= datetime('now', '-30 days') order by id",
   );
-  const cuadran = pendientes.filter((a) => mismaReferencia(a.referencia, mov.referencia) && montosParecidos(Number(a.monto_bs), mov.monto_bs, 0.01));
+  // Seis cifras de la referencia y el mismo monto al céntimo: con menos, quien vio la captura de otro podía quedarse con su pago.
+  const cuadran = pendientes.filter(
+    (a) => referenciaDelClienteUtil(a.referencia) && mismaReferencia(a.referencia, mov.referencia) && montosParecidos(Number(a.monto_bs), mov.monto_bs),
+  );
   // Dos clientes que dicen haber hecho el mismo pago: que decida el dueño.
   if (cuadran.length === 0 || new Set(cuadran.map((a) => a.cliente_id)).size > 1) return null;
+  // Si el pago salió del teléfono de otro cliente, tampoco: que decida el dueño.
+  if (await deOtroCliente(mov, cuadran[0].cliente_id)) return null;
   return cuadran[0];
+}
+
+/** Si el pago salió del teléfono de un cliente distinto de ese. */
+async function deOtroCliente(mov: { telefono: string }, clienteId: number): Promise<boolean> {
+  if (!mov.telefono) return false;
+  const dueno = await buscarClientePorTelefono(mov.telefono);
+  return Boolean(dueno && dueno.id !== clienteId);
 }
 
 /** Une el movimiento a un abono, si sigue esperando. Dice si lo unió. */
@@ -509,7 +522,7 @@ export type ResultadoDelAviso = "abonado" | "ya_abonado" | "esperando";
  */
 export async function avisoDePagoDelCliente(cliente: { id: number; rotulo: string }, referencia: string, montoBs: number): Promise<ResultadoDelAviso> {
   const recientes = await filas<MovimientoBanco>(`${CONSULTA} where m.creado_en >= datetime('now', '-30 days') and m.estado in ('por_conciliar', 'aplicado')`);
-  const igual = recientes.find((m) => mismaReferencia(m.referencia, referencia) && montosParecidos(m.monto_bs, montoBs, 0.01));
+  const igual = referenciaDelClienteUtil(referencia) ? recientes.find((m) => mismaReferencia(m.referencia, referencia) && montosParecidos(m.monto_bs, montoBs)) : undefined;
   if (igual?.estado === "aplicado" && igual.cliente_id === cliente.id) return "ya_abonado";
 
   const r = await ejecutar("insert into avisos_de_pago (cliente_id, referencia, monto_bs) values (?, ?, ?)", [
@@ -517,7 +530,7 @@ export async function avisoDePagoDelCliente(cliente: { id: number; rotulo: strin
     referencia.replace(/\D/g, ""),
     redondear(montoBs),
   ]);
-  if (igual?.estado === "por_conciliar" && (await abonar(igual, cliente.id, "aviso"))) {
+  if (igual?.estado === "por_conciliar" && !(await deOtroCliente(igual, cliente.id)) && (await abonar(igual, cliente.id, "aviso"))) {
     await ejecutar("update avisos_de_pago set estado = 'aplicado', movimiento_id = ? where id = ?", [igual.id, r.ultimoId]);
     await aprender(igual, cliente.id);
     await crearAviso({

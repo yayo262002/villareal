@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { buscarProducto, loQueTieneElProducto, sePuedeBorrar } from "@/lib/productos";
 import { alternarProducto, borrarProducto } from "@/lib/acciones";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Eliminar producto" };
 
 /** La confirmación antes de borrar un producto: dice qué se lleva, o por qué no se puede. */
 export default async function PaginaEliminarProducto({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const numero = Number(id);
   const producto = Number.isSafeInteger(numero) && numero > 0 ? await buscarProducto(numero) : null;

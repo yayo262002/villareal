@@ -420,9 +420,23 @@ function limpiar(args: InValue[]): InValue[] {
   return args.map((v) => (typeof v === "number" && !Number.isFinite(v) ? null : v));
 }
 
+/**
+ * Con MEDIR_CONSULTAS=1 (solo para medir en el ordenador, nunca en la web), cada consulta se anota en la consola con lo
+ * que tardó: así se ve qué pantalla hace demasiadas o cuál es lenta.
+ */
+const MEDIR = process.env.MEDIR_CONSULTAS === "1";
+
+async function ejecutarConsulta(sql: string, args: InValue[]) {
+  if (!MEDIR) return (await db()).execute({ sql, args: limpiar(args) });
+  const desde = performance.now();
+  const resultado = await (await db()).execute({ sql, args: limpiar(args) });
+  console.log(`[consulta] ${(performance.now() - desde).toFixed(1)} ms ${sql.replace(/\s+/g, " ").trim().slice(0, 160)}`);
+  return resultado;
+}
+
 /** Todas las filas de una consulta, como objetos con el nombre de cada columna. */
 export async function filas<T>(sql: string, args: InValue[] = []): Promise<T[]> {
-  const resultado = await (await db()).execute({ sql, args: limpiar(args) });
+  const resultado = await ejecutarConsulta(sql, args);
   return resultado.rows as unknown as T[];
 }
 
@@ -434,7 +448,7 @@ export async function fila<T>(sql: string, args: InValue[] = []): Promise<T | nu
 
 /** Un insert, update o delete. Devuelve cuántas filas tocó y el último id insertado. */
 export async function ejecutar(sql: string, args: InValue[] = []): Promise<{ cambios: number; ultimoId: number }> {
-  const resultado = await (await db()).execute({ sql, args: limpiar(args) });
+  const resultado = await ejecutarConsulta(sql, args);
   return { cambios: resultado.rowsAffected, ultimoId: Number(resultado.lastInsertRowid ?? 0) };
 }
 

@@ -7,6 +7,7 @@ import { bs, bsRedondo, fechaCorta, fechaDeLaBase, hoy, tasaLegible, usd } from 
 import { negocio } from "@/config/negocio";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Lista del detal" };
 
@@ -34,6 +35,7 @@ function signo(pct: number): string {
  * las reglas; la familia la ve con su enlace, sin clave, en /lista.
  */
 export default async function PaginaDetal({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const busqueda = typeof parametros.q === "string" ? parametros.q.slice(0, 80) : "";
   const [articulos, total, reglas, tasa, tasaDeHoy, enlace] = await Promise.all([

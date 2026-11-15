@@ -19,8 +19,10 @@ import { FormularioPago } from "@/components/formulario-pago";
 import { FilaDeProducto } from "@/components/fila-de-producto";
 import { TotalDeVenta } from "@/components/total-de-venta";
 import estilos from "../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  await exigirPanel();
   const { id } = await params;
   const proveedor = await buscarProveedor(Number(id));
   return { title: proveedor?.nombre ?? "Proveedor" };
@@ -40,6 +42,7 @@ export default async function PaginaProveedor({
   params: Promise<{ id: string }>;
   searchParams: Promise<ParametrosAviso>;
 }) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const proveedor = await buscarProveedor(Number(id));

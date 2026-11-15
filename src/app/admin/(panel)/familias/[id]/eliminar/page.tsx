@@ -4,6 +4,7 @@ import { listarFamiliasConCuentas } from "@/lib/familias";
 import { borrarFamilia } from "@/lib/acciones";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Eliminar familia" };
 
@@ -13,6 +14,7 @@ export const metadata = { title: "Eliminar familia" };
  * dejan de salir, o salen en la elegida.
  */
 export default async function PaginaEliminarFamilia({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const familias = await listarFamiliasConCuentas();

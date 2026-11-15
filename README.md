@@ -255,7 +255,9 @@ src/lib/copias.ts         Copias de seguridad de la base de datos
 scripts/copia.ts          npm run copia
 scripts/prueba-extremo.mjs  La prueba de extremo a extremo, en local o contra la web
 scripts/desplegar-o-no.sh  Lo que Vercel pregunta antes de publicar: si solo cambió lo que no es de la web, no publica
-src/lib/sesion.ts         La cookie de sesión, firmada con la clave del panel
+src/lib/sesion.ts         La sesión: cuándo se entró, la versión y la firma (con la clave y el secreto del servidor); 30 días
+src/lib/panel.ts          exigirPanel: cada pantalla del panel comprueba la sesión (panel.test.ts lo vigila)
+src/lib/iva-del-mes.ts    El IVA de cada mes: débito, crédito, excedente y a pagar (puro, con pruebas)
 src/lib/clave.ts          La clave del panel: la de .env.local o la que el dueño puso con «He olvidado la clave»; el enlace de un solo uso
 src/lib/correo.ts         Mandar un correo al dueño (Resend): hoy, el enlace de la clave nueva
 src/app/admin/entrar/     Entrar; /olvide pide el enlace; /nueva pone la clave nueva
@@ -583,6 +585,23 @@ datos/                    La base de datos (fuera de Git)
   de dólar (Bs 1, por ejemplo) se rechaza: casi siempre es un error al
   teclear.
 - El saldo del cliente es lo comprado menos lo pagado, en dólares.
+- **Los céntimos de la tasa se acomodan solos** (el dueño, 14/11/2026:
+  «toda la gente que tenga un poquito a favor, así céntimos, lo
+  acomodas»). Un abono en bolívares casi nunca da justo lo que se debía en
+  dólares: 70.686,22 Bs por una nota de 78,41 $ son 78,40 a la tasa del día.
+  Si el abono paga notas enteras (las más antiguas por pagar) con hasta
+  0,50 $ y el 1 % de diferencia, vale exactamente esas notas: ni un centavo
+  colgando ni un saldo a favor que no existe. Los bolívares no cambian;
+  cambia la tasa a la que se pasan a dólares, y el abono lo dice en su nota
+  («céntimos de la tasa acomodados»). Vale para los abonos de la ficha y de
+  Abonos y para los pagos del banco; no para la caja, que cobra su venta
+  (`centimosDeLaTasa` en `src/lib/cuentas.ts`, `registrarAbono` en
+  `src/lib/pagos.ts`). Más que eso no son céntimos: el abono vale lo que vale.
+- **Los de la casa.** Un cliente de la familia del dueño (su casilla «Es
+  de la casa», en su ficha) no se cobra: no sale en «Lo que te deben», en
+  «Quién debe» ni en «Cobros para recordar» del Resumen, en los avisos de
+  vencidos, en «por llamar», en lo por cobrar de Estadísticas ni en las
+  ventas sin factura; en la cartera sale en gris, «de la casa».
 - **Lo repetido se frena.** El mismo abono (cliente, fecha, método, moneda
   y monto) o el mismo pago a un proveedor anotado hace menos de diez
   minutos, o la misma venta (cliente, fecha y las mismas líneas), casi
@@ -1114,6 +1133,15 @@ Binance y otro.
   lo exento, la base y el IVA salen de sus líneas (tabla `facturas_compra`,
   `src/lib/facturas-compra.ts`; las cuentas en
   `src/lib/libro-compras-calculo.ts`, con pruebas).
+- **El IVA del mes** (Facturas, «El IVA de …»): el de las ventas (débito
+  fiscal, cada factura a su tasa, menos las notas de crédito), el de las
+  compras (crédito fiscal, como vienen impresas), el excedente que venía
+  del mes anterior y lo que queda: el IVA a pagar o el excedente que pasa
+  al mes siguiente, en bolívares. «Descargar el IVA mes a mes (Excel)»
+  (`/admin/facturas/iva`) es para el contador, que lo confirma y declara;
+  no resta las retenciones de IVA (`src/lib/iva-del-mes.ts`, con pruebas).
+- **Ventas sin factura** (Facturas): las del mes que no tienen factura
+  vigente, con su enlace a la nota, donde está «Facturar».
 - **Lo que no hace el sistema**: actualizar el RIF (se hace en el SENIAT;
   el de ahora es del 19/08/2026), elegir la imprenta digital, ni declarar
   el IVA. Lo dice la propia pantalla.
@@ -1271,6 +1299,17 @@ Binance y otro.
   en la bandeja) devuelve el pago a la bandeja, y deshacer olvida lo
   aprendido de ese teléfono. Lo cobrado en el mostrador no enseña nada de
   quién paga.
+- **De la casa.** Los pagos de alguien de la familia no son abonos: «Es de
+  la casa (siempre)» aparta ese pago y los siguientes de quien lo hizo (por
+  su nombre o su teléfono en el banco; tabla `pagadores_de_la_casa`), sin
+  avisar. «Pagan de la casa» los lista, con «Quitar».
+- **La fecha de cada aviso.** La del propio aviso («en fecha 14-11-26»); si
+  no la trae (la transferencia), la del encabezado de su notificación en la
+  captura («mié, 20:45», «ayer»); si tampoco, el día en que llegó. Nunca una
+  fecha de lo que se ve detrás en la captura (el historial del panel), y el
+  tipo de pago sale de «Recibiste una transferencia…», no del título del
+  aviso siguiente (`separarAvisos` y `fechaDelEncabezado` en
+  `src/lib/banco-calculo.ts`, con pruebas).
 - **Plan B.** Si el teléfono falla, en Pago móvil se pega el aviso (uno o
   varios seguidos) y se trata igual. Y el cliente puede avisar su pago
   desde su enlace: se le abona en cuanto llega (diez avisos al día como
@@ -1680,8 +1719,33 @@ Binance y otro.
   `src/lib/correo.ts`).
 
 - La entrada al panel frena a quien pruebe claves: con 5 fallos en 15
-  minutos desde una dirección, esa dirección espera. Hay también un tope
-  de 40 fallos para todas las direcciones juntas.
+  minutos desde una dirección, esa dirección espera. Con 40 fallos de
+  todas las direcciones juntas, cada intento tarda unos segundos más, pero
+  nadie queda fuera: antes se bloqueaba a todos, y cualquiera podía dejar
+  al dueño sin entrar.
+- **Revisión de seguridad del 14/11/2026** (el dueño: «que no tenga chance
+  de ser hackeable»):
+  - **Cada pantalla del panel comprueba la sesión** al principio
+    (`exigirPanel`, `src/lib/panel.ts`), no solo el layout: una petición
+    hecha a mano podía pedir una página sin pasar por él. La prueba
+    `panel.test.ts` falla si una pantalla nueva no lo hace. El proxy, además,
+    para las cookies que ni siquiera tienen la forma de una de verdad.
+  - **La sesión** (`src/lib/sesion.ts`) lleva cuándo se entró, una versión
+    y una firma; dura 30 días. La firma usa la clave y un **secreto al azar
+    del servidor** (tabla `secretos`, que no va en las copias): una copia de
+    la base no sirve para entrar, y una cookie robada no deja adivinar la
+    clave. En Avisos → «Seguridad», **«Cerrar la sesión en todos los
+    teléfonos»** deja fuera a los demás. Las cookies de antes valen hasta el
+    15/12/2026 y se cambian solas por una nueva.
+  - **Los teléfonos con avisos** (que reciben también el enlace de «He
+    olvidado la clave») se ven en Avisos, con «Quitar», y cuando se activa
+    uno nuevo los demás reciben un aviso.
+  - «Ya pagué» pide **seis cifras** de la referencia y el monto al céntimo,
+    y no se abona solo si el pago salió del teléfono de otro cliente.
+  - Las descargas para Excel ponen un apóstrofo delante de lo escrito que
+    Excel ejecutaría como fórmula (`=`, `+`, `-`, `@`).
+  - **Content-Security-Policy**: cada página solo carga lo de la propia web.
+  - Next 16.4.6, con los arreglos de seguridad de esa versión.
 - Cabeceras de seguridad en todas las páginas (`next.config.ts`).
 - Ninguna clave en el código ni en el repositorio, que es público.
 

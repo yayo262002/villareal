@@ -5,6 +5,7 @@ import { permitirStockNegativo } from "@/lib/ajustes";
 import { cantidad, fechaCorta, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Inventario" };
 
@@ -17,6 +18,7 @@ const NOMBRE_DE_ESTADO = { sin_seguir: "Sin seguir", sin: "Sin existencia", poco
  * venta y se corrige aquí con un recuento o una merma.
  */
 export default async function PaginaInventario({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const [lista, ajustes, sinTope] = await Promise.all([existencias(), listarAjustes(15), permitirStockNegativo()]);
   const seguidos = lista.filter((e) => e.seguido);

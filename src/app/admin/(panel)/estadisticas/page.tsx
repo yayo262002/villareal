@@ -21,6 +21,7 @@ import {
 } from "@/lib/estadisticas";
 import { cantidad, fechaCorta, formatearMonto, hoy, mesLegible, redondear, usd, usdConSigno, type Moneda } from "@/lib/dinero";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Estadísticas" };
 
@@ -53,6 +54,7 @@ function Barra({ parte }: { parte: number }) {
  * tarea diaria guarda sola cada mañana.
  */
 export default async function PaginaEstadisticas({ searchParams }: { searchParams: Promise<Parametros> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const fechaDeHoy = hoy();
   const desdeEscrito = leerFecha(texto(parametros, "desde"));

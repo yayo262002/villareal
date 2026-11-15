@@ -16,6 +16,7 @@ import { describirTrato } from "@/lib/seguimiento";
 import { enlaceWhatsappA } from "@/lib/whatsapp";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Clientes" };
 
@@ -56,6 +57,7 @@ export default async function PaginaClientes({
 }: {
   searchParams: Promise<ParametrosAviso>;
 }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const busqueda = typeof parametros.q === "string" ? parametros.q.trim() : "";
   const orden: Orden = typeof parametros.orden === "string" && parametros.orden in ORDENES ? (parametros.orden as Orden) : "nombre";

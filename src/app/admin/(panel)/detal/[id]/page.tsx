@@ -8,6 +8,7 @@ import { CATEGORIAS_DETAL, costoConIva, margenDelMayor, reglaDelDetal } from "@/
 import { bs, bsRedondo, fechaCorta, hoy, tasaLegible, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Producto de la lista del detal" };
 
@@ -18,6 +19,7 @@ const enCampo = (n: number | null) => (n === null ? "" : String(n).replace(".", 
 
 /** La ficha de un producto de la lista del detal: sus cuentas de hoy, cambiarlo, esconderlo o quitarlo. */
 export default async function PaginaArticuloDetal({ params, searchParams }: Parametros) {
+  await exigirPanel();
   const { id } = await params;
   const parametros = await searchParams;
   const articulo = /^\d+$/.test(id) ? await buscarArticuloDetal(Number(id)) : null;

@@ -15,12 +15,17 @@ import { hoy } from "./dinero";
  */
 export type ClienteEstudiado = { cliente: ClienteConSaldo; trato: Trato };
 
-export async function estudioDeClientes(fecha = hoy(), conLoQueCompra = true): Promise<ClienteEstudiado[]> {
+/** `datos`: lo ya leído, si se tiene (el Resumen lee una sola vez los clientes, las ventas con sus líneas, los abonos y los recordatorios). */
+export async function estudioDeClientes(
+  fecha = hoy(),
+  conLoQueCompra = true,
+  datos: { clientes?: ClienteConSaldo[]; ventas?: VentaConLineas[]; pagos?: { cliente_id: number; fecha: string }[]; recordados?: Map<number, string> } = {},
+): Promise<ClienteEstudiado[]> {
   const [clientes, ventas, pagos, recordados, contactos] = await Promise.all([
-    listarClientes(),
-    listarVentas(100000).then((lista) => (conLoQueCompra ? conLineas(lista) : lista)),
-    listarPagos(100000),
-    ultimosRecordatorios(),
+    datos.clientes ?? listarClientes(),
+    datos.ventas ?? listarVentas(100000).then((lista) => (conLoQueCompra ? conLineas(lista) : lista)),
+    datos.pagos ?? listarPagos(100000),
+    datos.recordados ?? ultimosRecordatorios(),
     ultimosContactos(),
   ]);
   const ventasDe = new Map<number, typeof ventas>();

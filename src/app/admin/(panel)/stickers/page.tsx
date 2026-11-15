@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GRUPOS_DE_STICKERS, STICKERS, stickersDelGrupo, type GrupoDeSticker } from "@/lib/stickers";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Stickers para WhatsApp" };
 
@@ -9,7 +10,8 @@ export const metadata = { title: "Stickers para WhatsApp" };
  * se guardan en el teléfono desde aquí y en WhatsApp se convierten en
  * sticker con la foto. Los dibuja `scripts/stickers.ts`.
  */
-export default function PaginaStickers() {
+export default async function PaginaStickers() {
+  await exigirPanel();
   const grupos = Object.keys(GRUPOS_DE_STICKERS) as GrupoDeSticker[];
   return (
     <>

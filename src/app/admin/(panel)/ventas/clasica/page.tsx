@@ -13,6 +13,7 @@ import { existenciasPorClave } from "@/lib/inventario";
 import { EntradaFoto } from "@/components/entrada-foto";
 import { lectorDisponible } from "@/lib/lector-de-notas";
 import estilos from "../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Registrar venta (formulario clásico)" };
 /** Guardar una venta puede incluir leer la foto de la nota, que tarda unos segundos. */
@@ -32,6 +33,7 @@ function escrito(datos: Escrito, campo: string): string {
  * misma acción (`guardarVenta`).
  */
 export default async function PaginaVentaClasica({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const clientePreseleccionado = typeof parametros.cliente === "string" ? parametros.cliente : "";
   const pideConfirmar = parametros.confirmar === "1";

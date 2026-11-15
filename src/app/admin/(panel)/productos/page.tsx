@@ -12,6 +12,7 @@ import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FotoDeProducto } from "@/components/foto-de-producto";
 import { imagenDeProducto } from "@/lib/fotos-referenciales";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Productos" };
 
@@ -30,6 +31,7 @@ function texto(parametros: ParametrosAviso, campo: string): string {
  * formulario completo.
  */
 export default async function PaginaProductos({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const [productos, variantes, familias, categorias, tasa, deEjemplo, automatica, avisoTasa, faltan] = await Promise.all([
     listarProductos(),

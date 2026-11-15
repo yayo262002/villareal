@@ -9,6 +9,7 @@ import { NOMBRE_ESTADO_PRODUCTO, estadoDeProducto } from "@/lib/catalogo";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FormularioProducto } from "@/components/formulario-producto";
 import estilos from "../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Agregar producto" };
 
@@ -27,6 +28,7 @@ function primero(valor: string | string[] | undefined): string {
  * `?tipo=<número>` llega con ese tipo elegido y sus categorías marcadas.
  */
 export default async function PaginaNuevoProducto({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const tipo = primero(parametros.tipo);
   const [familias, tasa, productos, marcas, presentaciones] = await Promise.all([

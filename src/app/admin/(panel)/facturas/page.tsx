@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { contarFacturas, documentosDelLibro, facturasSinControl, listarFacturas, mesesConFacturas, resumenDeIva, rotuloFacturado } from "@/lib/facturas";
+import { contarFacturas, documentosDelLibro, facturasSinControl, ivaDeLosMeses, listarFacturas, mesesConFacturas, resumenDeIva, rotuloFacturado, ventasSinFactura } from "@/lib/facturas";
+import { numeroDeNota } from "@/lib/entregas";
 import { alicuotaIva, numeracionDeFacturasDesde } from "@/lib/ajustes";
 import { guardarAjustesDeFacturacion } from "@/lib/acciones";
 import { NOMBRE_DOCUMENTO, mesDe, numeroDeFactura, totalesDelLibro } from "@/lib/factura-calculo";
 import { bs, fechaCorta, hoy, mesLegible, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Facturas" };
 
@@ -15,10 +17,11 @@ export const metadata = { title: "Facturas" };
  * los ajustes: la alícuota y desde qué número se numera.
  */
 export default async function PaginaFacturas({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const mesDeHoy = mesDe(hoy());
   const mes = typeof parametros.mes === "string" && /^\d{4}-\d{2}$/.test(parametros.mes) ? parametros.mes : mesDeHoy;
-  const [facturas, documentos, meses, cuantas, sinControl, iva, ivaPct, desde] = await Promise.all([
+  const [facturas, documentos, meses, cuantas, sinControl, iva, ivaPct, desde, ivaMeses, sinFactura] = await Promise.all([
     listarFacturas(mes),
     documentosDelLibro(mes),
     mesesConFacturas(),
@@ -27,7 +30,13 @@ export default async function PaginaFacturas({ searchParams }: { searchParams: P
     resumenDeIva(),
     alicuotaIva(),
     numeracionDeFacturasDesde(),
+    ivaDeLosMeses(),
+    ventasSinFactura(mes),
   ]);
+  const ivaDelMes = ivaMeses.meses.find((m) => m.mes === mes) ?? null;
+  const ventasDelMes = ivaMeses.ventas.get(mes);
+  const comprasDelMes = ivaMeses.compras.get(mes);
+  const totalSinFactura = sinFactura.reduce((s, v) => s + v.total_usd, 0);
   const totales = totalesDelLibro(documentos);
   const mesesParaElegir = meses.includes(mes) ? meses : [mes, ...meses].sort().reverse();
 
@@ -155,6 +164,80 @@ export default async function PaginaFacturas({ searchParams }: { searchParams: P
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      <section className="tarjeta" style={{ marginTop: "var(--espacio-4)" }} id="iva">
+        <h2 className={estilos.subtitulo}>El IVA de {mesLegible(mes)}</h2>
+        {!ivaDelMes ? (
+          <p className="vacio">Sin facturas de venta ni de compra en {mesLegible(mes)}.</p>
+        ) : (
+          <>
+            <dl className={estilos.cifras}>
+              <div className={estilos.cifra}>
+                <dt>IVA de las ventas</dt>
+                <dd>{bs(ivaDelMes.debito_bs)}</dd>
+                <div className={estilos.cifraNota}>Débito fiscal · {ventasDelMes?.documentos ?? 0} documentos</div>
+              </div>
+              <div className={estilos.cifra}>
+                <dt>IVA de las compras</dt>
+                <dd>{bs(ivaDelMes.credito_bs)}</dd>
+                <div className={estilos.cifraNota}>Crédito fiscal · {comprasDelMes?.documentos ?? 0} facturas de compra</div>
+              </div>
+              {ivaDelMes.excedente_anterior_bs > 0 && (
+                <div className={estilos.cifra}>
+                  <dt>Excedente del mes anterior</dt>
+                  <dd>{bs(ivaDelMes.excedente_anterior_bs)}</dd>
+                  <div className={estilos.cifraNota}>Crédito que sobró y se descuenta aquí</div>
+                </div>
+              )}
+              <div className={`${estilos.cifra} ${ivaDelMes.a_pagar_bs > 0 ? estilos["cifra--alerta"] : ""}`}>
+                <dt>{ivaDelMes.a_pagar_bs > 0 ? "IVA a pagar" : "Excedente para el mes siguiente"}</dt>
+                <dd>{bs(ivaDelMes.a_pagar_bs > 0 ? ivaDelMes.a_pagar_bs : ivaDelMes.excedente_siguiente_bs)}</dd>
+                <div className={estilos.cifraNota}>Débito − crédito{ivaDelMes.excedente_anterior_bs > 0 ? " − excedente anterior" : ""}</div>
+              </div>
+            </dl>
+            {(ventasDelMes?.sin_tasa ?? 0) > 0 && (
+              <p className="aviso aviso--aviso">
+                {ventasDelMes!.sin_tasa === 1 ? "Una factura no tiene tasa" : `${ventasDelMes!.sin_tasa} facturas no tienen tasa`}: no se pueden pasar a bolívares y no
+                cuentan aquí.
+              </p>
+            )}
+          </>
+        )}
+        <p className="ayuda">
+          Es la cuenta de los dos libros, en bolívares (cada venta a la tasa de su factura; cada compra como viene impresa), para llevársela al contador, que la
+          confirma y la declara. No resta las retenciones de IVA que te hagan los clientes contribuyentes especiales.{" "}
+          {/* Una descarga (un CSV), no una página: con <Link> Next intentaría navegar hasta ella. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/admin/facturas/iva">Descargar el IVA mes a mes (Excel)</a>
+        </p>
+      </section>
+
+      <section className="tarjeta" style={{ marginTop: "var(--espacio-4)" }} id="sin-factura">
+        <h2 className={estilos.subtitulo}>
+          Ventas de {mesLegible(mes)} sin factura{sinFactura.length > 0 ? ` (${sinFactura.length})` : ""}
+        </h2>
+        {sinFactura.length === 0 ? (
+          <p className="vacio">Todas las ventas de {mesLegible(mes)} tienen su factura.</p>
+        ) : (
+          <>
+            <p className="ayuda">
+              Cada venta lleva su factura (Providencia SNAT/2026/00093). Estas no la tienen, o se les anuló: suman {usd(totalSinFactura)}. En su nota de entrega está
+              «Facturar». Las de los de la casa no salen.
+            </p>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "var(--espacio-2)" }}>
+              {sinFactura.slice(0, 60).map((v) => (
+                <li key={v.id} style={{ display: "flex", flexWrap: "wrap", gap: "var(--espacio-2)", justifyContent: "space-between" }}>
+                  <span>
+                    <Link href={`/admin/ventas/${v.id}/nota`}>Nota {numeroDeNota(v.id)}</Link> · {fechaCorta(v.fecha)} · {v.cliente_nombre}
+                  </span>
+                  <strong>{usd(v.total_usd)}</strong>
+                </li>
+              ))}
+            </ul>
+            {sinFactura.length > 60 && <p className="ayuda">Y {sinFactura.length - 60} más.</p>}
+          </>
         )}
       </section>
 

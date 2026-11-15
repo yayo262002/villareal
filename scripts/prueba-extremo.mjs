@@ -2240,10 +2240,13 @@ async function probarBanco() {
     return decodeURIComponent(res.headers.get("location") ?? "");
   };
   await avisar(conNombre("JOSE RAMIREZ", "800,00", "555566667777"));
+  // Con cuatro cifras de la referencia ya no basta: quien vio la captura de otro podía quedarse con su pago.
   let destino = await yaPague({ referencia: "7777", monto: "800,00" });
+  comprobar("pago móvil: «Ya pagué» con solo cuatro cifras de la referencia pide más", destino.includes("pago=sin_referencia"), destino);
+  destino = await yaPague({ referencia: "667777", monto: "800,00" });
   m = await movimiento("555566667777");
   comprobar("pago móvil: el cliente avisa un pago que ya entró y se le abona en el momento", destino.includes("pago=abonado") && m.estado === "aplicado" && m.como === "aviso" && m.cliente_id === clienteId, destino);
-  destino = await yaPague({ referencia: "9999", monto: "Bs. 100,00" });
+  destino = await yaPague({ referencia: "009999", monto: "Bs. 100,00" });
   comprobar("pago móvil: un pago avisado que aún no llega queda esperando", destino.includes("pago=esperando") && (await consultar("select count(*) as n from avisos_de_pago where cliente_id = ? and estado = 'pendiente'", [clienteId]))[0].n === 1, destino);
   a = await avisar(conTelefono("100,00", "0414-0000001", "123400009999"));
   m = await movimiento("123400009999");
@@ -2979,6 +2982,15 @@ async function probarLibroDeCompras() {
   );
   p = await pagina(`/admin/facturas/compras?mes=${mes}`);
   comprobar("la pantalla del mes enseña las dos facturas y su IVA", p.html.includes("A-123") && p.html.includes("C-9") && p.html.includes("IVA pagado"));
+
+  // El IVA del mes: el de las ventas menos el de las compras (160 + 960 de las dos de arriba), en Facturas y para Excel.
+  const iva = await fetch(`${base}/admin/facturas/iva`, { headers: { cookie } });
+  const ivaCsv = Buffer.from(await iva.arrayBuffer()).toString("utf8");
+  const filaDelMes = ivaCsv.split("\r\n").find((l) => l.includes(";") && !l.startsWith("﻿Mes") && l.split(";")[8] === "1120,00");
+  comprobar("el IVA mes a mes para el contador lleva el crédito fiscal de las compras del mes", iva.status === 200 && ivaCsv.includes("IVA de las compras (crédito) Bs") && Boolean(filaDelMes), ivaCsv.slice(0, 500));
+  p = await pagina(`/admin/facturas?mes=${mes}`);
+  comprobar("Facturas enseña el IVA del mes y las ventas sin factura", legible(p.html).includes("IVA de las compras") && legible(p.html).includes("sin factura"));
+  comprobar("el IVA mes a mes no se descarga sin sesión", (await fetch(`${base}/admin/facturas/iva`, { redirect: "manual" })).status !== 200);
 
   // Se limpia: las facturas de prueba salen del libro y el jugo de la lista.
   for (const f of await consultar("select id from facturas_compra where numero in ('A-123', 'C-9')")) {

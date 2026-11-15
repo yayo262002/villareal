@@ -7,6 +7,7 @@ import { enlaceWhatsappA, mensajeOfrecer } from "@/lib/whatsapp";
 import { fechaCorta, hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Estudio de clientes" };
 
@@ -20,6 +21,7 @@ const AQUI = "/admin/clientes/seguimiento";
  * trato y lo saca de la lista hasta dentro de una semana.
  */
 export default async function PaginaSeguimiento({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const fecha = hoy();
   const estudio = await estudioDeClientes(fecha);

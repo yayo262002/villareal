@@ -6,6 +6,7 @@ import { conVencimiento, describirUrgencia, describirVencimiento, porUrgencia, t
 import { fechaCorta, hoy, redondear, usd } from "@/lib/dinero";
 import { enlaceWhatsappA } from "@/lib/whatsapp";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Lo que te deben" };
 
@@ -19,6 +20,7 @@ const PAGADAS_A_MOSTRAR = 50;
  * cuando los pagos del cliente ya la cubren.
  */
 export default async function PaginaCuentas() {
+  await exigirPanel();
   const [clientes, ventas] = await Promise.all([listarClientes(), listarVentas(5000)]);
 
   const pagadoPorCliente = new Map(clientes.map((c) => [c.id, c.total_pagado_usd]));

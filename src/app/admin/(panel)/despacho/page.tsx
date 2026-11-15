@@ -17,6 +17,7 @@ import { FotosDeLaNota } from "@/components/fotos-de-nota";
 import { diasEntre } from "@/lib/credito";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
+import { exigirPanel } from "@/lib/panel";
 
 export const metadata = { title: "Ruta de despacho" };
 /** Marcar entregada puede incluir leer la foto de la nota, que tarda unos segundos. */
@@ -88,6 +89,7 @@ function Pedidos({ pedidos, volverA }: { pedidos: VentaConLineas[] | undefined; 
  * (`?c=3&c=8`), así la ruta se puede guardar o mandar a quien reparte.
  */
 export default async function PaginaDespacho({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
+  await exigirPanel();
   const parametros = await searchParams;
   const elegidos = new Set(
     (Array.isArray(parametros.c) ? parametros.c : parametros.c ? [parametros.c] : []).map(Number).filter((n) => n > 0),
