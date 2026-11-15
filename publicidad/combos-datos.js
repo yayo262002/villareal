@@ -25,7 +25,8 @@ const CM = {
   "pechuga-de-pavo-ahumada": 29,
   huevos: 9,
   salchichas: 17,
-  tocineta: 28,
+  // Más grande que los jamones, como es (el dueño, 15/11/2026: «la tocineta ya sabes que es más grande»); era de 28.
+  tocineta: 36,
   // Casi tan alta como el queso amarillo: con 30, en el combo 9 el queso se veía muy pequeño a su lado (el dueño, 13/11).
   "mortadela-punta-de-monte": 27,
   "pan-de-sandwich": 34,

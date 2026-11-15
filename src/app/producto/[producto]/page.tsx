@@ -140,6 +140,9 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
     .map((r) => ({ ...r, etiqueta: variantes.length > 1 && r.variante_id ? (variantes.find((m) => m.id === r.variante_id)?.marca || r.variante_nombre) : null }));
   const ventajas = [...new Set([...ventajasDe(producto.descripcion), ...(unico ? ventajasDe(unico.descripcion) : [])])];
   const imagen = imagenDeProducto(direccionDeFotoDeProducto(producto), producto.nombre, fotoDeAlgunaVariante(variantes));
+  // Un artículo sin foto propia no se enseña con la de otra marca (Punta de Monte con el paquete de Alibal): la del tipo,
+  // la de referencia o el león, como en la página de cada marca.
+  const sinFotoPropia = imagenDeProducto(direccionDeFotoDeProducto(producto), producto.nombre);
   const familia = v.todasLasFamilias.find((f) => f.id === producto.familia_id) ?? null;
   // Debajo, primero los de su misma familia (los otros quesos), después los que comparten con él un negocio o una familia
   // (la mozzarella y los jamones, en Pizzería) y, si no hay ninguno, otros cualquiera. El título dice cuál es el caso.
@@ -253,7 +256,7 @@ export default async function PaginaProducto({ params, searchParams }: Parametro
                     <li key={m.id} className={estilos.variante}>
                       <Link href={ruta} className={estilos.varianteEnlace} aria-label={`Ver ${producto.nombre} ${m.nombre}`}>
                         <FotoDeProducto
-                          imagen={suFoto ? { src: suFoto, referencial: false } : imagen}
+                          imagen={suFoto ? { src: suFoto, referencial: false } : sinFotoPropia}
                           nombre={`${producto.nombre} ${m.nombre}`}
                           className={estilos.varianteFoto}
                           aviso

@@ -1483,6 +1483,23 @@ Binance y otro.
   los huevos por caja o por unidad son presentaciones de Huevos, los
   refrescos individuales y familiares, de Refrescos, y las papas ralladas
   son los hash browns.
+- **La charcutería en la web** (el dueño, 15/11/2026: «añade a mi página web
+  todo lo que ya tengo en la charcutería en las facturas que te he pasado»).
+  Cada producto de la charcutería de la lista del detal que se sigue
+  comprando es un artículo del catálogo, con su marca, y está unido a su
+  producto de la lista (`lista_detal.producto_id`, `variante_id`): las
+  facturas siguientes le cambian el costo solas. El precio al mayor es el
+  costo más un 10 % (`margen_pct` del tipo), la misma regla de la mozzarella
+  y del Sortilegio. En Embutidos, por secciones: Jamones (de espalda, de
+  pierna, ahumado, arepero), Pavo (pechuga), Mortadelas y boloña (la
+  mortadela por kilo, la «Mortadela en pieza» de 1 kg y 500 g, que va por
+  unidad, y la boloña de pollo), Salchichas (de paquete y a granel) y
+  Tocineta; en Quesos, el queso amarillo (El Legado y Mi Vallecito; el
+  Kemmental, que no se vende, escondido) y el pecorino; en Lácteos, los
+  sueros y las cremas de leche. Lo que la lista marca «ya no se compra» no
+  entra. Las fotos son las de su mercancía recortada (`publicidad/fotos/`);
+  un artículo sin foto propia se enseña con la del tipo, la de referencia o
+  el león, nunca con la de otra marca.
 - **Ofertas y combos** (`/admin/ofertas`): cada oferta tiene nombre,
   descripción, precio en dólares (vacío: «consulta el precio»), fechas
   desde y hasta (vacías: sin límite), estado (borrador, activa, inactiva),
@@ -1600,7 +1617,9 @@ Binance y otro.
   la dirección y la ubicación para el próximo pedido. Las cuentas, con
   pruebas, en `src/lib/delivery.ts`; la portada, «Cómo comprar» y el pie
   dicen que hay delivery.
-- **Las fotos** de la portada y de las familias son, desde el 13/11/2026,
+- **Las fotos** de la portada y de las familias (desde el 15/11/2026, sin el
+  Kemmental, que no se vende: va el Mi Vallecito; y la tocineta más grande
+  que los jamones, como es) son, desde el 13/11/2026,
   **la mercancía del negocio sobre color** (al dueño no le gustaban las
   fotos de comida de internet: «nada, ni el de la hamburguesa, quesos,
   nada»): sus productos recortados (los de las hojas de los combos y los
@@ -1821,12 +1840,12 @@ Binance y otro.
 - El RIF está al día: el comprobante digital (formato nuevo, sin fecha de
   vencimiento) dice «Última actualización 19/08/2026», con el mismo
   domicilio fiscal de `negocio.ts`. Contribuyente ordinario del IVA.
-- Poner los precios reales: el de los huevos es de ejemplo y el panel lo
-  avisa; las marcas del queso amarillo / cheddar (Kemmental, El Legado) y
-  del pecorino (Sortilegio, Guaralac) están creadas con su foto y sin
-  precio, y la web dice «consulta el precio del día». El pecorino se vende
-  en bolsa de 500 g, por unidad. El de la mozzarella (7,70 USD el kilo) es
-  real.
+- El precio de los huevos es de ejemplo y el panel lo avisa. La
+  charcutería tiene precio desde el 15/11/2026 (costo de la lista + 10 %).
+- Fotos de los artículos de la charcutería que no tienen la suya (Magro's,
+  la mortadela tapara, las mortadelas en pieza de 1 kg y la Punta de Monte
+  de 500 g, las salchichas a granel, la tocineta Cumbre Fresca y casi todo
+  San Pedro): se suben en la ficha de cada marca.
 - Ver si Guaralac (la marca del pecorino) y Guaralact (la del suero) son
   la misma: si lo son, unirlas en Productos → Marcas.
 - Fotos propias de los productos: hoy llevan una foto de referencia, marcada
