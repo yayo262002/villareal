@@ -84,7 +84,107 @@ function tamanoDeLetra(lineas: string[], tipo: FormaDeSticker, altoDisponible: n
 
 const PROPORCION_DEL_LEON = 1668 / 2400;
 
+// ---------- Los cinco de todos los días, con su propio diseño ----------
+//
+// El dueño (15/11/2026): «haz diseños más bonitos, pero solo necesito esos». Cada uno con el borde blanco recortado
+// alrededor de todo (letras incluidas) y una sombra suave, como un sticker de verdad: así se ve igual sobre cualquier
+// fondo del chat. Letra grande, que se lea en el tamaño pequeño del chat; el león, sobre verde, que es donde se ve.
+
+const VERDE = "#163f28";
+const VERDE_OSCURO = "#0f2a1b";
+const ORO = "#f3c84b";
+const ORO_HONDO = "#d9a521";
+const CREMA = "#fffdf7";
+const ROJO = "#d64a3a";
+
+/** El borde blanco recortado alrededor de todo lo que se dibuja dentro, con su sombra. */
+function troquel(id: string): string {
+  return `<filter id="${id}" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+    <feMorphology in="SourceAlpha" operator="dilate" radius="13" result="grueso"/>
+    <feGaussianBlur in="grueso" stdDeviation="1.2" result="suave"/>
+    <feComponentTransfer in="suave" result="borde"><feFuncA type="linear" slope="3" intercept="-0.4"/></feComponentTransfer>
+    <feFlood flood-color="#ffffff"/>
+    <feComposite in2="borde" operator="in" result="blanco"/>
+    <feDropShadow in="blanco" dx="0" dy="5" stdDeviation="5" flood-color="#000000" flood-opacity="0.3" result="conSombra"/>
+    <feMerge><feMergeNode in="conSombra"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>`;
+}
+
+/** Un texto centrado en Archivo Black, que cabe en el ancho dado (baja la letra si hace falta). */
+function letrero(texto: string, y: number, tamano: number, color: string, ancho: number, x = 256): string {
+  const cabe = Math.min(tamano, ancho / (texto.length * 0.62));
+  return `<text x="${x}" y="${y}" text-anchor="middle" font-family="Archivo Black" font-size="${cabe.toFixed(1)}" fill="${color}">${escapar(texto)}</text>`;
+}
+
+function leonEn(leon: string, cx: number, y: number, alto: number): string {
+  const ancho = alto * PROPORCION_DEL_LEON;
+  return `<image href="${leon}" x="${(cx - ancho / 2).toFixed(1)}" y="${y}" width="${ancho.toFixed(1)}" height="${alto}"/>`;
+}
+
+/** Un círculo con la palomita, de sello: para «confirmado» y «recibido». */
+function palomita(cx: number, cy: number, r: number, fondo: string, trazo: string): string {
+  const e = r / 60;
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fondo}"/>
+    <path d="M${cx - 27 * e} ${cy + 1 * e} L${cx - 8 * e} ${cy + 20 * e} L${cx + 28 * e} ${cy - 20 * e}" fill="none" stroke="${trazo}" stroke-width="${(15 * e).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
+const DISENOS: Record<string, (s: Sticker, leon: string) => string> = {
+  "gracias-por-preferirnos": (s, leon) => `
+    <path d="M70 300 H30 L52 338 L30 376 H70 Z M442 300 H482 L460 338 L482 376 H442 Z" fill="${ORO_HONDO}"/>
+    <rect x="58" y="268" width="396" height="136" rx="26" fill="${ORO}"/>
+    <circle cx="256" cy="168" r="122" fill="${VERDE}"/>
+    <circle cx="256" cy="168" r="108" fill="none" stroke="${ORO}" stroke-width="5"/>
+    ${leonEn(leon, 256, 84, 166)}
+    ${letrero("¡Gracias por", 326, 50, VERDE_OSCURO, 370)}
+    ${letrero("preferirnos!", 384, 50, VERDE_OSCURO, 370)}
+    <path d="M256 470 C215 444 200 424 207 407 C214 391 238 389 256 408 C274 389 298 391 305 407 C312 424 297 444 256 470 Z" fill="${ROJO}"/>`,
+  "pedido-confirmado": (s, leon) => `
+    <circle cx="256" cy="250" r="206" fill="${VERDE}"/>
+    <circle cx="256" cy="250" r="188" fill="none" stroke="${ORO}" stroke-width="5"/>
+    ${leonEn(leon, 256, 74, 128)}
+    ${letrero("Pedido", 268, 66, CREMA, 300)}
+    ${letrero("confirmado", 330, 56, ORO, 286)}
+    ${palomita(398, 402, 62, ORO, VERDE_OSCURO)}`,
+  "mis-datos-de-pago-movil": (s) => {
+    const [banco = "", cedula = "", telefono = ""] = s.detalle ?? [];
+    return `
+    <rect x="34" y="96" width="444" height="352" rx="42" fill="${VERDE}"/>
+    <rect x="50" y="112" width="412" height="320" rx="30" fill="none" stroke="${ORO}" stroke-width="4"/>
+    <rect x="96" y="52" width="320" height="82" rx="41" fill="${ORO}"/>
+    <g transform="translate(122 70) scale(1.9)" fill="none" stroke="${VERDE_OSCURO}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ICONOS.telefono}</g>
+    ${letrero("Pago móvil", 108, 44, VERDE_OSCURO, 230, 286)}
+    ${letrero(banco, 214, 36, CREMA, 360)}
+    ${letrero(cedula, 290, 44, CREMA, 360)}
+    ${letrero(telefono, 380, 64, ORO, 352)}`;
+  },
+  "recibido-gracias": () => `
+    <path d="M100 66 H412 A64 64 0 0 1 476 130 V330 A64 64 0 0 1 412 394 H186 L104 466 L120 394 H100 A64 64 0 0 1 36 330 V130 A64 64 0 0 1 100 66 Z" fill="${ORO}"/>
+    ${letrero("Recibido,", 222, 74, VERDE_OSCURO, 396)}
+    ${letrero("¡gracias!", 310, 74, VERDE_OSCURO, 396)}
+    ${palomita(420, 82, 58, VERDE, ORO)}`,
+  confirmado: () => `
+    <g transform="rotate(-4 256 256)">
+      <circle cx="256" cy="206" r="164" fill="${VERDE}"/>
+      <circle cx="256" cy="206" r="146" fill="none" stroke="${ORO}" stroke-width="5"/>
+      <path d="M176 210 L234 266 L342 150" fill="none" stroke="${ORO}" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M44 352 H468 L452 396 L468 440 H44 L60 396 Z" fill="${ORO}"/>
+      ${letrero("¡Confirmado!", 418, 58, VERDE_OSCURO, 380)}
+    </g>`,
+};
+
+function svgEspecial(s: Sticker, leon: string): string | null {
+  const dibujo = DISENOS[s.slug];
+  if (!dibujo) return null;
+  const id = `troquel-${s.slug}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>${troquel(id)}</defs>
+  <g filter="url(#${id})">${dibujo(s, leon)}</g>
+</svg>`;
+}
+
 function svgDe(s: Sticker, leon: string): string {
+  const especial = svgEspecial(s, leon);
+  if (especial) return especial;
   const c = COLORES[s.color];
   const esLogo = s.slug === "villa-real";
   const conDetalle = Boolean(s.detalle?.length);
@@ -272,7 +372,8 @@ const resultados = await conChrome(async (enviar) => {
     const y = Math.floor(i / COLUMNAS) * LADO;
     const captura = (await enviar("Page.captureScreenshot", { format: "png", clip: { x, y, width: LADO, height: LADO, scale: 1 }, captureBeyondViewport: true })) as { data: string };
     const crudo = Buffer.from(captura.data, "base64");
-    const png = await sharp(crudo).png({ compressionLevel: 9, palette: true, quality: 90 }).toBuffer();
+    // Los cinco de su propio diseño llevan sombra suave: van en color completo, que la paleta la dejaría a escalones.
+    const png = await sharp(crudo).png({ compressionLevel: 9, palette: !(s.slug in DISENOS), quality: 90 }).toBuffer();
     const webp = await sharp(crudo).webp({ quality: 88, alphaQuality: 90 }).toBuffer();
     fs.writeFileSync(path.join(salida, `${s.slug}.png`), png);
     fs.writeFileSync(path.join(salida, `${s.slug}.webp`), webp);

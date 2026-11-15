@@ -1729,7 +1729,15 @@ Binance y otro.
   `public/stickers/`, con un ZIP. Desde la pantalla se guardan en el
   teléfono y en WhatsApp se convierten en sticker con la foto (en iPhone:
   «+» → Sticker; en Android: stickers → crear). Para cambiar uno o añadir
-  otro, se edita la lista y se vuelve a correr el guion. El sticker con los
+  otro, se edita la lista y se vuelve a correr el guion. **Los cinco de todos
+  los días** (el dueño, 15/11/2026: «solo necesito esos»): «Recibido,
+  ¡gracias!», «¡Confirmado!», «Pedido confirmado», «Pago móvil» con sus datos
+  y «¡Gracias por preferirnos!» tienen su propio diseño (`DISENOS` en
+  `scripts/stickers.ts`): letra grande, el león sobre verde, borde blanco
+  recortado y sombra, en PNG de color completo; salen arriba en la pantalla
+  (`STICKERS_DE_SIEMPRE`) y los demás, plegados en «Otros stickers». La
+  pantalla avisa de guardarlos desde ahí y no con una captura: la captura
+  trae el fondo blanco y en el chat sale un cuadro blanco. El sticker con los
   **datos del pago móvil del dueño** (banco, cédula y teléfono) los toma de
   `PAGO_MOVIL_BANCO`, `PAGO_MOVIL_CEDULA` y `PAGO_MOVIL_TELEFONO` en
   `.env.local`: no van en el código, que es público (en la imagen sí, que es

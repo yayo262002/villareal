@@ -141,6 +141,17 @@ export const STICKERS: Sticker[] = [
   { slug: "ya-cerramos", lineas: ["Ya cerramos,", "mañana", "seguimos"], grupo: "horario", forma: "circulo", color: "negro", icono: "luna" },
 ];
 
+/**
+ * Los cinco de todos los días (el dueño, 15/11/2026: «solo necesito esos»), en el orden en que se usan: salen arriba
+ * en la pantalla, con su propio diseño (`DISENOS` en scripts/stickers.ts); los demás quedan plegados debajo.
+ */
+export const STICKERS_DE_SIEMPRE = ["recibido-gracias", "confirmado", "pedido-confirmado", "mis-datos-de-pago-movil", "gracias-por-preferirnos"] as const;
+
+export function stickersDeSiempre(): Sticker[] {
+  return STICKERS_DE_SIEMPRE.map((slug) => STICKERS.find((s) => s.slug === slug)).filter((s): s is Sticker => Boolean(s));
+}
+
+/** Los de un grupo, sin los de todos los días (esos ya salen arriba). */
 export function stickersDelGrupo(grupo: GrupoDeSticker): Sticker[] {
-  return STICKERS.filter((s) => s.grupo === grupo);
+  return STICKERS.filter((s) => s.grupo === grupo && !(STICKERS_DE_SIEMPRE as readonly string[]).includes(s.slug));
 }
