@@ -2,7 +2,7 @@ import Link from "next/link";
 import { contarFacturas, documentosDelLibro, facturasSinControl, ivaDeLosMeses, listarFacturas, mesesConFacturas, resumenDeIva, rotuloFacturado, ventasSinFactura } from "@/lib/facturas";
 import { numeroDeNota } from "@/lib/entregas";
 import { alicuotaIva, numeracionDeFacturasDesde } from "@/lib/ajustes";
-import { guardarAjustesDeFacturacion } from "@/lib/acciones";
+import { emitirFactura, guardarAjustesDeFacturacion } from "@/lib/acciones";
 import { NOMBRE_DOCUMENTO, mesDe, numeroDeFactura, totalesDelLibro } from "@/lib/factura-calculo";
 import { bs, fechaCorta, hoy, mesLegible, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
@@ -232,7 +232,22 @@ export default async function PaginaFacturas({ searchParams }: { searchParams: P
                   <span>
                     <Link href={`/admin/ventas/${v.id}/nota`}>Nota {numeroDeNota(v.id)}</Link> · {fechaCorta(v.fecha)} · {v.cliente_nombre}
                   </span>
-                  <strong>{usd(v.total_usd)}</strong>
+                  <span style={{ display: "flex", gap: "var(--espacio-2)", alignItems: "center" }}>
+                    <strong>{usd(v.total_usd)}</strong>
+                    {v.facturable ? (
+                      <form action={emitirFactura}>
+                        <input type="hidden" name="venta_id" value={v.id} />
+                        <input type="hidden" name="volver_a" value="/admin/facturas#sin-factura" />
+                        <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`} title="Emite la factura fiscal de esta venta, con su IVA">
+                          Facturar
+                        </button>
+                      </form>
+                    ) : (
+                      <Link href={`/admin/ventas/${v.id}/nota`} title="Hace falta la cédula o el RIF de quien compra">
+                        Facturar…
+                      </Link>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>

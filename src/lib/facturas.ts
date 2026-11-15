@@ -456,7 +456,8 @@ export async function ivaDeLosMeses(): Promise<{ meses: IvaDelMes[]; ventas: Map
   return { meses, ventas, compras };
 }
 
-export type VentaSinFactura = { id: number; fecha: string; cliente_id: number; cliente_nombre: string; total_usd: number };
+/** `facturable`: se puede facturar de un toque (el cliente tiene cédula o RIF en su ficha y no es el mostrador). */
+export type VentaSinFactura = { id: number; fecha: string; cliente_id: number; cliente_nombre: string; total_usd: number; facturable: number };
 
 /**
  * Las ventas de un mes que no tienen factura vigente (nunca se facturaron, o su factura se anuló): desde la Providencia
@@ -464,7 +465,8 @@ export type VentaSinFactura = { id: number; fecha: string; cliente_id: number; c
  */
 export async function ventasSinFactura(mes: string): Promise<VentaSinFactura[]> {
   return filas<VentaSinFactura>(
-    `select v.id, v.fecha, v.cliente_id, ${ROTULO_DEL_CLIENTE} as cliente_nombre, v.total_usd
+    `select v.id, v.fecha, v.cliente_id, ${ROTULO_DEL_CLIENTE} as cliente_nombre, v.total_usd,
+            (trim(c.cedula_rif) <> '' and c.nombre <> 'Mostrador') as facturable
        from ventas v join clientes c on c.id = v.cliente_id
       where v.fecha like ? and coalesce(c.de_la_casa, 0) = 0
         and not exists (select 1 from facturas f where f.venta_id = v.id and f.tipo = 'factura' and f.estado = 'emitida')

@@ -670,6 +670,23 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- Los pedidos que se mandan desde el carrito de la web: el pedido va por WhatsApp, y aquí queda una copia para
+  -- que no se pierda entre los chats. No es una venta: la venta se anota en la caja cuando se confirma.
+  create table if not exists pedidos_web (
+    id integer primary key autoincrement,
+    nombre text not null default '',
+    negocio text not null default '',
+    nota text not null default '',
+    mensaje text not null,
+    lineas text not null default '[]',
+    productos integer not null default 0,
+    total_usd real,
+    estado text not null default 'nuevo' check (estado in ('nuevo', 'atendido', 'descartado')),
+    creado_en text not null default (datetime('now')),
+    atendido_en text
+  );
+  create index if not exists pedidos_web_estado on pedidos_web(estado);
+
   -- Lo que se pide a lo público que cuesta (la consulta del delivery que pregunta al mapa), para frenar a quien
   -- lo pida demasiado. No entra en las copias: no es parte del negocio.
   create table if not exists peticiones_publicas (
@@ -744,6 +761,7 @@ export const TABLAS = [
   "avisos_de_pago",
   "nombres_en_notas",
   "pagadores_de_la_casa",
+  "pedidos_web",
 ] as const;
 
 /**

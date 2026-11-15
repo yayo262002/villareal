@@ -17,6 +17,7 @@ import { estudioDeClientes } from "@/lib/estudio-de-clientes";
 import { describirTrato } from "@/lib/seguimiento";
 import { generarAvisosSiFaltan } from "@/lib/avisos";
 import { resumenDelBanco } from "@/lib/banco";
+import { contarPedidosNuevos } from "@/lib/pedidos-web";
 import { negocio } from "@/config/negocio";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "./panel.module.css";
@@ -53,7 +54,7 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
     clientesConVencimiento(hoy(), { clientes, ventas: todasLasVentas }),
     estudioDeClientes(hoy(), true, { clientes, ventas: todasLasVentas, pagos: todosLosPagos, recordados }),
   ]);
-  const [hoyCierre, entregas, banco] = await Promise.all([cierreDelDia(hoy()), listarVentasPorEntregar().then(conLineas), resumenDelBanco()]);
+  const [hoyCierre, entregas, banco, pedidosNuevos] = await Promise.all([cierreDelDia(hoy()), listarVentasPorEntregar().then(conLineas), resumenDelBanco(), contarPedidosNuevos()]);
   const fecha = hoy();
   const atrasoDe = (e: (typeof entregas)[number]) => (e.entrega_prevista ? diasEntre(e.entrega_prevista, fecha) : null);
   const atrasadas = entregas.filter((e) => (atrasoDe(e) ?? -1) > 0).length;
@@ -118,6 +119,22 @@ export default async function PaginaResumen({ searchParams }: { searchParams: Pr
           </div>
         </dl>
       </section>
+
+      {pedidosNuevos > 0 && (
+        <section className={`tarjeta ${estilos.tarjetaAviso}`}>
+          <div className={estilos.encabezado}>
+            <h2 className={estilos.subtitulo} style={{ marginBottom: 0 }}>
+              {pedidosNuevos === 1 ? "1 pedido nuevo desde la web" : `${pedidosNuevos} pedidos nuevos desde la web`}
+            </h2>
+            <Link href="/admin/pedidos" className="boton">
+              Verlos
+            </Link>
+          </div>
+          <p className="ayuda" style={{ marginBottom: 0 }}>
+            Te llegaron también por WhatsApp. Al contestarlos, márcalos «Atendido».
+          </p>
+        </section>
+      )}
 
       {banco.por_identificar > 0 && (
         <section className={`tarjeta ${estilos.tarjetaAviso}`}>

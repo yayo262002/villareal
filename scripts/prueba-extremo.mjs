@@ -2099,6 +2099,32 @@ async function probarVitrina() {
  * El delivery de la web: el carrito pregunta a /api/delivery por el GPS o por la dirección, y el panel pone las tarifas.
  * Una dirección por calle y carrera se sitúa en el plano sin preguntar al mapa (en local el mapa está apagado).
  */
+/** Los pedidos del carrito: una copia queda en «Pedidos de la web» del panel, sin repetirse, y se marcan atendidos. */
+async function probarPedidosWeb() {
+  const pedido = {
+    lineas: [{ clave: "2", cantidad: 5 }, { clave: "no-vale", cantidad: 1 }],
+    nombre: "Luis",
+    negocio: "Pizzería de prueba",
+    nota: "Para el viernes",
+    mensaje: "Hola Villa Real, quiero hacer este pedido:\n- Mozzarella: 5 kg\nA nombre de Luis (Pizzería de prueba).",
+    total_usd: 41.8,
+  };
+  const mandar = (cuerpo) => fetch(base + "/api/pedido", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(cuerpo) });
+  let r = await mandar(pedido);
+  comprobar("pedido de la web: la copia del carrito se guarda", r.status === 200 && (await r.json()).ok === true);
+  r = await mandar(pedido);
+  const guardados = await consultar("select * from pedidos_web where negocio = 'Pizzería de prueba'");
+  comprobar("pedido de la web: el mismo pedido dos veces es uno, y solo con lo que se puede pedir", (await r.json()).repetido === true && guardados.length === 1 && guardados[0].productos === 1, JSON.stringify(guardados));
+  comprobar("pedido de la web: sin productos no se guarda", (await mandar({ ...pedido, lineas: [] })).status === 400);
+  comprobar("pedido de la web: lo que no es un pedido no se guarda", (await fetch(base + "/api/pedido", { method: "POST", body: "hola" })).status === 400);
+  const pantalla = legible((await pagina("/admin/pedidos")).html);
+  comprobar("pedido de la web: sale en el panel, con lo que pidió", pantalla.includes("Luis · Pizzería de prueba") && pantalla.includes("Mozzarella: 5 kg") && pantalla.includes("Nuevos (1)"));
+  comprobar("pedido de la web: el Resumen lo avisa", legible((await pagina("/admin")).html).includes("1 pedido nuevo desde la web"));
+  comprobar("pedido de la web: la pantalla no se ve sin sesión", (await pagina("/admin/pedidos", "")).status !== 200);
+  r = await enviar("/admin/pedidos", 'name="estado" value="atendido"', { id: String(guardados[0].id), estado: "atendido" });
+  comprobar("pedido de la web: «Atendido» lo saca de los nuevos", r.destino.includes("atendido") && (await consultar("select estado from pedidos_web where id = ?", [guardados[0].id]))[0].estado === "atendido", r.destino);
+}
+
 async function probarDelivery() {
   const cerca30 = "Calle 30 entre carreras 20 y 21";
   let d = await (await fetch(base + `/api/delivery?direccion=${encodeURIComponent(cerca30)}`)).json();
@@ -3469,6 +3495,7 @@ try {
     await probarLibroDeCompras();
     await probarVitrina();
     await probarDelivery();
+    await probarPedidosWeb();
     await probarBanco();
     await probarTareaDiaria();
     await probarRecuperacion();

@@ -28,6 +28,7 @@ const SECCIONES = [
   { ruta: "/admin/pagos", nombre: "Abonos" },
   { ruta: "/admin/banco", nombre: "Pago móvil" },
   { ruta: "/admin/despacho", nombre: "Despacho" },
+  { ruta: "/admin/pedidos", nombre: "Pedidos web" },
   { ruta: "/admin/delivery", nombre: "Delivery" },
   { ruta: "/admin/cuentas", nombre: "Te deben" },
   { ruta: "/admin/estadisticas", nombre: "Estadísticas" },

@@ -141,6 +141,7 @@ import {
   unirVentaConElBanco,
 } from "./banco";
 import { separarAvisos } from "./banco-calculo";
+import { cambiarEstadoDelPedido, esEstadoDePedido } from "./pedidos-web";
 import { anotarContacto, esTipoDeContacto, TIPOS_DE_CONTACTO } from "./contactos";
 import { duenoDelCodigo, limpiarCodigo, limpiarSku, ponerCodigoAProducto, ponerCodigoAVariante } from "./codigos";
 import { guardarPrecioEspecial, listarPreciosEspecialesDe, quitarPrecioEspecial } from "./precios-especiales";
@@ -3110,6 +3111,16 @@ export async function cerrarSesionesEnTodosLados(): Promise<void> {
   await exigirSesion();
   await cerrarTodasLasSesiones();
   volverConExito("/admin/avisos#seguridad", "Listo: en los demás teléfonos hay que volver a escribir la clave. Este sigue dentro.");
+}
+
+/** «Atendido», «Descartar» o «Volver a nuevo» en un pedido de la web. */
+export async function marcarPedido(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = numero(datos, "id") ?? 0;
+  const estado = texto(datos, "estado");
+  if (!id || !esEstadoDePedido(estado)) volverConError("/admin/pedidos", "No se encontró ese pedido.");
+  await cambiarEstadoDelPedido(id, estado);
+  volverConExito(`/admin/pedidos`, estado === "atendido" ? "Marcado como atendido." : estado === "descartado" ? "Descartado." : "Vuelve a estar entre los nuevos.");
 }
 
 /** Crea o cambia la clave con que el teléfono manda los avisos del banco. */

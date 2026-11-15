@@ -175,7 +175,29 @@ export function PaginaCarrito({ negocio, whatsapp, direccionTienda }: { negocio:
         </div>
 
         {enlace && disponibles.length > 0 ? (
-          <a className={`boton ${estilos.enviar}`} href={enlace} target="_blank" rel="noopener">
+          <a
+            className={`boton ${estilos.enviar}`}
+            href={enlace}
+            target="_blank"
+            rel="noopener"
+            onClick={() => {
+              // Una copia del pedido queda en el panel («Pedidos de la web»), para que no se pierda entre los chats. No se
+              // espera la respuesta: WhatsApp se abre igual.
+              try {
+                const copia = JSON.stringify({
+                  lineas: disponibles.map((l) => ({ clave: l.clave, cantidad: l.cantidad })),
+                  nombre,
+                  negocio: suNegocio,
+                  nota,
+                  mensaje,
+                  total_usd: totalUsd,
+                });
+                navigator.sendBeacon?.("/api/pedido", new Blob([copia], { type: "application/json" }));
+              } catch {
+                // Sin la copia el pedido va igual por WhatsApp.
+              }
+            }}
+          >
             <IconoWhatsapp tamano={22} />
             Enviar pedido por WhatsApp
           </a>

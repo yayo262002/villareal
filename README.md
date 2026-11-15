@@ -192,6 +192,8 @@ src/components/carrito/entrega.tsx  «¿Cómo lo recibes?» en el carrito: deliv
 src/app/admin/(panel)/delivery/  Las tarifas del delivery por distancia y «Probar una dirección»
 src/components/carrito/   «Agregar», el contador de la cabecera y la página del carrito (lo guarda el teléfono)
 src/app/api/carrito/      Dice al carrito los nombres y los precios de hoy de lo que lleva
+src/app/api/pedido/       Guarda la copia del pedido que manda el carrito (Pedidos de la web) y avisa al teléfono
+src/lib/pedidos-web.ts    Los pedidos de la web: limpiar lo que llega, guardar, listar, atender
 src/app/productos/, categoria/, ofertas/, carrito/  Las páginas de la vitrina
 src/components/menu-movil.tsx  El menú del teléfono, que se cierra solo al cambiar de página
 public/portada/, public/familias/  Las fotos de la portada y de las familias: la mercancía sobre color (npm run fotos-web, CREDITOS.md)
@@ -1141,7 +1143,9 @@ Binance y otro.
   (`/admin/facturas/iva`) es para el contador, que lo confirma y declara;
   no resta las retenciones de IVA (`src/lib/iva-del-mes.ts`, con pruebas).
 - **Ventas sin factura** (Facturas): las del mes que no tienen factura
-  vigente, con su enlace a la nota, donde está «Facturar».
+  vigente. Las de un cliente con cédula o RIF en su ficha llevan
+  «Facturar» ahí mismo; las del mostrador (o sin cédula), «Facturar…», que
+  lleva a su nota para escribirla.
 - **Lo que no hace el sistema**: actualizar el RIF (se hace en el SENIAT;
   el de ahora es del 19/08/2026), elegir la imprenta digital, ni declarar
   el IVA. Lo dice la propia pantalla.
@@ -1546,9 +1550,18 @@ Binance y otro.
   WhatsApp con el pedido escrito: cada producto con cuánto y su precio, el
   total estimado, la tasa y a nombre de quién. Lo que no tiene precio va
   «por confirmar» y no suma. La página dice que **el pedido no queda hecho
-  hasta que el negocio responda**: abrir WhatsApp no registra nada, y el
-  dueño anota la venta en el panel como siempre. Los buscadores no
-  guardan esta página.
+  hasta que el negocio responda**: abrir WhatsApp no es una venta, y el
+  dueño la anota en la caja como siempre. Los buscadores no guardan esta
+  página.
+- **Pedidos de la web** (`/admin/pedidos`, en el menú «Pedidos web»; noche
+  del 14/11/2026). Al pulsar «Enviar pedido por WhatsApp», el carrito deja
+  también una copia del pedido en el panel (`navigator.sendBeacon` a
+  `/api/pedido`, sin esperar: WhatsApp se abre igual), para que ninguno se
+  pierda entre los chats: el Resumen dice cuántos hay nuevos, la campanita
+  y el teléfono avisan, y cada uno se marca «Atendido» o «Descartar». Es
+  público: lo que llega se limpia y se recorta, el mismo pedido dos veces es
+  uno, y cada dirección puede mandar cinco por hora (tabla `pedidos_web`,
+  `src/lib/pedidos-web.ts`).
 - **El delivery** (lo más importante para el dueño, 13/11/2026). En el
   carrito, «¿Cómo lo recibes?»: **delivery** a Barquisimeto y Cabudare o
   **lo busco en la tienda**. Con delivery, «Usar mi ubicación» (el GPS del
