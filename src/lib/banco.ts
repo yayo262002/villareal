@@ -141,7 +141,16 @@ export type Recibido =
  * Un aviso del banco. `encabezado`: el día (y la hora) que dice la notificación en la captura, para el aviso que no
  * trae «en fecha» (la transferencia): sin él vale el día en que llegó al panel.
  */
-export async function recibirDelBanco(texto: string, origen: "telefono" | "a_mano", encabezado: { fecha: string; hora: string | null } | null = null): Promise<Recibido> {
+/**
+ * `confiable` en falso: llegó en una captura de la pantalla sin el encabezado del BDV delante (`separarAvisos`): se
+ * guarda, pero no se abona solo; espera en la bandeja a que el dueño diga de quién es.
+ */
+export async function recibirDelBanco(
+  texto: string,
+  origen: "telefono" | "a_mano",
+  encabezado: { fecha: string; hora: string | null } | null = null,
+  confiable = true,
+): Promise<Recibido> {
   const lectura = leerAvisoDelBanco(texto);
   if (origen === "telefono") {
     await ponerUltimoContactoDelBanco({ momento: new Date().toISOString(), era_un_pago: lectura.leido, motivo: lectura.leido ? "" : lectura.motivo });
@@ -174,7 +183,7 @@ export async function recibirDelBanco(texto: string, origen: "telefono" | "a_man
     await ejecutar("update movimientos_banco set estado = 'no_es_abono', como = 'de_la_casa', resuelto_en = datetime('now') where id = ?", [r.ultimoId]);
     return { tipo: "nuevo", movimiento: (await buscarMovimiento(r.ultimoId))! };
   }
-  await conciliar(r.ultimoId);
+  if (confiable) await conciliar(r.ultimoId);
   const movimiento = (await buscarMovimiento(r.ultimoId))!;
   await avisarDelMovimiento(movimiento);
   return { tipo: "nuevo", movimiento };

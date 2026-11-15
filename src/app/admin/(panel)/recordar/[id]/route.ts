@@ -9,14 +9,17 @@ import { anotarRecordatorio } from "@/lib/recordatorios";
 import { enlaceWhatsappA, mensajeRecordatorio } from "@/lib/whatsapp";
 import { hoy } from "@/lib/dinero";
 import { haySesion } from "@/lib/sesion";
+import { vieneDeOtraWeb } from "@/lib/cron";
 
 /**
  * GET /admin/recordar/7 abre WhatsApp con el recordatorio de deuda del
  * cliente 7 (sus notas pendientes, sus plazos y su enlace de cuenta) y deja
  * anotado que se le recordó hoy. Solo con sesión.
  */
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
   if (!(await haySesion())) return new Response("No has iniciado sesión.", { status: 401 });
+  // Desde un enlace en otra web no se anota nada: solo desde el panel.
+  if (vieneDeOtraWeb(request)) return new Response("Ábrelo desde el panel.", { status: 403 });
 
   const { id } = await params;
   const cliente = await buscarCliente(Number(id));

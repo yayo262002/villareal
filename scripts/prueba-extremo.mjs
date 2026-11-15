@@ -2297,6 +2297,13 @@ ${conNombre("ANA MARIA SOTO", "450,00", "008000777001")}
   a = await avisar(conNombre("LUIS ALBERTO TORRES", "901,00", "008000555125"));
   comprobar("pago móvil: quitado de la casa, su pago vuelve a esperar en la bandeja", (await movimiento("008000555125"))?.estado === "por_conciliar", JSON.stringify(a));
 
+  // 10b. Un WhatsApp que imita el aviso del BDV en una captura no se abona solo, aunque traiga el teléfono de un cliente.
+  a = await avisar(`19:30 WhatsApp Juan: ${conTelefono("6.543,21", "0424-5550199", "445566778899")}`);
+  m = await movimiento("445566778899");
+  comprobar("pago móvil: un aviso en una captura sin el encabezado del BDV (un WhatsApp que lo imite) espera en la bandeja", m?.estado === "por_conciliar" && m.pago_id === null, JSON.stringify(a));
+  a = await avisar(`19:31 PagomóvilBDV recibido 19:31 ${conTelefono("6.543,22", "0424-5550199", "445566778800")}`);
+  comprobar("pago móvil: con el encabezado del BDV en la captura, se abona solo", (await movimiento("445566778800"))?.estado === "aplicado", JSON.stringify(a));
+
   // 11. Los céntimos de la tasa: un abono en bolívares que paga su nota con unos céntimos de menos vale justo la nota.
   escribirEnLocal("insert into clientes (nombre, telefono) values ('Cliente de los céntimos', '0414-0000321')");
   const idCentimos = Number((await consultar("select id from clientes where telefono = '0414-0000321'"))[0].id);

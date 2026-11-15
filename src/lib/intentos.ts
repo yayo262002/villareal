@@ -54,3 +54,20 @@ export async function anotarEntradaFallida(direccion: string): Promise<void> {
 export async function olvidarEntradasFallidas(direccion: string): Promise<void> {
   await ejecutar("delete from entradas_fallidas where direccion = ?", [direccion]);
 }
+
+/**
+ * Un freno para lo público que cuesta (la consulta del delivery con una dirección escrita pregunta al mapa libre, y si
+ * le preguntamos demasiado nos bloquea, también al panel): cuántas veces se ha pedido en los últimos minutos, desde esa
+ * dirección y en total. Si se puede, lo anota y devuelve true (revisión de seguridad del 14/11/2026).
+ */
+export async function peticionPermitida(tipo: string, direccion: string, limites: { porDireccion: number; enTotal: number; minutos: number }): Promise<boolean> {
+  const f = await fila<{ suyos: number; todos: number }>(
+    `select coalesce(sum(case when direccion = ? then 1 else 0 end), 0) as suyos, count(*) as todos
+       from peticiones_publicas where tipo = ? and momento > datetime('now', ?)`,
+    [direccion, tipo, `-${limites.minutos} minutes`],
+  );
+  if (Number(f?.suyos ?? 0) >= limites.porDireccion || Number(f?.todos ?? 0) >= limites.enTotal) return false;
+  await ejecutar("insert into peticiones_publicas (tipo, direccion) values (?, ?)", [tipo, direccion]);
+  await ejecutar("delete from peticiones_publicas where momento < datetime('now', '-1 day')");
+  return true;
+}

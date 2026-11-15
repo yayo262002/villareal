@@ -11,6 +11,7 @@ import {
   nombreParecido,
   referenciaUtil,
   separarAvisos,
+  vieneDelBanco,
 } from "./banco-calculo.ts";
 
 const CON_TELEFONO = "Recibiste un PagomovilBDV por Bs.57.158,84 del 0424-5550199 Ref: 012345678094 en fecha 14-11-26 hora: 08:30.";
@@ -179,4 +180,21 @@ test("una captura con varios avisos: cada uno con el día de su notificación", 
   assert.deepEqual(avisos[1].encabezado, { fecha: "2026-11-11", hora: "19:21" });
   // El aviso pegado sin encabezado sigue valiendo.
   assert.deepEqual(separarAvisos("Recibiste un PagomovilBDV por Bs.10,00 del 0424-5550199 Ref: 1234", "2026-11-14")[0].encabezado, null);
+});
+
+test("en una captura, lo que no lleva delante el encabezado del BDV no se abona solo (un WhatsApp que lo imite)", () => {
+  const real = "Recibiste un PagomovilBDV por Bs.1.000,00 del 0424-5550199 Ref: 012345678094 en fecha 14-11-26 hora: 08:30.";
+  // Una captura con una notificación del BDV y, debajo, un mensaje de WhatsApp que copia el aviso.
+  const captura = `19:10 PagomóvilBDV recibido 8:30 ${real} WhatsApp Juan: ${real.replace("1.000,00", "9.000,00")}`;
+  const avisos = separarAvisos(captura, "2026-11-14");
+  assert.equal(avisos.length, 2);
+  assert.equal(avisos[0].confiable, true);
+  assert.equal(avisos[1].confiable, false);
+  // El aviso que manda solo el teléfono (MacroDroid con su título, o el SMS) sí.
+  assert.equal(separarAvisos(`BDVapp ${real}`, "2026-11-14")[0].confiable, true);
+  assert.equal(separarAvisos(`PagomóvilBDV recibido ${real}`, "2026-11-14")[0].confiable, true);
+  assert.equal(separarAvisos(real, "2026-11-14")[0].confiable, true);
+  // Una captura con solo el mensaje falso, tampoco.
+  assert.equal(separarAvisos(`WhatsApp Juan: ${real}`, "2026-11-14")[0].confiable, false);
+  assert.equal(vieneDelBanco("… Transferencia BDV recibida mié, 20:45 \""), true);
 });

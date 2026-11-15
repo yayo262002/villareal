@@ -14,3 +14,12 @@ export function vieneDelCron(request: Request): boolean {
   const b = Buffer.from(secreto);
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+/**
+ * Si la petición viene de un enlace en otra web (el navegador lo dice en `Sec-Fetch-Site`). Las direcciones que hacen
+ * algo al abrirlas (la copia, la tarea del día, el recordatorio) no lo hacen así: con la sesión del dueño abierta, un
+ * enlace en otra web las dispararía (revisión de seguridad del 14/11/2026).
+ */
+export function vieneDeOtraWeb(request: Request): boolean {
+  return request.headers.get("sec-fetch-site") === "cross-site";
+}

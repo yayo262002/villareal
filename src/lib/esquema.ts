@@ -670,6 +670,16 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- Lo que se pide a lo público que cuesta (la consulta del delivery que pregunta al mapa), para frenar a quien
+  -- lo pida demasiado. No entra en las copias: no es parte del negocio.
+  create table if not exists peticiones_publicas (
+    id integer primary key autoincrement,
+    tipo text not null,
+    direccion text not null,
+    momento text not null default (datetime('now'))
+  );
+  create index if not exists peticiones_publicas_momento on peticiones_publicas(tipo, momento);
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (
@@ -740,7 +750,7 @@ export const TABLAS = [
  * Las tablas que no van en las copias: las copias de antes (una copia no contiene a las anteriores), lo de paso (las
  * fotos mientras el formulario va y vuelve, los intentos fallidos de entrar) y los secretos del servidor.
  */
-export const TABLAS_FUERA_DE_LAS_COPIAS = ["copias_automaticas", "fotos_en_espera", "entradas_fallidas", "secretos"] as const;
+export const TABLAS_FUERA_DE_LAS_COPIAS = ["copias_automaticas", "fotos_en_espera", "entradas_fallidas", "secretos", "peticiones_publicas"] as const;
 
 /**
  * Cambio para bases creadas antes de que productos tuviera costo, margen y

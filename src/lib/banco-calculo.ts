@@ -162,16 +162,48 @@ export function fechaDelEncabezado(previo: string, hoy: string): { fecha: string
 }
 
 /**
+ * Si lo que va justo antes de un aviso es el encabezado de una notificación del BDV («PagomóvilBDV recibido 8:30»,
+ * «Transferencia BDV recibida mié, 20:45»), y no el de otra app.
+ */
+export function vieneDelBanco(previo: string): boolean {
+  const n = normalizar(previo.replace(/\s+/g, " ")).trim();
+  return /(pago\s*movil\s*bdv|transferencia\s*bdv)\s+recibid[oa]\b.{0,30}$/.test(n);
+}
+
+/** Un aviso del texto que llegó: con el día de su notificación y si se puede abonar solo. */
+export type AvisoSeparado = {
+  aviso: string;
+  encabezado: { fecha: string; hora: string | null } | null;
+  /**
+   * Si se puede abonar solo. Lo que llega por una captura de la pantalla (con más cosas alrededor) trae lo que se veía:
+   * un mensaje de WhatsApp que imite «Recibiste un PagomovilBDV…» también saldría. En una captura, un aviso solo se
+   * abona solo si lleva justo antes el encabezado de la notificación del BDV; si no, espera en la bandeja a que el dueño
+   * lo confirme (revisión de seguridad del 14/11/2026). El aviso que llega solo (MacroDroid, el SMS) se abona como siempre.
+   */
+  confiable: boolean;
+};
+
+/**
  * Los avisos que trae un texto (una captura puede traer varios, cada uno empieza por «Recibiste»), cada uno con el día
  * que dice el encabezado de su notificación, si se ve. Lo que no es un aviso (la hora del teléfono, otras apps) se deja.
  */
-export function separarAvisos(texto: string, hoy: string): { aviso: string; encabezado: { fecha: string; hora: string | null } | null }[] {
+export function separarAvisos(texto: string, hoy: string): AvisoSeparado[] {
   const trozos = texto.split(/(?=Recibiste)/i);
-  const avisos: { aviso: string; encabezado: { fecha: string; hora: string | null } | null }[] = [];
+  const avisos: AvisoSeparado[] = [];
+  // Un aviso solo, sin nada alrededor (o con el título de su notificación delante), es lo que manda el teléfono.
+  const conAvisos = trozos.filter((t) => /^\s*recibiste/i.test(t)).length;
+  const prefijo = trozos[0] && !/^\s*recibiste/i.test(trozos[0]) ? trozos[0] : "";
+  // El título corto con que MacroDroid manda la notificación («BDVapp», «PagomóvilBDV recibido») no es una captura.
+  const tituloDelBanco = (p: string) => {
+    const n = normalizar(p.replace(/\s+/g, " ")).trim();
+    return vieneDelBanco(p) || (n.length <= 40 && /bdv/.test(n));
+  };
+  const deCaptura = conAvisos > 1 || (prefijo.trim() !== "" && !tituloDelBanco(prefijo));
   for (let i = 0; i < trozos.length; i++) {
     const aviso = trozos[i].trim();
     if (!/^recibiste/i.test(aviso)) continue;
-    avisos.push({ aviso, encabezado: i > 0 ? fechaDelEncabezado(trozos[i - 1], hoy) : null });
+    const previo = i > 0 ? trozos[i - 1] : "";
+    avisos.push({ aviso, encabezado: i > 0 ? fechaDelEncabezado(previo, hoy) : null, confiable: !deCaptura || vieneDelBanco(previo) });
   }
   return avisos;
 }

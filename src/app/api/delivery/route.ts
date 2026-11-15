@@ -1,4 +1,5 @@
 import { calcularDelivery } from "@/lib/delivery-servidor";
+import { direccionDeLaPeticion, peticionPermitida } from "@/lib/intentos";
 
 /**
  * GET /api/delivery?lat=10.06&lon=-69.32 (el GPS del teléfono) o ?direccion=Calle 30 entre carreras 20 y 21 dice a
@@ -17,6 +18,14 @@ export async function GET(peticion: Request): Promise<Response> {
     }
     resultado = await calcularDelivery({ punto: { lat, lon } });
   } else {
+    // Una dirección escrita puede preguntar al mapa libre: con freno, que si se le pregunta demasiado nos bloquea.
+    const permitida = await peticionPermitida("delivery", await direccionDeLaPeticion(), { porDireccion: 20, enTotal: 200, minutos: 10 });
+    if (!permitida) {
+      return Response.json(
+        { ok: false, motivo: "Hay demasiadas consultas ahora mismo. Usa «Usar mi ubicación» o pregúntanos el delivery por WhatsApp." },
+        { status: 429, headers: { "cache-control": "no-store" } },
+      );
+    }
     resultado = await calcularDelivery({ direccion: p.get("direccion") ?? "" });
   }
   return Response.json(resultado, { headers: { "cache-control": "no-store" } });

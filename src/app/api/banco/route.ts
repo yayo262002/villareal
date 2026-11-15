@@ -62,7 +62,10 @@ export async function POST(peticion: Request): Promise<Response> {
   // Cada uno con el día que dice el encabezado de su notificación («mié, 20:45»), para la transferencia, que no lo trae.
   const avisos = separarAvisos(texto, fechaEnVenezuela(new Date())).slice(0, 20);
   const resultados = [];
-  for (const { aviso, encabezado } of avisos.length > 0 ? avisos : [{ aviso: texto, encabezado: null }]) resultados.push(await recibirDelBanco(aviso, "telefono", encabezado));
+  // En una captura, lo que no lleva delante el encabezado del BDV (un mensaje de WhatsApp que lo imite) no se abona solo.
+  for (const { aviso, encabezado, confiable } of avisos.length > 0 ? avisos : [{ aviso: texto, encabezado: null, confiable: true }]) {
+    resultados.push(await recibirDelBanco(aviso, "telefono", encabezado, confiable));
+  }
   const leidos = resultados.filter((r) => r.tipo !== "no_es_pago");
   if (leidos.length === 0) {
     const primero = resultados[0];

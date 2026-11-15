@@ -5,7 +5,7 @@ import { leerFecha } from "@/lib/exportar";
 import { hace } from "@/lib/dinero";
 import { actualizarTasaOficial } from "@/lib/tasa-oficial";
 import { haySesion } from "@/lib/sesion";
-import { vieneDelCron } from "@/lib/cron";
+import { vieneDeOtraWeb, vieneDelCron } from "@/lib/cron";
 import { crearAviso } from "@/lib/avisos";
 import { bs, hoy } from "@/lib/dinero";
 
@@ -25,7 +25,7 @@ function mensajeDe(error: unknown): string {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  if (!vieneDelCron(request) && !(await haySesion())) {
+  if (!vieneDelCron(request) && (vieneDeOtraWeb(request) || !(await haySesion()))) {
     return new Response("No autorizado.", { status: 401 });
   }
 

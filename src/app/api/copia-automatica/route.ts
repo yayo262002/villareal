@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { guardarCopiaNube } from "@/lib/copias-nube";
 import { haySesion } from "@/lib/sesion";
+import { vieneDeOtraWeb } from "@/lib/cron";
 
 /**
  * Vercel llama a esta ruta cada noche (cron en `vercel.json`) con la
@@ -17,7 +18,7 @@ function vieneDelCron(request: Request): boolean {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  if (!vieneDelCron(request) && !(await haySesion())) {
+  if (!vieneDelCron(request) && (vieneDeOtraWeb(request) || !(await haySesion()))) {
     return new Response("No autorizado.", { status: 401 });
   }
   const copia = await guardarCopiaNube();
