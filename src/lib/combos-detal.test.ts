@@ -1,6 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { COMBOS_DEL_DETAL, claveDeNombreDetal, faltanParaElCombo, precioDelCombo, skuDelCombo } from "./combos-detal.ts";
+import {
+  COMBOS_DEL_DETAL,
+  claveDeNombreDetal,
+  cuantoLleva,
+  desgloseDelCombo,
+  faltanParaElCombo,
+  precioDelCombo,
+  precioEstimadoDelDetal,
+  skuDelCombo,
+} from "./combos-detal.ts";
 
 const combo = (clave: string) => COMBOS_DEL_DETAL.find((c) => c.clave === clave)!;
 
@@ -46,6 +55,59 @@ test("el combo de recortes no lleva peso ni precio fijos: lo que lleva varía, y
   // Aunque en la lista hubiera precio para todo, no sale ninguno; y no le falta nada en la lista.
   assert.equal(precioDelCombo(combo("recortes"), () => 4.4), null);
   assert.deepEqual(faltanParaElCombo(combo("recortes"), () => null), []);
+});
+
+test("los especiales son del solidario en adelante, como en las hojas", () => {
+  assert.deepEqual(
+    COMBOS_DEL_DETAL.filter((c) => c.especial).map((c) => c.n),
+    [10, 11, 12, 13, 14, 15],
+  );
+});
+
+test("lo que lleva cada producto se dice como en la charcutería", () => {
+  assert.equal(cuantoLleva("Jamón de espalda Drago", "kg", 0.2), "200 g");
+  assert.equal(cuantoLleva("Huevos (cartón de 30)", "unidad", 6 / 30), "6 huevos");
+  assert.equal(cuantoLleva("Salchichas calibre 17 (paquete de 20)", "unidad", 6 / 20), "6 salchichas");
+  assert.equal(cuantoLleva("Mortadela especial Alibal 1 kg", "unidad", 0.25), "250 g");
+  assert.equal(cuantoLleva("Suero San Pedro bolsa 800 ml", "unidad", 1), "1 unidad");
+  // Lo que no está en la lista (el queso paisa), en gramos.
+  assert.equal(cuantoLleva("Queso paisa", "", 0.2), "200 g");
+});
+
+test("el desglose: cada producto con su precio y lo que pone, y el total de la caja", () => {
+  const lista: Record<string, { unidad: string; precio: number | null }> = {
+    "jamon de espalda drago": { unidad: "kg", precio: 6.13 },
+    mozzarella: { unidad: "kg", precio: 9.5 },
+    "pan blanco enriquecido viva mejor 500 g": { unidad: "unidad", precio: 1.69 },
+    "pechuga de pavo ahumada drago": { unidad: "kg", precio: 7.63 },
+  };
+  const enLaLista = (nombre: string) => lista[claveDeNombreDetal(nombre)] ?? null;
+  const tercero = desgloseDelCombo(combo("espalda-mozzarella"), enLaLista, 0.8);
+  assert.deepEqual(
+    tercero.partes.map((p) => [p.cuanto, p.nombre, p.precio, p.porKilo, p.estimado]),
+    [
+      ["200 g", "Jamón de espalda Drago", 6.13, true, false],
+      ["200 g", "Mozzarella", 9.5, true, false],
+    ],
+  );
+  assert.ok(Math.abs((tercero.partes[0].importe ?? 0) - 1.226) < 1e-9);
+  // La misma cuenta que la caja: 1,226 + 1,90 = 3,126 → 3,13.
+  assert.equal(tercero.total, 3.13);
+  assert.deepEqual(tercero.faltan, []);
+  // El queso paisa no está en la lista: su costo estimado (10 $) entre 0,80 = 12,50 el kilo, marcado estimado.
+  const sandwichero = desgloseDelCombo(combo("sandwichero"), enLaLista, 0.8);
+  const paisa = sandwichero.partes.find((p) => p.nombre === "Queso paisa")!;
+  assert.deepEqual([paisa.cuanto, paisa.precio, paisa.porKilo, paisa.estimado], ["200 g", 12.5, true, true]);
+  // 1,69 + 2,50 + 1,526 = 5,716 → 5,72.
+  assert.equal(sandwichero.total, 5.72);
+  assert.equal(precioEstimadoDelDetal("queso PAISA", 0.8), 12.5);
+  // Lo que no está ni estimado deja el combo sin precio y se dice.
+  const sinJamon = desgloseDelCombo(combo("espalda-mozzarella"), (n) => (claveDeNombreDetal(n) === "mozzarella" ? lista.mozzarella : null), 0.8);
+  assert.equal(sinJamon.total, null);
+  assert.deepEqual(sinJamon.faltan, ["Jamón de espalda Drago"]);
+  // Los recortes: sin partes y sin precio.
+  const recortes = desgloseDelCombo(combo("recortes"), enLaLista, 0.8);
+  assert.deepEqual([recortes.partes.length, recortes.total], [0, null]);
 });
 
 test("los nombres del detal se buscan sin tildes, mayúsculas ni espacios de más", () => {

@@ -299,7 +299,7 @@ src/app/admin/(panel)/clientes/seguimiento/  La pantalla del estudio de clientes
 src/app/admin/(panel)/ayuda/  «Cómo se usa el panel»: la guía rápida, en el orden del día
 src/lib/pos-calculo.ts    Las cuentas de la caja: totales, descuento, cómo paga, cómo queda la cuenta del cliente, el precio de contado en el local y el SKU propuesto (puro, con pruebas)
 src/lib/pos.ts            La caja desde la base: el catálogo con existencias, el cliente de mostrador y el guardado de la venta con sus pagos
-src/lib/combos-detal.ts   Los quince combos del detal: lo que lleva cada uno y su precio con la lista del detal (puro, con pruebas)
+src/lib/combos-detal.ts   Los quince combos del detal: lo que lleva cada uno, su precio con la lista del detal y su desglose producto por producto (puro, con pruebas)
 src/lib/combos-en-la-caja.ts  Los combos como artículos de la caja, ocultos en la web, con el precio del detal de hoy
 src/lib/codigo128.ts      El código de barras Code 128 de las etiquetas de los combos (puro, con pruebas)
 src/app/admin/(panel)/combos/etiquetas/  Las etiquetas de las bandejas de los combos, con su precio y su código de barras, para imprimir
@@ -1238,8 +1238,18 @@ Binance y otro.
   sin clave y sin nada más del panel (ni costos ni proveedores). Arriba,
   las pestañas: «Al detal» (todo), «Charcutería» (`?precio=charcuteria`:
   la charcutería aparte, cada producto con su precio al detal y al mayor
-  uno al lado del otro) y «Al mayor» (`?precio=mayor`, con la cabecera
-  dorada, solo lo que tiene precio al mayor). Puesta en la pantalla de
+  uno al lado del otro), «Al mayor» (`?precio=mayor`, con la cabecera
+  dorada, solo lo que tiene precio al mayor) y «Combos» (`?precio=combos`;
+  el dueño, 16/11/2026: «un apartado que diga combos, y quede desglosado
+  cuánto es por cada uno»): los de todos los días y los especiales, cada
+  uno con su precio de hoy en bolívares y en dólares y, debajo, cada
+  producto con lo que lleva, a cuánto está el kilo al detal y lo que pone
+  en el combo («200 g Jamón de espalda Drago · USD 6,13 el kilo → USD
+  1,23»). Es la misma cuenta que la caja y que `npm run combos`
+  (`desgloseDelCombo` en `src/lib/combos-detal.ts`, con pruebas), con toda
+  la lista, también lo escondido; lo que aún no está en ella (el queso
+  paisa) va con su precio estimado y lo dice. Sin costos ni lo que deja:
+  eso, en las hojas de `npm run combos`. Puesta en la pantalla de
   inicio del teléfono es su propia app, «Precios», que abre directo en la
   lista y no en la portada de la web: tiene su manifiesto
   (`/lista/<enlace>/manifest.webmanifest`, solo con el enlace vigente), como

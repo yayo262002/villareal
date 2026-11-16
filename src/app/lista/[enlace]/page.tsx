@@ -5,7 +5,8 @@ import { enlaceDeLaLista, leerTasa, reglasDelDetal } from "@/lib/ajustes";
 import { esEnlaceValido } from "@/lib/enlace-cuenta";
 import { FiltroEnVivo } from "@/components/filtro-en-vivo";
 import { textoCoincide } from "@/lib/buscar";
-import { CATEGORIAS_DETAL, type CategoriaDetal } from "@/lib/detal-calculo";
+import { CATEGORIAS_DETAL, enBolivares, type CategoriaDetal } from "@/lib/detal-calculo";
+import { COMBOS_DEL_DETAL, claveDeNombreDetal, desgloseDelCombo, type DesgloseDelCombo } from "@/lib/combos-detal";
 import { bsRedondo, diaDeLaSemana, fechaCorta, fechaDeLaBase, hoy, tasaLegible, usd } from "@/lib/dinero";
 import estilos from "./lista.module.css";
 
@@ -24,8 +25,10 @@ export async function generateMetadata({ params }: Parametros): Promise<Metadata
 /** «500 g», «1 kg»: el número y su unidad no se separan al partir la línea (como en la lista del teléfono). */
 const pegarUnidad = (nombre: string) => nombre.replace(/(\d) (?=(g|kg|ml|l|cm)\b)/g, "$1 ");
 
-/** Qué lista se ve: la del detal (todo), la de la charcutería (con sus dos precios) o la del mayor. */
-type Vista = "detal" | "charcuteria" | "mayor";
+/** Qué lista se ve: la del detal (todo), la de la charcutería (con sus dos precios), la del mayor o los combos desglosados. */
+type Vista = "detal" | "charcuteria" | "mayor" | "combos";
+
+const VISTAS: Vista[] = ["detal", "charcuteria", "mayor", "combos"];
 
 /** La dirección de una de las listas, con lo que se esté buscando. */
 function enlaceA(vista: Vista, busqueda: string): string {
@@ -40,8 +43,9 @@ function enlaceA(vista: Vista, busqueda: string): string {
  * sin clave, cada producto en bolívares a la tasa BCV de hoy (subidos a
  * favor del negocio) y en dólares. Hasta tres listas: la del detal; la de
  * la charcutería aparte, cada producto con su precio al detal y al mayor
- * (`?precio=charcuteria`); y, si algo tiene precio al mayor, la del mayor
- * (`?precio=mayor`).
+ * (`?precio=charcuteria`); si algo tiene precio al mayor, la del mayor
+ * (`?precio=mayor`); y los combos del detal (`?precio=combos`), cada uno
+ * con lo que lleva, a cuánto está cada producto y lo que pone en el combo.
  * Se busca escribiendo, sin JavaScript. Solo enseña la lista: ni costos,
  * ni proveedores, ni nada del panel.
  */
@@ -51,12 +55,35 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
   if (!esEnlaceValido(enlace) || enlace !== guardado) notFound();
   const parametros = await searchParams;
   const busqueda = typeof parametros.q === "string" ? parametros.q.slice(0, 80) : "";
-  const [articulos, reglas, tasa] = await Promise.all([listarArticulosDetal("", true), reglasDelDetal(), leerTasa()]);
-  const todos = conPrecios(articulos, reglas, tasa?.valor ?? null);
+  const [articulos, reglas, tasa] = await Promise.all([listarArticulosDetal(), reglasDelDetal(), leerTasa()]);
+  const conPrecio = conPrecios(articulos, reglas, tasa?.valor ?? null);
+  // Las listas enseñan lo que no está escondido; los combos usan toda la lista, como la caja (cobran lo mismo).
+  const todos = conPrecio.filter((a) => Number(a.activo) === 1);
+  const porNombre = new Map(conPrecio.map((a) => [claveDeNombreDetal(a.nombre), a]));
+  const combos = COMBOS_DEL_DETAL.map((combo) =>
+    desgloseDelCombo(
+      combo,
+      (nombre) => {
+        const a = porNombre.get(claveDeNombreDetal(nombre));
+        return a ? { unidad: a.unidad, precio: a.detal_usd } : null;
+      },
+      reglas.charcuteria_divisor,
+    ),
+  );
   const hayMayor = todos.some((a) => a.mayor_usd !== null);
   const hayCharcuteria = todos.some((a) => a.categoria === "charcuteria" && a.detal_usd !== null);
-  const vista: Vista = parametros.precio === "mayor" && hayMayor ? "mayor" : parametros.precio === "charcuteria" && hayCharcuteria ? "charcuteria" : "detal";
+  const hayCombos = combos.some((c) => c.total !== null);
+  const pedida = VISTAS.find((v) => v === parametros.precio) ?? "detal";
+  const vista: Vista = (pedida === "mayor" && hayMayor) || (pedida === "charcuteria" && hayCharcuteria) || (pedida === "combos" && hayCombos) ? pedida : "detal";
   const alMayor = vista === "mayor";
+  const enCombos = vista === "combos";
+  const combosVistos = combos.filter((c) =>
+    textoCoincide([`${c.combo.n} ${c.combo.nombre}`, c.combo.detalle, ...c.partes.map((p) => p.nombre)], busqueda),
+  );
+  const gruposDeCombos = [
+    { titulo: "De todos los días", combos: combosVistos.filter((c) => !c.combo.especial) },
+    { titulo: "Especiales", combos: combosVistos.filter((c) => c.combo.especial) },
+  ].filter((g) => g.combos.length > 0);
   const lista = todos
     .filter((a) => vista !== "charcuteria" || a.categoria === "charcuteria")
     .map((a) => ({ ...a, usd: alMayor ? a.mayor_usd : a.detal_usd, bs: alMayor ? a.mayor_bs : a.detal_bs }))
@@ -70,8 +97,10 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
   return (
     <main className={`${estilos.pagina} ${alMayor ? estilos.alMayor : ""}`}>
       <header className={estilos.cabecera}>
-        <p className={estilos.antetitulo}>{alMayor ? "Villa Real · al mayor" : vista === "charcuteria" ? "Villa Real · al detal y al mayor" : "Charcutería Villa Real"}</p>
-        <h1 className={estilos.titulo}>{alMayor ? "Precios al mayor" : vista === "charcuteria" ? "Charcutería" : "Lista de precios"}</h1>
+        <p className={estilos.antetitulo}>
+          {alMayor ? "Villa Real · al mayor" : vista === "charcuteria" ? "Villa Real · al detal y al mayor" : enCombos ? "Charcutería Villa Real · al detal" : "Charcutería Villa Real"}
+        </p>
+        <h1 className={estilos.titulo}>{alMayor ? "Precios al mayor" : vista === "charcuteria" ? "Charcutería" : enCombos ? "Combos" : "Lista de precios"}</h1>
         <p className={estilos.fecha}>
           {diaDeLaSemana(dia)} {fechaCorta(dia)}
         </p>
@@ -85,7 +114,7 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
         )}
       </header>
 
-      {(hayMayor || hayCharcuteria) && (
+      {(hayMayor || hayCharcuteria || hayCombos) && (
         <nav className={estilos.pestanas} aria-label="Qué precios ver">
           <a href={enlaceA("detal", busqueda)} aria-current={vista === "detal" ? "page" : undefined}>
             Al detal
@@ -100,22 +129,44 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
               Al mayor
             </a>
           )}
+          {hayCombos && (
+            <a href={enlaceA("combos", busqueda)} aria-current={enCombos ? "page" : undefined}>
+              Combos
+            </a>
+          )}
         </nav>
       )}
 
       <form method="get" className={estilos.buscador} role="search">
         {vista !== "detal" && <input type="hidden" name="precio" value={vista} />}
         <label htmlFor="q" className={estilos.oculto}>
-          Buscar un producto
+          {enCombos ? "Buscar un combo" : "Buscar un producto"}
         </label>
-        <input id="q" name="q" type="search" defaultValue={busqueda} placeholder="Buscar: jamón, harina, jabón…" autoComplete="off" />
+        <input id="q" name="q" type="search" defaultValue={busqueda} placeholder={enCombos ? "Buscar: mozzarella, pavo, perrero…" : "Buscar: jamón, harina, jabón…"} autoComplete="off" />
         <button type="submit">Buscar</button>
         {busqueda && <a href={enlaceA(vista, "")}>Todos</a>}
       </form>
       {/* Con JavaScript, la lista se filtra con cada letra; sin él, «Buscar» lo hace desde el servidor. */}
       <FiltroEnVivo entrada="q" lista="productos" clase={estilos.vacio} />
 
-      {lista.length === 0 ? (
+      {enCombos ? (
+        gruposDeCombos.length === 0 ? (
+          <p className={estilos.vacio}>{`Ningún combo lleva «${busqueda}».`}</p>
+        ) : (
+          <div id="productos" className={estilos.productos}>
+            {gruposDeCombos.map((g) => (
+              <section key={g.titulo} className={estilos.grupo} data-grupo>
+                <h2 className={estilos.categoria}>{g.titulo}</h2>
+                <ul className={estilos.combos}>
+                  {g.combos.map((c) => (
+                    <Combo key={c.combo.clave} desglose={c} bs={enBolivares(c.total, tasa?.valor ?? null, reglas.redondeo_bs)} />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )
+      ) : lista.length === 0 ? (
         <p className={estilos.vacio}>{busqueda ? `Nada responde a «${busqueda}».` : "La lista todavía está vacía."}</p>
       ) : (
         <div id="productos" className={estilos.productos}>
@@ -154,10 +205,68 @@ export default async function PaginaLista({ params, searchParams }: Parametros) 
       )}
 
       <p className={estilos.nota}>
-        {alMayor ? "Precios al mayor. " : vista === "charcuteria" ? "Cada producto con su precio al detal y al mayor. " : ""}Los bolívares salen del precio en dólares por la tasa del BCV de hoy, subidos de {reglas.redondeo_bs} en {reglas.redondeo_bs}.
+        {alMayor
+          ? "Precios al mayor. "
+          : vista === "charcuteria"
+            ? "Cada producto con su precio al detal y al mayor. "
+            : enCombos
+              ? "Cada combo cuesta lo que suman sus productos al precio del detal de hoy (el de la pestaña Charcutería), subido al centavo: es lo mismo que cobra la caja. "
+              : ""}
+        Los bolívares salen del precio en dólares por la tasa del BCV de hoy, subidos de {reglas.redondeo_bs} en {reglas.redondeo_bs}.
         Cambian solos cada mañana.
       </p>
     </main>
+  );
+}
+
+/**
+ * Un combo desglosado: su número, su nombre y su precio; debajo, cada producto con lo que lleva, a cuánto está el kilo
+ * (o la unidad) al detal y lo que pone en el combo, en dólares.
+ */
+function Combo({ desglose, bs }: { desglose: DesgloseDelCombo; bs: number | null }) {
+  const { combo, partes, total, faltan } = desglose;
+  const estimados = partes.filter((p) => p.estimado).map((p) => p.nombre);
+  return (
+    <li className={estilos.combo} data-busca={`${combo.n} ${combo.nombre}`} data-busca-mas={[combo.detalle, ...partes.map((p) => p.nombre)].join(" · ")}>
+      <div className={estilos.comboCabeza}>
+        <span className={estilos.numero} aria-hidden="true">
+          {combo.n}
+        </span>
+        <h3 className={estilos.comboNombre}>
+          <span className={estilos.oculto}>{combo.n}. </span>
+          {combo.nombre}
+        </h3>
+        {total !== null ? (
+          <Precio bs={bs} dolares={total} />
+        ) : (
+          <span className={estilos.precios}>
+            <span className={estilos.aMano}>{combo.precioAMano ? "A mano" : "Sin precio"}</span>
+          </span>
+        )}
+      </div>
+      {partes.length > 0 ? (
+        <ul className={estilos.partes}>
+          {partes.map((p) => (
+            <li key={p.nombre} className={estilos.parte}>
+              <span className={estilos.nombre}>
+                <strong>{p.cuanto}</strong> {pegarUnidad(p.nombre)}
+                <span className={estilos.unidad}>
+                  {p.precio === null ? " · sin precio" : ` · ${usd(p.precio)} ${p.porKilo ? "el kilo" : "la unidad"}${p.estimado ? " (estimado)" : ""}`}
+                </span>
+              </span>
+              <span className={estilos.importe}>{p.importe === null ? "—" : usd(p.importe)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={estilos.comboNota}>{combo.detalle}.</p>
+      )}
+      {combo.precioAMano && <p className={estilos.comboNota}>Lo que lleva varía con lo que se esté rebanando: el precio se pone a mano.</p>}
+      {faltan.length > 0 && <p className={estilos.comboNota}>Falta el precio de: {faltan.join(", ")}.</p>}
+      {estimados.length > 0 && total !== null && (
+        <p className={estilos.comboNota}>{`${estimados.join(", ")}: precio estimado, todavía no está en la lista.`}</p>
+      )}
+    </li>
   );
 }
 

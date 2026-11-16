@@ -57,13 +57,14 @@
   color: var(--color-verde-profundo);
 }
 
+/* Hasta cuatro pestañas: en el teléfono, de dos en dos; en una pantalla ancha, en una fila. */
 .pestanas {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
   gap: var(--espacio-2);
 }
 
 .pestanas a {
-  flex: 1;
   text-align: center;
   font-weight: 700;
   padding: var(--espacio-2) var(--espacio-3);
@@ -132,7 +133,8 @@
 
 /* Lo que el buscador deja fuera mientras se escribe (sin esto, el «display» de la fila le gana al «hidden»). */
 .grupo[hidden],
-.fila[hidden] {
+.fila[hidden],
+.combo[hidden] {
   display: none;
 }
 
@@ -223,6 +225,86 @@
   color: var(--color-texto-suave);
 }
 
+/* Los combos: cada uno con su número en un círculo dorado, su nombre y su precio; debajo, lo que lleva y lo que pone cada producto. */
+.combos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--espacio-3);
+}
+
+.combo {
+  display: grid;
+  gap: var(--espacio-2);
+  padding: var(--espacio-3);
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-left: 4px solid var(--color-dorado);
+  border-radius: var(--radio);
+}
+
+.comboCabeza {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--espacio-2);
+}
+
+.numero {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--color-verde-profundo);
+  color: var(--color-dorado);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.comboNombre {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.aMano {
+  font-weight: 700;
+  color: var(--color-texto-suave);
+  white-space: nowrap;
+}
+
+.partes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.parte {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--espacio-3);
+  padding: var(--espacio-1) 0;
+  border-top: 1px dashed var(--color-borde);
+}
+
+.importe {
+  flex: none;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.comboNota {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-texto-suave);
+}
+
 .vacio,
 .nota {
   color: var(--color-texto-suave);
@@ -243,7 +325,8 @@
     border: 0;
     padding: 0;
   }
-  .fila {
+  .fila,
+  .combo {
     break-inside: avoid;
   }
 }

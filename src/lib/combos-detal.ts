@@ -32,6 +32,8 @@ export type ComboDelDetal = {
   componentes: ComponenteDelCombo[];
   /** El precio se escribe a mano cada vez en la caja: lo que lleva varía (los recortes, según lo que se esté rebanando). */
   precioAMano?: boolean;
+  /** Los especiales (del solidario en adelante) van aparte de los de todos los días, como en las hojas. */
+  especial?: boolean;
 };
 
 const DE_CADA_UNO = "200 g de cada producto";
@@ -50,6 +52,7 @@ export const COMBOS_DEL_DETAL: ComboDelDetal[] = [
   {
     n: 10,
     clave: "solidario",
+    especial: true,
     nombre: "Combo solidario",
     detalle: "1 suero San Pedro de 800 ml, 6 huevos y 250 g de mortadela",
     componentes: [{ detal: "Suero San Pedro bolsa 800 ml", cantidad: 1 }, { detal: "Huevos (cartón de 30)", cantidad: 6 / 30 }, { detal: "Mortadela especial Alibal 1 kg", cantidad: 0.25 }],
@@ -57,14 +60,16 @@ export const COMBOS_DEL_DETAL: ComboDelDetal[] = [
   {
     n: 11,
     clave: "perrero",
+    especial: true,
     nombre: "Combo perrero",
     detalle: "100 g de queso amarillo tipo cheddar, 100 g de jamón de espalda y 6 salchichas",
     componentes: [{ detal: "Queso amarillo El Legado", cantidad: 0.1 }, { detal: "Jamón de espalda Drago", cantidad: 0.1 }, { detal: "Salchichas calibre 17 (paquete de 20)", cantidad: 6 / 20 }],
   },
-  { n: 12, clave: "navideno", nombre: "Combo navideño", detalle: "200 g de tocineta y 200 g de jamón ahumado", componentes: [{ detal: "Tocineta Drago", cantidad: g200 }, { detal: "Espalda ahumada Drago", cantidad: g200 }] },
+  { n: 12, clave: "navideno", especial: true, nombre: "Combo navideño", detalle: "200 g de tocineta y 200 g de jamón ahumado", componentes: [{ detal: "Tocineta Drago", cantidad: g200 }, { detal: "Espalda ahumada Drago", cantidad: g200 }] },
   {
     n: 13,
     clave: "pizzero",
+    especial: true,
     nombre: "Combo pizzero",
     detalle: "100 g de tocineta, 200 g de jamón de espalda y 200 g de mozzarella",
     componentes: [{ detal: "Tocineta Drago", cantidad: 0.1 }, { detal: "Jamón de espalda Drago", cantidad: g200 }, { detal: "Mozzarella", cantidad: g200 }],
@@ -72,6 +77,7 @@ export const COMBOS_DEL_DETAL: ComboDelDetal[] = [
   {
     n: 14,
     clave: "sandwichero",
+    especial: true,
     nombre: "Combo sandwichero",
     detalle: "1 pan de sándwich, 200 g de queso paisa y 200 g de pechuga de pavo ahumada",
     componentes: [{ detal: "Pan blanco enriquecido Viva Mejor 500 g", cantidad: 1 }, { detal: "Queso paisa", cantidad: g200 }, { detal: "Pechuga de pavo ahumada Drago", cantidad: g200 }],
@@ -81,6 +87,7 @@ export const COMBOS_DEL_DETAL: ComboDelDetal[] = [
   {
     n: 15,
     clave: "recortes",
+    especial: true,
     nombre: "Combo de recortes",
     detalle: "Bandeja de recortes surtidos",
     componentes: [],
@@ -121,4 +128,81 @@ export function precioDelCombo(combo: ComboDelDetal, precioDe: (nombreDetal: str
 /** El SKU del combo en la caja: su número, como en la hoja («COMBO-3»). Al escanear o buscar «combo 3», sale. */
 export function skuDelCombo(combo: Pick<ComboDelDetal, "n">): string {
   return `COMBO-${combo.n}`;
+}
+
+/**
+ * Lo que aún no está en la lista del detal, con su costo por kilo estimado (el dueño): con él las hojas de los precios,
+ * el flier y la lista de la familia dicen un precio, marcado «estimado». La caja no lo usa: allí se escribe a mano hasta
+ * que se cargue. Se quita de aquí al cargarlo.
+ */
+export const COSTOS_ESTIMADOS: Record<string, number> = { "queso paisa": 10 };
+
+/** El precio al detal, por kilo, de lo que aún no está en la lista: su costo estimado entre el divisor de la charcutería. */
+export function precioEstimadoDelDetal(nombre: string, divisorCharcuteria: number): number | null {
+  const costo = COSTOS_ESTIMADOS[claveDeNombreDetal(nombre)];
+  return costo === undefined ? null : alCentavo(costo / divisorCharcuteria);
+}
+
+/**
+ * Lo que lleva de un producto, como se dice en la charcutería: «200 g», «6 huevos», «1 unidad». `unidad` es la del
+ * producto en la lista del detal (vacía si no está).
+ */
+export function cuantoLleva(nombre: string, unidad: string, cantidad: number): string {
+  // Lo que va por kilo, una pieza de 1 kg que se vende entera («Mortadela especial Alibal 1 kg») y lo que aún no está en la
+  // lista (el queso paisa), en gramos.
+  if (unidad === "kg" || (cantidad < 1 && (/\b1 kg\b/.test(nombre) || unidad === ""))) return `${Math.round(cantidad * 1000)} g`;
+  const deCuantos = /de (\d+)\)/.exec(nombre);
+  if (deCuantos) return `${Math.round(cantidad * Number(deCuantos[1]))} ${nombre.split(" ")[0].toLowerCase()}`;
+  return cantidad === 1 ? "1 unidad" : `${cantidad} unidades`;
+}
+
+export type ParteDelCombo = {
+  /** Lo que lleva: «200 g», «6 huevos». */
+  cuanto: string;
+  /** El nombre del producto en la lista del detal. */
+  nombre: string;
+  /** Su precio al detal de hoy, por kilo o por unidad; null si no lo tiene. */
+  precio: number | null;
+  porKilo: boolean;
+  /** Lo que pone en el combo: el precio por lo que lleva, sin redondear. */
+  importe: number | null;
+  /** No está en la lista del detal: el precio sale de su costo estimado. */
+  estimado: boolean;
+};
+
+export type DesgloseDelCombo = {
+  combo: ComboDelDetal;
+  partes: ParteDelCombo[];
+  /** Lo que suman las partes, subido al centavo (con lo estimado, si lo hay); null si a alguna le falta el precio o va a mano. */
+  total: number | null;
+  /** Lo que no tiene precio ni en la lista ni estimado. */
+  faltan: string[];
+};
+
+/**
+ * Cada combo, producto por producto: cuánto lleva, a cuánto está el kilo o la unidad al detal y lo que pone en el combo;
+ * y el total, con la cuenta de la caja (`precioDelCombo`). `enLaLista` dice la unidad y el precio al detal de un producto
+ * de la lista (null si no está); lo que no está toma su precio estimado, si lo tiene.
+ */
+export function desgloseDelCombo(
+  combo: ComboDelDetal,
+  enLaLista: (nombreDetal: string) => { unidad: string; precio: number | null } | null,
+  divisorCharcuteria: number,
+): DesgloseDelCombo {
+  const partes = combo.componentes.map((c): ParteDelCombo => {
+    const articulo = enLaLista(c.detal);
+    const estimado = articulo ? null : precioEstimadoDelDetal(c.detal, divisorCharcuteria);
+    const precio = articulo ? articulo.precio : estimado;
+    return {
+      cuanto: cuantoLleva(c.detal, articulo?.unidad ?? "", c.cantidad),
+      nombre: c.detal,
+      precio,
+      // Lo estimado es por kilo (el queso paisa).
+      porKilo: articulo ? articulo.unidad === "kg" : estimado !== null,
+      importe: precio === null ? null : precio * c.cantidad,
+      estimado: estimado !== null,
+    };
+  });
+  const precioDe = (nombre: string) => partes.find((p) => p.nombre === nombre)?.precio ?? null;
+  return { combo, partes, total: precioDelCombo(combo, precioDe), faltan: faltanParaElCombo(combo, precioDe) };
 }

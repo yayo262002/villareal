@@ -3469,6 +3469,37 @@ async function probarListaDetal() {
     enLaCharcuteria.join() === "true,true,true,true,true,false,true",
     enLaCharcuteria.join(),
   );
+  // Los combos del detal, desglosados: con los productos del combo 3 en la lista, su pestaña.
+  for (const [nombre, costo] of [
+    ["Jamón de espalda Drago", "4,90"],
+    ["Mozzarella", "7,60"],
+  ]) {
+    await enviar("/admin/detal", 'name="precio_mayor_usd"', { nombre, categoria: "charcuteria", unidad: "kg", costo_usd: costo, iva: "exento" });
+  }
+  comprobar("la lista de la familia tiene la pestaña de los combos", (await pagina(`/lista/${enlace}`, "")).html.includes("precio=combos"));
+  lista = await pagina(`/lista/${enlace}?precio=combos`, "");
+  // 4,90 ÷ 0,80 = 6,13 y 7,60 ÷ 0,80 = 9,50 el kilo; 200 g de cada uno: 1,226 + 1,90 = 3,126 → 3,13.
+  const comboBs = `Bs ${formatoBs.format(subirA(3.13 * tasaDeHoy, 5))}`;
+  const textoCombos = legible(lista.html);
+  const enLosCombos = [
+    /<h1[^>]*>Combos<\/h1>/.test(lista.html),
+    textoCombos.includes("Combo jamón de espalda + mozzarella"),
+    textoCombos.includes(comboBs),
+    /USD\s3,13/.test(textoCombos),
+    /200 g(<[^>]*>)*\s*Jamón de espalda Drago(<[^>]*>)*\s*·\s*USD\s6,13 el kilo/.test(textoCombos),
+    /USD\s1,23/.test(textoCombos),
+    /USD\s9,50 el kilo/.test(textoCombos),
+    textoCombos.includes("Especiales") && textoCombos.includes("Combo perrero"),
+    textoCombos.includes("Falta el precio de:"),
+    !textoCombos.includes("4,90") && !textoCombos.includes("7,60"),
+    lista.html.includes('name="precio" value="combos"'),
+  ];
+  comprobar("la pestaña de los combos: cada uno con lo que lleva, a cuánto está cada producto y lo que pone, y su precio de hoy, sin costos", enLosCombos.every(Boolean), `${comboBs} ${enLosCombos.join()}`);
+  lista = await pagina(`/lista/${enlace}?precio=combos&q=perrero`, "");
+  comprobar(
+    "en los combos se busca por el nombre del combo o lo que lleva",
+    legible(lista.html).includes("Combo perrero") && !legible(lista.html).includes("Combo jamón de espalda + mozzarella") && /data-busca="11 Combo perrero"/.test(lista.html),
+  );
   lista = await pagina(`/lista/${enlace}?q=jugo`, "");
   comprobar("en la lista de la familia se busca sin tildes", legible(lista.html).includes("Jugo Natulac") && !legible(lista.html).includes("Maíz de Cotufa"));
   comprobar("un enlace que no es el de la lista da 404", (await pagina("/lista/abcdefghjkmnpq", "")).status === 404 && (await pagina("/lista/nada", "")).status === 404);

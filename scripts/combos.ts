@@ -3,7 +3,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { crearClienteDesdeEntorno } from "../src/lib/conexion.ts";
 import { CLAVES_REGLAS_DETAL, costoEnDolares, enBolivares, precioDetalUsd, reglasDesdeAjustes, type ArticuloParaPrecio } from "../src/lib/detal-calculo.ts";
-import { COMBOS_DEL_DETAL, claveDeNombreDetal, faltanParaElCombo, precioDelCombo } from "../src/lib/combos-detal.ts";
+import { COMBOS_DEL_DETAL, COSTOS_ESTIMADOS, claveDeNombreDetal, desgloseDelCombo } from "../src/lib/combos-detal.ts";
 import { IVA_GENERAL_POR_DEFECTO } from "../src/lib/factura-calculo.ts";
 import { diaDeLaSemana, fechaCorta, hoy } from "../src/lib/dinero.ts";
 
@@ -45,47 +45,30 @@ const filas = (
 db.close();
 
 const porNombre = new Map(filas.map((f) => [claveDeNombreDetal(f.nombre), f]));
-/**
- * Lo que aún no está en la lista del detal, con su costo por kilo estimado (el dueño): con él la hoja y el flier dicen un
- * precio, marcado «estimado»; la caja no lo usa (allí se escribe a mano hasta que se cargue). Se quita al cargarlo.
- */
-const ESTIMADOS: Record<string, number> = { "queso paisa": 10 };
-const precioEstimado = (nombre: string): number | null => {
-  const costo = ESTIMADOS[claveDeNombreDetal(nombre)];
-  return costo === undefined ? null : Math.ceil(Math.round((costo / 0.8) * 1e6) / 1e4) / 100;
-};
-const precioDe = (nombre: string): number | null => {
+// Lo que no está en la lista toma su precio estimado (el queso paisa, `COSTOS_ESTIMADOS`): las hojas y el flier lo dicen;
+// la caja, no (allí se escribe a mano hasta que se cargue).
+const enLaLista = (nombre: string) => {
   const fila = porNombre.get(claveDeNombreDetal(nombre));
-  return fila ? precioDetalUsd(fila, reglas) : precioEstimado(nombre);
+  return fila ? { unidad: fila.unidad, precio: precioDetalUsd(fila, reglas) } : null;
 };
-
-/** Lo que lleva de un producto, como se dice en la charcutería: «200 g», «6 huevos», «1 unidad». */
-function cuanto(nombre: string, unidad: string, cantidad: number): string {
-  // Lo que va por kilo, una pieza de 1 kg que se vende entera («Mortadela especial Alibal 1 kg») y lo que aún no está en la
-  // lista (el queso paisa), en gramos.
-  if (unidad === "kg" || (cantidad < 1 && (/\b1 kg\b/.test(nombre) || unidad === ""))) return `${Math.round(cantidad * 1000)} g`;
-  const deCuantos = /de (\d+)\)/.exec(nombre);
-  if (deCuantos) return `${Math.round(cantidad * Number(deCuantos[1]))} ${nombre.split(" ")[0].toLowerCase()}`;
-  return cantidad === 1 ? "1 unidad" : `${cantidad} unidades`;
-}
 
 const dia = hoy();
+// La misma cuenta que la pestaña «Combos» de la lista de la familia y que la caja, más lo que cuesta cada parte.
 const desglose = COMBOS_DEL_DETAL.map((combo) => {
-  const partes = combo.componentes.map((c) => {
-    const fila = porNombre.get(claveDeNombreDetal(c.detal));
-    const precio = precioDe(c.detal);
-    const costo = fila ? costoEnDolares(fila, iva) : (ESTIMADOS[claveDeNombreDetal(c.detal)] ?? null);
+  const cuenta = desgloseDelCombo(combo, enLaLista, reglas.charcuteria_divisor);
+  const partes = cuenta.partes.map((p, i) => {
+    const fila = porNombre.get(claveDeNombreDetal(p.nombre));
+    const costo = fila ? costoEnDolares(fila, iva) : (COSTOS_ESTIMADOS[claveDeNombreDetal(p.nombre)] ?? null);
     return {
-      cuanto: cuanto(c.detal, fila?.unidad ?? "", c.cantidad),
-      nombre: c.detal,
-      unidad: fila?.unidad === "kg" ? "kg" : "unidad",
-      precio,
-      subtotal: precio === null ? null : precio * c.cantidad,
-      costo: costo === null ? null : costo * c.cantidad,
-      estimado: !fila && precio !== null,
+      cuanto: p.cuanto,
+      nombre: p.nombre,
+      unidad: p.porKilo ? "kg" : "unidad",
+      precio: p.precio,
+      subtotal: p.importe,
+      costo: costo === null ? null : costo * combo.componentes[i].cantidad,
+      estimado: p.estimado,
     };
   });
-  const total = precioDelCombo(combo, precioDe);
   return {
     n: combo.n,
     nombre: combo.nombre,
@@ -93,9 +76,9 @@ const desglose = COMBOS_DEL_DETAL.map((combo) => {
     aMano: Boolean(combo.precioAMano),
     detalle: combo.detalle,
     partes,
-    total,
-    totalBs: enBolivares(total, tasa, reglas.redondeo_bs),
-    falta: faltanParaElCombo(combo, (nombre) => (porNombre.has(claveDeNombreDetal(nombre)) ? precioDe(nombre) : null)),
+    total: cuenta.total,
+    totalBs: enBolivares(cuenta.total, tasa, reglas.redondeo_bs),
+    falta: partes.filter((p) => p.precio === null || p.estimado).map((p) => p.nombre),
     costo: partes.length > 0 && partes.every((p) => p.costo !== null) ? partes.reduce((s, p) => s + (p.costo ?? 0), 0) : null,
   };
 });
