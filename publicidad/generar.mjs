@@ -5,6 +5,9 @@
 //   node publicidad/generar.mjs            todos los carteles
 //   node publicidad/generar.mjs combos     solo combos.html
 //
+// Con SOLO=archivo1,archivo2 (los data-archivo), solo esos carteles de la página: npm run combos rehace así el volante con
+// los precios de hoy sin tocar el que va sin precios, que está en el repositorio.
+//
 // Chrome tiene que estar instalado.
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -21,6 +24,7 @@ const PX_POR_MM = 96 / MM_POR_PULGADA;
 const ANCHO_PREVIA_PX = 1500;
 
 const pedidos = process.argv.slice(2);
+const solo = process.env.SOLO ? process.env.SOLO.split(",") : null;
 const paginas = fs
   .readdirSync(aqui)
   .filter((f) => f.endsWith(".html") && (pedidos.length === 0 || pedidos.includes(f.replace(/\.html$/, ""))))
@@ -124,6 +128,7 @@ try {
     })()`);
     if (desbordes.length > 0) throw new Error(`Se sale de su sitio:\n${desbordes.join("\n")}`);
     for (const cartel of carteles) {
+      if (solo && !solo.includes(cartel.archivo)) continue;
       const anchoMm = cartel.ancho / PX_POR_MM;
       const altoMm = cartel.alto / PX_POR_MM;
 

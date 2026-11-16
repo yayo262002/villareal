@@ -16,6 +16,8 @@ import { diaDeLaSemana, fechaCorta, hoy } from "../src/lib/dinero.ts";
  *   precios-combos-AAAA-MM-DD-1.pdf, .jpg   los de todos los días (1 a 9), cada producto con lo que lleva y su precio
  *   precios-combos-AAAA-MM-DD-2.pdf, .jpg   los especiales
  *   estado-combos-AAAA-MM-DD.jpg            el flier para el estado de WhatsApp, con los precios de hoy
+ *   volante-combos-AAAA-MM-DD.pdf, .jpg     el volante de media carta para los clientes, con los precios de hoy
+ *   volante-combos-AAAA-MM-DD-2-por-hoja.pdf  el mismo, dos en una hoja carta, para imprimir y cortar
  *
  * Las hojas son para el dueño: con lo que cuesta cada combo y lo que deja. Solo lee la base. Hace falta Chrome (lo usa
  * publicidad/generar.mjs).
@@ -111,6 +113,12 @@ fs.writeFileSync(
 
 const dibujo = spawnSync(process.execPath, [path.join(carpetaPublicidad, "generar.mjs"), "precios-combos", "estado-combos"], { stdio: "inherit" });
 if (dibujo.status !== 0) throw new Error("No se pudieron dibujar las hojas de los precios.");
+// El volante con los precios de hoy; el que va sin precios no cambia y no se toca.
+const volante = spawnSync(process.execPath, [path.join(carpetaPublicidad, "generar.mjs"), "volante-combos"], {
+  stdio: "inherit",
+  env: { ...process.env, SOLO: "volante-combos-precios,volante-combos-precios-2-por-hoja" },
+});
+if (volante.status !== 0) throw new Error("No se pudo dibujar el volante con los precios.");
 fs.mkdirSync(carpetaListas, { recursive: true });
 for (const hoja of ["1", "2"]) {
   for (const extension of ["pdf", "jpg"]) {
@@ -123,3 +131,11 @@ for (const hoja of ["1", "2"]) {
 const flier = path.join(carpetaListas, `estado-combos-${dia}.jpg`);
 fs.copyFileSync(path.join(carpetaPublicidad, "estado-combos.jpg"), flier);
 console.log(path.relative(raiz, flier));
+for (const [origen, destino] of [
+  ["volante-combos-precios.pdf", `volante-combos-${dia}.pdf`],
+  ["volante-combos-precios.jpg", `volante-combos-${dia}.jpg`],
+  ["volante-combos-precios-2-por-hoja.pdf", `volante-combos-${dia}-2-por-hoja.pdf`],
+]) {
+  fs.copyFileSync(path.join(carpetaPublicidad, origen), path.join(carpetaListas, destino));
+  console.log(path.relative(raiz, path.join(carpetaListas, destino)));
+}

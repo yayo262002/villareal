@@ -60,6 +60,8 @@ next-env.d.ts
 /publicidad/combos-precios.js
 /publicidad/precios-combos-datos.js
 /publicidad/estado-combos.jpg
+/publicidad/volante-combos-precios*.pdf
+/publicidad/volante-combos-precios*.jpg
 /publicidad/lista-precios*.pdf
 /publicidad/lista-precios*.jpg
 /publicidad/lista-mayor*.pdf
