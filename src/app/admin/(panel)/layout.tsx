@@ -33,6 +33,7 @@ const GRUPOS: readonly GrupoDelPanel[] = [
       { ruta: "/admin", nombre: "Resumen", tambien: ["/admin/copia", "/admin/copias", "/admin/app"] },
       { ruta: "/admin/avisos", nombre: "Avisos" },
       { ruta: "/admin/estadisticas", nombre: "Estadísticas", tambien: ["/admin/informe", "/admin/exportaciones"] },
+      { ruta: "/admin/reparto", nombre: "Reparto del mes" },
       { ruta: "/admin/ayuda", nombre: "Cómo se usa" },
     ],
   },

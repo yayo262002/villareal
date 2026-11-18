@@ -27,8 +27,9 @@ Tiene dos partes:
   facturas con su IVA, sus notas de crédito y el libro de ventas; la foto de
   cada nota en papel, las reseñas de cada producto, los proveedores (a
   quién se le debe y los pagos que se les hacen), los días de crédito de
-  unos y otros, un informe de cuánto se vende, de qué y a quién, y la lista
-  de precios de la charcutería (el detal), al día con la tasa del BCV.
+  unos y otros, un informe de cuánto se vende, de qué y a quién, el reparto
+  de la ganancia de cada mes entre los socios, y la lista de precios de la
+  charcutería (el detal), al día con la tasa del BCV.
 
 ## Arrancar
 
@@ -219,6 +220,10 @@ src/components/fila-de-producto.tsx  La fila de un producto en la venta y en la 
 src/lib/caja.ts           El cierre del día: vendido, entrado por método y salido
 src/lib/movimientos.ts    Todo lo que se movió entre dos fechas (lo usan la web y el guion de copias)
 src/lib/estadisticas.ts   Lo que se saca de los movimientos: por producto, por cliente, por método, por día
+src/lib/costo-del-dia.ts  Lo que cuesta hoy cada cosa que se vende (la marca, el tipo, un combo del detal): se guarda con cada línea de venta
+src/lib/reparto-calculo.ts  El reparto del mes: la ganancia de lo cobrado, lo que se paga antes y lo de cada parte por puntos; el resumen para WhatsApp (puro, con pruebas)
+src/lib/reparto.ts        El reparto desde la base: ventas con su costo, abonos, lo que se paga antes de repartir
+src/app/admin/(panel)/reparto/  Reparto del mes: lo vendido, lo cobrado, la ganancia, lo de cada uno, lo que deja cada producto y las partes
 src/lib/exportaciones.ts  El Excel de cada día, guardado solo por la tarea diaria
 src/lib/exportaciones-locales.ts  Los Excel que deja npm run copia en el ordenador
 src/lib/cuenta-cliente.ts Lo que un cliente ve de su cuenta con su enlace
@@ -563,6 +568,35 @@ datos/                    La base de datos (fuera de Git)
   la lista de absolutamente todos los movimientos del período, cada uno con
   su enlace. Abajo, las descargas para Excel (`src/lib/estadisticas.ts`).
   El enlace viejo `/admin/informe` lleva aquí.
+- **Reparto del mes** (`/admin/reparto`, en Inicio; el dueño, 18/11/2026:
+  su hermano entra como socio y la parte de cada uno no puede ir sobre la
+  venta, porque hay productos que solo dejan un 5 %). Cada línea de venta
+  guarda **el costo de ese día** (`venta_lineas.costo_unitario_usd`): el de
+  la marca, el del tipo si se vende de una sola forma (el de Productos, que
+  se pone al día solo con cada factura si está unido a la lista del detal)
+  o lo que suman los productos de un combo en la lista del detal
+  (`src/lib/costo-del-dia.ts`). Si el costo sube mañana, la ganancia de la
+  venta de hoy no cambia, y no se reparte el dinero que hace falta para
+  volver a comprar. La ganancia que se reparte es **la de lo cobrado** en
+  el mes: cada abono paga las notas del cliente de la más antigua a la más
+  nueva (`repartoDeAbonos`) y trae la ganancia de lo que paga, en
+  proporción; lo vendido y no cobrado entra en el mes en que se cobre, y lo
+  que sobra de un abono (a cuenta) no es ganancia. Se resta **lo que se
+  paga antes** (la comisión de la vendedora, anotada en el mes; tabla
+  `reparto_descuentos`) y lo que queda se reparte **por puntos**: con 2 de
+  10, 2 de cada 10 dólares de la ganancia, deje el producto un 5 % o un
+  15 %. Las partes (de entrada, fondo de previsión 2, cuota del préstamo 1,
+  «Yo» 3, papá 2 y el hermano 2) se cambian en la misma pantalla
+  (`ajustes.reparto_partes`) y valen para todos los meses; el reparto se
+  hace al centavo sin perder ninguno. Lo vendido sin costo guardado (las
+  ventas de antes del 18/11/2026, o un producto sin costo en Productos) no
+  entra en la ganancia: se dice aparte y no se estima. La pantalla enseña
+  también lo que deja cada producto, sobre su costo, y «Mandar el resumen
+  por WhatsApp» abre el mensaje para elegir a quién (el hermano está
+  fuera). Las cuentas, con pruebas, en `src/lib/reparto-calculo.ts`. La
+  mozzarella, que tenía el precio escrito a mano y ningún costo, quedó
+  unida a la de la lista del detal (7,60 $) para que su costo siga a las
+  facturas; su precio no cambia, porque no tiene margen.
 - **Exportación diaria.** Cada mañana a las 6 (hora de Venezuela), la tarea
   diaria de Vercel guarda en la base el Excel con los movimientos del día
   anterior (y rehace el de anteayer, por si se anotó algo tarde); se

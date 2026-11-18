@@ -125,6 +125,21 @@ export function precioDelCombo(combo: ComboDelDetal, precioDe: (nombreDetal: str
   return alCentavo(suma);
 }
 
+/**
+ * Lo que le cuesta un combo al negocio: lo que suman sus productos al costo de la lista del detal (con su IVA si es
+ * gravado), sin redondear. null si va a mano (lo que lleva varía) o si a alguno le falta el costo: no se estima.
+ */
+export function costoDelCombo(combo: ComboDelDetal, costoDe: (nombreDetal: string) => number | null): number | null {
+  if (combo.precioAMano || combo.componentes.length === 0) return null;
+  let suma = 0;
+  for (const c of combo.componentes) {
+    const costo = costoDe(c.detal);
+    if (costo === null) return null;
+    suma += costo * c.cantidad;
+  }
+  return suma;
+}
+
 /** El SKU del combo en la caja: su número, como en la hoja («COMBO-3»). Al escanear o buscar «combo 3», sale. */
 export function skuDelCombo(combo: Pick<ComboDelDetal, "n">): string {
   return `COMBO-${combo.n}`;

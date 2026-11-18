@@ -26,7 +26,7 @@ export default async function PaginaAyuda() {
         <p>Va por lo que quieres hacer, en el orden del día. Toca un grupo y debajo salen sus pantallas; la que tienes abierta va en dorado.</p>
         <ul className={estilos.pasos}>
           <li>
-            <strong>Inicio</strong>: el Resumen del día, los avisos, las estadísticas y esta guía.
+            <strong>Inicio</strong>: el Resumen del día, los avisos, las estadísticas, el reparto del mes y esta guía.
           </li>
           <li>
             <strong>Vender</strong>: registrar una venta (la caja), los pedidos que llegan de la web, el despacho y las etiquetas de los combos.
@@ -166,6 +166,11 @@ export default async function PaginaAyuda() {
           </li>
           <li>
             <Link href="/admin/estadisticas">Estadísticas</Link> para cualquier período, con descargas para Excel.
+          </li>
+          <li>
+            A fin de mes, el <Link href="/admin/reparto">Reparto del mes</Link>: la ganancia de lo cobrado (lo cobrado menos lo que costaba la
+            mercancía el día de cada venta), menos lo que se paga antes, repartida por puntos. «Mandar el resumen por WhatsApp» se lo manda a quien
+            quieras.
           </li>
           <li>
             La copia de seguridad se guarda sola cada mañana (se conservan 14). En el Resumen puedes descargar una cuando quieras: ese archivo es el

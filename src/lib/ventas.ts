@@ -2,6 +2,7 @@ import "server-only";
 import { ejecutar, fila, filas, transaccion } from "./db";
 import { ROTULO_DEL_CLIENTE } from "./clientes";
 import { redondear } from "./dinero";
+import { costosDelDia } from "./costo-del-dia";
 
 export type LineaVenta = {
   producto_id: number;
@@ -152,6 +153,8 @@ export async function crearVenta(
   }
 
   const total = redondear(lineas.reduce((s, l) => s + l.cantidad * l.precio_unitario_usd, 0));
+  // El costo de hoy queda con cada línea: si mañana sube, la ganancia de esta venta no cambia.
+  const costos = await costosDelDia(lineas);
 
   return transaccion(async (tx) => {
     const venta = await tx.execute({
@@ -173,11 +176,11 @@ export async function crearVenta(
       ],
     });
     const ventaId = Number(venta.rows[0].id);
-    for (const l of lineas) {
+    for (const [i, l] of lineas.entries()) {
       await tx.execute({
-        sql: `insert into venta_lineas (venta_id, producto_id, cantidad, precio_unitario_usd, subtotal_usd, piezas, variante_id)
-              values (?, ?, ?, ?, ?, ?, ?)`,
-        args: [ventaId, l.producto_id, l.cantidad, l.precio_unitario_usd, redondear(l.cantidad * l.precio_unitario_usd), l.piezas, l.variante_id ?? null],
+        sql: `insert into venta_lineas (venta_id, producto_id, cantidad, precio_unitario_usd, subtotal_usd, piezas, variante_id, costo_unitario_usd)
+              values (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [ventaId, l.producto_id, l.cantidad, l.precio_unitario_usd, redondear(l.cantidad * l.precio_unitario_usd), l.piezas, l.variante_id ?? null, costos[i] ?? null],
       });
     }
     return ventaId;

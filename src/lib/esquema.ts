@@ -285,7 +285,11 @@ export const ESQUEMA = `
     -- Cuántas piezas (bloques de queso) eran. Solo informa: el importe sale de los kilos.
     piezas integer,
     -- Qué marca o presentación se vendió, si el producto las tiene.
-    variante_id integer references variantes(id)
+    variante_id integer references variantes(id),
+    -- Lo que le costaba al negocio una unidad (el kilo, el cartón) el día de la venta: el costo de la marca, o el del
+    -- tipo si se vende de una sola forma, o lo que suman los productos de un combo en la lista del detal. Null si no
+    -- tenía costo (y en las ventas de antes del 18/11/2026). De aquí sale la ganancia del Reparto del mes.
+    costo_unitario_usd real
   );
 
   create table if not exists pagos (
@@ -699,6 +703,16 @@ export const ESQUEMA = `
   );
   create index if not exists peticiones_publicas_momento on peticiones_publicas(tipo, momento);
 
+  -- Lo que se paga de la ganancia de un mes antes de repartirla por puntos (la comisión de la vendedora, por
+  -- ejemplo): el Reparto del mes lo resta y reparte lo que queda.
+  create table if not exists reparto_descuentos (
+    id integer primary key autoincrement,
+    mes text not null,
+    concepto text not null,
+    monto_usd real not null,
+    creado_en text not null default (datetime('now'))
+  );
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (
@@ -764,6 +778,7 @@ export const TABLAS = [
   "nombres_en_notas",
   "pagadores_de_la_casa",
   "pedidos_web",
+  "reparto_descuentos",
 ] as const;
 
 /**

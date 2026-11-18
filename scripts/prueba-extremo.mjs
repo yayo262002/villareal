@@ -2440,6 +2440,7 @@ async function probarSinEscribir() {
     ["/admin/cuentas", "Lo que te deben", "Notas que te deben"],
     ["/admin/inventario", "Inventario", "Recuento o merma"],
     ["/admin/estadisticas", "Estadísticas", "Por mes"],
+    ["/admin/reparto", "Reparto del mes", "Lo que le toca a cada uno"],
     ["/admin/productos", "Productos", "Tasa del día"],
     ["/admin/productos/nuevo", "Agregar producto", "¿Qué vas a agregar?"],
     ["/admin/productos/nuevo?tipo=nuevo", "Un tipo de producto nuevo", "¿A qué familia pertenece este producto?"],
@@ -2874,6 +2875,62 @@ async function probarCaja() {
  * del servidor), la clave nueva, que la de antes deja de valer y que las
  * sesiones de antes caducan. Al final se vuelve a la clave de .env.local.
  */
+/** El costo del día en cada venta y el Reparto del mes: la ganancia de lo cobrado, por puntos. Solo en local. */
+async function probarReparto() {
+  const hoyVet = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  const mes = hoyVet.slice(0, 7);
+  const [antes] = await consultar("select costo_usd from productos where id = 2");
+  escribirEnLocal("update productos set costo_usd = 7.6 where id = 2");
+  const [mostrador] = await consultar("select id from clientes where nombre = 'Mostrador' and telefono = ''");
+  const venta = JSON.stringify({
+    clave_pos: `reparto-${Date.now()}`,
+    cliente_id: mostrador.id,
+    fecha: hoyVet,
+    cajero: "",
+    descuento_usd: 0,
+    nota: "",
+    modo: "ahora",
+    entrega: "ahora",
+    entrega_prevista: "",
+    confirmar: true,
+    confirmar_nota: true,
+    // A más del doble de la lista (con «lo escrito es correcto»): así deja ganancia aunque otras ventas de la prueba se hicieran por debajo del costo.
+    lineas: [{ clave: "2", producto_id: 2, variante_id: null, nombre: "Mozzarella", unidad: "kg", cantidad: 1, precio_usd: 30, piezas: null }],
+    pagos: [{ metodo: "efectivo_usd", monto_usd: 30 }],
+  });
+  let r = await enviar("/admin/ventas", 'name="venta"', { venta, foto: fotoFirmada() });
+  const ventaId = Number(r.destino.match(/\/admin\/ventas\/(\d+)\/nota/)?.[1]);
+  const [linea] = ventaId ? await consultar("select costo_unitario_usd from venta_lineas where venta_id = ?", [ventaId]) : [];
+  comprobar("la venta guarda el costo del día de cada línea (la mozzarella, a 7,60)", cerca(Number(linea?.costo_unitario_usd), 7.6), `${r.destino} ${JSON.stringify(linea)}`);
+  escribirEnLocal("update productos set costo_usd = ? where id = 2", [antes.costo_usd]);
+  const [luego] = ventaId ? await consultar("select costo_unitario_usd from venta_lineas where venta_id = ?", [ventaId]) : [];
+  comprobar("si el costo cambia después, la venta sigue con el de su día", cerca(Number(luego?.costo_unitario_usd), 7.6), JSON.stringify(luego));
+
+  const p = await pagina(`/admin/reparto?mes=${mes}`);
+  const texto = legible(p.html);
+  comprobar(
+    `el reparto del mes: lo vendido, lo cobrado, la ganancia, lo de cada uno y el resumen para WhatsApp (${p.ms} ms)`,
+    p.status === 200 && texto.includes("Ganancia de lo cobrado") && texto.includes("Lo que le toca a cada uno") && texto.includes("Mi hermano") && p.html.includes("https://wa.me/?text="),
+    String(p.status),
+  );
+  comprobar("lo que deja cada producto, con el costo de su día", texto.includes("Lo que deja cada producto") && texto.includes("Mozzarella"));
+
+  r = await enviar(`/admin/reparto?mes=${mes}`, 'name="puntos_0"', { mes, nombre_0: "Papá", puntos_0: "" });
+  comprobar("unas partes a medias no se guardan y dicen qué falta", r.destino.includes("le faltan los puntos"), r.destino);
+  r = await enviar(`/admin/reparto?mes=${mes}`, 'name="puntos_0"', { mes, nombre_0: "Fondo de previsión", puntos_0: "2", nombre_1: "Yo", puntos_1: "6", nombre_2: "Mi hermano", puntos_2: "2" });
+  comprobar("las partes se guardan, con sus puntos de cada 10", r.destino.includes("Partes guardadas") && r.destino.includes("Mi hermano, 2 de 10"), r.destino);
+  const conPartes = legible((await pagina(`/admin/reparto?mes=${mes}`)).html);
+  comprobar("el resumen dice lo de cada uno con sus puntos", conPartes.includes("Mi hermano (2 de 10)") && conPartes.includes("Yo (6 de 10)"), conPartes.match(/<pre[^>]*>([\s\S]*?)<\/pre>/)?.[1] ?? "sin mensaje");
+
+  r = await enviar(`/admin/reparto?mes=${mes}`, 'name="concepto"', { mes, concepto: "Comisión de prueba", monto_usd: "0,50" });
+  comprobar("lo que se paga antes de repartir se anota en su mes", r.destino.includes("Anotado: Comisión de prueba"), r.destino);
+  const [descuento] = await consultar("select id, mes, monto_usd from reparto_descuentos where concepto = 'Comisión de prueba'");
+  const conDescuento = legible((await pagina(`/admin/reparto?mes=${mes}`)).html);
+  comprobar("y el reparto lo resta antes de repartir", descuento?.mes === mes && cerca(Number(descuento?.monto_usd), 0.5) && conDescuento.includes("Después de restar") && conDescuento.includes("Comisión de prueba"));
+  r = await enviar(`/admin/reparto?mes=${mes}`, `name="id" value="${descuento?.id}"`, { id: String(descuento?.id), mes });
+  comprobar("y se quita", r.destino.includes("Quitado") && (await consultar("select count(*) as n from reparto_descuentos"))[0].n === 0, r.destino);
+}
+
 async function probarFacturas() {
   let p = await pagina("/admin/facturas");
   comprobar(
@@ -3625,6 +3682,7 @@ try {
     await probarCatalogo();
     await probarAvisos();
     await probarCaja();
+    await probarReparto();
     await probarFacturas();
     await probarListaDetal();
     await probarCombosEnLaCaja();

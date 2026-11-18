@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   COMBOS_DEL_DETAL,
   claveDeNombreDetal,
+  costoDelCombo,
   cuantoLleva,
   desgloseDelCombo,
   faltanParaElCombo,
@@ -55,6 +56,16 @@ test("el combo de recortes no lleva peso ni precio fijos: lo que lleva varía, y
   // Aunque en la lista hubiera precio para todo, no sale ninguno; y no le falta nada en la lista.
   assert.equal(precioDelCombo(combo("recortes"), () => 4.4), null);
   assert.deepEqual(faltanParaElCombo(combo("recortes"), () => null), []);
+});
+
+test("lo que cuesta un combo es lo que suman sus productos al costo de la lista; sin un costo, o a mano, no se estima", () => {
+  const combo = COMBOS_DEL_DETAL.find((c) => c.clave === "espalda-mozzarella")!;
+  const costos: Record<string, number> = { "Jamón de espalda Drago": 4.9, Mozzarella: 7.6 };
+  const costo = costoDelCombo(combo, (nombre) => costos[nombre] ?? null);
+  assert.equal(Math.round(costo! * 100) / 100, 2.5);
+  assert.equal(costoDelCombo(combo, (nombre) => (nombre === "Mozzarella" ? 7.6 : null)), null);
+  const recortes = COMBOS_DEL_DETAL.find((c) => c.precioAMano)!;
+  assert.equal(costoDelCombo(recortes, () => 1), null);
 });
 
 test("los especiales son del solidario en adelante, como en las hojas", () => {

@@ -157,6 +157,9 @@ import { revisarVentaPos, totalesDe } from "./pos-calculo";
 import { permitirStockNegativo, ponerPermitirStockNegativo } from "./ajustes";
 import { ponerAjustesDelDelivery } from "./ajustes";
 import { TARIFAS_MAXIMAS, ajustesDelFormulario } from "./delivery";
+import { ponerPartesDelReparto } from "./ajustes";
+import { PARTES_MAXIMAS, partesDelFormulario, puntosDe, puntosEnTexto } from "./reparto-calculo";
+import { anotarDescuentoDelMes, quitarDescuentoDelMes } from "./reparto";
 import { empujarAviso, quitarTelefonoPorId } from "./push";
 import { avisoDePrueba } from "./avisos";
 import { negocio } from "@/config/negocio";
@@ -3031,6 +3034,52 @@ export async function guardarTarifasDelDelivery(datos: FormData): Promise<void> 
   await ponerAjustesDelDelivery(resultado.ajustes);
   const cuantas = resultado.ajustes.tarifas.length;
   volverConExito("/admin/delivery", cuantas === 0 ? "Sin tarifas: la web dice que el delivery se confirma por WhatsApp." : `Tarifas guardadas (${cuantas}). La web ya calcula el delivery con ellas.`);
+}
+
+// ---------- Reparto del mes ----------
+
+const REPARTO = "/admin/reparto";
+
+/** El mes del formulario («2026-11»), o null si no viene o no tiene esa forma. */
+function mesDelFormulario(datos: FormData): string | null {
+  const mes = texto(datos, "mes");
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(mes) ? mes : null;
+}
+
+/** Las partes del reparto con sus puntos (el fondo, la cuota, los socios): valen para todos los meses. */
+export async function guardarPartesDelReparto(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const mes = mesDelFormulario(datos);
+  const vuelta = `${mes ? `${REPARTO}?mes=${mes}` : REPARTO}#partes`;
+  const resultado = partesDelFormulario(Array.from({ length: PARTES_MAXIMAS }, (_, i) => ({ nombre: texto(datos, `nombre_${i}`), puntos: texto(datos, `puntos_${i}`) })));
+  if ("error" in resultado) volverConError(vuelta, resultado.error);
+  await ponerPartesDelReparto(resultado.partes);
+  const total = puntosEnTexto(puntosDe(resultado.partes));
+  volverConExito(vuelta, `Partes guardadas: ${resultado.partes.map((p) => `${p.nombre}, ${puntosEnTexto(p.puntos)} de ${total}`).join("; ")}.`);
+}
+
+/** Lo que se paga de la ganancia de un mes antes de repartirla: la comisión de la vendedora, por ejemplo. */
+export async function anotarDescuentoDelReparto(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const mes = mesDelFormulario(datos);
+  if (!mes) volverConError(REPARTO, "Falta el mes: elígelo arriba y vuelve a anotarlo.");
+  const vuelta = `${REPARTO}?mes=${mes}#antes`;
+  const concepto = texto(datos, "concepto").replace(/\s+/g, " ").slice(0, 80);
+  const monto = numero(datos, "monto_usd");
+  if (!concepto) volverConError(vuelta, "Escribe qué es: «Comisión de Marisol».");
+  if (monto === null || !(monto > 0)) volverConError(vuelta, "Escribe el monto en dólares, mayor que cero.");
+  if (monto > 100000) volverConError(vuelta, "Ese monto es demasiado: revísalo.");
+  await anotarDescuentoDelMes(mes, concepto, redondear(monto));
+  volverConExito(vuelta, `Anotado: ${concepto}, ${usd(redondear(monto))}. Se resta antes de repartir.`);
+}
+
+export async function quitarDescuentoDelReparto(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const mes = mesDelFormulario(datos);
+  const vuelta = mes ? `${REPARTO}?mes=${mes}#antes` : REPARTO;
+  const id = numero(datos, "id");
+  if (!id || !(await quitarDescuentoDelMes(id))) volverConError(vuelta, "Eso ya no estaba anotado.");
+  volverConExito(vuelta, "Quitado: ya no se resta antes de repartir.");
 }
 
 // ---------- Pago móvil: lo que entra al banco ----------

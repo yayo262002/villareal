@@ -145,6 +145,8 @@ async function migrar(cliente: Client): Promise<void> {
   const lineas = await definicionDe(cliente, "venta_lineas");
   if (!lineas.includes("piezas")) await añadirColumna(cliente, "venta_lineas", "piezas integer");
   if (!lineas.includes("variante_id")) await añadirColumna(cliente, "venta_lineas", "variante_id integer references variantes(id)");
+  // El costo del día en cada línea, para la ganancia del Reparto del mes. Las ventas de antes quedan sin él.
+  if (!/\bcosto_unitario_usd\b/.test(lineas)) await añadirColumna(cliente, "venta_lineas", "costo_unitario_usd real");
   // Los clientes de antes reciben los siete días de crédito de siempre.
   if (!(await definicionDe(cliente, "clientes")).includes("dias_credito")) {
     await añadirColumna(cliente, "clientes", "dias_credito integer not null default 7");

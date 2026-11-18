@@ -5,6 +5,7 @@ import { esFinDeSemana, lunesDespuesDe } from "./tasa";
 import { IVA_GENERAL_POR_DEFECTO } from "./factura-calculo";
 import { CLAVES_REGLAS_DETAL, reglasDesdeAjustes, type ReglasDelDetal } from "./detal-calculo";
 import { leerAjustesDeDelivery, type AjustesDeDelivery } from "./delivery";
+import { partesDesdeAjuste, type ParteDelReparto } from "./reparto-calculo";
 
 /**
  * Ajustes sueltos del negocio, guardados como clave y valor. La tasa del
@@ -293,4 +294,13 @@ export async function subirVersionDeSesion(): Promise<number> {
   const nueva = (await versionDeSesion()) + 1;
   await guardar("sesion_version", String(nueva));
   return nueva;
+}
+
+/** Las partes del Reparto del mes, con sus puntos: las de siempre mientras el dueño no las cambie. */
+export async function partesDelReparto(): Promise<ParteDelReparto[]> {
+  return partesDesdeAjuste((await leer("reparto_partes")).get("reparto_partes")?.valor);
+}
+
+export async function ponerPartesDelReparto(partes: ParteDelReparto[]): Promise<void> {
+  await guardar("reparto_partes", JSON.stringify(partes));
 }
