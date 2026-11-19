@@ -696,12 +696,20 @@
   outline: 3px solid var(--color-oro);
   outline-offset: 2px;
 }
-.atajos img {
+/* El icono de la familia, en verde sobre un círculo dorado. */
+.atajoIcono {
   flex: none;
+  display: grid;
+  place-items: center;
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  object-fit: cover;
+  background: var(--color-oro);
+  color: var(--color-verde-profundo);
+}
+.atajoIcono svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* ---------- La franja mayorista: una banda verde con los lemas en la serifa dorada ---------- */

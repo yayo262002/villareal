@@ -33,3 +33,8 @@ test("cada portada de familia tiene su versión de 480 px; una subida en el pane
     .filter((src) => !fs.existsSync(path.join(publico, src)));
   assert.deepEqual(faltan, []);
 });
+
+test("la versión de la foto («?v=») se conserva en la miniatura y en la de 480 px", () => {
+  assert.equal(miniatura("/familias/quesos.webp?v=20261119"), "/miniaturas/familias/quesos.webp?v=20261119");
+  assert.equal(portadaMediana("/familias/quesos.webp?v=20261119"), "/miniaturas/familias-480/quesos.webp?v=20261119");
+});

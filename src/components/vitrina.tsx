@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { enlaceWhatsapp } from "@/config/negocio";
 import { nombreDeVenta, porQueSeCobra } from "@/lib/catalogo";
 import { direccionDePortada, type Familia } from "@/lib/familias";
-import { portadaMediana } from "@/lib/portadas";
+import { VERSION_DE_LAS_FOTOS, portadaMediana } from "@/lib/portadas";
 import { rutaProducto, rutaVariante } from "@/lib/enlaces";
 import { aBolivares, bs, fechaCorta, unidadEnPalabras, usd } from "@/lib/dinero";
 import { claveDeOferta } from "@/lib/carrito";
@@ -290,18 +290,17 @@ export function ChipsDeFamilias({ familias, actual }: { familias: Familia[]; act
   );
 }
 
-export type Atajo = { texto: string; ruta: string; foto: string | null };
+export type Atajo = { texto: string; ruta: string; icono: string };
 
-/** Los atajos de la portada: cada uno con una foto pequeña y redonda de lo suyo, y su enlace. */
+/** Los atajos de la portada: cada uno con el icono de su familia en un círculo dorado, y su enlace. */
 export function AtajosDeCategorias({ atajos, className }: { atajos: Atajo[]; className?: string }) {
   return (
     <nav className={`${estilos.atajos} ${className ?? ""}`} aria-label="Categorías">
       {atajos.map((a) => (
         <Link key={a.ruta} href={a.ruta}>
-          {a.foto && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={a.foto} alt="" width={64} height={64} loading="lazy" decoding="async" />
-          )}
+          <span className={estilos.atajoIcono}>
+            <Icono nombre={a.icono} />
+          </span>
           {a.texto}
         </Link>
       ))}
@@ -374,9 +373,9 @@ export function MontandoTuNegocio() {
     <section className={estilos.montando} aria-labelledby="titulo-montando">
       <div className={estilos.montandoFotos} aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/familias/burger.webp" alt="" width={640} height={480} loading="lazy" decoding="async" />
+        <img src={`/familias/burger.webp?v=${VERSION_DE_LAS_FOTOS}`} alt="" width={640} height={480} loading="lazy" decoding="async" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/familias/pizzeria.webp" alt="" width={640} height={480} loading="lazy" decoding="async" />
+        <img src={`/familias/pizzeria.webp?v=${VERSION_DE_LAS_FOTOS}`} alt="" width={640} height={480} loading="lazy" decoding="async" />
       </div>
       <div className={estilos.montandoTexto}>
         <h2 id="titulo-montando" className={estilos.montandoTitulo}>

@@ -4,8 +4,8 @@ import { enlaceMapa, enlaceWhatsapp, negocio, whatsappLegible } from "@/config/n
 import { ofertasVigentes } from "@/lib/ofertas";
 import { hoy } from "@/lib/dinero";
 import { destacados, rutasPublicas, vitrina } from "@/lib/vitrina";
-import { direccionDePortada, type Familia } from "@/lib/familias";
-import { miniatura } from "@/lib/portadas";
+import type { Familia } from "@/lib/familias";
+import { VERSION_DE_LAS_FOTOS } from "@/lib/portadas";
 import { CabeceraPublica, DatosEstructurados, LineaTasa, PiePublico, datosDeLaTienda } from "@/components/publico";
 import {
   AtajosDeCategorias,
@@ -37,23 +37,23 @@ const OFERTAS_EN_PORTADA = 3;
  * familia no existe o está escondida no sale: no se lleva a nadie a una
  * página que no existe.
  */
-const ATAJOS: { texto: string; familia: string; foto?: string }[] = [
+const ATAJOS: { texto: string; familia: string }[] = [
   { texto: "Quesos", familia: "quesos" },
   { texto: "Embutidos", familia: "embutidos" },
   { texto: "Salsas", familia: "salsas-y-aderezos" },
   { texto: "Papas", familia: "papas-y-congelados" },
   { texto: "Huevos", familia: "huevos" },
   { texto: "Lácteos", familia: "lacteos" },
-  { texto: "Bebidas", familia: "bebidas", foto: "/productos/refrescos.webp" },
+  { texto: "Bebidas", familia: "bebidas" },
 ];
 
+// Cada atajo con el icono de su familia, en un círculo dorado (el dueño, 19/11/2026, no quería la fila de antes, con
+// una foto pequeña de cada familia: las que aún no tienen mercancía con foto salían como un círculo de color, vacío).
 function atajosDe(familias: Familia[]): Atajo[] {
   return ATAJOS.flatMap((a) => {
     const familia = familias.find((f) => f.slug === a.familia);
     if (!familia) return [];
-    // La foto, en miniatura: el círculo es de 64 px, y la foto entera le quitaba el turno a la de arriba.
-    const foto = a.foto ?? direccionDePortada(familia);
-    return [{ texto: a.texto, ruta: `/categoria/${familia.slug}`, foto: foto ? miniatura(foto) : null }];
+    return [{ texto: a.texto, ruta: `/categoria/${familia.slug}`, icono: familia.icono }];
   });
 }
 
@@ -86,8 +86,8 @@ export default async function PaginaInicio() {
         <section className={estilos.heroe} aria-labelledby="titulo-portada">
           {/* El «?v=» cambia cada vez que se rehace la foto (npm run fotos-web): el teléfono la guarda un día, y sin él se seguiría viendo la de antes. */}
           <picture className={estilos.heroeFoto}>
-            <source media="(min-width: 900px)" srcSet="/portada/heroe.webp?v=20261118" />
-            <img src="/portada/heroe-movil.webp?v=20261118" alt="" width={900} height={760} fetchPriority="high" />
+            <source media="(min-width: 900px)" srcSet={`/portada/heroe.webp?v=${VERSION_DE_LAS_FOTOS}`} />
+            <img src={`/portada/heroe-movil.webp?v=${VERSION_DE_LAS_FOTOS}`} alt="" width={900} height={760} fetchPriority="high" />
           </picture>
           <div className={estilos.heroeDentro}>
             <div className={estilos.heroeTexto}>

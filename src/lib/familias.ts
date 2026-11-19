@@ -2,7 +2,7 @@ import "server-only";
 import { ejecutar, fila, filas, transaccion } from "./db";
 import { aSlug } from "./enlaces";
 import { normalizarPortada } from "./foto-producto";
-import { PORTADAS_INCLUIDAS } from "./portadas";
+import { PORTADAS_INCLUIDAS, VERSION_DE_LAS_FOTOS } from "./portadas";
 
 /**
  * Las familias del catálogo: Burger, Pizzería, Quesos, Huevos… Cada
@@ -222,5 +222,5 @@ export async function quitarFotoDeFamilia(familiaId: number): Promise<boolean> {
  */
 export function direccionDePortada(familia: Pick<Familia, "id" | "slug" | "foto_version">): string | null {
   if (familia.foto_version) return `/foto-familia/${familia.id}?v=${encodeURIComponent(familia.foto_version.replace(/\D/g, ""))}`;
-  return PORTADAS_INCLUIDAS.has(familia.slug) ? `/familias/${familia.slug}.webp` : null;
+  return PORTADAS_INCLUIDAS.has(familia.slug) ? `/familias/${familia.slug}.webp?v=${VERSION_DE_LAS_FOTOS}` : null;
 }

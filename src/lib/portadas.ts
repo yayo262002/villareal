@@ -23,13 +23,21 @@ export const PORTADAS_INCLUIDAS: ReadonlySet<string> = new Set<string>([
  * el panel (/foto-familia/…) va tal cual.
  */
 export function miniatura(src: string): string {
-  return /^\/(familias|productos)\/[a-z0-9-]+\.webp$/.test(src) ? `/miniaturas${src}` : src;
+  const m = /^(\/(familias|productos)\/[a-z0-9-]+\.webp)(\?v=[\w-]+)?$/.exec(src);
+  return m ? `/miniaturas${m[1]}${m[3] ?? ""}` : src;
 }
+
+/**
+ * La versión de las fotos que trae la web (public/portada/, public/familias/): va en su dirección como «?v=». El
+ * teléfono las guarda un día; al rehacerlas (npm run fotos-web) se cambia aquí, y todos ven la nueva en el momento.
+ */
+export const VERSION_DE_LAS_FOTOS = "20261119";
 
 /**
  * La portada incluida de una familia (/familias/quesos.webp) a 480 × 360, para una tarjeta pequeña (srcset): en
  * public/miniaturas/familias-480/ (npm run miniaturas). Una portada subida en el panel no tiene: null.
  */
 export function portadaMediana(src: string): string | null {
-  return /^\/familias\/[a-z0-9-]+\.webp$/.test(src) ? src.replace("/familias/", "/miniaturas/familias-480/") : null;
+  const m = /^\/familias\/([a-z0-9-]+\.webp)(\?v=[\w-]+)?$/.exec(src);
+  return m ? `/miniaturas/familias-480/${m[1]}${m[2] ?? ""}` : null;
 }
