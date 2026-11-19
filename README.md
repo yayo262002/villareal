@@ -1550,6 +1550,15 @@ Binance y otro.
   entra. Las fotos son las de su mercancía recortada (`publicidad/fotos/`);
   un artículo sin foto propia se enseña con la del tipo, la de referencia o
   el león, nunca con la de otra marca.
+- **Lo de La Vega** (el dueño, 18/11/2026: «agrega los chorizos, picante,
+  ahumado, ajo, y además el pepperoni»). En Embutidos, la sección
+  «Chorizos» (el tipo Chorizo: con ajo, ahumado y el picante parrillero, que
+  en el paquete dice «salchicha cocida superior picante parrillera») y la
+  sección «Pepperoni» (estándar, maxi de 6 piezas y de 2 piezas), que sale
+  también en Pizzería. Por kilo, con el costo de la lista mayorista de La
+  Vega de noviembre (sin IVA: trabajan por nota; el paquete normal, no el
+  largo) más un 10 %. No están en la lista del detal, así que su costo se
+  cambia a mano en la ficha de cada marca.
 - **Ofertas y combos** (`/admin/ofertas`): cada oferta tiene nombre,
   descripción, precio en dólares (vacío: «consulta el precio»), fechas
   desde y hasta (vacías: sin límite), estado (borrador, activa, inactiva),
@@ -1894,8 +1903,9 @@ Binance y otro.
   charcutería tiene precio desde el 15/11/2026 (costo de la lista + 10 %).
 - Fotos de los artículos de la charcutería que no tienen la suya (Magro's,
   la mortadela tapara, las mortadelas en pieza de 1 kg y la Punta de Monte
-  de 500 g, las salchichas a granel, la tocineta Cumbre Fresca y casi todo
-  San Pedro): se suben en la ficha de cada marca.
+  de 500 g, las salchichas a granel, la tocineta Cumbre Fresca, casi todo
+  San Pedro, el chorizo ahumado y los tres pepperoni de La Vega): se suben
+  en la ficha de cada marca.
 - Ver si Guaralac (la marca del pecorino) y Guaralact (la del suero) son
   la misma: si lo son, unirlas en Productos → Marcas.
 - Fotos propias de los productos: hoy llevan una foto de referencia, marcada
