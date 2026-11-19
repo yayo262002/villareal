@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Reel de Villa Real</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700..900&family=Manrope:wght@500;600;700;800&display=swap">
+<style>
+  html, body { margin: 0; background: #0a2416; }
+  canvas { display: block; width: 270px; height: 480px; }
+  /* Para que el navegador cargue las letras antes de dibujar. */
+  .letras { position: absolute; left: -9999px; }
+</style>
+</head>
+<body>
+<canvas id="lienzo" width="1080" height="1920"></canvas>
+<div class="letras"><span style="font-family: Fraunces; font-weight: 800">Aa</span><span style="font-family: Manrope; font-weight: 800">Aa</span></div>
+<script>/*FOTOS*/</script>
+<script>
+// El reel de Instagram de Villa Real (1080 × 1920, para Reels y estados): una animación en un lienzo que
+// publicidad/reel.mjs graba con el propio Chrome (MediaRecorder, en MP4). Todo lo que dice es del negocio:
+// src/config/negocio.ts, el flier de la inauguración (inauguracion.html) y lo que la web enseña. Sin precios:
+// cambian cada día. Lo importante va entre y = 260 y y = 1560: arriba y abajo Instagram pone sus botones.
+const W = 1080, H = 1920;
+const lienzo = document.getElementById("lienzo");
+const x = lienzo.getContext("2d");
+
+const VERDE_HONDO = "#0a2416", VERDE = "#123a25", ORO = "#f0c24f", ORO_HONDO = "#c98f12", CREMA = "#fbf3e2", CREMA_OSCURA = "#f3e7cc", TINTA = "#10331f", TOMATE = "#d8452b", WHATSAPP = "#25d366";
+const TITULO = "Fraunces, Georgia, serif", TEXTO = "Manrope, Arial, sans-serif";
+
+const fijar = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const tramo = (t, a, b) => fijar((t - a) / (b - a));
+const suave = (p) => 1 - Math.pow(1 - p, 3);
+const rebote = (p) => { const c1 = 1.5, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); };
+
+// ---------- Las fotos y sus sombras (hechas una vez: dibujarlas difuminadas en cada cuadro sería lento) ----------
+const FOTOS = {}, SOMBRAS = {};
+async function cargarFotos() {
+  for (const [nombre, dato] of Object.entries(window.FOTOS)) {
+    const im = new Image();
+    im.src = dato;
+    await im.decode();
+    FOTOS[nombre] = im;
+    const m = 50;
+    const s = document.createElement("canvas");
+    s.width = im.width + m * 2;
+    s.height = im.height + m * 2;
+    const sx = s.getContext("2d");
+    sx.filter = "brightness(0) blur(22px)";
+    sx.globalAlpha = 0.5;
+    sx.drawImage(im, m, m);
+    SOMBRAS[nombre] = { lienzo: s, margen: m };
+  }
+}
+
+/** Un producto apoyado en `base` (su borde de abajo), centrado en `cx`, de `alto` píxeles. */
+function producto(nombre, cx, base, alto, alfa = 1, dy = 0, escala = 1) {
+  const im = FOTOS[nombre];
+  if (!im || alfa <= 0) return;
+  const h = alto * escala, w = (im.width / im.height) * h;
+  const izq = cx - w / 2, arriba = base - h + dy;
+  const s = SOMBRAS[nombre], k = h / im.height;
+  x.save();
+  x.globalAlpha = alfa;
+  x.drawImage(s.lienzo, izq - s.margen * k + 10, arriba - s.margen * k + 22, s.lienzo.width * k, s.lienzo.height * k);
+  x.drawImage(im, izq, arriba, w, h);
+  x.restore();
+}
+
+/** Un texto centrado que no pasa de `ancho`: si no cabe, se achica. */
+function texto(cadena, cx, y, { tam = 60, peso = 800, familia = TEXTO, color = CREMA, alfa = 1, espacio = 0, ancho = 960, dy = 0, alinear = "center" } = {}) {
+  if (alfa <= 0) return;
+  x.save();
+  x.globalAlpha = alfa;
+  x.fillStyle = color;
+  x.textAlign = alinear;
+  x.textBaseline = "alphabetic";
+  x.letterSpacing = `${espacio}px`;
+  let t = tam;
+  x.font = `${peso} ${t}px ${familia}`;
+  while (x.measureText(cadena).width > ancho && t > 10) {
+    t -= 2;
+    x.font = `${peso} ${t}px ${familia}`;
+  }
+  x.fillText(cadena, cx, y + dy);
+  x.restore();
+}
+
+function pastilla(cadena, cx, y, { fondo = ORO, color = TINTA, tam = 34, alfa = 1, espacio = 6, alto = 72 } = {}) {
+  if (alfa <= 0) return;
+  x.save();
+  x.globalAlpha = alfa;
+  x.font = `800 ${tam}px ${TEXTO}`;
+  x.letterSpacing = `${espacio}px`;
+  const w = x.measureText(cadena).width + 70;
+  x.fillStyle = fondo;
+  x.beginPath();
+  x.roundRect(cx - w / 2, y - alto / 2, w, alto, alto / 2);
+  x.fill();
+  x.fillStyle = color;
+  x.textAlign = "center";
+  x.textBaseline = "middle";
+  x.fillText(cadena, cx + espacio / 2, y + 2);
+  x.restore();
+}
+
+function leon(cx, cy, alto, alfa = 1, escala = 1) {
+  const im = FOTOS.leon;
+  if (!im || alfa <= 0) return;
+  const h = alto * escala, w = (im.width / im.height) * h;
+  x.save();
+  x.globalAlpha = alfa;
+  x.drawImage(im, cx - w / 2, cy - h / 2, w, h);
+  x.restore();
+}
+
+/** El fondo de una escena: un color liso con una luz suave que se mueve despacio. */
+function fondo(color, luz, t, alfa = 1, cy = 0.42) {
+  x.save();
+  x.globalAlpha = alfa;
+  x.fillStyle = color;
+  x.fillRect(0, 0, W, H);
+  const lx = W / 2 + Math.sin(t * 0.6) * 90, ly = H * cy + Math.cos(t * 0.45) * 60;
+  const g = x.createRadialGradient(lx, ly, 0, lx, ly, 980);
+  g.addColorStop(0, luz);
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g;
+  x.fillRect(0, 0, W, H);
+  x.restore();
+}
+
+/** Lo que aparece subiendo: transparencia y desplazamiento para un momento de la escena. */
+const entra = (u, a, dur = 0.6, desde = 90) => { const p = suave(tramo(u, a, a + dur)); return { alfa: p, dy: (1 - p) * desde }; };
+
+// ---------- Las escenas ----------
+const ESCENAS = {
+  logo: { dura: 3.4, dibujar(u, a) {
+    fondo(VERDE_HONDO, "rgba(240,194,79,0.30)", u, a, 0.4);
+    const p = rebote(tramo(u, 0.1, 1.0));
+    leon(W / 2, 700, 380, a * tramo(u, 0.1, 0.6), 0.75 + 0.25 * p);
+    let e = entra(u, 0.7, 0.6, 40);
+    texto("COMERCIALIZADORA", W / 2, 1010, { tam: 34, peso: 800, color: ORO, espacio: 14, alfa: a * e.alfa, dy: e.dy });
+    e = entra(u, 0.85, 0.7, 60);
+    texto("Villa Real", W / 2, 1180, { tam: 190, peso: 800, familia: TITULO, color: ORO, alfa: a * e.alfa, dy: e.dy });
+    const raya = suave(tramo(u, 1.3, 1.9)) * 420;
+    x.save(); x.globalAlpha = a; x.fillStyle = ORO; x.fillRect(W / 2 - raya / 2, 1232, raya, 6); x.restore();
+    e = entra(u, 1.5, 0.6, 30);
+    texto("Tu proveedor para burger & pizza", W / 2, 1330, { tam: 50, peso: 700, color: CREMA, alfa: a * e.alfa, dy: e.dy });
+  } },
+  todo: { dura: 3.8, dibujar(u, a) {
+    fondo(VERDE_HONDO, "rgba(240,194,79,0.30)", u, a, 0.62);
+    let e = entra(u, 0.1, 0.5, 60);
+    texto("Todo para tu", W / 2, 420, { tam: 120, familia: TITULO, color: CREMA, alfa: a * e.alfa, dy: e.dy });
+    e = entra(u, 0.3, 0.5, 60);
+    texto("burger &", W / 2, 560, { tam: 140, familia: TITULO, color: ORO, alfa: a * e.alfa, dy: e.dy });
+    e = entra(u, 0.5, 0.5, 60);
+    texto("pizzería", W / 2, 700, { tam: 140, familia: TITULO, color: ORO, alfa: a * e.alfa, dy: e.dy });
+    const piezas = [
+      ["queso-amarillo", 560, 1300, 520, 0.7],
+      ["pepperoni-la-vega", 815, 1330, 560, 0.85],
+      ["tocineta", 290, 1470, 560, 0.95],
+      ["mozzarella", 600, 1520, 330, 1.1],
+    ];
+    for (const [n, cx, base, alto, desde] of piezas) { e = entra(u, desde, 0.7, 220); producto(n, cx, base, alto, a * e.alfa, e.dy); }
+  } },
+  quesos: { dura: 3.4, dibujar(u, a) {
+    fondo(ORO, "rgba(255,248,225,0.55)", u, a, 0.55);
+    let e = entra(u, 0.1, 0.5, 40);
+    pastilla("QUESOS", W / 2, 330, { fondo: TINTA, color: ORO, alfa: a * e.alfa });
+    e = entra(u, 0.25, 0.55, 50);
+    texto("Mozzarella, amarillo", W / 2, 500, { tam: 96, familia: TITULO, color: TINTA, alfa: a * e.alfa, dy: e.dy });
+    texto("y pecorino", W / 2, 610, { tam: 96, familia: TITULO, color: TINTA, alfa: a * e.alfa, dy: e.dy });
+    const piezas = [
+      ["queso-amarillo-vallecito", 330, 1180, 470, 0.5],
+      ["queso-amarillo", 520, 1190, 430, 0.62],
+      ["pecorino-guaralact", 790, 1180, 290, 0.74],
+      ["mozzarella", 400, 1440, 330, 0.86],
+      ["pecorino-sortilegio", 740, 1440, 260, 0.98],
+    ];
+    for (const [n, cx, base, alto, desde] of piezas) { e = entra(u, desde, 0.6, 200); producto(n, cx, base, alto, a * e.alfa, e.dy); }
+    e = entra(u, 1.4, 0.5, 20);
+    texto("El Legado · Mi Vallecito · Sortilegio · Guaralact", W / 2, 1560, { tam: 36, peso: 700, color: TINTA, alfa: a * e.alfa * 0.85, dy: e.dy });
+  } },
+  embutidos: { dura: 3.8, dibujar(u, a) {
+    fondo(CREMA_OSCURA, "rgba(255,255,255,0.7)", u, a, 0.5);
+    let e = entra(u, 0.1, 0.5, 40);
+    pastilla("EMBUTIDOS", W / 2, 330, { fondo: TINTA, color: ORO, alfa: a * e.alfa });
+    e = entra(u, 0.25, 0.55, 50);
+    texto("Drago y La Vega", W / 2, 500, { tam: 104, familia: TITULO, color: TINTA, alfa: a * e.alfa, dy: e.dy });
+    const drago = [
+      ["jamon-de-espalda", 190, 1070, 380, 0.45],
+      ["tocineta", 420, 1080, 400, 0.55],
+      ["pechuga-de-pavo-drago", 660, 1070, 330, 0.65],
+      ["mortadela-tapara", 890, 1075, 360, 0.75],
+    ];
+    for (const [n, cx, base, alto, desde] of drago) { e = entra(u, desde, 0.6, 200); producto(n, cx, base, alto, a * e.alfa, e.dy); }
+    const vega = [
+      ["pepperoni-la-vega", 175, 1500, 400, 1.45],
+      ["chorizo-ajo-la-vega", 410, 1500, 300, 1.55],
+      ["chorizo-ahumado-la-vega", 650, 1500, 300, 1.65],
+      ["salchicha-picante-la-vega", 890, 1500, 330, 1.75],
+    ];
+    for (const [n, cx, base, alto, desde] of vega) { e = entra(u, desde, 0.6, 200); producto(n, cx, base, alto, a * e.alfa, e.dy); }
+    pastilla("NUEVO · LA VEGA", W / 2, 1140, { fondo: TOMATE, color: CREMA, alfa: a * tramo(u, 2.2, 2.4), tam: 32 });
+  } },
+  mayor: { dura: 3.4, dibujar(u, a) {
+    fondo(VERDE, "rgba(240,194,79,0.25)", u, a, 0.45);
+    leon(W / 2, 960, 900, a * 0.07);
+    let e = entra(u, 0.1, 0.5, 50);
+    texto("Precios", W / 2, 470, { tam: 150, familia: TITULO, color: ORO, alfa: a * e.alfa, dy: e.dy });
+    texto("al mayor", W / 2, 620, { tam: 150, familia: TITULO, color: ORO, alfa: a * e.alfa, dy: e.dy });
+    const lineas = ["En bolívares, a la tasa BCV del día", "Compra más, paga menos", "Delivery a Barquisimeto y Cabudare", "Pago móvil · Efectivo · Zelle"];
+    lineas.forEach((l, i) => {
+      const e2 = entra(u, 0.6 + i * 0.35, 0.5, 40);
+      const y = 860 + i * 150;
+      x.save(); x.globalAlpha = a * e2.alfa; x.fillStyle = ORO; x.beginPath(); x.arc(W / 2, y - 70 + e2.dy, 7, 0, Math.PI * 2); x.fill(); x.restore();
+      texto(l, W / 2, y + 10, { tam: 50, peso: 700, color: CREMA, alfa: a * e2.alfa, dy: e2.dy });
+    });
+  } },
+  inauguracion: { dura: 3.8, dibujar(u, a) {
+    fondo(VERDE_HONDO, "rgba(240,194,79,0.35)", u, a, 0.48);
+    // Papelillos dorados que caen.
+    x.save();
+    for (let i = 0; i < 70; i++) {
+      const r1 = Math.sin(i * 12.9898) * 43758.5453, r2 = Math.sin(i * 78.233) * 12345.678;
+      const fx = r1 - Math.floor(r1), fy = r2 - Math.floor(r2);
+      const px = fx * W, py = ((fy * H + u * (180 + 160 * fx)) % (H + 80)) - 40;
+      x.globalAlpha = a * (0.35 + 0.5 * fy) * tramo(u, 0.2, 0.8);
+      x.fillStyle = i % 3 === 0 ? CREMA : ORO;
+      x.save(); x.translate(px, py); x.rotate(u * 2 + i); x.fillRect(-7, -12, 14, 24); x.restore();
+    }
+    x.restore();
+    let e = entra(u, 0.05, 0.5, 50);
+    texto("¡GRAN", W / 2, 400, { tam: 90, peso: 800, color: CREMA, espacio: 10, alfa: a * e.alfa, dy: e.dy });
+    const p = rebote(tramo(u, 0.25, 0.85));
+    x.save(); x.translate(W / 2, 545); x.scale(0.7 + 0.3 * p, 0.7 + 0.3 * p);
+    texto("INAUGURACIÓN!", 0, 0, { tam: 128, familia: TITULO, color: ORO, alfa: a * tramo(u, 0.25, 0.5), ancho: 1000 });
+    x.restore();
+    e = entra(u, 0.7, 0.5, 40);
+    texto("VIERNES", W / 2, 760, { tam: 64, peso: 800, color: CREMA, espacio: 14, alfa: a * e.alfa, dy: e.dy });
+    const p2 = rebote(tramo(u, 0.85, 1.35));
+    x.save(); x.translate(W / 2, 1110); x.scale(0.6 + 0.4 * p2, 0.6 + 0.4 * p2);
+    texto("20", 0, 0, { tam: 400, peso: 900, familia: TITULO, color: ORO, alfa: a * tramo(u, 0.85, 1.05) });
+    x.restore();
+    e = entra(u, 1.2, 0.5, 40);
+    texto("DE NOVIEMBRE", W / 2, 1220, { tam: 64, peso: 800, color: CREMA, espacio: 10, alfa: a * e.alfa, dy: e.dy });
+    e = entra(u, 1.5, 0.5, 30);
+    texto("De 9:00 a. m. a 6:00 p. m.", W / 2, 1340, { tam: 48, peso: 600, color: CREMA, alfa: a * e.alfa, dy: e.dy });
+    e = entra(u, 1.8, 0.5, 30);
+    texto("¡Te esperamos!", W / 2, 1480, { tam: 92, familia: TITULO, color: ORO, alfa: a * e.alfa, dy: e.dy });
+  } },
+  cierre: { dura: 4.4, dibujar(u, a) {
+    fondo(VERDE_HONDO, "rgba(240,194,79,0.30)", u, a, 0.35);
+    const p = rebote(tramo(u, 0.05, 0.7));
+    leon(W / 2, 470, 260, a * tramo(u, 0.05, 0.4), 0.8 + 0.2 * p);
+    let e = entra(u, 0.3, 0.5, 40);
+    texto("Villa Real", W / 2, 760, { tam: 140, familia: TITULO, color: ORO, alfa: a * e.alfa, dy: e.dy });
+    texto("Tu proveedor para burger & pizza", W / 2, 840, { tam: 42, peso: 700, color: CREMA, alfa: a * e.alfa, dy: e.dy });
+    e = entra(u, 0.7, 0.5, 40);
+    pastilla("PIDE POR WHATSAPP", W / 2, 990, { fondo: WHATSAPP, color: "#05301a", alfa: a * e.alfa, tam: 34 });
+    texto("0424-6343236", W / 2, 1130, { tam: 96, peso: 800, color: CREMA, alfa: a * e.alfa, dy: e.dy });
+    e = entra(u, 1.0, 0.5, 30);
+    texto("comercializadoravillareal.com", W / 2, 1250, { tam: 50, peso: 800, color: ORO, alfa: a * e.alfa, dy: e.dy });
+    e = entra(u, 1.25, 0.5, 30);
+    texto("Calle 38 entre carreras 30 y 31 · Centro", W / 2, 1360, { tam: 40, peso: 600, color: CREMA, alfa: a * e.alfa * 0.9, dy: e.dy });
+    texto("Barquisimeto · Lunes a viernes, 9 a. m. a 6 p. m.", W / 2, 1420, { tam: 36, peso: 600, color: CREMA, alfa: a * e.alfa * 0.75, dy: e.dy });
+    e = entra(u, 1.5, 0.5, 30);
+    texto("@comercializadoravillareal", W / 2, 1530, { tam: 44, peso: 800, color: ORO, alfa: a * e.alfa, dy: e.dy });
+  } },
+};
+
+// ---------- La línea de tiempo: cada escena entra mientras la anterior se va ----------
+const CRUCE = 0.35;
+let LINEA = [], TOTAL = 0;
+function armar(orden) {
+  LINEA = []; let t = 0;
+  for (const id of orden) { LINEA.push({ id, a: t, b: t + ESCENAS[id].dura }); t += ESCENAS[id].dura - CRUCE; }
+  TOTAL = t + CRUCE;
+  return TOTAL;
+}
+function dibujar(t) {
+  x.clearRect(0, 0, W, H);
+  x.fillStyle = VERDE_HONDO; x.fillRect(0, 0, W, H);
+  LINEA.forEach((e, i) => {
+    if (t < e.a || t > e.b) return;
+    const entrada = i === 0 ? 1 : tramo(t, e.a, e.a + CRUCE);
+    const salida = i === LINEA.length - 1 ? 1 : 1 - tramo(t, e.b - CRUCE, e.b);
+    ESCENAS[e.id].dibujar(t - e.a, Math.min(entrada, salida));
+  });
+}
+
+window.listo = (async () => {
+  await document.fonts.load(`800 100px Fraunces`);
+  await document.fonts.load(`900 100px Fraunces`);
+  await document.fonts.load(`800 100px Manrope`);
+  await document.fonts.load(`600 100px Manrope`);
+  await cargarFotos();
+  return true;
+})();
+
+window.armar = armar;
+window.dibujar = dibujar;
+
+/** Graba la animación en tiempo real y deja el MP4 en window.VIDEO; devuelve su tamaño y lo que tardó cada cuadro. */
+window.grabar = async (orden) => {
+  const total = armar(orden);
+  const tipo = ["video/mp4;codecs=avc1.640028", "video/mp4;codecs=avc1", "video/mp4"].find((t) => MediaRecorder.isTypeSupported(t));
+  const flujo = lienzo.captureStream(30);
+  const grabadora = new MediaRecorder(flujo, { mimeType: tipo, videoBitsPerSecond: 14_000_000 });
+  const trozos = [];
+  grabadora.ondataavailable = (ev) => { if (ev.data.size) trozos.push(ev.data); };
+  const fin = new Promise((r) => (grabadora.onstop = r));
+  dibujar(0);
+  grabadora.start(500);
+  const t0 = performance.now();
+  let cuadros = 0, lento = 0;
+  // Con un temporizador y no con requestAnimationFrame: en el Chrome sin ventana, ese no avanza.
+  await new Promise((listo) => {
+    function paso() {
+      const a = performance.now();
+      const t = (a - t0) / 1000;
+      dibujar(Math.min(t, total));
+      cuadros++;
+      const tardo = performance.now() - a;
+      if (tardo > 33) lento++;
+      if (t < total + 0.2) setTimeout(paso, Math.max(0, 1000 / 30 - tardo)); else listo();
+    }
+    paso();
+  });
+  grabadora.stop();
+  await fin;
+  window.VIDEO = new Blob(trozos, { type: "video/mp4" });
+  return { bytes: window.VIDEO.size, segundos: total, cuadros, lento, tipo };
+};
+window.trozo = async (desde, hasta) => {
+  const b = new Uint8Array(await window.VIDEO.slice(desde, hasta).arrayBuffer());
+  let s = "";
+  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+</script>
+</body>
+</html>

@@ -56,6 +56,7 @@ npm run fotos-web      las fotos de la portada y de las familias: la mercancía 
 npm run miniaturas     las fotos de public/familias/ y public/productos/ en pequeño (public/miniaturas/), al añadir o cambiar una
 npm run combos         la lista personal de los precios de los combos de hoy, desglosada (con lo que cuesta y lo que deja), el flier del estado y el volante con los precios de hoy (en listas/combos/, una carpeta por día)
 npm run lista          las listas del detal y del mayor de hoy en PDF y en pantallas JPG para el teléfono, y la hoja de la rebanadora (en listas/precios/, una carpeta por día)
+node publicidad/reel.mjs  el video para Instagram (Reels y estados, 1080 × 1920, sin sonido): el león, los productos, precios al mayor, la inauguración y el contacto; lo graba el propio Chrome en MP4 (en listas/videos/)
 ```
 
 La web publicada tiene los datos de verdad del negocio. Por eso
