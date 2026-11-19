@@ -1555,8 +1555,9 @@ Binance y otro.
   el león, nunca con la de otra marca.
   **Desde el 18/11/2026, solo sus marcas** (el dueño: «lo de mi mamá al detal
   es aparte del burger, quítalo de la web»): la web enseña Guaralact,
-  Sortilegio, El Drago, La Vega, El Legado, Mi Vallecito, Cumbre Fresca y, de
-  Purolomo, solo las salchichas wieners. Lo demás de la charcutería (Alibal,
+  Sortilegio, El Drago, La Vega, El Legado, Mi Vallecito, Cumbre Fresca, de
+  Purolomo solo las salchichas wieners y, en Bebidas, la Big Cola por bulto
+  de 6 × 2 L (sin precio hasta que el dueño diga a cuánto la compró). Lo demás de la charcutería (Alibal,
   Punta de Monte, Alpro, Ahulux, Magro's, San Pedro) y el queso arepero están
   escondidos, no borrados: siguen en la lista del detal con sus precios, y
   vuelven a la web mostrando la marca en su ficha. La marca «Puroloma» era
