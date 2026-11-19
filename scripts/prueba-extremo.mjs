@@ -2441,6 +2441,7 @@ async function probarSinEscribir() {
     ["/admin/inventario", "Inventario", "Recuento o merma"],
     ["/admin/estadisticas", "Estadísticas", "Por mes"],
     ["/admin/reparto", "Reparto del mes", "Lo que le toca a cada uno"],
+    ["/admin/compra", "Lista de compra", "Agregar algo que falta"],
     ["/admin/productos", "Productos", "Tasa del día"],
     ["/admin/productos/nuevo", "Agregar producto", "¿Qué vas a agregar?"],
     ["/admin/productos/nuevo?tipo=nuevo", "Un tipo de producto nuevo", "¿A qué familia pertenece este producto?"],
@@ -2929,6 +2930,36 @@ async function probarReparto() {
   comprobar("y el reparto lo resta antes de repartir", descuento?.mes === mes && cerca(Number(descuento?.monto_usd), 0.5) && conDescuento.includes("Después de restar") && conDescuento.includes("Comisión de prueba"));
   r = await enviar(`/admin/reparto?mes=${mes}`, `name="id" value="${descuento?.id}"`, { id: String(descuento?.id), mes });
   comprobar("y se quita", r.destino.includes("Quitado") && (await consultar("select count(*) as n from reparto_descuentos"))[0].n === 0, r.destino);
+}
+
+async function probarListaDeCompra() {
+  let p = await pagina("/admin/compra");
+  comprobar(
+    `la lista de compra, vacía, con su formulario para agregar (${p.ms} ms)`,
+    p.status === 200 && legible(p.html).includes("La lista está vacía") && p.html.includes('name="precio_usd"'),
+    String(p.status),
+  );
+  let r = await enviar("/admin/compra", 'name="precio_usd"', { nombre: "Algo", categoria: "inventado", donde: "", precio_usd: "", nota: "" });
+  comprobar("un tipo que no es de la lista no se guarda", r.destino.includes("Elige de qué tipo es") && (await consultar("select count(*) as n from lista_compra"))[0].n === 0, r.destino);
+  r = await enviar("/admin/compra", 'name="precio_usd"', { nombre: "Guantes de prueba", categoria: "desechables", donde: "PRODISA", precio_usd: "3,5", nota: "caja de 100" });
+  const [a] = await consultar("select id, listo, precio_usd, categoria, donde from lista_compra where nombre = 'Guantes de prueba'");
+  comprobar(
+    "se agrega a la lista, con su tipo, dónde y precio",
+    r.destino.includes("Agregado a la lista") && a?.categoria === "desechables" && a?.donde === "PRODISA" && cerca(Number(a?.precio_usd), 3.5) && Number(a?.listo) === 0,
+    `${r.destino} ${JSON.stringify(a)}`,
+  );
+  p = await pagina("/admin/compra?ver=proveedor");
+  comprobar("por proveedor, con su grupo y lo que falta", legible(p.html).includes("PRODISA") && legible(p.html).includes("1 por comprar") && legible(p.html).includes("Faltan 1 de 1"));
+
+  r = await enviar("/admin/compra?solo=faltan", `name="id" value="${a?.id}"`, { id: String(a?.id), grupo: "g-desechables-y-empaques", solo: "faltan" });
+  comprobar("tocarlo lo tacha, y vuelve a la lista como estaba", Number((await consultar("select listo from lista_compra where id = ?", [a?.id]))[0]?.listo) === 1 && r.destino.includes("/admin/compra?solo=faltan"), r.destino);
+  p = await pagina("/admin/compra?solo=faltan");
+  comprobar("«Lo que falta» esconde lo tachado", !legible(p.html).includes("Guantes de prueba") && legible(p.html).includes("No falta nada"));
+
+  r = await enviar("/admin/compra?confirmar=destachar", "Sí, destachar todo", {});
+  comprobar("«Destachar todo», después de preguntar, la deja como nueva", r.destino.includes("1 destachados") && Number((await consultar("select listo from lista_compra where id = ?", [a?.id]))[0]?.listo) === 0, r.destino);
+  r = await enviar(`/admin/compra?editar=1&quitar=${a?.id}`, "Sí, quitar", { id: String(a?.id), nombre: "Guantes de prueba", editar: "1" });
+  comprobar("y se quita, después de preguntar", r.destino.includes("Quitado de la lista: Guantes de prueba") && (await consultar("select count(*) as n from lista_compra"))[0].n === 0, r.destino);
 }
 
 async function probarFacturas() {
@@ -3683,6 +3714,7 @@ try {
     await probarAvisos();
     await probarCaja();
     await probarReparto();
+    await probarListaDeCompra();
     await probarFacturas();
     await probarListaDetal();
     await probarCombosEnLaCaja();

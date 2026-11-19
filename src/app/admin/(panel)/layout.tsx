@@ -74,6 +74,7 @@ const GRUPOS: readonly GrupoDelPanel[] = [
       { ruta: "/admin/productos", nombre: "Productos", tambien: ["/admin/marcas", "/admin/familias", "/admin/tasas"] },
       { ruta: "/admin/inventario", nombre: "Inventario" },
       { ruta: "/admin/proveedores", nombre: "Proveedores", tambien: ["/admin/compras", "/admin/pagos-proveedor", "/admin/adjuntos-proveedor"] },
+      { ruta: "/admin/compra", nombre: "Lista de compra" },
       { ruta: "/admin/detal", nombre: "Lista del detal" },
       { ruta: "/admin/codigos", nombre: "Códigos de barras" },
     ],

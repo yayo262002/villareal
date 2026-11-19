@@ -224,6 +224,9 @@ src/lib/costo-del-dia.ts  Lo que cuesta hoy cada cosa que se vende (la marca, el
 src/lib/reparto-calculo.ts  El reparto del mes: la ganancia de lo cobrado, lo que se paga antes y lo de cada parte por puntos; el resumen para WhatsApp (puro, con pruebas)
 src/lib/reparto.ts        El reparto desde la base: ventas con su costo, abonos, lo que se paga antes de repartir
 src/app/admin/(panel)/reparto/  Reparto del mes: lo vendido, lo cobrado, la ganancia, lo de cada uno, lo que deja cada producto y las partes
+src/lib/lista-compra-calculo.ts  La lista de compra: sus tipos, los grupos por tipo o por proveedor y cuánto falta (puro, con pruebas)
+src/lib/lista-compra.ts   La lista de compra desde la base: listar, agregar, tachar, quitar y destachar todo
+src/app/admin/(panel)/compra/  Lista de compra: lo que hay que comprar, para tachar desde el teléfono
 src/lib/exportaciones.ts  El Excel de cada día, guardado solo por la tarea diaria
 src/lib/exportaciones-locales.ts  Los Excel que deja npm run copia en el ordenador
 src/lib/cuenta-cliente.ts Lo que un cliente ve de su cuenta con su enlace
@@ -1550,6 +1553,18 @@ Binance y otro.
   entra. Las fotos son las de su mercancía recortada (`publicidad/fotos/`);
   un artículo sin foto propia se enseña con la del tipo, la de referencia o
   el león, nunca con la de otra marca.
+- **La lista de compra** (`/admin/compra`, en Mercancía; el dueño, 18/11/2026:
+  «hazme la lista que pueda abrir en el teléfono»). Lo que hay que comprar, por
+  tipo (hamburguesas, perros calientes, pizza, papas y congelados, bebidas,
+  desechables, charcutería, huevos, víveres) o por proveedor, cada cosa con
+  dónde sale más barato, a cuánto (vacío si ninguna lista lo trae) y una nota
+  («bulto de 20: 41,01»). Se toca para tacharla, y otra vez para destacharla;
+  «Lo que falta» esconde lo tachado. Abajo se agrega lo que falte, «Quitar
+  productos» quita lo que sobre (pregunta antes) y «Destachar todo» la deja
+  como nueva para la próxima compra. Sin JavaScript: cada toque es un
+  formulario que vuelve a la altura del producto (tabla `lista_compra`,
+  `src/lib/lista-compra.ts`; los grupos y la cuenta, con pruebas, en
+  `src/lib/lista-compra-calculo.ts`).
 - **Lo de La Vega** (el dueño, 18/11/2026: «agrega los chorizos, picante,
   ahumado, ajo, y además el pepperoni»). En Embutidos, la sección
   «Chorizos» (el tipo Chorizo: con ajo, ahumado y el picante parrillero, que

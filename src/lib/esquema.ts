@@ -713,6 +713,20 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- La lista de compra (el dueño, 18/11/2026: «la lista que pueda abrir en el teléfono»): lo que hay que comprar, dónde
+  -- sale más barato y a cuánto (vacío si ninguna lista lo trae), para ir tachando en el panel. «listo» es tachado.
+  create table if not exists lista_compra (
+    id integer primary key autoincrement,
+    nombre text not null,
+    categoria text not null default 'otros',
+    donde text not null default '',
+    precio_usd real,
+    nota text not null default '',
+    listo integer not null default 0,
+    orden integer not null default 0,
+    creado_en text not null default (datetime('now'))
+  );
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (
@@ -779,6 +793,7 @@ export const TABLAS = [
   "pagadores_de_la_casa",
   "pedidos_web",
   "reparto_descuentos",
+  "lista_compra",
 ] as const;
 
 /**

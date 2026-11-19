@@ -160,6 +160,8 @@ import { TARIFAS_MAXIMAS, ajustesDelFormulario } from "./delivery";
 import { ponerPartesDelReparto } from "./ajustes";
 import { PARTES_MAXIMAS, partesDelFormulario, puntosDe, puntosEnTexto } from "./reparto-calculo";
 import { anotarDescuentoDelMes, quitarDescuentoDelMes } from "./reparto";
+import { agregarACompra, alternarEnCompra, destacharCompra, quitarDeCompra } from "./lista-compra";
+import { esTipoDeCompra } from "./lista-compra-calculo";
 import { empujarAviso, quitarTelefonoPorId } from "./push";
 import { avisoDePrueba } from "./avisos";
 import { negocio } from "@/config/negocio";
@@ -3080,6 +3082,77 @@ export async function quitarDescuentoDelReparto(datos: FormData): Promise<void> 
   const id = numero(datos, "id");
   if (!id || !(await quitarDescuentoDelMes(id))) volverConError(vuelta, "Eso ya no estaba anotado.");
   volverConExito(vuelta, "Quitado: ya no se resta antes de repartir.");
+}
+
+// ---------- La lista de compra ----------
+
+const COMPRA = "/admin/compra";
+
+/**
+ * La vuelta a la lista como estaba (por tipo o por proveedor, todo o lo que falta, quitando o no) y a la altura de lo
+ * que se tocó. Se arma con valores conocidos, nunca con una dirección que traiga el formulario. Sin rehacer la web:
+ * la lista es solo del panel.
+ */
+function vueltaALaCompra(datos: FormData, ancla = ""): string {
+  const q = new URLSearchParams();
+  if (texto(datos, "ver") === "proveedor") q.set("ver", "proveedor");
+  if (texto(datos, "solo") === "faltan") q.set("solo", "faltan");
+  if (texto(datos, "editar") === "1") q.set("editar", "1");
+  const s = q.toString();
+  return `${COMPRA}${s ? `?${s}` : ""}${/^[a-z0-9-]{1,60}$/.test(ancla) ? `#${ancla}` : ""}`;
+}
+
+function idDeCompra(datos: FormData): number | null {
+  const id = Number(texto(datos, "id"));
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+/** Tachar lo que ya se compró, o destacharlo. Vuelve a la altura del producto, o de su grupo si ya no se ve. */
+export async function alternarArticuloDeCompra(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = idDeCompra(datos);
+  if (id === null) volverConError(vueltaALaCompra(datos), "No sé qué producto tocaste: vuelve a intentarlo.");
+  const tachado = await alternarEnCompra(id);
+  if (tachado === null) volverConError(vueltaALaCompra(datos), "Ese producto ya no está en la lista.");
+  const seEsconde = tachado && texto(datos, "solo") === "faltan";
+  redirect(vueltaALaCompra(datos, seEsconde ? texto(datos, "grupo") : `c${id}`));
+}
+
+export async function agregarArticuloDeCompra(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const vuelta = vueltaALaCompra(datos, "agregar");
+  const nombre = texto(datos, "nombre").replace(/\s+/g, " ").slice(0, 80);
+  const categoria = texto(datos, "categoria");
+  const precio = numero(datos, "precio_usd");
+  if (!nombre) volverConError(vuelta, "Escribe qué hay que comprar: «Servilletas».");
+  if (!esTipoDeCompra(categoria)) volverConError(vuelta, "Elige de qué tipo es.");
+  if (texto(datos, "precio_usd") && (precio === null || !(precio > 0) || precio > 100000)) {
+    volverConError(vuelta, "El precio va en dólares y mayor que cero («2,50»), o vacío si no lo sabes.");
+  }
+  const id = await agregarACompra({
+    nombre,
+    categoria,
+    donde: texto(datos, "donde").replace(/\s+/g, " ").slice(0, 40),
+    precio_usd: precio === null ? null : redondear(precio),
+    nota: texto(datos, "nota").replace(/\s+/g, " ").slice(0, 120),
+  });
+  redirect(conAviso(vueltaALaCompra(datos, `c${id}`), "ok", `Agregado a la lista: ${nombre}.`));
+}
+
+/** Quitar algo que ya no se va a comprar (después de «¿Quitar…?» en la pantalla). */
+export async function quitarArticuloDeCompra(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const id = idDeCompra(datos);
+  const vuelta = vueltaALaCompra(datos);
+  if (id === null || !(await quitarDeCompra(id))) volverConError(vuelta, "Ese producto ya no estaba en la lista.");
+  redirect(conAviso(vuelta, "ok", `Quitado de la lista: ${texto(datos, "nombre").slice(0, 80) || "el producto"}.`));
+}
+
+/** Destachar todo, para la próxima compra (después de confirmarlo en la pantalla). */
+export async function destacharListaDeCompra(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const cuantos = await destacharCompra();
+  redirect(conAviso(vueltaALaCompra(datos), "ok", cuantos ? `La lista queda como nueva: ${cuantos} destachados.` : "No había nada tachado."));
 }
 
 // ---------- Pago móvil: lo que entra al banco ----------

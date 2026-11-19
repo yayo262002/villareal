@@ -11,7 +11,9 @@ const ESPERA_MAXIMA_MS = 12000;
  * «Guardando…» hasta que la página cambia; un segundo envío mientras
  * tanto no hace nada. Si en unos segundos la página no cambió (sin red,
  * un fallo), el botón vuelve a estar activo. Sin JavaScript no hace
- * falta: el navegador cambia de página solo.
+ * falta: el navegador cambia de página solo. Un formulario `data-ligero`
+ * (tachar en la lista de compra, cuyo botón es la fila entera) solo se
+ * apaga y se marca `aria-busy`, sin cambiar lo que dice.
  */
 export function UnSoloEnvio() {
   useEffect(() => {
@@ -25,11 +27,13 @@ export function UnSoloEnvio() {
       }
       formulario.dataset.enviando = "1";
       const botones = [...formulario.querySelectorAll<HTMLButtonElement>('button[type="submit"], button:not([type])')];
+      const ligero = formulario.dataset.ligero !== undefined;
       const direccion = location.href;
       const restaurar = () => {
         delete formulario.dataset.enviando;
         for (const b of botones) {
           b.disabled = false;
+          b.removeAttribute("aria-busy");
           if (b.dataset.texto !== undefined) b.textContent = b.dataset.texto;
         }
       };
@@ -37,8 +41,12 @@ export function UnSoloEnvio() {
       setTimeout(() => {
         if (!formulario.dataset.enviando) return;
         for (const b of botones) {
-          if (b.dataset.texto === undefined) b.dataset.texto = b.textContent ?? "";
           b.disabled = true;
+          if (ligero) {
+            b.setAttribute("aria-busy", "true");
+            continue;
+          }
+          if (b.dataset.texto === undefined) b.dataset.texto = b.textContent ?? "";
           b.textContent = "Guardando…";
         }
       }, 0);

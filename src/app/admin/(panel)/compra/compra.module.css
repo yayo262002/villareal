@@ -1,0 +1,212 @@
+/* La lista de compra: filas grandes para tachar con un dedo, en el teléfono, en la tienda del proveedor. */
+
+.cabeza {
+  display: grid;
+  gap: var(--espacio-2);
+  margin-bottom: var(--espacio-4);
+}
+
+.cuenta {
+  margin: 0;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--color-marca);
+  font-variant-numeric: tabular-nums;
+}
+
+.progreso {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--color-oro);
+}
+
+.mandos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+}
+
+.pastillas {
+  display: inline-flex;
+  border: 1.5px solid var(--color-marca);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.pastillas a {
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--color-marca);
+  text-decoration: none;
+}
+
+.pastillas a[aria-current="true"] {
+  background: var(--color-marca);
+  color: var(--color-superficie);
+}
+
+.grupo {
+  margin-top: var(--espacio-4);
+  scroll-margin-top: 140px;
+}
+
+.titulo {
+  margin: 0 0 var(--espacio-2);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--espacio-2);
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--color-oro);
+  font-size: 1.1rem;
+  color: var(--color-marca);
+}
+
+.titulo small {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-texto-suave);
+  white-space: nowrap;
+}
+
+.titulo small.completo {
+  color: var(--color-exito);
+}
+
+.filas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.fila {
+  display: grid;
+  gap: 6px;
+  scroll-margin-top: 140px;
+}
+
+.articulo {
+  appearance: none;
+  width: 100%;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  text-align: left;
+  font: inherit;
+  color: var(--color-texto);
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  cursor: pointer;
+}
+
+.articulo:focus-visible {
+  outline: 3px solid var(--color-oro);
+  outline-offset: 2px;
+}
+
+.bola {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--color-marca);
+  position: relative;
+}
+
+.texto {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.nombre {
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.detalle {
+  font-size: 0.8rem;
+  color: var(--color-texto-suave);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.precio {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-size: 0.92rem;
+}
+
+.articulo[aria-pressed="true"] {
+  background: transparent;
+  opacity: 0.6;
+}
+
+.articulo[aria-pressed="true"] .bola {
+  background: var(--color-marca);
+}
+
+.articulo[aria-pressed="true"] .bola::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 2px;
+  width: 6px;
+  height: 12px;
+  border: solid var(--color-superficie);
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
+.articulo[aria-pressed="true"] .nombre {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.articulo[aria-busy="true"] {
+  opacity: 0.4;
+}
+
+.quitar {
+  justify-self: end;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-error);
+}
+
+.confirmar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-2);
+  padding: var(--espacio-2) var(--espacio-3);
+  border: 1.5px solid var(--color-error);
+  border-radius: var(--radio);
+  background: var(--color-error-fondo);
+}
+
+.campos {
+  display: grid;
+  gap: 0 var(--espacio-3);
+}
+
+@media (min-width: 640px) {
+  .campos {
+    grid-template-columns: 2fr 1.4fr 1.2fr 1fr;
+  }
+}
+
+.botones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-2);
+}

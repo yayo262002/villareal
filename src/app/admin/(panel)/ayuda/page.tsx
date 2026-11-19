@@ -38,7 +38,8 @@ export default async function PaginaAyuda() {
             <strong>Clientes</strong>: la cartera, los que llevan días sin comprar (por llamar), las reseñas y los stickers de WhatsApp.
           </li>
           <li>
-            <strong>Mercancía</strong>: los productos y sus precios, el inventario, los proveedores, la lista del detal y los códigos de barras.
+            <strong>Mercancía</strong>: los productos y sus precios, el inventario, los proveedores, la lista de compra, la lista del detal y los códigos
+            de barras.
           </li>
           <li>
             <strong>Facturas</strong>: las facturas, el libro de compras y los números de control.
@@ -148,6 +149,11 @@ export default async function PaginaAyuda() {
           <li>
             <Link href="/admin/inventario">Inventario</Link>: lo comprado menos lo vendido. Un recuento corrige lo que no cuadre. Avisa cuando queda
             poco.
+          </li>
+          <li>
+            La <Link href="/admin/compra">Lista de compra</Link> es para ir a comprar con el teléfono: lo que falta, por tipo o por proveedor, con dónde
+            sale más barato. Toca un producto para tacharlo; abajo se agrega lo que falte, se quita lo que sobre y, al terminar, «Destachar todo» la deja
+            como nueva.
           </li>
           <li>
             La <Link href="/admin/detal">Lista del detal</Link> es la de la charcutería: se carga cada factura de compra (cantidad, precio y (E) o (G)
