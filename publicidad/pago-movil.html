@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Pago móvil · Villa Real</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700..900&family=Manrope:wght@600;700;800&display=swap">
+<style>
+  /* El cartel del pago móvil para el mostrador (el dueño, 19/11/2026: «en principio no voy a tener puntos, así que necesito
+     un pago móvil bien bonito»), en carta vertical para imprimir, y su JPG para mandarlo por WhatsApp. Es una plantilla: los
+     datos del pago móvil (banco, teléfono, cédula) y el QR los pone publicidad/pago-movil.mjs desde .env.local, porque el
+     código es público; el cartel con los datos queda solo en listas/pago-movil/. Colores y letras de la web. */
+  @page { margin: 0; }
+  html, body { margin: 0; background: #777; }
+  body { font-family: Manrope, Arial, sans-serif; padding: 20px; }
+
+  .cartel {
+    --verde: #123a25; --verde-hondo: #0a2416; --oro: #f0c24f; --oro-hondo: #b8820e; --crema: #fbf3e2; --crema-oscura: #f1e4c8; --tinta: #10331f; --suave: #5c665c; --whatsapp: #25d366;
+    position: relative; box-sizing: border-box; width: 216mm; height: 279mm; overflow: hidden; background: var(--crema); color: var(--tinta);
+    display: grid; grid-template-rows: auto 1fr auto;
+  }
+
+  /* Arriba, en verde: la marca y el título. */
+  .cabeza {
+    position: relative; background: radial-gradient(ellipse 90% 120% at 50% 0%, #1d5135 0%, var(--verde) 50%, var(--verde-hondo) 100%);
+    color: var(--crema); text-align: center; padding: 11mm 12mm 10mm; border-bottom: 2.2mm solid var(--oro);
+  }
+  .marca { display: flex; align-items: center; justify-content: center; gap: 4mm; }
+  .marca img { height: 17mm; width: auto; display: block; }
+  .marca div { display: grid; text-align: left; }
+  .marca small { font-weight: 800; font-size: 3.1mm; letter-spacing: 0.22em; color: var(--oro); }
+  .marca strong { font-family: Fraunces, Georgia, serif; font-weight: 800; font-size: 11mm; line-height: 0.95; color: var(--oro); }
+  .titulo { margin: 6mm 0 0; font-family: Fraunces, Georgia, serif; font-weight: 800; line-height: 0.95; }
+  .titulo span { display: block; font-size: 10mm; color: var(--crema); }
+  .titulo strong { display: block; font-size: 21mm; color: var(--oro); letter-spacing: -0.01em; }
+
+  /* En medio: el QR y los datos. */
+  .cuerpo { display: grid; justify-items: center; align-content: center; gap: 7mm; padding: 8mm 14mm 4mm; }
+  /* El borde blanco alrededor del QR (7 mm, unos cinco cuadritos) es el que los lectores necesitan para encontrarlo. */
+  .qr { box-sizing: border-box; width: 88mm; height: 88mm; background: #fff; border-radius: 6mm; border: 1.6mm solid var(--oro); padding: 7mm; box-shadow: 0 2.5mm 6mm rgba(16, 51, 31, 0.18); display: grid; place-items: center; }
+  .qr img { width: 100%; height: 100%; object-fit: contain; display: block; image-rendering: pixelated; }
+  .qr .falta { width: 100%; height: 100%; box-sizing: border-box; border: 1mm dashed #b9ab8c; border-radius: 3mm; display: grid; place-items: center; text-align: center; color: var(--suave); font-weight: 700; font-size: 5mm; padding: 6mm; }
+  .escanea { margin: -3mm 0 0; font-weight: 700; font-size: 4.4mm; color: var(--suave); }
+
+  .datos { width: 100%; display: grid; gap: 2.6mm; }
+  .dato { display: grid; grid-template-columns: 34mm 1fr; align-items: center; gap: 4mm; background: #fff; border-radius: 4mm; padding: 3.4mm 6mm; box-shadow: inset 0 0 0 0.4mm var(--crema-oscura); }
+  .dato span { font-weight: 800; font-size: 3.6mm; letter-spacing: 0.14em; color: var(--oro-hondo); text-transform: uppercase; }
+  .dato strong { font-weight: 800; font-size: 8.4mm; color: var(--tinta); letter-spacing: 0.01em; white-space: nowrap; }
+
+  /* Abajo: la captura por WhatsApp y lo demás. */
+  .pie { background: var(--verde); color: var(--crema); text-align: center; padding: 6mm 10mm 7mm; display: grid; gap: 2.6mm; justify-items: center; }
+  .captura { display: flex; align-items: center; gap: 3.2mm; flex-wrap: wrap; justify-content: center; }
+  .captura span { background: var(--whatsapp); color: #05301a; font-weight: 800; font-size: 3.6mm; letter-spacing: 0.1em; padding: 1.6mm 4mm; border-radius: 99mm; }
+  .captura strong { font-weight: 800; font-size: 7mm; }
+  .nota { font-weight: 600; font-size: 3.9mm; opacity: 0.9; }
+</style>
+</head>
+<body>
+<article class="cartel" data-archivo="pago-movil" data-formato="jpeg" data-ppp="220">
+  <header class="cabeza">
+    <div class="marca">
+      <img src="../public/marca/leon.svg" alt="">
+      <div><small>COMERCIALIZADORA</small><strong>Villa Real</strong></div>
+    </div>
+    <h1 class="titulo"><span>Paga con</span><strong>Pago Móvil</strong></h1>
+  </header>
+
+  <main class="cuerpo">
+    <div class="qr">{{QR}}</div>
+    <p class="escanea">Escanéalo con la app de tu banco</p>
+    <div class="datos">
+      <div class="dato"><span>Banco</span><strong>{{BANCO}}</strong></div>
+      <div class="dato"><span>Teléfono</span><strong>{{TELEFONO}}</strong></div>
+      <div class="dato"><span>{{ETIQUETA_DOCUMENTO}}</span><strong>{{DOCUMENTO}}</strong></div>
+    </div>
+  </main>
+
+  <footer class="pie">
+    <div class="captura"><span>MÁNDANOS LA CAPTURA</span><strong>WhatsApp 0424-6343236</strong></div>
+    <div class="nota">Al cambio BCV del día · También aceptamos efectivo y Zelle</div>
+  </footer>
+</article>
+</body>
+</html>
