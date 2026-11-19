@@ -178,14 +178,16 @@ const ESCENAS = {
     ];
     for (const [n, cx, base, alto, desde] of piezas) { e = entra(u, desde, 0.6, 200); producto(n, cx, base, alto, a * e.alfa, e.dy); }
     e = entra(u, 1.4, 0.5, 20);
-    texto("El Legado · Mi Vallecito · Sortilegio · Guaralact", W / 2, 1560, { tam: 36, peso: 700, color: TINTA, alfa: a * e.alfa * 0.85, dy: e.dy });
+    // Sin nombrar las marcas (el dueño, 19/11/2026: «no pongas los nombres directamente»): se ven en los paquetes.
+    texto("De las mejores marcas", W / 2, 1560, { tam: 46, peso: 800, color: TINTA, alfa: a * e.alfa, dy: e.dy });
   } },
   embutidos: { dura: 3.8, dibujar(u, a) {
     fondo(CREMA_OSCURA, "rgba(255,255,255,0.7)", u, a, 0.5);
     let e = entra(u, 0.1, 0.5, 40);
     pastilla("EMBUTIDOS", W / 2, 330, { fondo: TINTA, color: ORO, alfa: a * e.alfa });
     e = entra(u, 0.25, 0.55, 50);
-    texto("Drago y La Vega", W / 2, 500, { tam: 104, familia: TITULO, color: TINTA, alfa: a * e.alfa, dy: e.dy });
+    texto("Jamones, tocineta", W / 2, 500, { tam: 96, familia: TITULO, color: TINTA, alfa: a * e.alfa, dy: e.dy });
+    texto("y chorizos", W / 2, 610, { tam: 96, familia: TITULO, color: TINTA, alfa: a * e.alfa, dy: e.dy });
     const drago = [
       ["jamon-de-espalda", 190, 1070, 380, 0.45],
       ["tocineta", 420, 1080, 400, 0.55],
@@ -200,7 +202,9 @@ const ESCENAS = {
       ["salchicha-picante-la-vega", 890, 1500, 330, 1.75],
     ];
     for (const [n, cx, base, alto, desde] of vega) { e = entra(u, desde, 0.6, 200); producto(n, cx, base, alto, a * e.alfa, e.dy); }
-    pastilla("NUEVO · LA VEGA", W / 2, 1140, { fondo: TOMATE, color: CREMA, alfa: a * tramo(u, 2.2, 2.4), tam: 32 });
+    pastilla("NUEVOS CHORIZOS Y PEPPERONI", W / 2, 1140, { fondo: TOMATE, color: CREMA, alfa: a * tramo(u, 2.2, 2.4), tam: 30, espacio: 4 });
+    const e3 = entra(u, 2.5, 0.5, 20);
+    texto("De las mejores marcas", W / 2, 1600, { tam: 46, peso: 800, color: TINTA, alfa: a * e3.alfa, dy: e3.dy });
   } },
   mayor: { dura: 3.4, dibujar(u, a) {
     fondo(VERDE, "rgba(240,194,79,0.25)", u, a, 0.45);
@@ -243,10 +247,13 @@ const ESCENAS = {
     x.restore();
     e = entra(u, 1.2, 0.5, 40);
     texto("DE NOVIEMBRE", W / 2, 1220, { tam: 64, peso: 800, color: CREMA, espacio: 10, alfa: a * e.alfa, dy: e.dy });
+    // A las 12 del mediodía, acompañados de las mejores marcas (el dueño, 19/11/2026).
     e = entra(u, 1.5, 0.5, 30);
-    texto("De 9:00 a. m. a 6:00 p. m.", W / 2, 1340, { tam: 48, peso: 600, color: CREMA, alfa: a * e.alfa, dy: e.dy });
-    e = entra(u, 1.8, 0.5, 30);
-    texto("¡Te esperamos!", W / 2, 1480, { tam: 92, familia: TITULO, color: ORO, alfa: a * e.alfa, dy: e.dy });
+    texto("A las 12:00 del mediodía", W / 2, 1330, { tam: 52, peso: 700, color: CREMA, alfa: a * e.alfa, dy: e.dy });
+    e = entra(u, 1.75, 0.5, 30);
+    texto("Acompañados de las mejores marcas", W / 2, 1410, { tam: 44, peso: 700, color: CREMA, alfa: a * e.alfa * 0.9, dy: e.dy });
+    e = entra(u, 2.0, 0.5, 30);
+    texto("¡Te esperamos!", W / 2, 1540, { tam: 92, familia: TITULO, color: ORO, alfa: a * e.alfa, dy: e.dy });
   } },
   cierre: { dura: 4.4, dibujar(u, a) {
     fondo(VERDE_HONDO, "rgba(240,194,79,0.30)", u, a, 0.35);
