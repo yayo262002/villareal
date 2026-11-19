@@ -1553,6 +1553,14 @@ Binance y otro.
   entra. Las fotos son las de su mercancía recortada (`publicidad/fotos/`);
   un artículo sin foto propia se enseña con la del tipo, la de referencia o
   el león, nunca con la de otra marca.
+  **Desde el 18/11/2026, solo sus marcas** (el dueño: «lo de mi mamá al detal
+  es aparte del burger, quítalo de la web»): la web enseña Guaralact,
+  Sortilegio, El Drago, La Vega, El Legado, Mi Vallecito, Cumbre Fresca y, de
+  Purolomo, solo las salchichas wieners. Lo demás de la charcutería (Alibal,
+  Punta de Monte, Alpro, Ahulux, Magro's, San Pedro) y el queso arepero están
+  escondidos, no borrados: siguen en la lista del detal con sus precios, y
+  vuelven a la web mostrando la marca en su ficha. La marca «Puroloma» era
+  una errata: es Purolomo.
 - **La lista de compra** (`/admin/compra`, en Mercancía; el dueño, 18/11/2026:
   «hazme la lista que pueda abrir en el teléfono»). Lo que hay que comprar, por
   tipo (hamburguesas, perros calientes, pizza, papas y congelados, bebidas,
@@ -1569,11 +1577,14 @@ Binance y otro.
   ahumado, ajo, y además el pepperoni»). En Embutidos, la sección
   «Chorizos» (el tipo Chorizo: con ajo, ahumado y el picante parrillero, que
   en el paquete dice «salchicha cocida superior picante parrillera») y la
-  sección «Pepperoni» (estándar, maxi de 6 piezas y de 2 piezas), que sale
-  también en Pizzería. Por kilo, con el costo de la lista mayorista de La
-  Vega de noviembre (sin IVA: trabajan por nota; el paquete normal, no el
-  largo) más un 10 %. No están en la lista del detal, así que su costo se
-  cambia a mano en la ficha de cada marca.
+  sección «Pepperoni», que sale también en Pizzería: solo el estándar, el más
+  barato, que es el que vende («el maxi» y «el de 2 piezas» quedan
+  escondidos). Por kilo, con el costo de la lista mayorista de La Vega de
+  noviembre (sin IVA: trabajan por nota; el paquete normal, no el largo) más
+  un 10 %. No están en la lista del detal, así que su costo se cambia a mano
+  en la ficha de cada marca. Las fotos son las de La Vega, con su etiqueta;
+  la del pepperoni estándar, que sale de producción sin etiqueta, es la del
+  pepperoni de la web de La Vega.
 - **Ofertas y combos** (`/admin/ofertas`): cada oferta tiene nombre,
   descripción, precio en dólares (vacío: «consulta el precio»), fechas
   desde y hasta (vacías: sin límite), estado (borrador, activa, inactiva),
@@ -1916,11 +1927,10 @@ Binance y otro.
   domicilio fiscal de `negocio.ts`. Contribuyente ordinario del IVA.
 - El precio de los huevos es de ejemplo y el panel lo avisa. La
   charcutería tiene precio desde el 15/11/2026 (costo de la lista + 10 %).
-- Fotos de los artículos de la charcutería que no tienen la suya (Magro's,
-  la mortadela tapara, las mortadelas en pieza de 1 kg y la Punta de Monte
-  de 500 g, las salchichas a granel, la tocineta Cumbre Fresca, casi todo
-  San Pedro, el chorizo ahumado y los tres pepperoni de La Vega): se suben
-  en la ficha de cada marca.
+- Fotos de lo que está en la web sin la suya (la mortadela tapara, las
+  salchichas cóctel y la tocineta de Cumbre Fresca): se suben en la ficha de
+  cada marca. La «tocineta ahumada» que mandó el 18/11 dice «Campo Fresco» y
+  un RIF de ejemplo: parece hecha con un programa, y no se puso.
 - Ver si Guaralac (la marca del pecorino) y Guaralact (la del suero) son
   la misma: si lo son, unirlas en Productos → Marcas.
 - Fotos propias de los productos: hoy llevan una foto de referencia, marcada
