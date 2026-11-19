@@ -30,10 +30,9 @@ const ORO = "#f0c24f";
 const CREMA = "#f3e7cc";
 
 const ESCENAS: Escena[] = [
-  // La de arriba, en la pantalla ancha: el texto va a la izquierda, sobre el verde; los productos, a la derecha. Solo
-  // tres, los de siempre de una hamburguesería y una pizzería (la mozzarella, la tocineta y el pepperoni), grandes: el
-  // dueño, 18/11/2026: «lo que no me mata es la cabecera principal, porque vas a terminar poniendo todos los productos».
-  // Lo demás sale en la foto de su familia; aquí no se añade nada más.
+  // La de arriba, en la pantalla ancha: el texto va a la izquierda, sobre el verde; los productos, a la derecha, en dos
+  // filas. Desde el 18/11/2026, con lo de La Vega (el pepperoni y el chorizo picante) en la fila de atrás: el dueño quería
+  // la de antes, con todos sus productos, y lo de La Vega añadido (una prueba con solo tres no le gustó).
   {
     archivo: "public/portada/heroe.webp",
     ancho: 1920,
@@ -41,12 +40,19 @@ const ESCENAS: Escena[] = [
     fondo: VERDE_HONDO,
     luz: "rgba(240, 194, 79, 0.30)",
     piezas: [
-      { foto: "tocineta", x: 0.625, apoyo: 0.88, alto: 0.6 },
-      { foto: "pepperoni-la-vega", x: 0.815, apoyo: 0.88, alto: 0.66 },
-      { foto: "mozzarella", x: 0.72, apoyo: 0.95, alto: 0.36 },
+      // Atrás.
+      { foto: "pepperoni-la-vega", x: 0.655, apoyo: 0.73, alto: 0.44 },
+      { foto: "queso-amarillo-vallecito", x: 0.735, apoyo: 0.735, alto: 0.44 },
+      { foto: "jamon-de-espalda", x: 0.82, apoyo: 0.74, alto: 0.42 },
+      { foto: "salchicha-picante-la-vega", x: 0.905, apoyo: 0.745, alto: 0.36 },
+      // Delante: la tocineta, más grande que el jamón, como es (el dueño, 15/11/2026).
+      { foto: "tocineta", x: 0.545, apoyo: 0.93, alto: 0.54 },
+      { foto: "mozzarella", x: 0.665, apoyo: 0.925, alto: 0.3 },
+      { foto: "queso-amarillo", x: 0.77, apoyo: 0.93, alto: 0.4 },
+      { foto: "pecorino-sortilegio", x: 0.875, apoyo: 0.94, alto: 0.25 },
     ],
   },
-  // En el teléfono: los mismos tres arriba, en el centro; abajo, el verde donde monta el título.
+  // En el teléfono: los productos arriba, en el centro; abajo, el verde donde monta el título.
   {
     archivo: "public/portada/heroe-movil.webp",
     ancho: 900,
@@ -54,9 +60,15 @@ const ESCENAS: Escena[] = [
     fondo: VERDE_HONDO,
     luz: "rgba(240, 194, 79, 0.32)",
     piezas: [
-      { foto: "tocineta", x: 0.33, apoyo: 0.7, alto: 0.56 },
-      { foto: "pepperoni-la-vega", x: 0.68, apoyo: 0.7, alto: 0.62 },
-      { foto: "mozzarella", x: 0.5, apoyo: 0.77, alto: 0.31 },
+      { foto: "jamon-de-pierna", x: 0.27, apoyo: 0.57, alto: 0.34 },
+      { foto: "pepperoni-la-vega", x: 0.43, apoyo: 0.56, alto: 0.38 },
+      { foto: "queso-amarillo-vallecito", x: 0.58, apoyo: 0.565, alto: 0.4 },
+      { foto: "jamon-de-espalda", x: 0.73, apoyo: 0.57, alto: 0.38 },
+      { foto: "salchicha-picante-la-vega", x: 0.875, apoyo: 0.575, alto: 0.31 },
+      { foto: "tocineta", x: 0.18, apoyo: 0.75, alto: 0.47 },
+      { foto: "mozzarella", x: 0.42, apoyo: 0.75, alto: 0.25 },
+      { foto: "queso-amarillo", x: 0.63, apoyo: 0.76, alto: 0.35 },
+      { foto: "pecorino-sortilegio", x: 0.85, apoyo: 0.77, alto: 0.2 },
     ],
   },
   // Las familias y las colecciones, en 4:3. La misma foto sale en la tarjeta (cuadrada en el teléfono, apaisada en la

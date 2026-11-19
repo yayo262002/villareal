@@ -84,9 +84,10 @@ export default async function PaginaInicio() {
 
       <main id="contenido" className={estilos.portada}>
         <section className={estilos.heroe} aria-labelledby="titulo-portada">
+          {/* El «?v=» cambia cada vez que se rehace la foto (npm run fotos-web): el teléfono la guarda un día, y sin él se seguiría viendo la de antes. */}
           <picture className={estilos.heroeFoto}>
-            <source media="(min-width: 900px)" srcSet="/portada/heroe.webp" />
-            <img src="/portada/heroe-movil.webp" alt="" width={900} height={760} fetchPriority="high" />
+            <source media="(min-width: 900px)" srcSet="/portada/heroe.webp?v=20261118" />
+            <img src="/portada/heroe-movil.webp?v=20261118" alt="" width={900} height={760} fetchPriority="high" />
           </picture>
           <div className={estilos.heroeDentro}>
             <div className={estilos.heroeTexto}>

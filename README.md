@@ -1703,11 +1703,11 @@ Binance y otro.
   la dirección y la ubicación para el próximo pedido. Las cuentas, con
   pruebas, en `src/lib/delivery.ts`; la portada, «Cómo comprar» y el pie
   dicen que hay delivery.
-- **La cabecera de la portada, solo tres productos** (el dueño, 18/11/2026:
-  «lo que no me mata es la cabecera principal, porque vas a terminar
-  poniendo todos los productos»): la tocineta, la mozzarella y el pepperoni
-  de La Vega, grandes. No se le añade nada más: cada producto sale en la foto
-  de su familia (Embutidos y Pizzería llevan lo de La Vega).
+- **La cabecera de la portada** lleva todos los productos de siempre y,
+  desde el 18/11/2026, el pepperoni y la salchicha picante parrillera de La
+  Vega atrás (una prueba con solo tres productos no le gustó al dueño: «me
+  gustaba como estaba antes»). Su foto lleva `?v=` en `src/app/page.tsx`:
+  al rehacerla, se cambia, o el teléfono sigue enseñando la de antes un día.
 - **Las fotos** de la portada y de las familias (desde el 15/11/2026, sin el
   Kemmental, que no se vende: va el Mi Vallecito; y la tocineta más grande
   que los jamones, como es) son, desde el 13/11/2026,
