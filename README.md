@@ -1927,10 +1927,12 @@ Binance y otro.
   domicilio fiscal de `negocio.ts`. Contribuyente ordinario del IVA.
 - El precio de los huevos es de ejemplo y el panel lo avisa. La
   charcutería tiene precio desde el 15/11/2026 (costo de la lista + 10 %).
-- Fotos de lo que está en la web sin la suya (las salchichas cóctel y la
-  tocineta de Cumbre Fresca): se suben en la ficha de cada marca. La de la
-  mortadela tapara de El Drago la mandó el 18/11 y se recortó con
-  `publicidad/quitar-fondo.mjs`. La «tocineta ahumada» que mandó el 18/11 dice «Campo Fresco» y
+- La foto de las salchichas cóctel de Cumbre Fresca, lo único en la web sin
+  la suya: se sube en la ficha de la marca. Las de la mortadela tapara de El
+  Drago y la tocineta de Cumbre Fresca las mandó el 18/11 y se recortaron con
+  `publicidad/quitar-fondo.mjs`. La de la tocineta dice «Campo Fresco» y trae
+  un RIF de ejemplo (parece hecha con un programa): se puso porque el dueño
+  insistió; cambiarla por una foto real cuando la haya. La «tocineta ahumada» que mandó el 18/11 dice «Campo Fresco» y
   un RIF de ejemplo: parece hecha con un programa, y no se puso.
 - Ver si Guaralac (la marca del pecorino) y Guaralact (la del suero) son
   la misma: si lo son, unirlas en Productos → Marcas.
