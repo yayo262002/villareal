@@ -14,10 +14,12 @@ export const negocio = {
   descripcion:
     "Todo para tu hamburguesería, pizzería o restaurante, al mayor y a precios especiales por volumen: quesos, huevos y más. Tienda física en el centro de Barquisimeto.",
 
-  // La dirección de la web. Si se compra un dominio propio, se cambia aquí y
-  // con ella cambian los enlaces que se comparten, el mapa del sitio y las
-  // vistas previas de WhatsApp.
-  web: "https://villareal-green.vercel.app",
+  // La dirección de la web: con ella se hacen los enlaces que se comparten, el
+  // mapa del sitio y las vistas previas de WhatsApp. El dominio propio se
+  // compró el 18/11/2026 en Vercel (sin www lleva a www); la dirección de
+  // antes, villareal-green.vercel.app, sigue abriendo la misma web, así que
+  // los enlaces ya mandados (cuentas, la lista de la familia, el banco) valen.
+  web: "https://www.comercializadoravillareal.com",
 
   // Con código de país y sin el cero inicial: 0424-6343236 → 58424...
   whatsapp: "584246343236",

@@ -8,8 +8,11 @@ ver `publicidad/fotos/CREDITOS.md`. La única que no es suya es la del medio car
 «Eggs, hen's egg», de Pixabay, https://pixabay.com/photos/egg-2913054/ (licencia de contenido de Pixabay: uso libre, también
 comercial, sin atribución).
 
-- `portada/heroe.webp`, `portada/heroe-movil.webp`: jamón de pierna, espalda, tocineta y pechuga de pavo El Drago, queso
-  amarillo Kemmental, queso cheddar El Legado, mozzarella y pecorino Sortilegio, sobre verde.
+- `portada/heroe.webp`, `portada/heroe-movil.webp`: desde el 18/11/2026, solo tres productos, grandes: la tocineta El
+  Drago, la mozzarella y el pepperoni de La Vega (foto de la web de La Vega, ver `publicidad/fotos/CREDITOS.md`), sobre
+  verde. El dueño no quería una cabecera con todos los productos; lo demás sale en la foto de su familia.
+- `familias/embutidos.webp` y `familias/pizzeria.webp` llevan también lo de La Vega (el pepperoni y un chorizo), con las
+  fotos de La Vega Alimentos.
 - `familias/quesos.webp`, `embutidos.webp`, `lacteos.webp`, `huevos.webp`, `burger.webp`, `pizzeria.webp`: los productos de
   cada una, sobre oro, crema o verde.
 - `familias/salsas-y-aderezos.webp`, `papas-y-congelados.webp`, `bebidas.webp`, `complementos-gastronomicos.webp`,

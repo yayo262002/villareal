@@ -1703,6 +1703,11 @@ Binance y otro.
   la dirección y la ubicación para el próximo pedido. Las cuentas, con
   pruebas, en `src/lib/delivery.ts`; la portada, «Cómo comprar» y el pie
   dicen que hay delivery.
+- **La cabecera de la portada, solo tres productos** (el dueño, 18/11/2026:
+  «lo que no me mata es la cabecera principal, porque vas a terminar
+  poniendo todos los productos»): la tocineta, la mozzarella y el pepperoni
+  de La Vega, grandes. No se le añade nada más: cada producto sale en la foto
+  de su familia (Embutidos y Pizzería llevan lo de La Vega).
 - **Las fotos** de la portada y de las familias (desde el 15/11/2026, sin el
   Kemmental, que no se vende: va el Mi Vallecito; y la tocineta más grande
   que los jamones, como es) son, desde el 13/11/2026,
@@ -1787,9 +1792,16 @@ Binance y otro.
   instrucciones para Android y iPhone están en `/admin/app`. No hay app de
   tienda: publicarla en Google Play o en la App Store cuesta dinero y no
   añade nada que esto no haga.
-- La dirección de la web está en `src/config/negocio.ts` (`web`). Con un
-  dominio propio se cambia ahí y cambian los enlaces, el mapa del sitio y
-  las vistas previas.
+- **El dominio**: https://www.comercializadoravillareal.com, comprado el
+  18/11/2026 en Vercel (Settings → Domains; sin www lleva a www). Está en
+  `src/config/negocio.ts` (`web`), y con él se hacen los enlaces, el mapa
+  del sitio y las vistas previas. La dirección de antes,
+  villareal-green.vercel.app, sigue abriendo la misma web sin redirigir:
+  los enlaces ya mandados (cuentas, la lista de la familia, el atajo del
+  banco) siguen valiendo. El panel puesto como app en el teléfono, sus
+  avisos y su sesión son de la dirección en que se abrió: para pasarlos al
+  dominio, entrar al panel por él, ponerlo otra vez en la pantalla de
+  inicio y volver a activar los avisos.
 - **Fechas.** En Vercel el servidor va en hora UTC. Las fechas que propone
   el panel y las que se enseñan son las de Venezuela (UTC−4), esté donde
   esté el servidor.
@@ -1955,7 +1967,6 @@ Binance y otro.
   en este teléfono», con el panel puesto en la pantalla de inicio).
 - Poner `ANTHROPIC_API_KEY` en Vercel y en `.env.local` para que las
   fotos de las notas se lean solas. Sin ella, la foto se guarda sin más.
-- Un dominio propio.
 - Para facturar de verdad: elegir con el contador la
   imprenta digital autorizada (y entonces integrarla para que asigne el
   número de control sola) y confirmar con él qué productos están exentos.

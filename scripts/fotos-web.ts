@@ -30,7 +30,10 @@ const ORO = "#f0c24f";
 const CREMA = "#f3e7cc";
 
 const ESCENAS: Escena[] = [
-  // La de arriba, en la pantalla ancha: el texto va a la izquierda, sobre el verde; los productos, a la derecha.
+  // La de arriba, en la pantalla ancha: el texto va a la izquierda, sobre el verde; los productos, a la derecha. Solo
+  // tres, los de siempre de una hamburguesería y una pizzería (la mozzarella, la tocineta y el pepperoni), grandes: el
+  // dueño, 18/11/2026: «lo que no me mata es la cabecera principal, porque vas a terminar poniendo todos los productos».
+  // Lo demás sale en la foto de su familia; aquí no se añade nada más.
   {
     archivo: "public/portada/heroe.webp",
     ancho: 1920,
@@ -38,17 +41,12 @@ const ESCENAS: Escena[] = [
     fondo: VERDE_HONDO,
     luz: "rgba(240, 194, 79, 0.30)",
     piezas: [
-      // La tocineta, delante y más grande que el jamón, como es (el dueño, 15/11/2026); el jamón de pierna, que quedaba
-      // tapado detrás de ella, sale en la del teléfono y en Embutidos.
-      { foto: "queso-amarillo-vallecito", x: 0.7, apoyo: 0.76, alto: 0.5 },
-      { foto: "jamon-de-espalda", x: 0.81, apoyo: 0.77, alto: 0.47 },
-      { foto: "tocineta", x: 0.555, apoyo: 0.93, alto: 0.56 },
-      { foto: "mozzarella", x: 0.665, apoyo: 0.92, alto: 0.31 },
-      { foto: "queso-amarillo", x: 0.775, apoyo: 0.93, alto: 0.42 },
-      { foto: "pecorino-sortilegio", x: 0.88, apoyo: 0.94, alto: 0.26 },
+      { foto: "tocineta", x: 0.625, apoyo: 0.88, alto: 0.6 },
+      { foto: "pepperoni-la-vega", x: 0.815, apoyo: 0.88, alto: 0.66 },
+      { foto: "mozzarella", x: 0.72, apoyo: 0.95, alto: 0.36 },
     ],
   },
-  // En el teléfono: los productos arriba, en el centro; abajo, el verde donde monta el título.
+  // En el teléfono: los mismos tres arriba, en el centro; abajo, el verde donde monta el título.
   {
     archivo: "public/portada/heroe-movil.webp",
     ancho: 900,
@@ -56,13 +54,9 @@ const ESCENAS: Escena[] = [
     fondo: VERDE_HONDO,
     luz: "rgba(240, 194, 79, 0.32)",
     piezas: [
-      { foto: "jamon-de-pierna", x: 0.36, apoyo: 0.58, alto: 0.35 },
-      { foto: "queso-amarillo-vallecito", x: 0.57, apoyo: 0.57, alto: 0.42 },
-      { foto: "jamon-de-espalda", x: 0.79, apoyo: 0.58, alto: 0.4 },
-      { foto: "tocineta", x: 0.18, apoyo: 0.75, alto: 0.47 },
-      { foto: "mozzarella", x: 0.42, apoyo: 0.75, alto: 0.25 },
-      { foto: "queso-amarillo", x: 0.63, apoyo: 0.76, alto: 0.35 },
-      { foto: "pecorino-sortilegio", x: 0.85, apoyo: 0.77, alto: 0.2 },
+      { foto: "tocineta", x: 0.33, apoyo: 0.7, alto: 0.56 },
+      { foto: "pepperoni-la-vega", x: 0.68, apoyo: 0.7, alto: 0.62 },
+      { foto: "mozzarella", x: 0.5, apoyo: 0.77, alto: 0.31 },
     ],
   },
   // Las familias y las colecciones, en 4:3. La misma foto sale en la tarjeta (cuadrada en el teléfono, apaisada en la
@@ -89,12 +83,14 @@ const ESCENAS: Escena[] = [
     fondo: CREMA,
     luz: "rgba(255, 255, 255, 0.6)",
     alturaDeLaLuz: 0.36,
+    // Desde el 18/11/2026, con lo de La Vega (el pepperoni y el chorizo con ajo) y sin lo que ya no está en la web (la
+    // mortadela Punta de Monte).
     piezas: [
-      { foto: "jamon-de-pierna", x: 0.38, apoyo: 0.45, alto: 0.26 },
-      { foto: "jamon-de-espalda", x: 0.51, apoyo: 0.445, alto: 0.29 },
-      { foto: "pechuga-de-pavo-drago", x: 0.64, apoyo: 0.45, alto: 0.26 },
-      { foto: "tocineta", x: 0.42, apoyo: 0.56, alto: 0.34 },
-      { foto: "mortadela-punta-de-monte", x: 0.6, apoyo: 0.56, alto: 0.095, giro: -90 },
+      { foto: "jamon-de-espalda", x: 0.37, apoyo: 0.45, alto: 0.29 },
+      { foto: "pepperoni-la-vega", x: 0.5, apoyo: 0.445, alto: 0.31 },
+      { foto: "pechuga-de-pavo-drago", x: 0.635, apoyo: 0.45, alto: 0.26 },
+      { foto: "tocineta", x: 0.425, apoyo: 0.56, alto: 0.32 },
+      { foto: "chorizo-ajo-la-vega", x: 0.585, apoyo: 0.565, alto: 0.22 },
     ],
   },
   {
@@ -105,9 +101,9 @@ const ESCENAS: Escena[] = [
     luz: "rgba(240, 194, 79, 0.28)",
     alturaDeLaLuz: 0.36,
     piezas: [
-      { foto: "suero-guaralact", x: 0.38, apoyo: 0.52, alto: 0.36 },
-      { foto: "suero-cremoso-guaralact", x: 0.5, apoyo: 0.535, alto: 0.35 },
-      { foto: "suero-san-pedro", x: 0.62, apoyo: 0.545, alto: 0.27 },
+      // Sin el San Pedro desde el 18/11/2026: ya no está en la web.
+      { foto: "suero-guaralact", x: 0.43, apoyo: 0.52, alto: 0.36 },
+      { foto: "suero-cremoso-guaralact", x: 0.575, apoyo: 0.535, alto: 0.35 },
     ],
   },
   {
@@ -141,11 +137,13 @@ const ESCENAS: Escena[] = [
     fondo: ORO,
     luz: "rgba(255, 248, 225, 0.55)",
     alturaDeLaLuz: 0.36,
+    // Desde el 18/11/2026, con el pepperoni y el chorizo ahumado de La Vega.
     piezas: [
-      { foto: "jamon-de-espalda", x: 0.39, apoyo: 0.47, alto: 0.32 },
-      { foto: "jamon-ahumado", x: 0.59, apoyo: 0.47, alto: 0.31 },
-      { foto: "mozzarella", x: 0.45, apoyo: 0.555, alto: 0.22 },
-      { foto: "pecorino-sortilegio", x: 0.61, apoyo: 0.56, alto: 0.18 },
+      { foto: "pepperoni-la-vega", x: 0.385, apoyo: 0.47, alto: 0.34 },
+      { foto: "jamon-de-espalda", x: 0.52, apoyo: 0.465, alto: 0.31 },
+      { foto: "chorizo-ahumado-la-vega", x: 0.65, apoyo: 0.47, alto: 0.25 },
+      { foto: "mozzarella", x: 0.45, apoyo: 0.56, alto: 0.22 },
+      { foto: "pecorino-sortilegio", x: 0.6, apoyo: 0.565, alto: 0.18 },
     ],
   },
   // Lo que todavía no tiene mercancía con foto: el color con el león, sin fotos de internet.

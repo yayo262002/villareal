@@ -17,7 +17,7 @@
     "miniaturas": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/miniaturas.ts",
     "combos": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/combos.ts",
     "prueba:local": "node scripts/prueba-extremo.mjs",
-    "prueba:web": "node scripts/prueba-extremo.mjs --url=https://villareal-green.vercel.app"
+    "prueba:web": "node scripts/prueba-extremo.mjs --url=https://www.comercializadoravillareal.com"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
