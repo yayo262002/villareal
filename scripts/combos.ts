@@ -11,7 +11,7 @@ import { diaDeLaSemana, fechaCorta, hoy } from "../src/lib/dinero.ts";
  * `npm run combos`: el precio de cada combo del detal de hoy, desglosado producto por producto, y el flier del estado de
  * WhatsApp con esos precios. Cada combo cuesta lo que suman sus productos al precio del detal de hoy, subido al centavo:
  * la misma cuenta que la caja (`src/lib/combos-detal.ts`), con la lista de la base (la de Turso si `.env.local` apunta
- * allí). Deja en `listas/`:
+ * allí). Deja en `listas/combos/AAAA-MM-DD/` (una carpeta por día, para encontrarlas en el teléfono):
  *
  *   precios-combos-AAAA-MM-DD-1.pdf, .jpg   los de todos los días (1 a 9), cada producto con lo que lleva y su precio
  *   precios-combos-AAAA-MM-DD-2.pdf, .jpg   los especiales
@@ -119,16 +119,17 @@ const volante = spawnSync(process.execPath, [path.join(carpetaPublicidad, "gener
   env: { ...process.env, SOLO: "volante-combos-precios,volante-combos-precios-2-por-hoja" },
 });
 if (volante.status !== 0) throw new Error("No se pudo dibujar el volante con los precios.");
-fs.mkdirSync(carpetaListas, { recursive: true });
+const carpetaDelDia = path.join(carpetaListas, "combos", dia);
+fs.mkdirSync(carpetaDelDia, { recursive: true });
 for (const hoja of ["1", "2"]) {
   for (const extension of ["pdf", "jpg"]) {
     const origen = path.join(carpetaPublicidad, `precios-combos-${hoja}.${extension}`);
-    const destino = path.join(carpetaListas, `precios-combos-${dia}-${hoja}.${extension}`);
+    const destino = path.join(carpetaDelDia, `precios-combos-${dia}-${hoja}.${extension}`);
     fs.renameSync(origen, destino);
     console.log(path.relative(raiz, destino));
   }
 }
-const flier = path.join(carpetaListas, `estado-combos-${dia}.jpg`);
+const flier = path.join(carpetaDelDia, `estado-combos-${dia}.jpg`);
 fs.copyFileSync(path.join(carpetaPublicidad, "estado-combos.jpg"), flier);
 console.log(path.relative(raiz, flier));
 for (const [origen, destino] of [
@@ -136,6 +137,6 @@ for (const [origen, destino] of [
   ["volante-combos-precios.jpg", `volante-combos-${dia}.jpg`],
   ["volante-combos-precios-2-por-hoja.pdf", `volante-combos-${dia}-2-por-hoja.pdf`],
 ]) {
-  fs.copyFileSync(path.join(carpetaPublicidad, origen), path.join(carpetaListas, destino));
-  console.log(path.relative(raiz, path.join(carpetaListas, destino)));
+  fs.copyFileSync(path.join(carpetaPublicidad, origen), path.join(carpetaDelDia, destino));
+  console.log(path.relative(raiz, path.join(carpetaDelDia, destino)));
 }

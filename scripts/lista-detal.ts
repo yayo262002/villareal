@@ -20,7 +20,8 @@ import { diaDeLaSemana, fechaCorta, hoy } from "../src/lib/dinero.ts";
  * enseñarlas en el teléfono. Lee la lista de la base (la de Turso si
  * `.env.local` apunta allí), le pone los precios con la tasa vigente y las
  * mismas reglas que el panel (`src/lib/detal-calculo.ts`), y deja en
- * `listas/`:
+ * `listas/precios/AAAA-MM-DD/` (una carpeta por día, para encontrarlas en
+ * el teléfono):
  *
  *   lista-de-precios-AAAA-MM-DD.pdf      la del detal: una página larga, del ancho de un teléfono
  *   lista-de-precios-AAAA-MM-DD-1.jpg…   la misma en pantallas, para mandarla como fotos
@@ -107,7 +108,8 @@ const DIBUJOS = /^lista-(precios|charcuteria|mayor)(-\d+)?\.(pdf|jpg|png)$/;
 for (const viejo of fs.readdirSync(carpetaPublicidad).filter((f) => DIBUJOS.test(f))) fs.rmSync(path.join(carpetaPublicidad, viejo));
 const dibujo = spawnSync(process.execPath, [path.join(carpetaPublicidad, "generar.mjs"), "lista-precios"], { stdio: "inherit" });
 if (dibujo.status !== 0) throw new Error("No se pudo dibujar la lista.");
-fs.mkdirSync(carpetaListas, { recursive: true });
+const carpetaDelDia = path.join(carpetaListas, "precios", dia);
+fs.mkdirSync(carpetaDelDia, { recursive: true });
 const hechos: string[] = [];
 for (const lista of listas) {
   for (const archivo of fs
@@ -115,7 +117,7 @@ for (const lista of listas) {
     .filter((f) => DIBUJOS.test(f) && f.startsWith(lista.prefijo) && !/\.png$/.test(f))
     .sort()) {
     const destino = archivo.replace(lista.prefijo, `${lista.destino}-${dia}`);
-    fs.renameSync(path.join(carpetaPublicidad, archivo), path.join(carpetaListas, destino));
+    fs.renameSync(path.join(carpetaPublicidad, archivo), path.join(carpetaDelDia, destino));
     hechos.push(destino);
   }
 }
@@ -139,11 +141,11 @@ if (porKilo.length > 0) {
   if (tabla.status !== 0) throw new Error("No se pudo dibujar la hoja de la rebanadora.");
   for (const archivo of fs.readdirSync(carpetaPublicidad).filter((f) => TABLA.test(f) && !f.endsWith(".png"))) {
     const destino = archivo.replace("tabla-peso", `tabla-por-peso-${dia}`);
-    fs.renameSync(path.join(carpetaPublicidad, archivo), path.join(carpetaListas, destino));
+    fs.renameSync(path.join(carpetaPublicidad, archivo), path.join(carpetaDelDia, destino));
     hechos.push(destino);
   }
 }
 
 console.log(
-  `\n${contar(detal.grupos)} productos al detal${deCharcuteria.length > 0 ? `, ${deCharcuteria.length} de charcutería` : ""}${listas.includes(mayor) ? ` y ${contar(mayor.grupos)} al mayor` : ""} a la tasa ${tasa ?? "(sin tasa)"} en ${carpetaListas}:\n  ${hechos.join("\n  ")}`,
+  `\n${contar(detal.grupos)} productos al detal${deCharcuteria.length > 0 ? `, ${deCharcuteria.length} de charcutería` : ""}${listas.includes(mayor) ? ` y ${contar(mayor.grupos)} al mayor` : ""} a la tasa ${tasa ?? "(sin tasa)"} en ${carpetaDelDia}:\n  ${hechos.join("\n  ")}`,
 );

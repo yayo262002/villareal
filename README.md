@@ -54,8 +54,8 @@ npm run prueba:local   la web entera con una base temporal (después de build)
 npm run prueba:web     la web publicada, solo mirando: no crea ni borra nada
 npm run fotos-web      las fotos de la portada y de las familias: la mercancía recortada sobre color (después, npm run miniaturas)
 npm run miniaturas     las fotos de public/familias/ y public/productos/ en pequeño (public/miniaturas/), al añadir o cambiar una
-npm run combos         la lista personal de los precios de los combos de hoy, desglosada (con lo que cuesta y lo que deja), el flier del estado y el volante con los precios de hoy (en listas/)
-npm run lista          las listas del detal y del mayor de hoy en PDF y en pantallas JPG para el teléfono, y la hoja de la rebanadora (en listas/)
+npm run combos         la lista personal de los precios de los combos de hoy, desglosada (con lo que cuesta y lo que deja), el flier del estado y el volante con los precios de hoy (en listas/combos/, una carpeta por día)
+npm run lista          las listas del detal y del mayor de hoy en PDF y en pantallas JPG para el teléfono, y la hoja de la rebanadora (en listas/precios/, una carpeta por día)
 ```
 
 La web publicada tiene los datos de verdad del negocio. Por eso
@@ -1290,7 +1290,7 @@ Binance y otro.
   el panel. Fuera de los buscadores; «Renovar el enlace» pone otro y el
   anterior deja de funcionar. Un producto se puede esconder de esa lista
   sin perder su costo.
-- **En un archivo.** `npm run lista` deja en `listas/` (en OneDrive, fuera
+- **En un archivo.** `npm run lista` deja en `listas/precios/AAAA-MM-DD/` (en OneDrive, fuera
   del repositorio) la lista de hoy en un PDF de una página larga, del ancho
   de un teléfono, y en pantallas JPG de 1080 × 1920 para mandarlas como
   fotos; la de la charcutería aparte, con las columnas «Detal» y «Mayor»
