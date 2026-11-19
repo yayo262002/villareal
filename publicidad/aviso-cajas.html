@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Aviso de las cajas de huevos · Villa Real</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700..900&family=Manrope:wght@600;700;800&display=swap">
+<style>
+  /* El aviso para pegar en el frente de dos cajas de huevos, una encima de la otra (el dueño, 19/11/2026: «un aviso
+     publicitario donde pueda pegar en dos cajas de huevos, lleva todo para tu burger y pizzería»), para la imprenta: una
+     pieza de 600 × 650 mm (el frente de una caja de 12 cartones mide unos 60 × 33 cm), todo en milímetros, al tamaño
+     real. Con los colores de la web (verde bosque, el oro del león y crema) y sus letras (Fraunces y Manrope). Sin
+     marcas escritas ni precios: las marcas se ven en los paquetes. Donde se juntan las dos cajas (a media altura, de
+     310 a 345 mm) no va ninguna letra: si la raya corta el papel, no parte un texto. generar.mjs saca el PDF y la
+     vista previa. */
+  @page { margin: 0; }
+  html, body { margin: 0; background: #777; }
+  body { font-family: Manrope, Arial, sans-serif; padding: 20px; }
+
+  .aviso {
+    --verde: #123a25; --verde-hondo: #0a2416; --oro: #f0c24f; --oro-hondo: #c98f12; --crema: #fbf3e2; --whatsapp: #25d366;
+    position: relative; box-sizing: border-box; width: 600mm; height: 650mm; overflow: hidden; color: var(--crema);
+    background: radial-gradient(ellipse 80% 60% at 50% 58%, #1d5135 0%, var(--verde) 45%, var(--verde-hondo) 100%);
+  }
+  /* Unas rayas finas, casi invisibles, y una luz dorada detrás de los productos. */
+  .aviso::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 2mm, transparent 2mm 7mm);
+  }
+  .luz { position: absolute; left: 50%; top: 455mm; width: 520mm; height: 260mm; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(ellipse at center, rgba(240, 194, 79, 0.32), rgba(240, 194, 79, 0) 70%); }
+  /* El marco dorado, a 12 mm del borde. */
+  .marco { position: absolute; inset: 12mm; border: 3.2mm solid var(--oro); border-radius: 16mm; box-shadow: inset 0 0 0 1.2mm rgba(201, 143, 18, 0.7); pointer-events: none; z-index: 3; }
+
+  /* Arriba: la marca. */
+  .marca { position: absolute; left: 0; right: 0; top: 34mm; display: flex; align-items: center; justify-content: center; gap: 12mm; z-index: 2; }
+  .marca img { height: 62mm; width: auto; display: block; filter: drop-shadow(0 2mm 3mm rgba(0, 0, 0, 0.35)); }
+  .marca .nombre { display: grid; gap: 1mm; }
+  .marca small { font-weight: 800; font-size: 9.5mm; letter-spacing: 0.22em; color: var(--oro); }
+  .marca strong { font-family: Fraunces, Georgia, serif; font-weight: 800; font-size: 40mm; line-height: 0.95; color: var(--oro); }
+
+  /* El título, como el de la portada de la web. */
+  .titulo { position: absolute; left: 0; right: 0; top: 108mm; margin: 0; text-align: center; font-family: Fraunces, Georgia, serif; font-weight: 800; line-height: 0.92; z-index: 2; white-space: nowrap; }
+  .titulo .uno { display: block; font-size: 60mm; color: var(--crema); }
+  .titulo .dos { display: block; font-size: 53mm; color: var(--oro); margin-top: 4mm; }
+
+  /* En medio, los productos de verdad (las fotos recortadas de publicidad/fotos/), en dos filas, con su sombra. */
+  .productos { position: absolute; inset: 0; z-index: 1; }
+  .productos img { position: absolute; transform: translateX(-50%); filter: drop-shadow(1.5mm 4mm 4mm rgba(5, 20, 12, 0.55)); }
+
+  /* Abajo: lo que se pide. */
+  .pie { position: absolute; left: 30mm; right: 30mm; bottom: 30mm; display: grid; justify-items: center; gap: 6mm; z-index: 2; text-align: center; }
+  .pastilla { background: var(--oro); color: var(--verde-hondo); font-weight: 800; font-size: 13mm; letter-spacing: 0.08em; padding: 3.2mm 12mm; border-radius: 99mm; box-shadow: 0 2mm 4mm rgba(0, 0, 0, 0.3); }
+  .delivery { font-weight: 700; font-size: 10.5mm; color: var(--crema); }
+  .whatsapp { display: flex; align-items: center; gap: 6mm; }
+  .whatsapp span { background: var(--whatsapp); color: #05301a; font-weight: 800; font-size: 8.5mm; letter-spacing: 0.1em; padding: 2.5mm 6mm; border-radius: 99mm; }
+  .whatsapp strong { font-weight: 800; font-size: 21mm; letter-spacing: 0.01em; color: var(--crema); }
+  .web { font-weight: 800; font-size: 8.6mm; color: var(--oro); letter-spacing: 0.01em; }
+</style>
+</head>
+<body>
+<article class="aviso" data-archivo="aviso-cajas-huevos" data-formato="jpeg">
+  <div class="luz"></div>
+  <div class="marco"></div>
+
+  <div class="marca">
+    <img src="../public/marca/leon.svg" alt="">
+    <div class="nombre"><small>COMERCIALIZADORA</small><strong>Villa Real</strong></div>
+  </div>
+
+  <h1 class="titulo"><span class="uno">Todo para tu</span><span class="dos">burger &amp; pizzería</span></h1>
+
+  <div class="productos">
+    <!-- Atrás. -->
+    <img src="fotos/queso-amarillo-vallecito.png" alt="" style="left: 155mm; top: 238mm; height: 150mm">
+    <img src="fotos/jamon-de-espalda.png" alt="" style="left: 243mm; top: 242mm; height: 146mm">
+    <img src="fotos/pepperoni-la-vega.png" alt="" style="left: 364mm; top: 232mm; height: 156mm">
+    <img src="fotos/salchicha-picante-la-vega.png" alt="" style="left: 470mm; top: 258mm; height: 128mm">
+    <!-- Delante: todos apoyados en la misma línea, a 508 mm. -->
+    <img src="fotos/tocineta.png" alt="" style="left: 100mm; top: 322mm; height: 186mm">
+    <img src="fotos/mozzarella.png" alt="" style="left: 208mm; top: 396mm; height: 112mm">
+    <img src="fotos/queso-amarillo.png" alt="" style="left: 302mm; top: 352mm; height: 156mm">
+    <img src="fotos/chorizo-ajo-la-vega.png" alt="" style="left: 401mm; top: 404mm; height: 104mm">
+    <img src="fotos/pecorino-sortilegio.png" alt="" style="left: 507mm; top: 420mm; height: 88mm">
+  </div>
+
+  <div class="pie">
+    <div class="pastilla">PRECIOS AL MAYOR</div>
+    <div class="delivery">Delivery a Barquisimeto y Cabudare</div>
+    <div class="whatsapp"><span>PIDE POR WHATSAPP</span><strong>0424-6343236</strong></div>
+    <div class="web">comercializadoravillareal.com · @comercializadoravillareal</div>
+  </div>
+</article>
+</body>
+</html>
