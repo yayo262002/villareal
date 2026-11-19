@@ -21,7 +21,7 @@ export const TIPOS_DE_COMPRA = [
 export type TipoDeCompra = (typeof TIPOS_DE_COMPRA)[number][0];
 
 /** Los proveedores en el orden de la compra; los demás, después, y lo que no dice dónde, al final. */
-export const ORDEN_DE_PROVEEDORES = ["Lusi", "PRODISA", "Tío Víctor", "La Sabrosita", "El de los huevos", "Chargon", "Drago", "San Andrés", "Donde siempre"];
+export const ORDEN_DE_PROVEEDORES = ["Lusi", "PRODISA", "Tío Víctor", "La Sabrosita", "AMGB", "Chargon", "Drago", "San Andrés", "Donde siempre"];
 export const SIN_PROVEEDOR = "Sin proveedor todavía";
 
 export type ArticuloDeCompra = {
