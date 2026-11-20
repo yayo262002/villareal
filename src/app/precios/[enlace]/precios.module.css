@@ -1,0 +1,23 @@
+/* Lo que «Mis precios» añade a la lista de la familia (lista.module.css): el detalle del artículo y la línea del costo. */
+.detalle {
+  display: block;
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+.costo {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--color-texto-suave);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.costo strong {
+  color: var(--color-texto);
+}
+
+.falta {
+  color: var(--color-tomate);
+  font-weight: 700;
+}

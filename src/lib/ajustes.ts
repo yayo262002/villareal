@@ -242,6 +242,15 @@ export async function ponerEnlaceDeLaLista(enlace: string): Promise<void> {
   await guardar("enlace_lista_detal", enlace);
 }
 
+/** El enlace de «Mis precios», la lista personal del dueño con costos (`/precios/abcdefghjkmnpq`), o null si no se ha creado. */
+export async function enlaceDeMisPrecios(): Promise<string | null> {
+  return (await leer("enlace_mis_precios")).get("enlace_mis_precios")?.valor ?? null;
+}
+
+export async function ponerEnlaceDeMisPrecios(enlace: string): Promise<void> {
+  await guardar("enlace_mis_precios", enlace);
+}
+
 /** Las tarifas del delivery de la web (`/admin/delivery`): sin poner, todo por confirmar. */
 export async function ajustesDelDelivery(): Promise<AjustesDeDelivery> {
   return leerAjustesDeDelivery((await leer("delivery")).get("delivery")?.valor);

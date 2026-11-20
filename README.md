@@ -325,6 +325,8 @@ src/lib/detal.ts          La lista del detal desde la base: listar, cargar una f
 src/lib/costos-unidos.ts  El mismo costo en el detal y en Villa Real: unir un producto de la lista con su artículo del catálogo e igualar el costo
 src/app/admin/(panel)/detal/  La lista del detal en el panel: cargar facturas, agregar a mano, las reglas y el enlace para la familia
 src/app/lista/            La lista del detal para la familia, con su enlace y sin clave
+src/lib/mis-precios.ts    «Mis precios»: lo publicado en la web con su costo, su precio al mayor y lo que deja (puro, con pruebas)
+src/app/precios/          «Mis precios», la lista personal del dueño, con su enlace y sin clave (se crea y se renueva en Productos)
 scripts/combos.ts         npm run combos: el precio de cada combo del detal de hoy, producto por producto, con lo que cuesta y lo que deja (publicidad/precios-combos.html, dos hojas carta), el flier del estado y el volante con los precios de hoy; la misma cuenta que la caja
 scripts/lista-detal.ts    npm run lista: las listas del detal y del mayor de hoy en archivos para el teléfono (diseño en publicidad/lista-precios.html) y la hoja de la rebanadora (publicidad/tabla-peso.html)
 src/lib/precios-especiales.ts  El precio especial de un cliente para un artículo
@@ -1563,6 +1565,23 @@ Binance y otro.
   escondidos, no borrados: siguen en la lista del detal con sus precios, y
   vuelven a la web mostrando la marca en su ficha. La marca «Puroloma» era
   una errata: es Purolomo.
+- **Mis precios** (`/precios/abcdefghjkmnpq`; el dueño, 20/11/2026: «necesito una
+  lista personal para ver todos los precios del burger y productos»). Como la
+  lista de la familia, pero de Villa Real y solo para él: todo lo publicado en
+  la web, por familias, cada artículo con su precio al mayor en bolívares a la
+  tasa de hoy y en dólares, y debajo su costo y lo que deja («Costo 1,46 $ ·
+  deja 0,15 $ (10 %)»). Sin clave, con su enlace (catorce letras al azar,
+  fuera de los buscadores), que se crea y se renueva en Productos → «Mis
+  precios»; puesta en la pantalla de inicio es su app, «Mis precios». Lleva
+  los costos: no se manda a nadie (`src/lib/mis-precios.ts`, con pruebas).
+- **Lo comprado para el burger** (desde el 19/11/2026: él manda las facturas y
+  las notas): todo a costo + 10 % («a todo el burger le voy a meter un 10
+  porciento»). Las salsas Gustossa (bulto de 15) y las papas fritas (bolsas de
+  150 g y de 1 kg) se venden por unidad; la carne para hamburguesa Minco (Hot
+  Burger) por unidad de 5 carnes; los refrescos (Big Cola, Pepsi, Golden) por
+  bulto; los desechables, en la familia **Desechables** (también en Burger),
+  por paquete como vienen, y las cajas térmicas y la bandeja C1 en paquetes de
+  20 que arma él. Los costos, con su factura, en `listas/compras/costos-burger.txt`.
 - **La lista de compra** (`/admin/compra`, en Mercancía; el dueño, 18/11/2026:
   «hazme la lista que pueda abrir en el teléfono»). Lo que hay que comprar, por
   tipo (hamburguesas, perros calientes, pizza, papas y congelados, bebidas,

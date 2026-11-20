@@ -77,6 +77,7 @@ import {
   ponerAlicuotaIva,
   ponerAvisoTasa,
   ponerEnlaceDeLaLista,
+  ponerEnlaceDeMisPrecios,
   ponerNumeracionDeFacturasDesde,
   ponerReglasDelDetal,
   ponerTasaAutomatica,
@@ -3019,6 +3020,17 @@ export async function crearEnlaceDeLaLista(datos: FormData): Promise<void> {
   volverConExito(
     `${RUTA_DETAL}#enlace`,
     renovar ? "Enlace renovado: el anterior ya no funciona. Manda el nuevo." : "Enlace creado. Mándaselo por WhatsApp: con él ve la lista al día, sin clave.",
+  );
+}
+
+/** Crea (o renueva) el enlace de «Mis precios», la lista personal del dueño con costos y precios. */
+export async function crearEnlaceDeMisPrecios(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const renovar = texto(datos, "renovar") === "1";
+  await ponerEnlaceDeMisPrecios(nuevoEnlace());
+  volverConExito(
+    "/admin/productos#mis-precios",
+    renovar ? "Enlace de «Mis precios» renovado: el anterior ya no funciona." : "Enlace de «Mis precios» creado: ábrelo en tu teléfono y ponlo en la pantalla de inicio.",
   );
 }
 

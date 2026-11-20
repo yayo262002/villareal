@@ -3,10 +3,11 @@ import { listarProductos, categoriasDeTodos, direccionDeFotoDeProducto } from "@
 import { agruparPorProducto, fotoDeAlgunaVariante, listarVariantes } from "@/lib/variantes";
 import { listarFamilias } from "@/lib/familias";
 import { NOMBRE_ESTADO_PRODUCTO, estadoDeProducto, precioPublicado, presentacionDe, type EstadoProducto } from "@/lib/catalogo";
-import { hayPreciosDeEjemplo, leerAvisoTasa, leerTasa, tasaAutomatica } from "@/lib/ajustes";
+import { enlaceDeMisPrecios, hayPreciosDeEjemplo, leerAvisoTasa, leerTasa, tasaAutomatica } from "@/lib/ajustes";
+import { negocio } from "@/config/negocio";
 import { faltanPorPreparar } from "@/lib/preparar-catalogo";
 import { normalizar } from "@/lib/buscar";
-import { alternarTasaAutomatica, cambiarTasa, confirmarPrecios, prepararCatalogo, traerTasaOficial } from "@/lib/acciones";
+import { alternarTasaAutomatica, cambiarTasa, confirmarPrecios, crearEnlaceDeMisPrecios, prepararCatalogo, traerTasaOficial } from "@/lib/acciones";
 import { aBolivares, bs, diaDeLaSemana, fechaCorta, fechaDeLaBase, hoy, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import { FotoDeProducto } from "@/components/foto-de-producto";
@@ -33,7 +34,7 @@ function texto(parametros: ParametrosAviso, campo: string): string {
 export default async function PaginaProductos({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   await exigirPanel();
   const parametros = await searchParams;
-  const [productos, variantes, familias, categorias, tasa, deEjemplo, automatica, avisoTasa, faltan] = await Promise.all([
+  const [productos, variantes, familias, categorias, tasa, deEjemplo, automatica, avisoTasa, faltan, enlaceMisPrecios] = await Promise.all([
     listarProductos(),
     listarVariantes(),
     listarFamilias(),
@@ -43,6 +44,7 @@ export default async function PaginaProductos({ searchParams }: { searchParams: 
     tasaAutomatica(),
     leerAvisoTasa(),
     faltanPorPreparar(),
+    enlaceDeMisPrecios(),
   ]);
   const variantesDe = agruparPorProducto(variantes);
   const tasaValor = tasa?.valor ?? null;
@@ -137,6 +139,36 @@ export default async function PaginaProductos({ searchParams }: { searchParams: 
             </form>
           </div>
         </div>
+      </section>
+
+      <section className="tarjeta" id="mis-precios">
+        <h2 className={estilos.subtitulo}>Mis precios</h2>
+        <p className={estilos.ayuda}>
+          Tu lista personal de lo que está en la web: cada producto con su precio al mayor en bolívares y en dólares, su costo y lo que deja. Se
+          abre en el teléfono sin clave, con su enlace, y puesta en la pantalla de inicio es una app, «Mis precios». Lleva los costos: no la
+          mandes a nadie.
+        </p>
+        {enlaceMisPrecios ? (
+          <>
+            <p>
+              <a href={`/precios/${enlaceMisPrecios}`} target="_blank" rel="noopener" style={{ overflowWrap: "anywhere" }}>
+                {`${negocio.web}/precios/${enlaceMisPrecios}`}
+              </a>
+            </p>
+            <form action={crearEnlaceDeMisPrecios}>
+              <input type="hidden" name="renovar" value="1" />
+              <button type="submit" className={`boton boton--secundario ${estilos.botonPequeno}`}>
+                Renovar el enlace
+              </button>
+            </form>
+          </>
+        ) : (
+          <form action={crearEnlaceDeMisPrecios}>
+            <button type="submit" className="boton">
+              Crear el enlace
+            </button>
+          </form>
+        )}
       </section>
 
       {sinPrecio.length > 0 && (
