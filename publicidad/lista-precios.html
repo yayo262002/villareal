@@ -83,7 +83,10 @@
           <p class="tasa">${tasa ? `Tasa BCV: <b>${tasa}</b> Bs por dólar` : "Sin tasa: precios en dólares"}</p>
         </div>
       </header>`;
-    const nota = `<p class="nota">${L.mayor ? "Precios al mayor. " : L.doble ? "Cada producto con su precio al detal y al mayor. " : ""}Bolívares a la tasa del BCV de este día, subidos de ${L.redondeo} en ${L.redondeo}. Cambian cada día con la tasa.</p>`;
+    // Una lista puede traer su propia nota (la del burger: sus bolívares son los de la web, al céntimo).
+    const nota = L.nota
+      ? `<p class="nota">${L.nota}</p>`
+      : `<p class="nota">${L.mayor ? "Precios al mayor. " : L.doble ? "Cada producto con su precio al detal y al mayor. " : ""}Bolívares a la tasa del BCV de este día, subidos de ${L.redondeo} en ${L.redondeo}. Cambian cada día con la tasa.</p>`;
     const precio = (p) =>
       p.usd === null
         ? `<div class="precios"><div class="usd">—</div></div>`
