@@ -56,6 +56,28 @@
   .whatsapp span { background: var(--whatsapp); color: #05301a; font-weight: 800; font-size: 3.6mm; letter-spacing: 0.1em; padding: 1.2mm 3mm; border-radius: 99mm; }
   .whatsapp strong { font-weight: 800; font-size: 9mm; letter-spacing: 0.01em; color: var(--crema); }
   .web { font-weight: 800; font-size: 5.2mm; color: var(--oro); letter-spacing: 0.01em; }
+
+  /* El del combo (el dueño, 20/11/2026: «hazme uno que diga lleva tu combo de hamburguesa y perro»): sin precios, que
+     los combos aún no los tiene armados; «COMBO» en el rojo tomate de la web, la mercancía en el centro y, abajo, el QR
+     a Burger para ver los precios. */
+  .combo { --tomate: #c43d24; }
+  .combo .titulo { top: 41mm; }
+  .combo .titulo .uno { font-size: 14mm; }
+  .combo .sello { display: inline-block; margin: 2mm 0 2.4mm; background: var(--tomate); color: #fff; font-family: Manrope, Arial, sans-serif; font-weight: 800; font-size: 25mm; letter-spacing: 0.04em; line-height: 1; padding: 2.4mm 9mm 3mm; border-radius: 4mm; box-shadow: 0 1.2mm 0 #8f2615, 0 2.5mm 5mm rgba(0, 0, 0, 0.35); transform: rotate(-2deg); }
+  .combo .titulo .dos { font-size: 15.5mm; margin-top: 0; }
+  .combo .luz { top: 160mm; }
+  .combo .necesitas { position: absolute; left: 14mm; right: 14mm; top: 196mm; margin: 0; text-align: center; font-weight: 700; font-size: 5mm; color: var(--crema); z-index: 2; }
+  .combo .necesitas b { color: var(--oro); }
+  .combo .chips { position: absolute; left: 14mm; right: 14mm; top: 207mm; display: flex; flex-wrap: wrap; justify-content: center; gap: 2mm; z-index: 2; }
+  .combo .chips span { border: 0.5mm solid var(--oro); color: var(--crema); font-weight: 800; font-size: 3.9mm; padding: 0.9mm 3.4mm; border-radius: 99mm; }
+  .combo .abajo { position: absolute; left: 16mm; right: 16mm; bottom: 15mm; display: grid; grid-template-columns: 38mm 1fr; align-items: center; gap: 7mm; z-index: 2; }
+  .combo .qr-chico { box-sizing: border-box; width: 38mm; height: 38mm; background: #fff; border-radius: 3mm; border: 1mm solid var(--oro); padding: 3.2mm; }
+  .combo .qr-chico svg { width: 100%; height: 100%; display: block; }
+  .combo .pedir { display: grid; gap: 2.2mm; justify-items: start; }
+  .combo .pedir .escanea { font-weight: 700; font-size: 4mm; color: var(--crema); }
+  .combo .pedir .escanea b { color: var(--oro); }
+  .combo .pedir .whatsapp strong { font-size: 10mm; }
+  .combo .pedir .delivery { font-weight: 700; font-size: 4.2mm; color: var(--crema); }
 </style>
 </head>
 <body>
@@ -119,6 +141,39 @@
     <div class="lista"><span>En bolívares y en dólares</span><span>Delivery a Barquisimeto y Cabudare</span></div>
     <div class="whatsapp"><span>PIDE POR WHATSAPP</span><strong>0424-6343236</strong></div>
     <div class="web">www.comercializadoravillareal.com/productos</div>
+  </div>
+</article>
+<article class="afiche combo" data-archivo="afiche-combo-hamburguesa-y-perro" data-formato="jpeg" data-ppp="220">
+  <div class="luz"></div>
+  <div class="marco"></div>
+
+  <div class="marca">
+    <img src="../public/marca/leon.svg" alt="">
+    <div class="nombre"><small>COMERCIALIZADORA</small><strong>Villa Real</strong></div>
+  </div>
+
+  <h1 class="titulo"><span class="uno">¡Lleva tu</span><span class="sello">COMBO</span><span class="dos">de hamburguesa y perro!</span></h1>
+
+  <div class="productos">
+    <!-- Atrás. -->
+    <img src="fotos/queso-amarillo-vallecito.png" alt="" style="left: 80mm; top: 110mm; height: 66mm">
+    <img src="fotos/salchicha-picante-la-vega.png" alt="" style="left: 150mm; top: 118mm; height: 56mm">
+    <!-- Delante, apoyados en la misma línea, a 188 mm. -->
+    <img src="fotos/tocineta.png" alt="" style="left: 60mm; top: 118mm; height: 70mm">
+    <img src="fotos/queso-amarillo.png" alt="" style="left: 108mm; top: 128mm; height: 60mm">
+    <img src="fotos/salchichas.png" alt="" style="left: 150mm; top: 146mm; height: 42mm">
+  </div>
+
+  <p class="necesitas">Todo para tus <b>hamburguesas y perros calientes</b>, en un solo pedido</p>
+  <div class="chips"><span>Carne</span><span>Queso</span><span>Tocineta</span><span>Salchichas</span><span>Salsas</span><span>Papas</span><span>Desechables</span></div>
+
+  <div class="abajo">
+    <div class="qr-chico" data-qr="https://www.comercializadoravillareal.com/categoria/burger"></div>
+    <div class="pedir">
+      <div class="escanea">Escanea y mira <b>los precios de hoy</b></div>
+      <div class="whatsapp"><span>PIDE TU COMBO</span><strong>0424-6343236</strong></div>
+      <div class="delivery">Precios al mayor · Delivery a Barquisimeto y Cabudare</div>
+    </div>
   </div>
 </article>
 <script>
