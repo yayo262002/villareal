@@ -1558,7 +1558,7 @@ Binance y otro.
   es aparte del burger, quítalo de la web»): la web enseña Guaralact,
   Sortilegio, El Drago, La Vega, El Legado, Mi Vallecito, Cumbre Fresca, de
   Purolomo solo las salchichas wieners y, en Bebidas, la Big Cola por bulto
-  de 6 × 2 L (sin precio hasta que el dueño diga a cuánto la compró). Lo demás de la charcutería (Alibal,
+  de 6 × 2 L (5,50 $ desde el 20/11/2026: el costo de su factura del 19/11 más un 10 %, como todo lo del burger). Lo demás de la charcutería (Alibal,
   Punta de Monte, Alpro, Ahulux, Magro's, San Pedro) y el queso arepero están
   escondidos, no borrados: siguen en la lista del detal con sus precios, y
   vuelven a la web mostrando la marca en su ficha. La marca «Puroloma» era
