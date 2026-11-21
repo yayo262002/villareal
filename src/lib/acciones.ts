@@ -190,6 +190,7 @@ import {
   METODOS_PAGO,
   bs,
   cantidad,
+  diaDeLaSemana,
   esMetodoPago,
   esUnidad,
   fechaCorta,
@@ -1548,7 +1549,7 @@ export async function traerTasaOficial(): Promise<void> {
     volverConExito(
       "/admin/productos",
       resultado.delLunes
-        ? `Tasa del lunes ${fechaCorta(resultado.delLunes)} puesta: ${resultado.valor} bolívares por dólar. Los fines de semana vale la del lunes, como en los comercios.`
+        ? `Tasa del ${diaDeLaSemana(resultado.delLunes)} ${fechaCorta(resultado.delLunes)} puesta: ${resultado.valor} bolívares por dólar. Desde el viernes en la noche y el fin de semana vale la del lunes, como en los comercios.`
         : `Tasa del BCV puesta: ${resultado.valor} bolívares por dólar.`,
     );
   }

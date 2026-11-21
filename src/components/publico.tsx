@@ -167,8 +167,8 @@ export function PiePublico() {
 }
 
 /**
- * «Tasa BCV: Bs 857,89 por dólar · 29/09/2026». Un fin de semana, con la
- * del lunes: «Tasa BCV del lunes 05/10/2026: Bs 871,37 por dólar». Sin
+ * «Tasa BCV: Bs 857,89 por dólar · 29/09/2026». Del viernes en la noche al
+ * domingo, con la del lunes: «Tasa BCV del lunes 05/10/2026: Bs 871,37 por dólar». Sin
  * tasa no se enseña nada.
  */
 export function LineaTasa({ tasa, className }: { tasa: Tasa | null; className?: string }) {

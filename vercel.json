@@ -8,6 +8,14 @@
     {
       "path": "/api/aviso-diario",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/tasa-del-lunes",
+      "schedule": "0 23 * * 5"
+    },
+    {
+      "path": "/api/tasa-del-lunes",
+      "schedule": "0 2 * * 6"
     }
   ]
 }

@@ -43,11 +43,13 @@ export function revisarTasa(anterior: number | null, recibida: unknown, diasDesd
   return { aceptada: true, valor: nueva };
 }
 
-// ---------- Los fines de semana, la del lunes ----------
+// ---------- Del viernes en la noche al domingo, la del lunes ----------
 //
-// Los comercios cobran el sábado y el domingo con la tasa del lunes, que el
-// BCV publica el viernes por la tarde: así no pierden con la que sube el
-// lunes. El negocio hace lo mismo.
+// Los comercios cobran desde el viernes en la noche, el sábado y el domingo
+// con la tasa del lunes, que el BCV publica el viernes por la tarde: así no
+// pierden con la que sube el lunes. El negocio hace lo mismo (el dueño,
+// 21/11/2026: «si es viernes en la noche todos los precios tienen que ser
+// calculados en tasa del lunes»).
 
 const UN_DIA_MS = 24 * 60 * 60 * 1000;
 
@@ -65,7 +67,12 @@ export function esFinDeSemana(fecha: string): boolean {
   return dia === 0 || dia === 6;
 }
 
-/** El lunes que sigue a un sábado o a un domingo. */
+/** Viernes: desde la noche, cuando el BCV ya publicó la del lunes, vale esa. La fecha ya es la de Venezuela. */
+export function esViernes(fecha: string): boolean {
+  return diaDeLaSemanaDe(fecha) === 5;
+}
+
+/** El lunes que sigue a un viernes, a un sábado o a un domingo. */
 export function lunesDespuesDe(fecha: string): string {
   return sumarDiasA(fecha, (8 - diaDeLaSemanaDe(fecha)) % 7 || 7);
 }
@@ -94,11 +101,18 @@ export function leerTasaDelBcv(html: string): TasaPublicada | null {
 }
 
 /**
- * Si una tasa publicada es la que vale este fin de semana: la del próximo
- * día hábil, que es el lunes (o el martes, si el lunes es feriado). La del
- * viernes no lo es: con ella el BCV todavía no ha publicado la del lunes.
+ * Si una tasa publicada es la que vale desde el viernes en la noche hasta el
+ * domingo: la del próximo día hábil, que es el lunes (o el martes o el
+ * miércoles, si el lunes es feriado o es Carnaval). La del viernes no lo es:
+ * con ella el BCV todavía no ha publicado la del lunes. Entre semana no se
+ * adelanta ninguna: la que el BCV publica por la tarde vale desde mañana.
  */
 export function esLaDelLunes(fechaValor: string, hoy: string): boolean {
-  if (!esFinDeSemana(hoy) || !(fechaValor > hoy)) return false;
-  return (Date.parse(`${fechaValor}T12:00:00Z`) - Date.parse(`${hoy}T12:00:00Z`)) / UN_DIA_MS <= 3;
+  if (!(esViernes(hoy) || esFinDeSemana(hoy)) || !(fechaValor > hoy)) return false;
+  return fechaValor <= ultimoDiaHabilDespuesDe(hoy);
+}
+
+/** Hasta dónde puede caer el próximo día hábil después de un fin de semana: el miércoles (lunes y martes de Carnaval). */
+export function ultimoDiaHabilDespuesDe(fecha: string): string {
+  return sumarDiasA(lunesDespuesDe(fecha), 2);
 }

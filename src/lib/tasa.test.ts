@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { esFinDeSemana, esLaDelLunes, leerTasaDelBcv, lunesDespuesDe, redondearTasa, revisarTasa, sabadoDe } from "./tasa.ts";
+import { esFinDeSemana, esLaDelLunes, esViernes, leerTasaDelBcv, lunesDespuesDe, redondearTasa, revisarTasa, sabadoDe, ultimoDiaHabilDespuesDe } from "./tasa.ts";
 
 test("la tasa se guarda con cuatro decimales, como la publica el BCV", () => {
   assert.equal(redondearTasa(857.88764), 857.8876);
@@ -75,6 +75,25 @@ test("el fin de semana vale la del lunes (o la del martes si el lunes es feriado
   assert.equal(esLaDelLunes("2026-10-06", "2026-10-03"), true);
   assert.equal(esLaDelLunes("2026-10-02", "2026-10-03"), false);
   assert.equal(esLaDelLunes("2026-10-09", "2026-10-03"), false);
-  // Entre semana no aplica.
+  // Entre semana no aplica: la que el BCV publica por la tarde vale desde mañana.
   assert.equal(esLaDelLunes("2026-10-06", "2026-10-05"), false);
+  assert.equal(esLaDelLunes("2026-11-20", "2026-11-19"), false);
+});
+
+test("desde el viernes en la noche vale la del lunes, en cuanto el BCV la publica (21/11/2026)", () => {
+  assert.equal(esViernes("2026-11-20"), true);
+  assert.equal(esViernes("2026-11-21"), false);
+  assert.equal(lunesDespuesDe("2026-11-20"), "2026-11-23");
+  // El viernes por la mañana la página aún trae la del viernes: entonces no.
+  assert.equal(esLaDelLunes("2026-11-20", "2026-11-20"), false);
+  // Ya en la tarde, la del lunes; o la del martes si el lunes no es día bancario (la del 24/11/2026), o la del miércoles en Carnaval.
+  assert.equal(esLaDelLunes("2026-11-23", "2026-11-20"), true);
+  assert.equal(esLaDelLunes("2026-11-24", "2026-11-20"), true);
+  assert.equal(esLaDelLunes("2026-11-25", "2026-11-20"), true);
+  assert.equal(esLaDelLunes("2026-11-26", "2026-11-20"), false);
+  // El sábado y el domingo, la misma.
+  assert.equal(esLaDelLunes("2026-11-24", "2026-11-21"), true);
+  assert.equal(esLaDelLunes("2026-11-24", "2026-11-22"), true);
+  assert.equal(ultimoDiaHabilDespuesDe("2026-11-20"), "2026-11-25");
+  assert.equal(ultimoDiaHabilDespuesDe("2026-11-22"), "2026-11-25");
 });

@@ -2,20 +2,20 @@ import "server-only";
 import https from "node:https";
 import tls from "node:tls";
 import { guardarTasa, leerTasa, ponerAvisoTasa, tasaAutomatica } from "./ajustes";
-import { esFinDeSemana, esLaDelLunes, leerTasaDelBcv, revisarTasa, sabadoDe, type TasaPublicada } from "./tasa";
-import { INTERMEDIO_DEL_BCV } from "./certificado-bcv";
-import { fechaCorta, fechaDeLaBase, hoy } from "./dinero";
+import { esFinDeSemana, esLaDelLunes, esViernes, leerTasaDelBcv, revisarTasa, sabadoDe, type TasaPublicada } from "./tasa";
+import { INTERMEDIOS_DEL_BCV } from "./certificado-bcv";
+import { diaDeLaSemana, fechaCorta, fechaDeLaBase, hoy } from "./dinero";
 
 /**
  * Trae la tasa oficial del BCV y la pone como tasa del día. La llama la
- * tarea diaria de Vercel cada mañana y el botón «Traer la del BCV ahora»
- * del panel.
+ * tarea diaria de Vercel cada mañana, la del viernes en la noche y el botón
+ * «Traer la del BCV ahora» del panel.
  *
  * Entre semana se lee de DolarApi, un servicio público que la copia de la
- * página del banco. Los sábados y domingos vale la del lunes, como en los
- * comercios; DolarApi sigue dando la del viernes hasta el lunes, pero el BCV
- * publica la del lunes el viernes por la tarde, así que el fin de semana se
- * lee de su página. Nada de lo que llega se da por bueno sin revisar (ver
+ * página del banco. Desde el viernes en la noche y el sábado y el domingo
+ * vale la del lunes, como en los comercios; DolarApi sigue dando la del
+ * viernes hasta el lunes, pero el BCV publica la del lunes el viernes por la
+ * tarde, así que entonces se lee de su página. Nada de lo que llega se da por bueno sin revisar (ver
  * `tasa.ts`), y si algo falla la tasa que había se queda como estaba.
  */
 
@@ -49,7 +49,7 @@ function leerPaginaDelBcv(): Promise<string> {
     const peticion = https.get(
       PAGINA_DEL_BCV,
       {
-        ca: [...tls.rootCertificates, INTERMEDIO_DEL_BCV],
+        ca: [...tls.rootCertificates, ...INTERMEDIOS_DEL_BCV],
         timeout: ESPERA_MAXIMA_MS,
         headers: { "user-agent": "Mozilla/5.0 (compatible; VillaReal/1.0)" },
       },
@@ -96,10 +96,11 @@ export async function actualizarTasaOficial({ forzar = false } = {}): Promise<Re
   const vigente = await leerTasa();
   const finDeSemana = esFinDeSemana(fecha);
 
-  // Sábado y domingo: la del lunes, de la página del BCV.
+  // Del viernes en la noche al domingo: la del lunes, de la página del BCV. El viernes por la mañana la página aún trae
+  // la del viernes, y entonces vale la de siempre; la tarea del viernes en la noche (`/api/tasa-del-lunes`) la encuentra.
   let delLunes: TasaPublicada | null = null;
   let sinLunes = "";
-  if (finDeSemana) {
+  if (finDeSemana || esViernes(fecha)) {
     try {
       const publicada = leerTasaDelBcv(await leerPaginaDelBcv());
       if (!publicada) sinLunes = "la página del BCV no trae la tasa donde siempre";
@@ -108,6 +109,12 @@ export async function actualizarTasaOficial({ forzar = false } = {}): Promise<Re
     } catch (error) {
       sinLunes = motivoDe(error, "no se pudo leer la página del BCV");
     }
+    // Sin poder leerla, si ya está la del lunes (puesta el viernes en la noche o ayer), se queda.
+    if (!delLunes && vigente?.fecha_valor && vigente.fecha_valor > fecha) {
+      return { estado: "se_queda", valor: vigente.valor, motivo: `ya está la del ${diaDeLaSemana(vigente.fecha_valor)} ${fechaCorta(vigente.fecha_valor)}` };
+    }
+  }
+  if (finDeSemana) {
     // Sin la del lunes, no se pisa una tasa puesta este mismo fin de semana: la del lunes de ayer, o la que escribió el dueño.
     if (!delLunes && vigente && fechaDeLaBase(vigente.actualizada_en) >= sabadoDe(fecha)) {
       await ponerAvisoTasa(`No se pudo traer la tasa del lunes del BCV (${sinLunes}). Sigue la que había.`);

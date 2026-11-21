@@ -171,8 +171,8 @@ src/app/admin/(panel)/banco/  Pago móvil: los pagos por identificar, los abonad
 src/app/cuenta/[enlace]/ya-pague/  «Ya pagué» desde el enlace del cliente: la referencia y el monto
 src/lib/ajustes.ts        La tasa del día y los demás ajustes
 src/lib/tasa.ts           Cuándo se acepta una tasa que llega de fuera
-src/lib/tasa-oficial.ts   Trae la tasa del BCV (el fin de semana, la del lunes, de la página del BCV)
-src/lib/certificado-bcv.ts  El intermedio que la página del BCV no manda, para comprobar su certificado
+src/lib/tasa-oficial.ts   Trae la tasa del BCV (del viernes en la noche al domingo, la del lunes, de la página del BCV)
+src/lib/certificado-bcv.ts  Los intermedios que la página del BCV no manda, para comprobar su certificado
 src/lib/intentos.ts       Freno a quien pruebe claves en la entrada del panel
 src/lib/variantes.ts      Los artículos de un tipo de producto (marca, presentación, contenido), con su foto
 src/lib/marcas.ts         Las marcas: listar, renombrar, unir dos que son la misma y borrar la que no se usa
@@ -260,6 +260,7 @@ src/app/proveedor/        La cuenta de un proveedor, para él, con su enlace y s
 src/lib/copias-nube.ts    Copias automáticas guardadas en la base
 src/app/api/tarea-diaria/ Lo que Vercel hace solo cada mañana: tasa y copia
 src/app/api/copia-automatica/  Solo la copia, para lanzarla aparte
+src/app/api/tasa-del-lunes/  El viernes en la noche, la tasa del lunes (a las 7 y a las 10)
 src/lib/dinero.ts         Conversión y formato de dólares y bolívares
 src/lib/acciones.ts       Lo que hacen los formularios del panel
 src/lib/copias.ts         Copias de seguridad de la base de datos
@@ -361,16 +362,25 @@ datos/                    La base de datos (fuera de Git)
   más de un 15 % por día de la tasa vigente, se deja la que había y el
   panel lo avisa. En Productos el dueño puede escribir la tasa a mano,
   traer la del BCV en el momento, o apagar la actualización automática.
-- **Los fines de semana vale la tasa del lunes**, como en los comercios:
-  el BCV la publica el viernes por la tarde («Fecha Valor: lunes») y con
-  ella no se pierde con la que sube el lunes. DolarApi sigue dando la del
-  viernes hasta el lunes, así que el sábado y el domingo la tasa se lee de
-  la página del BCV (`leerTasaDelBcv` en `src/lib/tasa.ts`). Su servidor
+- **Desde el viernes en la noche y el fin de semana vale la tasa del
+  lunes**, como en los comercios (el dueño, 21/11/2026: «si es viernes en
+  la noche todos los precios tienen que ser calculados en tasa del lunes»):
+  el BCV la publica el viernes por la tarde («Fecha Valor: lunes», o la del
+  martes si el lunes no es día bancario) y con ella no se pierde con la que
+  sube el lunes. DolarApi sigue dando la del viernes hasta el lunes, así que
+  entonces la tasa se lee de la página del BCV (`leerTasaDelBcv` en
+  `src/lib/tasa.ts`): el viernes a las 7 y a las 10 de la noche
+  (`/api/tasa-del-lunes`, cron en `vercel.json`) y el sábado y el domingo
+  en la tarea de la mañana. Entre semana no se adelanta ninguna. Su servidor
   no manda el certificado intermedio que firmó el suyo; en vez de apagar la
-  comprobación, a esa petición se le da (`src/lib/certificado-bcv.ts`, el
-  público de Sectigo, vale hasta 2036). La web dice «Tasa BCV del lunes
-  05/10/2026», y un abono o una nota con fecha de sábado o domingo van con
-  la del lunes que les sigue (`tasaEnFecha`). Si la del lunes no se puede
+  comprobación, a esa petición se le da (`src/lib/certificado-bcv.ts`, los
+  públicos de Sectigo, valen hasta 2036; el 13/11/2026 el BCV cambió de
+  intermedio, del «DV R36» al «OV R36», y el sábado 21/11 no se pudo leer la
+  del lunes hasta añadirlo). La web dice «Tasa BCV del lunes 05/10/2026», y
+  un abono o una nota con fecha de sábado o domingo van con la del lunes que
+  les sigue (`tasaEnFecha`); lo que se anota el viernes en la noche con la
+  fecha de ese día, también, pero lo del viernes anotado otro día va con la
+  del viernes, que queda guardada como tal. Si la del lunes no se puede
   leer, sigue la última y el panel lo avisa; una tasa puesta ese fin de
   semana (la del lunes, o una escrita a mano) no se pisa con la del
   viernes, y el lunes temprano tampoco.

@@ -100,7 +100,7 @@ export default async function PaginaProductos({ searchParams }: { searchParams: 
               {tasa
                 ? `Vigente: ${bs(tasa.valor)} por dólar, ${tasa.origen === "bcv" ? "traída del BCV" : "escrita a mano"} el ${fechaCorta(fechaDeLaBase(tasa.actualizada_en))}.${
                     tasa.fecha_valor && tasa.fecha_valor > hoy()
-                      ? ` Es la del ${diaDeLaSemana(tasa.fecha_valor)} ${fechaCorta(tasa.fecha_valor)}: los fines de semana vale la del lunes, como en los comercios.`
+                      ? ` Es la del ${diaDeLaSemana(tasa.fecha_valor)} ${fechaCorta(tasa.fecha_valor)}: desde el viernes en la noche y el fin de semana vale la del lunes, como en los comercios.`
                       : ""
                   } Al cambiarla cambian todos los precios en bolívares de la web.`
                 : "Sin tasa, la web muestra los precios solo en dólares."}
@@ -122,7 +122,7 @@ export default async function PaginaProductos({ searchParams }: { searchParams: 
         <div className={estilos.alternar}>
           <p className={estilos.ayuda}>
             {automatica
-              ? "Cada mañana, antes de abrir, la tasa se trae sola del BCV y los precios en bolívares se ponen al día. Los sábados y domingos se trae la del lunes, que el BCV publica el viernes por la tarde. Si escribes una a mano, vale hasta la mañana siguiente."
+              ? "Cada mañana, antes de abrir, la tasa se trae sola del BCV y los precios en bolívares se ponen al día. El viernes en la noche se trae la del lunes, que el BCV publica el viernes por la tarde, y vale hasta el domingo. Si escribes una a mano, vale hasta la mañana siguiente."
               : "La tasa no se actualiza sola: vale la que escribas tú hasta que la cambies."}
           </p>
           <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
