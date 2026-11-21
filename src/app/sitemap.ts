@@ -27,6 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: direccionCompleta("/"), lastModified: ahora, changeFrequency: "daily", priority: 1 },
     pagina("/productos", 0.9),
     pagina("/ofertas", 0.6),
+    pagina("/privacidad", 0.1),
     ...familias.map((f) => pagina(`/categoria/${f.slug}`, 0.8)),
     ...productos.flatMap((p) => [
       pagina(rutaProducto(p), 0.8),

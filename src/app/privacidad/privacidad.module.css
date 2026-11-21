@@ -1,0 +1,25 @@
+/* La política de privacidad: texto corrido, cómodo de leer en el teléfono. Colores y medidas de tokens.css. */
+.texto {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding-block: var(--espacio-5, 24px) var(--espacio-7, 48px);
+  line-height: 1.6;
+}
+
+.texto h2 {
+  margin-top: var(--espacio-6, 32px);
+  font-size: 1.25rem;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.texto ul {
+  padding-left: 1.2em;
+  display: grid;
+  gap: var(--espacio-2, 8px);
+}
+
+.fecha {
+  opacity: 0.75;
+  font-size: 0.95rem;
+}

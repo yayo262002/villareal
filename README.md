@@ -286,6 +286,7 @@ src/components/publico.tsx  Cabecera (menú, buscador, carrito y WhatsApp), pie 
 src/app/opengraph-image.tsx  La vista previa de la portada al compartirla
 src/app/robots.ts, sitemap.ts, manifest.ts  Lo que leen los buscadores y el teléfono
 src/app/not-found.tsx, error.tsx  Página no encontrada y página de fallo
+src/app/privacidad/       La política de privacidad (la pide Meta para publicar la app del WhatsApp), con cómo pedir que se borren los datos (#eliminar-datos)
 src/lib/enlaces.ts        La dirección de la página de cada producto
 src/lib/resenas.ts        Las reseñas de cada producto, en la base
 src/lib/resenas-texto.ts  Deja limpia una reseña escrita; las reseñas de ejemplo

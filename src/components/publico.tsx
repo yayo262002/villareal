@@ -159,6 +159,7 @@ export function PiePublico() {
           <Link href="/ofertas">Ofertas</Link>
           <Link href="/carrito">Carrito</Link>
           <Link href="/#contacto">Contacto</Link>
+          <Link href="/privacidad">Privacidad</Link>
           <Link href="/admin">Panel</Link>
         </nav>
       </div>
