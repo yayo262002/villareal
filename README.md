@@ -1958,8 +1958,10 @@ Binance y otro.
 - El RIF está al día: el comprobante digital (formato nuevo, sin fecha de
   vencimiento) dice «Última actualización 19/08/2026», con el mismo
   domicilio fiscal de `negocio.ts`. Contribuyente ordinario del IVA.
-- El precio de los huevos es de ejemplo y el panel lo avisa. La
-  charcutería tiene precio desde el 15/11/2026 (costo de la lista + 10 %).
+- Ya no hay precios de ejemplo: los huevos tienen el suyo desde el
+  21/11/2026 (el cartón de 30 a 4,63 $ en la factura de AMBG del 20/11,
+  más un 10 %: 5,09 $). La charcutería tiene precio desde el 15/11/2026
+  (costo de la lista + 10 %).
 - La foto de las salchichas cóctel de Cumbre Fresca, lo único en la web sin
   la suya: se sube en la ficha de la marca. Las de la mortadela tapara de El
   Drago y la tocineta de Cumbre Fresca las mandó el 18/11 y se recortaron con
