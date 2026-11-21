@@ -727,6 +727,26 @@ export const ESQUEMA = `
     creado_en text not null default (datetime('now'))
   );
 
+  -- Los mensajes de WhatsApp del número del negocio (el dueño, 21/11/2026: «automatizar todos los WhatsApp que
+  -- entren», con el mismo número): conectado con coexistencia, el número sigue en WhatsApp Business del teléfono y
+  -- Meta manda aquí cada mensaje de un cliente, cada respuesta que el dueño escribe en el teléfono y, al conectar, los
+  -- chats de los últimos seis meses. «wamid» es el id de WhatsApp: el mismo mensaje dos veces es uno.
+  create table if not exists whatsapp_mensajes (
+    id integer primary key autoincrement,
+    wamid text not null unique,
+    telefono text not null,
+    nombre text not null default '',
+    direccion text not null check (direccion in ('entrante', 'saliente')),
+    origen text not null default 'cliente',
+    tipo text not null default 'text',
+    texto text not null default '',
+    momento text not null,
+    cliente_id integer references clientes(id) on delete set null,
+    creado_en text not null default (datetime('now'))
+  );
+  create index if not exists whatsapp_mensajes_telefono on whatsapp_mensajes(telefono, momento);
+  create index if not exists whatsapp_mensajes_momento on whatsapp_mensajes(momento);
+
   -- Intentos fallidos de entrar al panel, para frenar a quien pruebe
   -- claves. No entra en las copias: no es parte del negocio.
   create table if not exists entradas_fallidas (
@@ -794,6 +814,7 @@ export const TABLAS = [
   "pedidos_web",
   "reparto_descuentos",
   "lista_compra",
+  "whatsapp_mensajes",
 ] as const;
 
 /**

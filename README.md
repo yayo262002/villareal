@@ -168,6 +168,11 @@ src/lib/banco-calculo.ts  Lee el aviso del BDV (monto, teléfono o nombre, refer
 src/lib/banco.ts          El pago móvil que entra al banco: guardarlo, abonarlo solo a quien es, la bandeja, deshacer, «Ya pagué» y no contar dos veces
 src/app/api/banco/        Donde el teléfono del banco (MacroDroid) manda cada aviso del BDV, con su clave
 src/app/admin/(panel)/banco/  Pago móvil: los pagos por identificar, los abonados, pegar un aviso a mano y cómo se configura el teléfono
+src/lib/whatsapp-calculo.ts  Lo que Meta manda del WhatsApp del negocio: leer cada mensaje, eco e historial, y comprobar su firma (puro, con pruebas)
+src/lib/whatsapp-api.ts   El WhatsApp conectado a la web (coexistencia): los datos de la app de Meta, conectar el número, guardar los mensajes
+src/app/api/whatsapp/     Donde Meta manda cada mensaje del WhatsApp del negocio, firmado con la clave secreta de la app
+src/app/admin/(panel)/whatsapp/  WhatsApp: cómo está, los datos de la app de Meta, la dirección de los avisos, «Conectar el número» y los últimos mensajes
+src/components/conectar-whatsapp.tsx  La ventana de Meta (Embedded Signup) que une el WhatsApp Business del teléfono con la web sin sacarlo de él
 src/app/cuenta/[enlace]/ya-pague/  «Ya pagué» desde el enlace del cliente: la referencia y el monto
 src/lib/ajustes.ts        La tasa del día y los demás ajustes
 src/lib/tasa.ts           Cuándo se acepta una tasa que llega de fuera
@@ -1400,6 +1405,37 @@ Binance y otro.
   BDV; depende de que el teléfono esté encendido, con datos, con la sesión
   del BDVapp abierta y con MacroDroid fuera del ahorro de batería. Pago
   móvil dice cuándo llegó lo último que mandó.
+
+## El WhatsApp del negocio (en preparación)
+
+- **Qué es** (el dueño, 21/11/2026: «automatizar todos los WhatsApp que entren», con el mismo
+  número). El 0424-6343236 sigue en **WhatsApp Business del teléfono** y, a la vez, conectado a la
+  API de Meta (**coexistencia**): Meta manda a `/api/whatsapp` cada mensaje de un cliente, cada
+  respuesta que el dueño escribe en el teléfono (`smb_message_echoes`) y, al conectar, los chats de
+  los últimos seis meses (`history`). Se guardan en `whatsapp_mensajes`, cada uno unido a su
+  cliente por el teléfono, y se ven en el panel (Clientes → WhatsApp). **Por ahora nada contesta
+  solo**: lo primero que hará será responder precios y pasar los pedidos al panel.
+- **En Meta**: el portfolio «Comercializadora Villa Real» (con la web verificada por la metaetiqueta
+  de `src/app/layout.tsx`, el Instagram, la página de Facebook y el WhatsApp Business) y la app
+  «Villa Real Panel» de Meta for Developers con el caso de uso de WhatsApp. **No es «proveedor de
+  tecnología»**: ese paso no tiene vuelta atrás y se prueba antes sin él (Meta dice que la
+  coexistencia es para proveedores; si no deja, se hace).
+- **Lo que pide** la pantalla WhatsApp: el identificador de la app, el de la configuración de
+  «Embedded Signup» (Inicio de sesión con Facebook para empresas → Configuraciones) y la **clave
+  secreta de la app**, que se guarda en `secretos` (no va en las copias, nunca se enseña); la
+  dirección de los avisos y su palabra de verificación, para pegarlas en la app de Meta; y el botón
+  **«Conectar el número»**, que abre la ventana de Meta con `featureType:
+  whatsapp_business_app_onboarding`. Al terminar se cambia el código por el permiso, se suscribe la
+  app a los avisos de la cuenta y se piden, una sola vez y en 24 horas, los contactos y el historial.
+  **Nunca se registra el número** (`/register`): eso lo sacaría del teléfono.
+- **Seguridad**: lo que llega a `/api/whatsapp` sin la firma de Meta (`X-Hub-Signature-256`, con la
+  clave secreta) no se guarda. Solo la pantalla WhatsApp deja cargar el SDK de Facebook (su
+  Content-Security-Policy, en `next.config.ts`); si se llega a ella desde otra pantalla sin recargar,
+  se recarga sola una vez.
+- **Lo que cambia en el teléfono** al conectar: WhatsApp Web y los demás aparatos enlazados se
+  desenlazan (se vuelven a enlazar), las listas de difusión quedan de solo lectura y los mensajes
+  temporales y de «ver una vez» se apagan. Responder a quien escribe es gratis; lo que la web mande
+  por su cuenta lo cobra Meta.
 
 ## Proveedores
 

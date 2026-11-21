@@ -63,6 +63,7 @@ const GRUPOS: readonly GrupoDelPanel[] = [
     secciones: [
       { ruta: "/admin/clientes", nombre: "Cartera", tambien: ["/admin/adjuntos"] },
       { ruta: "/admin/clientes/seguimiento", nombre: "Por llamar" },
+      { ruta: "/admin/whatsapp", nombre: "WhatsApp" },
       { ruta: "/admin/resenas", nombre: "Reseñas" },
       { ruta: "/admin/stickers", nombre: "Stickers" },
     ],

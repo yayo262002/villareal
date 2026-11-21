@@ -11,18 +11,27 @@ const CABECERAS_DE_SEGURIDAD = [
   // El micrófono, cerrado. La ubicación, solo para la propia web: el carrito la pide para el delivery («Usar mi
   // ubicación»). La cámara, también solo la propia web, para las fotos de las notas.
   { key: "Permissions-Policy", value: "geolocation=(self), microphone=(), camera=(self)" },
-  // Qué puede cargar y ejecutar cada página: solo lo de la propia web (revisión de seguridad del 14/11/2026). Si algún
-  // día se colara un texto con código, el navegador no cargaría nada de fuera ni mandaría datos a otro sitio. Next mete
-  // sus propios scripts en la página, por eso «unsafe-inline»; «unsafe-eval» solo con `next dev`, que lo necesita.
-  {
+];
+
+/**
+ * Qué puede cargar y ejecutar cada página: solo lo de la propia web (revisión de seguridad del 14/11/2026). Si algún día
+ * se colara un texto con código, el navegador no cargaría nada de fuera ni mandaría datos a otro sitio. Next mete sus
+ * propios scripts en la página, por eso «unsafe-inline»; «unsafe-eval» solo con `next dev`, que lo necesita. Con
+ * `facebook`, la de la pantalla WhatsApp del panel, que además deja cargar el SDK de Facebook y abrir sus marcos: lo
+ * necesita la ventana de Meta para conectar el número (21/11/2026). Ninguna otra página lo tiene.
+ */
+function politicaDeContenido({ facebook = false } = {}): { key: string; value: string } {
+  const deFacebook = facebook ? " https://connect.facebook.net https://*.facebook.com" : "";
+  return {
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
+      `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}${facebook ? " https://connect.facebook.net" : ""}`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
+      `img-src 'self' data: blob:${deFacebook}`,
       "font-src 'self' data:",
-      "connect-src 'self'",
+      `connect-src 'self'${deFacebook}`,
+      ...(facebook ? ["frame-src https://*.facebook.com https://connect.facebook.net"] : []),
       "worker-src 'self'",
       "manifest-src 'self'",
       "media-src 'self' blob:",
@@ -31,8 +40,11 @@ const CABECERAS_DE_SEGURIDAD = [
       "form-action 'self'",
       "frame-ancestors 'none'",
     ].join("; "),
-  },
-];
+  };
+}
+
+/** La pantalla del panel que conecta el WhatsApp con Meta: la única con la política que deja cargar Facebook. */
+const PANTALLA_CON_FACEBOOK = "/admin/whatsapp";
 
 const nextConfig: NextConfig = {
   // Las vistas previas de cada producto leen su foto de referencia de `public/productos/`; en Vercel esos archivos
@@ -56,6 +68,9 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:ruta*", headers: CABECERAS_DE_SEGURIDAD },
+      // La política de contenido va aparte: dos políticas en la misma página se suman y manda la más estricta.
+      { source: "/((?!admin/whatsapp$).*)", headers: [politicaDeContenido()] },
+      { source: PANTALLA_CON_FACEBOOK, headers: [politicaDeContenido({ facebook: true })] },
       {
         // Las fotos de la web que vienen en public/ (la portada, las familias, las de referencia, el león, las
         // miniaturas): un día en el teléfono y en Vercel, y una semana más mientras se comprueba si cambió. Sin esto se
