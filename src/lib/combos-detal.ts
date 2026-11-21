@@ -93,6 +93,8 @@ export const COMBOS_DEL_DETAL: ComboDelDetal[] = [
     componentes: [],
     precioAMano: true,
   },
+  // De todos los días, pero el último: los anteriores ya estaban impresos (el dueño, 21/11/2026).
+  { n: 16, clave: "pavo-gouda", nombre: "Combo pechuga de pavo + queso amarillo tipo gouda", detalle: DE_CADA_UNO, componentes: [{ detal: "Pechuga de pavo Drago", cantidad: g200 }, { detal: "Queso gouda Vallecito", cantidad: g200 }] },
 ];
 
 /** El nombre de un producto del detal, para buscarlo sin mirar tildes, mayúsculas ni espacios de más. */

@@ -163,6 +163,16 @@ globalThis.COMBOS = [
       { base: 0, separacion: 2.5, piezas: ["queso-amarillo", "jamon-ahumado", "mozzarella", "pechuga-de-pavo-drago", "pechuga-de-pavo-ahumada"] },
     ],
   },
+  {
+    // La pechuga de pavo con el queso amarillo tipo gouda (el Mi Vallecito), como un combo de todos los días, pero al final
+    // (el dueño, 21/11/2026: «tiene que ser el último porque los anteriores están impresos»). La frase, la del sándwich «de
+    // lujo» que le gustó el 11/11.
+    n: 16,
+    productos: [["pechuga-de-pavo-drago", "Pechuga de pavo"], ["queso-amarillo-vallecito", "Queso amarillo tipo gouda"]],
+    detalle: "200 g de cada producto",
+    lema: "Para un sándwich de lujo",
+    destacar: "de lujo",
+  },
 ];
 
 // Lo que mide de alto un producto en las hojas de todos los días, en mm, igual en todas (el dueño, 13/11: «el mismo tamaño en

@@ -14,13 +14,16 @@ import {
 
 const combo = (clave: string) => COMBOS_DEL_DETAL.find((c) => c.clave === clave)!;
 
-test("los quince combos, en el orden de las hojas, con claves y números que no se repiten", () => {
-  assert.equal(COMBOS_DEL_DETAL.length, 15);
+test("los dieciséis combos, en el orden de las hojas, con claves y números que no se repiten", () => {
+  assert.equal(COMBOS_DEL_DETAL.length, 16);
   assert.deepEqual(
     COMBOS_DEL_DETAL.map((c) => c.n),
-    Array.from({ length: 15 }, (_, i) => i + 1),
+    Array.from({ length: 16 }, (_, i) => i + 1),
   );
-  assert.equal(new Set(COMBOS_DEL_DETAL.map((c) => c.clave)).size, 15);
+  assert.equal(new Set(COMBOS_DEL_DETAL.map((c) => c.clave)).size, 16);
+  // El 16, la pechuga con el gouda: de todos los días, pero el último, que los anteriores ya estaban impresos.
+  assert.equal(combo("pavo-gouda").n, 16);
+  assert.equal(combo("pavo-gouda").especial, undefined);
   assert.equal(combo("espalda-mozzarella").n, 3);
   assert.equal(combo("pavo-cheddar").n, 7);
   assert.equal(skuDelCombo(combo("solidario")), "COMBO-10");
@@ -68,7 +71,7 @@ test("lo que cuesta un combo es lo que suman sus productos al costo de la lista;
   assert.equal(costoDelCombo(recortes, () => 1), null);
 });
 
-test("los especiales son del solidario en adelante, como en las hojas", () => {
+test("los especiales son del solidario a los recortes, como en las hojas (el 16 es de todos los días)", () => {
   assert.deepEqual(
     COMBOS_DEL_DETAL.filter((c) => c.especial).map((c) => c.n),
     [10, 11, 12, 13, 14, 15],

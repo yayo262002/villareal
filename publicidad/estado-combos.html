@@ -35,6 +35,14 @@
   /* Los combos, en tres columnas y en tantas filas como hagan falta (--filas, que pone el guion de abajo). La cuadrícula
      tiene seis columnas y cada combo ocupa dos: así, si la última fila no se llena, sus combos van al centro. */
   .combos { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(var(--filas, 4), minmax(0, 1fr)); gap: 18px; padding: 30px 30px 18px; min-height: 0; }
+  /* Con más de quince combos, cuatro por fila, como en el volante: con seis filas de tres, las fotos se quedaban diminutas y
+     los nombres se cortaban (el 16, el 21/11/2026). La cuadrícula, de ocho columnas; la letra, algo menor. */
+  .combos--por-cuatro { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 14px; padding: 26px 22px 16px; }
+  .combos--por-cuatro .nombre { font-size: 22px; }
+  .combos--por-cuatro .detalle { font-size: 15px; }
+  .combos--por-cuatro .precio { font-size: 34px; padding: 2px 16px 4px; }
+  .combos--por-cuatro .precio small { font-size: 22px; }
+  .combos--por-cuatro .numero { width: 60px; height: 60px; font-size: 29px; }
   .combo {
     position: relative; min-width: 0; min-height: 0; grid-column: span 2; box-sizing: border-box; background: #ffffff; border: 3px solid #ead9b6; border-radius: 26px;
     display: grid; grid-template-rows: minmax(0, 1fr) auto auto; padding: 14px 14px 12px; box-shadow: 0 6px 14px rgba(90, 50, 10, 0.12);
@@ -83,6 +91,8 @@
   const nombreDe = (c) => (c.titulo ? c.titulo : c.productos.map(([, nombre], i) => (i === 0 ? nombre : nombre.charAt(0).toLowerCase() + nombre.slice(1))).join(" + "));
   const detalleDe = (c) => c.detalle.replace("de cada producto", "de cada uno");
 
+  // Tres por fila; con más de quince, cuatro.
+  const porFila = COMBOS.length > 15 ? 4 : 3;
   const flier = document.createElement("article");
   flier.className = "flier";
   flier.dataset.archivo = "estado-combos";
@@ -94,7 +104,7 @@
       <img src="../public/marca/leon.svg" alt="">
       <div><div class="charcuteria">Charcutería Villa Real</div><div class="titulo">COMBOS</div><div class="lema">Listos para la arepa, el sándwich y la pizza</div></div>
     </header>
-    <main class="combos" style="--filas: ${Math.ceil(COMBOS.length / 3)}">
+    <main class="combos${porFila === 4 ? " combos--por-cuatro" : ""}" style="--filas: ${Math.ceil(COMBOS.length / porFila)}">
       ${COMBOS.map((c) => {
         const precio = PRECIOS.precios[c.n];
         const clases = ["combo", c.especial ? "combo--especial" : "", c.productos.length === 3 ? "combo--tres" : "", c.productos.length >= 4 ? "combo--cuatro" : ""].filter(Boolean).join(" ");
@@ -109,8 +119,8 @@
     </main>
     <footer class="pie"><b>Precios en dólares</b><span>Se paga en bolívares a la tasa BCV del día${PRECIOS.fechaCorta ? ` · Precios del ${PRECIOS.fechaCorta}` : ""}</span></footer>`;
   // Si la última fila no se llena, sus combos van al centro.
-  const sobran = COMBOS.length % 3;
-  if (sobran > 0) flier.querySelectorAll(".combo")[COMBOS.length - sobran].style.gridColumn = sobran === 2 ? "2 / span 2" : "3 / span 2";
+  const sobran = COMBOS.length % porFila;
+  if (sobran > 0) flier.querySelectorAll(".combo")[COMBOS.length - sobran].style.gridColumn = `${porFila - sobran + 1} / span 2`;
   document.body.append(flier);
 
   // Que cada combo quepa en su tarjeta: si las fotos, el nombre y el precio se pasan, las fotos encogen lo justo.
