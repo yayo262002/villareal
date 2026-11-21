@@ -31,6 +31,9 @@ export const metadata: Metadata = {
   // El teléfono de la tienda ya lleva su enlace a WhatsApp: que el
   // navegador no convierta en enlace cualquier número, como el RIF.
   formatDetection: { telephone: false },
+  // Con esto Meta sabe que la web es del negocio (Meta Business Suite → Seguridad de la marca → Dominios, 21/11/2026):
+  // hace falta para verificar la empresa y conectar el WhatsApp. No es una clave: Meta la lee en la página de inicio.
+  other: { "facebook-domain-verification": "87bcpg51etei3c4bgw1vgeglc8au5k" },
 };
 
 // Las letras de la web. Next las descarga al compilar y las sirve desde la
