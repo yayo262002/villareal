@@ -15,6 +15,15 @@ export const metadata = { title: "WhatsApp" };
 
 const CAMPOS_DEL_WEBHOOK = ["messages", "smb_message_echoes", "history", "smb_app_state_sync", "account_update"];
 
+/** Las plantillas que propone «Crear una plantilla»: la primera que aún no existe (dos con el mismo nombre, Meta no las deja). */
+const PLANTILLAS_SUGERIDAS: [string, string][] = [
+  ["pedido_listo", "Hola, tu pedido de Villa Real está listo para entregar. ¡Gracias por tu compra!"],
+  ["pago_recibido", "Hola, recibimos tu pago. ¡Gracias por preferir a Villa Real!"],
+  ["pedido_en_camino", "Hola, tu pedido de Villa Real ya va en camino."],
+  ["nota_pendiente", "Hola, te recordamos que tienes una nota pendiente con Villa Real."],
+  ["horario_de_atencion", "Hola, en Villa Real te atendemos de lunes a viernes, de 9 de la mañana a 6 de la tarde."],
+];
+
 /**
  * El WhatsApp del negocio conectado a la web (el dueño, 21/11/2026: «automatizar todos los WhatsApp que entren», con el
  * mismo número). Arriba, cómo está; luego los tres pasos (los datos de la app de Meta, la dirección de los avisos y
@@ -26,6 +35,7 @@ export default async function PaginaWhatsapp({ searchParams }: { searchParams: P
   const parametros = await searchParams;
   const [estado, palabra, mensajes, total, pruebas] = await Promise.all([estadoWhatsapp(), palabraDeVerificacion(), ultimosMensajes(100), contarMensajes(), estadoDePruebas()]);
   const { plantillas, error: errorDePlantillas } = pruebas.tieneToken ? await plantillasDePrueba() : { plantillas: [], error: null };
+  const [nombreSugerido, textoSugerido] = PLANTILLAS_SUGERIDAS.find(([nombre]) => !plantillas.some((p) => p.nombre === nombre)) ?? ["", ""];
   const direccion = `${negocio.web}/api/whatsapp`;
   const listoParaConectar = Boolean(estado.appId && estado.configId && estado.tieneSecreto);
 
@@ -180,10 +190,10 @@ export default async function PaginaWhatsapp({ searchParams }: { searchParams: P
             </form>
 
             <h3 style={{ marginTop: "var(--espacio-5)" }}>Crear una plantilla · Create a message template</h3>
-            <form action={crearPlantillaWhatsapp} className="formulario">
+            <form action={crearPlantillaWhatsapp} className="formulario" key={nombreSugerido}>
               <div className="campo">
                 <label htmlFor="nombre-plantilla">Nombre · Name</label>
-                <input id="nombre-plantilla" name="nombre" required defaultValue="pedido_listo" pattern="[a-z0-9_]{1,60}" />
+                <input id="nombre-plantilla" name="nombre" required defaultValue={nombreSugerido} pattern="[a-z0-9_]{1,60}" placeholder="pedido_listo" />
               </div>
               <div className="campo">
                 <label htmlFor="categoria-plantilla">Categoría · Category</label>
@@ -201,7 +211,7 @@ export default async function PaginaWhatsapp({ searchParams }: { searchParams: P
               </div>
               <div className="campo">
                 <label htmlFor="texto-plantilla">Mensaje · Message body</label>
-                <textarea id="texto-plantilla" name="texto" rows={3} required defaultValue="Hola, tu pedido de Villa Real está listo para entregar. ¡Gracias por tu compra!" />
+                <textarea id="texto-plantilla" name="texto" rows={3} required defaultValue={textoSugerido} />
               </div>
               <div>
                 <button type="submit" className="boton">

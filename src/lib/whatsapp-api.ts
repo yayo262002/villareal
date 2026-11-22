@@ -99,7 +99,7 @@ export async function guardarDatosDeLaApp(datos: { appId: string; configId: stri
   if (datos.secreto) await guardarSecreto("whatsapp_app_secreto", datos.secreto);
 }
 
-type RespuestaDeMeta = Record<string, unknown> & { error?: { message?: string; code?: number; error_subcode?: number } };
+type RespuestaDeMeta = Record<string, unknown> & { error?: { message?: string; code?: number; error_subcode?: number; error_user_msg?: string } };
 
 async function pedirAMeta(ruta: string, opciones: { metodo?: "GET" | "POST"; token?: string; cuerpo?: Record<string, unknown> } = {}): Promise<RespuestaDeMeta> {
   const respuesta = await fetch(`${GRAPH}/${ruta}`, {
@@ -115,7 +115,9 @@ async function pedirAMeta(ruta: string, opciones: { metodo?: "GET" | "POST"; tok
   const datos = (await respuesta.json().catch(() => ({}))) as RespuestaDeMeta;
   if (!respuesta.ok || datos.error) {
     const e = datos.error;
-    throw new Error(e ? `${e.message ?? "error de Meta"} (código ${e.code ?? "?"}${e.error_subcode ? `/${e.error_subcode}` : ""})` : `Meta respondió ${respuesta.status}`);
+    // Meta explica en castellano lo que no le gustó (error_user_msg) cuando puede: se dice eso, con el código para buscarlo.
+    const explicacion = e?.error_user_msg ? `${e.error_user_msg.replace(/.$/, "")} — ${e.message ?? ""}` : (e?.message ?? "error de Meta");
+    throw new Error(e ? `${explicacion} (código ${e.code ?? "?"}${e.error_subcode ? `/${e.error_subcode}` : ""})` : `Meta respondió ${respuesta.status}`);
   }
   return datos;
 }
