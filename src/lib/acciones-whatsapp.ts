@@ -46,7 +46,9 @@ const motivo = (error: unknown) => (error instanceof Error ? error.message : Str
 /** El token de la página de Meta (WhatsApp → Configuración de la API) y, si se copiaron, los dos identificadores. */
 export async function guardarTokenDePruebas(datos: FormData): Promise<void> {
   await exigirSesion();
-  const token = String(datos.get("token") ?? "").replace(/s+/g, "");
+  // El token empieza por «EAA». Se toma solo eso: si el navegador había puesto otra cosa en la casilla, no se mezcla.
+  const pegado = String(datos.get("token") ?? "").replace(/s+/g, "");
+  const token = pegado.match(/EAA[A-Za-z0-9]{40,}/)?.[0] ?? pegado;
   const wabaId = String(datos.get("waba_id") ?? "").replace(/D/g, "");
   const telefonoId = String(datos.get("telefono_id") ?? "").replace(/D/g, "");
   if (!/^[A-Za-z0-9]{20,2000}$/.test(token)) volver("error", "El token es un texto largo que empieza por «EA»: cópialo entero de WhatsApp → Configuración de la API («Token de acceso»).");
@@ -54,7 +56,10 @@ export async function guardarTokenDePruebas(datos: FormData): Promise<void> {
   try {
     numero = await guardarPruebas({ token, wabaId, telefonoId });
   } catch (error) {
-    volver("error", `Meta no aceptó el token: ${motivo(error)}. Genera uno nuevo en la misma página y pégalo otra vez.`);
+    volver(
+      "error",
+      `Meta no aceptó el token: ${motivo(error)}. Lo pegado tenía ${token.length} letras${token.startsWith("EAA") ? "" : " y no empieza por «EAA»"}. Cópialo con el botón de copiar de Meta, bórralo todo en la casilla y pégalo otra vez.`,
+    );
   }
   volver("ok", `Token guardado. Número de prueba: ${numero}. (Test number saved.)`);
 }

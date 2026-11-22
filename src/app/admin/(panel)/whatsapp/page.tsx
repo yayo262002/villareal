@@ -139,7 +139,7 @@ export default async function PaginaWhatsapp({ searchParams }: { searchParams: P
         <form action={guardarTokenDePruebas} className="formulario">
           <div className="campo">
             <label htmlFor="token">Token de acceso · Access token</label>
-            <input id="token" name="token" type="password" autoComplete="off" required placeholder={pruebas.tieneToken ? "Guardado ✓ (pega otro si caducó)" : "EAA…"} />
+            <input id="token" name="token" type="text" autoComplete="off" spellCheck={false} required placeholder={pruebas.tieneToken ? "Guardado ✓ (pega otro si caducó)" : "EAA…"} />
           </div>
           <div className="campo">
             <label htmlFor="telefono_id">Identificador del número de teléfono · Phone number ID</label>
