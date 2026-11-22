@@ -101,7 +101,7 @@ export async function guardarDatosDeLaApp(datos: { appId: string; configId: stri
 
 type RespuestaDeMeta = Record<string, unknown> & { error?: { message?: string; code?: number; error_subcode?: number } };
 
-async function pedirAMeta(ruta: string, opciones: { metodo?: "GET" | "POST"; token?: string; cuerpo?: Record<string, string> } = {}): Promise<RespuestaDeMeta> {
+async function pedirAMeta(ruta: string, opciones: { metodo?: "GET" | "POST"; token?: string; cuerpo?: Record<string, unknown> } = {}): Promise<RespuestaDeMeta> {
   const respuesta = await fetch(`${GRAPH}/${ruta}`, {
     method: opciones.metodo ?? "GET",
     headers: {
@@ -237,4 +237,114 @@ export async function ultimosMensajes(limite = 100): Promise<MensajeGuardado[]> 
 
 export async function contarMensajes(): Promise<number> {
   return Number((await fila<{ n: number }>("select count(*) as n from whatsapp_mensajes"))?.n ?? 0);
+}
+
+/*
+ * La revisión de Meta. Para conectar un número que está en WhatsApp Business del teléfono (coexistencia), Meta pide que
+ * la app pase la revisión de dos permisos: mandar mensajes (`whatsapp_business_messaging`) y administrar la cuenta
+ * (`whatsapp_business_management`). Para la revisión hacen falta una llamada de prueba con cada uno y dos videos: el
+ * panel mandando un mensaje que llega a un teléfono, y el panel creando una plantilla. Se hacen con el número de prueba
+ * que Meta da gratis en la app (WhatsApp → Configuración de la API) y su token, que vale 24 horas y se guarda en
+ * `secretos` como los demás.
+ */
+
+export type PruebasWhatsapp = {
+  tieneToken: boolean;
+  /** Cuándo se pegó el token (UTC): el de la página de Meta vale 24 horas. */
+  tokenEn: string | null;
+  wabaId: string | null;
+  telefonoId: string | null;
+  numero: string | null;
+};
+
+export async function estadoDePruebas(): Promise<PruebasWhatsapp> {
+  const claves = ["whatsapp_prueba_token_en", "whatsapp_prueba_waba_id", "whatsapp_prueba_telefono_id", "whatsapp_prueba_numero"];
+  const guardados = new Map(
+    (await filas<{ clave: string; valor: string }>(`select clave, valor from ajustes where clave in (${claves.map(() => "?").join(", ")})`, claves)).map((a) => [a.clave, a.valor]),
+  );
+  return {
+    tieneToken: (await leerSecreto("whatsapp_token_pruebas")) !== null,
+    tokenEn: guardados.get("whatsapp_prueba_token_en") ?? null,
+    wabaId: guardados.get("whatsapp_prueba_waba_id") || null,
+    telefonoId: guardados.get("whatsapp_prueba_telefono_id") || null,
+    numero: guardados.get("whatsapp_prueba_numero") || null,
+  };
+}
+
+/**
+ * Guarda el token de la página de Meta y busca, si no se escribieron, la cuenta de prueba y su número. Lo comprueba
+ * preguntándole a Meta por el número: un token caducado o mal copiado no se guarda. Devuelve el número de prueba.
+ */
+export async function guardarPruebas(datos: { token: string; wabaId: string; telefonoId: string }): Promise<string> {
+  const { token } = datos;
+  let { wabaId, telefonoId } = datos;
+  if (!wabaId) {
+    const estado = await estadoWhatsapp();
+    const secreto = await leerSecreto("whatsapp_app_secreto");
+    if (secreto) wabaId = (await cuentaDelPermiso(token, estado.appId, secreto).catch(() => null)) ?? "";
+  }
+  if (!telefonoId) {
+    if (!wabaId) throw new Error("no se sabe qué cuenta es: copia también el «Identificador de la cuenta de WhatsApp Business» de la misma página");
+    const numeros = (await pedirAMeta(`${wabaId}/phone_numbers?fields=id,display_phone_number`, { token })).data as { id: string }[] | undefined;
+    telefonoId = numeros?.[0]?.id ?? "";
+    if (!telefonoId) throw new Error("esa cuenta no tiene número de prueba");
+  }
+  const numero = await pedirAMeta(`${telefonoId}?fields=display_phone_number,verified_name`, { token });
+  await guardarSecreto("whatsapp_token_pruebas", token);
+  await guardarAjuste("whatsapp_prueba_token_en", new Date().toISOString().slice(0, 19).replace("T", " "));
+  await guardarAjuste("whatsapp_prueba_waba_id", wabaId);
+  await guardarAjuste("whatsapp_prueba_telefono_id", telefonoId);
+  await guardarAjuste("whatsapp_prueba_numero", String(numero.display_phone_number ?? ""));
+  return String(numero.display_phone_number ?? telefonoId);
+}
+
+async function tokenDePruebas(): Promise<{ token: string; pruebas: PruebasWhatsapp }> {
+  const token = await leerSecreto("whatsapp_token_pruebas");
+  const pruebas = await estadoDePruebas();
+  if (!token || !pruebas.telefonoId) throw new Error("primero pega el token de la página de Meta y guárdalo");
+  return { token, pruebas };
+}
+
+/**
+ * Manda un mensaje desde el número de prueba: la plantilla «hello_world» de Meta, que llega siempre, o un texto, que
+ * solo llega si esa persona le escribió al número de prueba en las últimas 24 horas. Devuelve el id del mensaje.
+ */
+export async function mandarMensajeDePrueba(datos: { para: string; texto: string }): Promise<string> {
+  const { token, pruebas } = await tokenDePruebas();
+  const cuerpo = datos.texto
+    ? { messaging_product: "whatsapp", to: datos.para, type: "text", text: { body: datos.texto } }
+    : { messaging_product: "whatsapp", to: datos.para, type: "template", template: { name: "hello_world", language: { code: "en_US" } } };
+  const respuesta = await pedirAMeta(`${pruebas.telefonoId}/messages`, { metodo: "POST", token, cuerpo });
+  return String((respuesta.messages as { id?: string }[] | undefined)?.[0]?.id ?? "sin id");
+}
+
+/** Crea una plantilla de mensaje en la cuenta de prueba (solo el cuerpo, sin variables). Devuelve su id y su estado. */
+export async function crearPlantillaDePrueba(datos: { nombre: string; categoria: string; idioma: string; texto: string }): Promise<string> {
+  const { token, pruebas } = await tokenDePruebas();
+  if (!pruebas.wabaId) throw new Error("falta el «Identificador de la cuenta de WhatsApp Business»: pégalo junto al token");
+  const respuesta = await pedirAMeta(`${pruebas.wabaId}/message_templates`, {
+    metodo: "POST",
+    token,
+    cuerpo: { name: datos.nombre, category: datos.categoria, language: datos.idioma, components: [{ type: "BODY", text: datos.texto }] },
+  });
+  return `${String(respuesta.id ?? "")} · ${String(respuesta.status ?? "")}`;
+}
+
+export type PlantillaDeMeta = { nombre: string; estado: string; categoria: string; idioma: string };
+
+/** Las plantillas de la cuenta de prueba, para verlas en el panel (y en el video). Si no se puede, por qué. */
+export async function plantillasDePrueba(): Promise<{ plantillas: PlantillaDeMeta[]; error: string | null }> {
+  try {
+    const { token, pruebas } = await tokenDePruebas();
+    if (!pruebas.wabaId) return { plantillas: [], error: null };
+    const datos = (await pedirAMeta(`${pruebas.wabaId}/message_templates?fields=name,status,category,language&limit=25`, { token })).data as
+      | { name?: string; status?: string; category?: string; language?: string }[]
+      | undefined;
+    return {
+      plantillas: (datos ?? []).map((p) => ({ nombre: p.name ?? "", estado: p.status ?? "", categoria: p.category ?? "", idioma: p.language ?? "" })),
+      error: null,
+    };
+  } catch (error) {
+    return { plantillas: [], error: error instanceof Error ? error.message : String(error) };
+  }
 }

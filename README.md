@@ -1429,6 +1429,13 @@ Binance y otro.
   whatsapp_business_app_onboarding`. Al terminar se cambia el código por el permiso, se suscribe la
   app a los avisos de la cuenta y se piden, una sola vez y en 24 horas, los contactos y el historial.
   **Nunca se registra el número** (`/register`): eso lo sacaría del teléfono.
+- **La revisión de Meta** (22/11/2026). Con la empresa verificada (21/11) y la app publicada, «Conectar el número»
+  dice «Comercializadora Villa Real no puede registrar clientes en este momento»: para conectar un número que está en
+  WhatsApp Business del teléfono, la app necesita el acceso avanzado a `whatsapp_business_messaging` y
+  `whatsapp_business_management`, que da la revisión de la app. Para ella, la pantalla WhatsApp tiene su paso 4: con el
+  número de prueba que Meta da gratis y su token (WhatsApp → Configuración de la API; vale 24 horas y se guarda en
+  `secretos`), manda un mensaje y crea una plantilla, y enseña las plantillas de la cuenta, con los textos en castellano y
+  en inglés para quien revisa. Son las llamadas de prueba y los dos videos que pide Meta.
 - **Seguridad**: lo que llega a `/api/whatsapp` sin la firma de Meta (`X-Hub-Signature-256`, con la
   clave secreta) no se guarda. Solo la pantalla WhatsApp deja cargar el SDK de Facebook (su
   Content-Security-Policy, en `next.config.ts`); si se llega a ella desde otra pantalla sin recargar,
