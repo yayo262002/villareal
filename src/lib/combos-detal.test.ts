@@ -33,7 +33,7 @@ test("el precio del combo es lo que suman sus productos al precio del detal, sub
   // Los precios del detal del 12/11 (por kilo, salvo lo que se vende por unidad).
   const precios: Record<string, number> = {
     "jamon de espalda drago": 6.13,
-    mozzarella: 9.5,
+    "queso mozzarella": 9.5,
     "suero san pedro bolsa 800 ml": 1.17,
     "huevos (carton de 30)": 6.0,
     "mortadela especial alibal 1 kg": 3.23,
@@ -63,10 +63,10 @@ test("el combo de recortes no lleva peso ni precio fijos: lo que lleva varía, y
 
 test("lo que cuesta un combo es lo que suman sus productos al costo de la lista; sin un costo, o a mano, no se estima", () => {
   const combo = COMBOS_DEL_DETAL.find((c) => c.clave === "espalda-mozzarella")!;
-  const costos: Record<string, number> = { "Jamón de espalda Drago": 4.9, Mozzarella: 7.6 };
+  const costos: Record<string, number> = { "Jamón de espalda Drago": 4.9, "Queso mozzarella": 7.6 };
   const costo = costoDelCombo(combo, (nombre) => costos[nombre] ?? null);
   assert.equal(Math.round(costo! * 100) / 100, 2.5);
-  assert.equal(costoDelCombo(combo, (nombre) => (nombre === "Mozzarella" ? 7.6 : null)), null);
+  assert.equal(costoDelCombo(combo, (nombre) => (nombre === "Queso mozzarella" ? 7.6 : null)), null);
   const recortes = COMBOS_DEL_DETAL.find((c) => c.precioAMano)!;
   assert.equal(costoDelCombo(recortes, () => 1), null);
 });
@@ -88,10 +88,18 @@ test("lo que lleva cada producto se dice como en la charcutería", () => {
   assert.equal(cuantoLleva("Queso paisa", "", 0.2), "200 g");
 });
 
+test("la mozzarella se llama «Queso mozzarella» en la lista; con su nombre de antes se encuentra igual", () => {
+  assert.equal(claveDeNombreDetal("Mozzarella"), "queso mozzarella");
+  assert.equal(claveDeNombreDetal(" Queso  Mozzarella "), "queso mozzarella");
+  // Una lista que aún dice «Mozzarella» sigue dando precio a los combos que la llevan.
+  const deAntes: Record<string, number> = { [claveDeNombreDetal("Jamón de espalda Drago")]: 6.13, [claveDeNombreDetal("Mozzarella")]: 9.5 };
+  assert.equal(precioDelCombo(combo("espalda-mozzarella"), (n) => deAntes[claveDeNombreDetal(n)] ?? null), 3.13);
+});
+
 test("el desglose: cada producto con su precio y lo que pone, y el total de la caja", () => {
   const lista: Record<string, { unidad: string; precio: number | null }> = {
     "jamon de espalda drago": { unidad: "kg", precio: 6.13 },
-    mozzarella: { unidad: "kg", precio: 9.5 },
+    "queso mozzarella": { unidad: "kg", precio: 9.5 },
     "pan blanco enriquecido viva mejor 500 g": { unidad: "unidad", precio: 1.69 },
     "pechuga de pavo ahumada drago": { unidad: "kg", precio: 7.63 },
   };
@@ -101,7 +109,7 @@ test("el desglose: cada producto con su precio y lo que pone, y el total de la c
     tercero.partes.map((p) => [p.cuanto, p.nombre, p.precio, p.porKilo, p.estimado]),
     [
       ["200 g", "Jamón de espalda Drago", 6.13, true, false],
-      ["200 g", "Mozzarella", 9.5, true, false],
+      ["200 g", "Queso mozzarella", 9.5, true, false],
     ],
   );
   assert.ok(Math.abs((tercero.partes[0].importe ?? 0) - 1.226) < 1e-9);
@@ -116,7 +124,7 @@ test("el desglose: cada producto con su precio y lo que pone, y el total de la c
   assert.equal(sandwichero.total, 5.72);
   assert.equal(precioEstimadoDelDetal("queso PAISA", 0.8), 12.5);
   // Lo que no está ni estimado deja el combo sin precio y se dice.
-  const sinJamon = desgloseDelCombo(combo("espalda-mozzarella"), (n) => (claveDeNombreDetal(n) === "mozzarella" ? lista.mozzarella : null), 0.8);
+  const sinJamon = desgloseDelCombo(combo("espalda-mozzarella"), (n) => (claveDeNombreDetal(n) === "queso mozzarella" ? lista["queso mozzarella"] : null), 0.8);
   assert.equal(sinJamon.total, null);
   assert.deepEqual(sinJamon.faltan, ["Jamón de espalda Drago"]);
   // Los recortes: sin partes y sin precio.

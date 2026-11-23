@@ -42,10 +42,10 @@ const g200 = 0.2;
 export const COMBOS_DEL_DETAL: ComboDelDetal[] = [
   { n: 1, clave: "pierna-amarillo", nombre: "Combo jamón de pierna + queso amarillo", detalle: DE_CADA_UNO, componentes: [{ detal: "Jamón de pierna superior Drago", cantidad: g200 }, { detal: "Queso gouda Vallecito", cantidad: g200 }] },
   { n: 2, clave: "espalda-cheddar", nombre: "Combo jamón de espalda + queso amarillo tipo cheddar", detalle: DE_CADA_UNO, componentes: [{ detal: "Jamón de espalda Drago", cantidad: g200 }, { detal: "Queso amarillo El Legado", cantidad: g200 }] },
-  { n: 3, clave: "espalda-mozzarella", nombre: "Combo jamón de espalda + mozzarella", detalle: DE_CADA_UNO, componentes: [{ detal: "Jamón de espalda Drago", cantidad: g200 }, { detal: "Mozzarella", cantidad: g200 }] },
-  { n: 4, clave: "ahumado-mozzarella", nombre: "Combo jamón ahumado + mozzarella", detalle: DE_CADA_UNO, componentes: [{ detal: "Espalda ahumada Drago", cantidad: g200 }, { detal: "Mozzarella", cantidad: g200 }] },
-  { n: 5, clave: "arepero-mozzarella", nombre: "Combo jamón arepero + mozzarella", detalle: DE_CADA_UNO, componentes: [{ detal: "Jamón arepero Drago", cantidad: g200 }, { detal: "Mozzarella", cantidad: g200 }] },
-  { n: 6, clave: "pavo-mozzarella", nombre: "Combo pechuga de pavo + mozzarella", detalle: DE_CADA_UNO, componentes: [{ detal: "Pechuga de pavo Drago", cantidad: g200 }, { detal: "Mozzarella", cantidad: g200 }] },
+  { n: 3, clave: "espalda-mozzarella", nombre: "Combo jamón de espalda + mozzarella", detalle: DE_CADA_UNO, componentes: [{ detal: "Jamón de espalda Drago", cantidad: g200 }, { detal: "Queso mozzarella", cantidad: g200 }] },
+  { n: 4, clave: "ahumado-mozzarella", nombre: "Combo jamón ahumado + mozzarella", detalle: DE_CADA_UNO, componentes: [{ detal: "Espalda ahumada Drago", cantidad: g200 }, { detal: "Queso mozzarella", cantidad: g200 }] },
+  { n: 5, clave: "arepero-mozzarella", nombre: "Combo jamón arepero + mozzarella", detalle: DE_CADA_UNO, componentes: [{ detal: "Jamón arepero Drago", cantidad: g200 }, { detal: "Queso mozzarella", cantidad: g200 }] },
+  { n: 6, clave: "pavo-mozzarella", nombre: "Combo pechuga de pavo + mozzarella", detalle: DE_CADA_UNO, componentes: [{ detal: "Pechuga de pavo Drago", cantidad: g200 }, { detal: "Queso mozzarella", cantidad: g200 }] },
   { n: 7, clave: "pavo-cheddar", nombre: "Combo pechuga de pavo + queso amarillo tipo cheddar", detalle: DE_CADA_UNO, componentes: [{ detal: "Pechuga de pavo Drago", cantidad: g200 }, { detal: "Queso amarillo El Legado", cantidad: g200 }] },
   { n: 8, clave: "bolona-cheddar", nombre: "Combo boloña de pollo + queso amarillo tipo cheddar", detalle: DE_CADA_UNO, componentes: [{ detal: "Boloña de pollo Alpro", cantidad: g200 }, { detal: "Queso amarillo El Legado", cantidad: g200 }] },
   { n: 9, clave: "mortadela-cheddar", nombre: "Combo mortadela especial + queso amarillo tipo cheddar", detalle: DE_CADA_UNO, componentes: [{ detal: "Mortadela especial Punta de Monte para rebanar", cantidad: g200 }, { detal: "Queso amarillo El Legado", cantidad: g200 }] },
@@ -72,7 +72,7 @@ export const COMBOS_DEL_DETAL: ComboDelDetal[] = [
     especial: true,
     nombre: "Combo pizzero",
     detalle: "100 g de tocineta, 200 g de jamón de espalda y 200 g de mozzarella",
-    componentes: [{ detal: "Tocineta Drago", cantidad: 0.1 }, { detal: "Jamón de espalda Drago", cantidad: g200 }, { detal: "Mozzarella", cantidad: g200 }],
+    componentes: [{ detal: "Tocineta Drago", cantidad: 0.1 }, { detal: "Jamón de espalda Drago", cantidad: g200 }, { detal: "Queso mozzarella", cantidad: g200 }],
   },
   {
     n: 14,
@@ -97,9 +97,17 @@ export const COMBOS_DEL_DETAL: ComboDelDetal[] = [
   { n: 16, clave: "pavo-gouda", nombre: "Combo pechuga de pavo + queso amarillo tipo gouda", detalle: DE_CADA_UNO, componentes: [{ detal: "Pechuga de pavo Drago", cantidad: g200 }, { detal: "Queso gouda Vallecito", cantidad: g200 }] },
 ];
 
+/**
+ * Productos de la lista que cambiaron de nombre: el de antes sigue encontrando el mismo. La mozzarella pasó a llamarse
+ * «Queso mozzarella» para salir junto a los demás quesos en la lista de la familia (el dueño, 23/11/2026: a su mamá «no
+ * le aparece»; estaba entre las mortadelas y las pechugas).
+ */
+const MISMO_PRODUCTO: Record<string, string> = { mozzarella: "queso mozzarella" };
+
 /** El nombre de un producto del detal, para buscarlo sin mirar tildes, mayúsculas ni espacios de más. */
 export function claveDeNombreDetal(nombre: string): string {
-  return nombre.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  const clave = nombre.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  return MISMO_PRODUCTO[clave] ?? clave;
 }
 
 /** Al centavo, siempre hacia arriba (como la lista del detal): nunca en contra del negocio. */

@@ -1311,7 +1311,11 @@ Binance y otro.
   (`/lista/<enlace>/manifest.webmanifest`, solo con el enlace vigente), como
   el panel. Fuera de los buscadores; «Renovar el enlace» pone otro y el
   anterior deja de funcionar. Un producto se puede esconder de esa lista
-  sin perder su costo.
+  sin perder su costo. La lista va en orden alfabético, así que cada queso
+  empieza por «Queso» para salir junto a los demás: la mozzarella es «Queso
+  mozzarella» (el dueño, 23/11/2026: a su mamá «no le aparece», estaba entre
+  las mortadelas). Un combo encuentra un producto también por su nombre de
+  antes (`MISMO_PRODUCTO` en `src/lib/combos-detal.ts`).
 - **En un archivo.** `npm run lista` deja en `listas/precios/AAAA-MM-DD/` (en OneDrive, fuera
   del repositorio) la lista de hoy en un PDF de una página larga, del ancho
   de un teléfono, y en pantallas JPG de 1080 × 1920 para mandarlas como
