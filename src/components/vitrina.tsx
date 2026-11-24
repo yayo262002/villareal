@@ -471,8 +471,10 @@ export function NotaDePrecios({ hayTasa, items = [] }: { hayTasa: boolean; items
 function AficheDeCombo({ oferta }: { oferta: Oferta }) {
   const { fotos, letras } = piezasDelAfiche(oferta.productos);
   const precio = precioDeLaEtiqueta(oferta.precio_usd);
+  // Cuatro productos o más, todos con letra (los combos de 10 hamburguesas o de 20 perros): el afiche crece.
+  const muchas = fotos.length === 0 && letras.length >= 4;
   return (
-    <div className={estilos.afiche} aria-hidden="true">
+    <div className={muchas ? `${estilos.afiche} ${estilos.aficheMuchas}` : estilos.afiche} aria-hidden="true">
       <span className={estilos.aficheRayos} />
       {fotos.length > 0 && (
         <div className={estilos.aficheFotos}>

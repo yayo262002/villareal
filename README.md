@@ -1683,7 +1683,10 @@ Binance y otro.
   o sin foto, el producto va con su cantidad en grande y su nombre
   («10 Salchichas»). Al subir la foto de un producto en el panel, el afiche
   la pone solo (`src/lib/afiche-combo.ts`, con pruebas; `AficheDeCombo` en
-  `src/components/vitrina.tsx`).
+  `src/components/vitrina.tsx`). Con cuatro productos o más, todos con su
+  cantidad (los combos de 10 hamburguesas o de 20 perros, 24/11/2026), el
+  afiche es cuadrado (4:5 en un teléfono estrecho) y lo que lleva empieza
+  debajo de la etiqueta del precio, para que quepa todo y nada quede tapado.
 
 ## La vitrina y el carrito
 

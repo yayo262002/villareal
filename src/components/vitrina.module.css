@@ -1495,6 +1495,36 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+/* Cuatro productos o más, todos con letra (los combos de 10 hamburguesas o de 20 perros): en 16:10 no cabían y la
+   etiqueta del precio tapaba uno. El afiche se hace cuadrado, como un volante, lo que lleva empieza debajo de la
+   etiqueta y cada casilla es algo más pequeña. */
+.ofertaFoto:has(.aficheMuchas) {
+  aspect-ratio: 1;
+}
+/* En un teléfono estrecho los nombres se parten en dos renglones: el afiche, un poco más alto que ancho. */
+@media (max-width: 380px) {
+  .ofertaFoto:has(.aficheMuchas) {
+    aspect-ratio: 4 / 5;
+  }
+}
+.aficheMuchas {
+  padding-top: 98px;
+  align-content: center;
+}
+.aficheMuchas .aficheLetras {
+  gap: 8px;
+}
+.aficheMuchas .aficheLetras li {
+  min-width: 0;
+  max-width: 47%;
+  padding: 6px 11px 8px;
+}
+.aficheMuchas .aficheLetras strong {
+  font-size: 1.4rem;
+}
+.aficheMuchas .aficheLetras span {
+  font-size: 0.76rem;
+}
 .ofertaFoto:has(.afiche) .etiquetaCombo {
   z-index: 1;
   box-shadow: 0 0 0 2px var(--color-tomate-texto);
