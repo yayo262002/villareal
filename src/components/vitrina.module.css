@@ -1357,6 +1357,148 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+
+/* El afiche del combo (afiche-combo.ts): rojo como el volante de la tienda, con su marco dorado, los productos
+   (con foto si la tienen de verdad; si no, su cantidad en grande) y la etiqueta amarilla del precio. */
+.afiche {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  place-items: center;
+  gap: var(--espacio-2);
+  padding: 44px var(--espacio-4) var(--espacio-4);
+  overflow: hidden;
+  border: 4px solid var(--color-oro-vivo);
+  border-bottom: 0;
+  border-radius: var(--radio-web-grande) var(--radio-web-grande) 0 0;
+  background: radial-gradient(ellipse 85% 75% at 50% 42%, var(--color-tomate-vivo), var(--color-tomate-hondo) 100%);
+}
+.aficheRayos {
+  position: absolute;
+  inset: -45%;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, var(--color-afiche-rayo) 0deg 8deg, transparent 8deg 20deg);
+  mask-image: radial-gradient(circle at 50% 50%, black 0%, transparent 55%);
+  pointer-events: none;
+}
+.afiche:has(.aficheLetras:only-of-type) {
+  grid-template-rows: 1fr;
+}
+.aficheFotos {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.ofertaFoto .aficheFotos img {
+  width: 34%;
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0 -2%;
+  object-fit: contain;
+  border-radius: 14px;
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-afiche);
+  rotate: -4deg;
+  transition: none;
+}
+.ofertaFoto .aficheFotos img:nth-child(even) {
+  rotate: 5deg;
+  translate: 0 6%;
+}
+.oferta:hover .ofertaFoto .aficheFotos img {
+  transform: none;
+}
+.aficheLetras {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.aficheLetras li {
+  display: grid;
+  justify-items: center;
+  min-width: 5.4em;
+  padding: 9px 14px 10px;
+  border-radius: 16px;
+  background: var(--color-arena);
+  color: var(--color-tinta);
+  box-shadow: var(--sombra-afiche);
+  rotate: -3deg;
+  font-family: var(--fuente-web);
+  line-height: 1.1;
+  text-align: center;
+}
+.aficheLetras li:nth-child(even) {
+  rotate: 3deg;
+}
+.aficheLetras strong {
+  font-family: var(--fuente-display);
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--color-tomate-hondo);
+}
+.aficheLetras span {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+.afiche .aficheLetras:not(:only-of-type) li {
+  min-width: 0;
+  padding: 5px 10px 6px;
+}
+.afiche .aficheLetras:not(:only-of-type) strong {
+  font-size: 1.05rem;
+}
+.aficheEtiqueta {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: grid;
+  justify-items: center;
+  margin: 0;
+  padding: 6px 12px 7px;
+  border-radius: 12px;
+  background: var(--color-oro-vivo);
+  color: var(--color-tinta);
+  box-shadow: var(--sombra-afiche);
+  rotate: 6deg;
+  font-family: var(--fuente-web);
+  line-height: 1;
+}
+.aficheEtiqueta span {
+  margin-bottom: 4px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--color-tomate);
+  color: var(--color-tomate-texto);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.aficheEtiqueta strong {
+  font-size: 1.85rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.aficheEtiqueta small {
+  margin-top: 2px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ofertaFoto:has(.afiche) .etiquetaCombo {
+  z-index: 1;
+  box-shadow: 0 0 0 2px var(--color-tomate-texto);
+}
 .ofertaCuerpo {
   display: flex;
   flex: 1;

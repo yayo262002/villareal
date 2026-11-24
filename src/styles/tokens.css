@@ -92,6 +92,11 @@
   --color-sobre-oscuro-vidrio: rgba(251, 243, 226, 0.08);
   --color-tomate: #c43d24;
   --color-tomate-texto: #ffffff;
+  /* El afiche de los combos, rojo como el volante de la tienda, con sus rayos de luz y su sombra. */
+  --color-tomate-vivo: #e0342a;
+  --color-tomate-hondo: #7e1209;
+  --color-afiche-rayo: rgba(255, 214, 120, 0.16);
+  --sombra-afiche: 0 12px 22px -10px rgba(40, 4, 0, 0.7);
 
   /* Los velos sobre las fotos, para que el texto se lea. */
   --velo-heroe: linear-gradient(90deg, rgb(5, 23, 13) 0%, rgba(5, 23, 13, 0.55) 16%, rgba(5, 23, 13, 0) 38%);

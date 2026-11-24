@@ -8,6 +8,7 @@ import { rutaProducto, rutaVariante } from "@/lib/enlaces";
 import { aBolivares, bs, fechaCorta, unidadEnPalabras, usd } from "@/lib/dinero";
 import { claveDeOferta } from "@/lib/carrito";
 import { fotoDeCombo } from "@/lib/fotos-referenciales";
+import { piezasDelAfiche, precioDeLaEtiqueta } from "@/lib/afiche-combo";
 import type { Oferta } from "@/lib/ofertas";
 import type { MarcaDeVitrina, ProductoDeVitrina } from "@/lib/vitrina";
 import { presentacionYContenido } from "@/lib/marcas-texto";
@@ -463,7 +464,47 @@ export function NotaDePrecios({ hayTasa, items = [] }: { hayTasa: boolean; items
 }
 
 /**
- * Un combo u oferta: su foto, qué lleva (cada producto publicado con su
+ * El afiche del combo, como el volante de la tienda: fondo rojo con su marco dorado, los productos que lleva
+ * (con su foto si la tienen de verdad; si no, su cantidad en grande y su nombre) y la etiqueta amarilla del
+ * precio en dólares (`afiche-combo.ts`). Es la imagen de la tarjeta: lo que lleva se lee abajo, en la lista.
+ */
+function AficheDeCombo({ oferta }: { oferta: Oferta }) {
+  const { fotos, letras } = piezasDelAfiche(oferta.productos);
+  const precio = precioDeLaEtiqueta(oferta.precio_usd);
+  return (
+    <div className={estilos.afiche} aria-hidden="true">
+      <span className={estilos.aficheRayos} />
+      {fotos.length > 0 && (
+        <div className={estilos.aficheFotos}>
+          {fotos.map((p) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={p.producto_id} src={p.foto ?? ""} alt="" width={400} height={400} loading="lazy" decoding="async" />
+          ))}
+        </div>
+      )}
+      {letras.length > 0 && (
+        <ul className={estilos.aficheLetras}>
+          {letras.map((p) => (
+            <li key={p.producto_id}>
+              {p.cantidad && <strong>{p.cantidad}</strong>}
+              <span>{p.nombre}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {precio && (
+        <p className={estilos.aficheEtiqueta}>
+          <span>Precio</span>
+          <strong>{precio}</strong>
+          <small>dólares</small>
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Un combo u oferta: su afiche, qué lleva (cada producto publicado con su
  * enlace), su precio si lo tiene, hasta cuándo vale, «Agregar» al carrito y
  * pedirlo solo por WhatsApp. Sin precio, «Consulta el precio del combo».
  */
@@ -473,8 +514,12 @@ export function TarjetaDeOferta({ oferta, tasa, rutas }: { oferta: Oferta; tasa:
   return (
     <li id={`oferta-${oferta.id}`} className={estilos.oferta}>
       <div className={estilos.ofertaFoto}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={fotoDeCombo(oferta.nombre)} alt="" width={640} height={480} loading="lazy" decoding="async" />
+        {oferta.productos.length > 0 ? (
+          <AficheDeCombo oferta={oferta} />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={fotoDeCombo(oferta.nombre)} alt="" width={640} height={480} loading="lazy" decoding="async" />
+        )}
         <span className={estilos.etiquetaCombo}>Combo</span>
       </div>
       <div className={estilos.ofertaCuerpo}>

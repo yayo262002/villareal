@@ -187,6 +187,7 @@ src/lib/familias.ts       Las familias del catálogo, sus productos y su portada
 src/lib/catalogo-inicial.ts  Las familias iniciales, los borradores y los combos que pidió el dueño
 src/lib/preparar-catalogo.ts Crea en borrador lo que falte del catálogo inicial
 src/lib/ofertas.ts        Ofertas y combos: precio, fechas, estado y lo que llevan
+src/lib/afiche-combo.ts   El afiche de cada combo en la web: qué producto va con foto y cuál con su cantidad, y la etiqueta del precio (puro, con pruebas)
 src/lib/iconos.ts         Los iconos de las familias, a trazo
 src/lib/portadas.ts       Qué familias traen su foto en public/familias/, y su miniatura (public/miniaturas/, npm run miniaturas)
 src/lib/cache-de-fotos.ts Cuánto se guardan las fotos que la web sirve desde la base (un año en el teléfono con su ?v=)
@@ -1670,6 +1671,19 @@ Binance y otro.
   orden y lo que lleva, con cuánto de cada producto («2 kg»). Sale en la
   web solo activa y dentro de sus fechas (`estaVigente` en
   `src/lib/catalogo.ts`). Borrarla pide confirmar y no toca los productos.
+- **El afiche del combo** (el dueño, 24/11/2026: «los combos de perros,
+  ponle unos detalles así», como el volante de la tienda). En la web, la
+  imagen de cada combo es un afiche rojo con marco dorado y rayos de luz.
+  Lleva los productos del combo y, arriba a la derecha, la etiqueta
+  amarilla «PRECIO» con lo que cuesta en dólares; el precio sale de la
+  base, así que nunca queda viejo. Cada producto va con su foto si la
+  tiene de verdad: la suya, o la de su única marca a la venta. Con varias
+  marcas no se sabe cuál lleva el combo: las salchichas del combo de perros
+  son Alimex y la única foto de salchichas es la de Purolomo. En ese caso,
+  o sin foto, el producto va con su cantidad en grande y su nombre
+  («10 Salchichas»). Al subir la foto de un producto en el panel, el afiche
+  la pone solo (`src/lib/afiche-combo.ts`, con pruebas; `AficheDeCombo` en
+  `src/components/vitrina.tsx`).
 
 ## La vitrina y el carrito
 

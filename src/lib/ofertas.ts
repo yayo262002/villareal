@@ -1,6 +1,9 @@
 import "server-only";
 import { ejecutar, fila, filas, transaccion } from "./db";
 import { estaVigente } from "./catalogo";
+import { fotoParaElCombo } from "./afiche-combo";
+import { direccionDeFotoDeProducto } from "./productos";
+import { direccionDeFotoDeVariante } from "./variantes";
 
 /**
  * Las ofertas y combos: varios productos juntos (Pack Burger, Pack
@@ -17,7 +20,8 @@ export function esEstadoDeOferta(valor: string): valor is EstadoOferta {
   return valor === "borrador" || valor === "activa" || valor === "inactiva";
 }
 
-export type ProductoDeOferta = { producto_id: number; nombre: string; cantidad: string; activo: number; borrador: number };
+/** Un producto del combo. «foto»: la del afiche (la suya, o la de su única marca a la venta; `afiche-combo.ts`). */
+export type ProductoDeOferta = { producto_id: number; nombre: string; cantidad: string; activo: number; borrador: number; foto: string | null };
 
 export type Oferta = {
   id: number;
@@ -38,20 +42,44 @@ export type DatosOferta = Pick<Oferta, "nombre" | "descripcion" | "precio_usd" |
 
 async function conProductos(ofertas: Omit<Oferta, "productos">[]): Promise<Oferta[]> {
   if (ofertas.length === 0) return [];
-  const lista = await filas<ProductoDeOferta & { oferta_id: number }>(
-    `select op.oferta_id, op.producto_id, op.cantidad, p.nombre, p.activo, p.borrador
+  const lista = await filas<Omit<ProductoDeOferta, "foto"> & { oferta_id: number; foto_version: string | null }>(
+    `select op.oferta_id, op.producto_id, op.cantidad, p.nombre, p.activo, p.borrador, f.actualizado_en as foto_version
      from oferta_productos op join productos p on p.id = op.producto_id
+     left join fotos_productos f on f.producto_id = p.id
      where op.oferta_id in (${ofertas.map(() => "?").join(", ")})
      order by p.nombre collate nocase`,
     ofertas.map((o) => o.id),
   );
+  // Las marcas a la venta de esos productos, con su foto si la tienen (para el afiche del combo).
+  const ids = [...new Set(lista.map((p) => Number(p.producto_id)))];
+  const marcas = ids.length
+    ? await filas<{ producto_id: number; id: number; foto_version: string | null }>(
+        `select v.producto_id, v.id, f.actualizado_en as foto_version
+         from variantes v left join fotos_variantes f on f.variante_id = v.id
+         where v.activo = 1 and v.producto_id in (${ids.map(() => "?").join(", ")})`,
+        ids,
+      )
+    : [];
+  const fotoDe = (productoId: number, fotoVersion: string | null) =>
+    fotoParaElCombo(
+      direccionDeFotoDeProducto({ id: productoId, foto_version: fotoVersion ?? null }),
+      marcas.filter((v) => Number(v.producto_id) === productoId).map((v) => direccionDeFotoDeVariante({ id: Number(v.id), foto_version: v.foto_version ?? null })),
+    );
   return ofertas.map((o) => ({
     ...o,
     precio_usd: o.precio_usd ?? null,
     orden: Number(o.orden),
     productos: lista
       .filter((p) => Number(p.oferta_id) === o.id)
-      .map((p) => ({ producto_id: Number(p.producto_id), nombre: p.nombre, cantidad: p.cantidad, activo: Number(p.activo), borrador: Number(p.borrador) })),
+      .map((p) => ({
+        producto_id: Number(p.producto_id),
+        nombre: p.nombre,
+        cantidad: p.cantidad,
+        activo: Number(p.activo),
+        borrador: Number(p.borrador),
+        // La web solo sirve la foto de lo publicado.
+        foto: Number(p.activo) === 1 && Number(p.borrador) === 0 ? fotoDe(Number(p.producto_id), p.foto_version) : null,
+      })),
   }));
 }
 
