@@ -62,13 +62,14 @@ const salida = path.join(raiz, "listas", "combos", hoy);
 fs.mkdirSync(salida, { recursive: true });
 const descargas = path.join(os.homedir(), "Downloads");
 const perfil = fs.mkdtempSync(path.join(os.tmpdir(), "flier-chrome-"));
-for (const tipo of ["hamburguesas", "perros"]) {
-  for (const [formato, alto] of [["estado", 1920], ["post", 1350]]) {
-    const png = path.join(perfil, `${tipo}-${formato}.png`);
-    const url = `${pathToFileURL(path.join(aqui, "flier-combos-burger.html")).href}?tipo=${tipo}&formato=${formato}`;
+const DISENOS = [["flier-combos-burger.html", "flier-combo"], ["flier-combos-mezcla.html", "flier-combo-mezcla"]];
+for (const [html, prefijo] of DISENOS) for (const tipo of ["hamburguesas", "perros"]) {
+  for (const [formato, alto] of html.includes("mezcla") ? [["estado", 1920]] : [["estado", 1920], ["post", 1350]]) {
+    const png = path.join(perfil, `${prefijo}-${tipo}-${formato}.png`);
+    const url = `${pathToFileURL(path.join(aqui, html)).href}?tipo=${tipo}&formato=${formato}`;
     const r = spawnSync(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--allow-file-access-from-files", "--force-device-scale-factor=1", `--user-data-dir=${perfil}`, `--window-size=1080,${alto + 240}`, "--virtual-time-budget=4000", `--screenshot=${png}`, url], { stdio: "ignore", timeout: 120000 });
     if (r.status !== 0 || !fs.existsSync(png)) throw new Error(`Chrome no hizo ${tipo} ${formato}`);
-    const jpg = path.join(salida, `flier-combo-${tipo}-${formato}-${hoy}.jpg`);
+    const jpg = path.join(salida, `${prefijo}-${tipo}-${formato}-${hoy}.jpg`);
     // Chrome dibuja la página algo más baja que la ventana: se pide más alta y se corta a la medida.
     await sharp(png).extract({ left: 0, top: 0, width: 1080, height: alto }).jpeg({ quality: 90 }).toFile(jpg);
     fs.copyFileSync(jpg, path.join(descargas, path.basename(jpg)));
