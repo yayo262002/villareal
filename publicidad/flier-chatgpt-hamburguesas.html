@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Flier de hamburguesas (el de ChatGPT, con los productos de verdad) · Villa Real</title>
+<style>
+  /* El flier de hamburguesas que el dueño hizo con ChatGPT (25/11/2026), tal cual, con tres cambios: cada producto de
+     verdad encima del que dibujó ChatGPT (el queso, las papas, la Big Cola y la Pepsi), el pan Brioche y la carne Hot
+     Burger que faltaban, y el león de la marca en vez del dibujado. El fondo y la cinta los saca
+     flier-chatgpt-base.mjs. Todo va en las medidas de la imagen de ChatGPT (941 × 1672) y se agranda a 1080 × 1920.
+     Los precios son los de la imagen: si cambian, hay que rehacer la imagen. */
+  html, body { margin: 0; padding: 0; background: #5a0507; }
+  .lienzo { width: 1080px; height: 1920px; overflow: hidden; }
+  .flier { position: relative; width: 941px; height: 1672px; transform: scale(1.14772); transform-origin: 0 0; background: url("fondos/chatgpt-hamburguesas-base.png") 0 0 / 941px 1672px no-repeat; }
+  .flier img { position: absolute; display: block; }
+  .p { filter: drop-shadow(0 10px 10px rgba(40, 0, 0, 0.55)); }
+  .cinta { left: 278px; top: 544px; width: 366px; z-index: 5; }
+  .brillo { position: absolute; left: -10px; top: -45px; width: 264px; height: 345px; z-index: 5; border-radius: 50%; background: radial-gradient(closest-side, rgb(166, 8, 7) 72%, rgba(166, 8, 7, 0) 100%); }
+  .leon { left: 40px; top: 18px; width: 158px; z-index: 6; filter: drop-shadow(0 6px 8px rgba(40, 0, 0, 0.6)); }
+</style>
+</head>
+<body>
+<div class="lienzo">
+  <div class="flier">
+    <!-- Atrás, cada uno encima del que dibujó ChatGPT. -->
+    <img class="p" src="fotos/queso-amarillo.png" alt="" style="left: 204px; top: 290px; height: 338px; z-index: 1">
+    <img class="p" src="fotos/papas-ralladas.png" alt="" style="left: 362px; top: 362px; height: 236px; z-index: 1">
+    <img class="p" src="fotos/big-cola.png" alt="" style="left: 551px; top: 286px; height: 334px; z-index: 1">
+    <img class="p" src="fotos/pepsi.png" alt="" style="left: 664px; top: 300px; height: 322px; z-index: 1">
+    <!-- Delante, sobre la cinta: el pan Brioche y la carne Hot Burger. -->
+    <img class="p" src="fotos/pan-hamburguesa.png" alt="" style="left: 318px; top: 398px; height: 176px; z-index: 3">
+    <img class="p" src="fotos/carne-hot-burger.png" alt="" style="left: 468px; top: 452px; height: 124px; z-index: 3; transform: rotate(-6deg)">
+    <img class="cinta" src="fondos/chatgpt-hamburguesas-cinta.png" alt="">
+    <div class="brillo"></div>
+    <img class="leon" src="../public/marca/leon.svg" alt="">
+  </div>
+</div>
+</body>
+</html>
