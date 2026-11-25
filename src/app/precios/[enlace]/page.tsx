@@ -6,9 +6,10 @@ import { listarProductos } from "@/lib/productos";
 import { listarVariantes } from "@/lib/variantes";
 import { listarFamilias } from "@/lib/familias";
 import { filasDeMisPrecios } from "@/lib/mis-precios";
+import { ofertasVigentes } from "@/lib/ofertas";
 import { textoCoincide } from "@/lib/buscar";
 import { FiltroEnVivo } from "@/components/filtro-en-vivo";
-import { bs, diaDeLaSemana, fechaCorta, fechaDeLaBase, hoy, tasaLegible, usd } from "@/lib/dinero";
+import { aBolivares, bs, diaDeLaSemana, fechaCorta, fechaDeLaBase, hoy, tasaLegible, usd } from "@/lib/dinero";
 import estilos from "../../lista/[enlace]/lista.module.css";
 import propios from "./precios.module.css";
 
@@ -28,7 +29,8 @@ export async function generateMetadata({ params }: Parametros): Promise<Metadata
  * «Mis precios»: la lista personal del dueño, con su enlace y sin clave, como
  * la de la familia, pero de Villa Real: todo lo que está en la web, por
  * familias, con el precio al mayor en bolívares a la tasa BCV de hoy y en
- * dólares, y debajo el costo y lo que deja. Lleva los costos: el enlace es
+ * dólares, y debajo el costo y lo que deja; al final, los combos de la web
+ * con lo que llevan y su precio de hoy. Lleva los costos: el enlace es
  * solo para él (se renueva en Productos). Se busca escribiendo.
  */
 export default async function PaginaMisPrecios({ params, searchParams }: Parametros) {
@@ -37,11 +39,15 @@ export default async function PaginaMisPrecios({ params, searchParams }: Paramet
   if (!esEnlaceValido(enlace) || enlace !== guardado) notFound();
   const parametros = await searchParams;
   const busqueda = typeof parametros.q === "string" ? parametros.q.slice(0, 80) : "";
-  const [productos, variantes, familias, tasa] = await Promise.all([listarProductos(), listarVariantes(), listarFamilias(), leerTasa()]);
+  const dia = hoy();
+  const [productos, variantes, familias, tasa, ofertas] = await Promise.all([listarProductos(), listarVariantes(), listarFamilias(), leerTasa(), ofertasVigentes(dia)]);
   const grupos = filasDeMisPrecios(productos, variantes, familias, tasa?.valor ?? null)
     .map((g) => ({ ...g, filas: g.filas.filter((f) => textoCoincide([f.tipo, f.detalle, g.familia], busqueda)) }))
     .filter((g) => g.filas.length > 0);
-  const dia = hoy();
+  // Los combos de la web (los mismos de Ofertas), con lo que llevan y su precio de hoy.
+  const combos = ofertas
+    .map((o) => ({ ...o, lleva: o.productos.map((p) => [p.cantidad, p.nombre].filter(Boolean).join(" ")).join(" · ") }))
+    .filter((o) => textoCoincide([o.nombre, o.lleva, "combos"], busqueda));
   const fechaTasa = tasa ? (tasa.fecha_valor ?? fechaDeLaBase(tasa.actualizada_en)) : null;
 
   return (
@@ -72,7 +78,7 @@ export default async function PaginaMisPrecios({ params, searchParams }: Paramet
       </form>
       <FiltroEnVivo entrada="q" lista="productos" clase={estilos.vacio} />
 
-      {grupos.length === 0 ? (
+      {grupos.length === 0 && combos.length === 0 ? (
         <p className={estilos.vacio}>{busqueda ? `Nada responde a «${busqueda}».` : "Todavía no hay nada publicado en la web."}</p>
       ) : (
         <div id="productos" className={estilos.productos}>
@@ -118,6 +124,34 @@ export default async function PaginaMisPrecios({ params, searchParams }: Paramet
               </ul>
             </section>
           ))}
+          {combos.length > 0 && (
+            <section className={estilos.grupo} data-grupo>
+              <h2 className={estilos.categoria}>Combos</h2>
+              <ul className={estilos.filas}>
+                {combos.map((o) => {
+                  const enBs = o.precio_usd === null ? null : aBolivares(o.precio_usd, tasa?.valor ?? null);
+                  return (
+                    <li key={o.id} className={estilos.fila} data-busca={`${o.nombre} ${o.lleva}`} data-busca-mas="combos">
+                      <span className={estilos.nombre}>
+                        {o.nombre}
+                        {o.lleva && <span className={propios.detalle}>{o.lleva}</span>}
+                      </span>
+                      <span className={estilos.precios}>
+                        {o.precio_usd === null ? (
+                          <span className={propios.falta}>Sin precio</span>
+                        ) : (
+                          <>
+                            <span className={estilos.bs}>{enBs !== null ? bs(enBs) : usd(o.precio_usd)}</span>
+                            {enBs !== null && <span className={estilos.usd}>{usd(o.precio_usd)}</span>}
+                          </>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
         </div>
       )}
 

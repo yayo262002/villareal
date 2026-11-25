@@ -1656,7 +1656,9 @@ Binance y otro.
   lista de la familia, pero de Villa Real y solo para él: todo lo publicado en
   la web, por familias, cada artículo con su precio al mayor en bolívares a la
   tasa de hoy y en dólares, y debajo su costo y lo que deja («Costo 1,46 $ ·
-  deja 0,15 $ (10 %)»). Sin clave, con su enlace (catorce letras al azar,
+  deja 0,15 $ (10 %)»); al final, los combos de la web con lo que llevan y su
+  precio de hoy (25/11/2026: «actualízame los precios en mi panel de precio de
+  burger»). Sin clave, con su enlace (catorce letras al azar,
   fuera de los buscadores), que se crea y se renueva en Productos → «Mis
   precios»; puesta en la pantalla de inicio es su app, «Mis precios». Lleva
   los costos: no se manda a nadie (`src/lib/mis-precios.ts`, con pruebas).
