@@ -66,3 +66,4 @@ next-env.d.ts
 /publicidad/lista-precios*.jpg
 /publicidad/lista-mayor*.pdf
 /publicidad/lista-mayor*.jpg
+/publicidad/flier-combos-datos.js
