@@ -1,0 +1,62 @@
+/* Lo que añade «Lo que hay» a la lista de la familia (lista.module.css): el detalle del artículo, el resumen y la etiqueta de cada estado. */
+.detalle {
+  display: block;
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+.resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+  margin: var(--espacio-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cuanto {
+  font-weight: 800;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.piezas {
+  color: var(--color-texto-suave);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.etiqueta {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.hay {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+
+.poco {
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso);
+}
+
+.agotado {
+  background: var(--color-error-fondo);
+  color: var(--color-error-oscuro);
+}
+
+.sin_contar {
+  background: var(--color-superficie-suave);
+  color: var(--color-texto-suave);
+}
+
+/* En la cabecera verde, las etiquetas del resumen van sobre fondo claro para que se lean. */
+.resumen .etiqueta {
+  font-size: 0.85rem;
+}

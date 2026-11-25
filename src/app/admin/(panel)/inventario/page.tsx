@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { existencias, listarAjustes } from "@/lib/inventario";
-import { guardarAjusteDeInventario, ponerStockNegativo } from "@/lib/acciones";
-import { permitirStockNegativo } from "@/lib/ajustes";
+import { crearEnlaceDeExistencias, guardarAjusteDeInventario, ponerStockNegativo } from "@/lib/acciones";
+import { enlaceDeExistencias, permitirStockNegativo } from "@/lib/ajustes";
+import { negocio } from "@/config/negocio";
 import { cantidad, fechaCorta, usd } from "@/lib/dinero";
 import { Avisos, type ParametrosAviso } from "@/components/avisos";
 import estilos from "../panel.module.css";
@@ -20,8 +21,12 @@ const NOMBRE_DE_ESTADO = { sin_seguir: "Sin seguir", sin: "Sin existencia", poco
 export default async function PaginaInventario({ searchParams }: { searchParams: Promise<ParametrosAviso> }) {
   await exigirPanel();
   const parametros = await searchParams;
-  const [lista, ajustes, sinTope] = await Promise.all([existencias(), listarAjustes(15), permitirStockNegativo()]);
+  const [lista, ajustes, sinTope, enlace] = await Promise.all([existencias(), listarAjustes(15), permitirStockNegativo(), enlaceDeExistencias()]);
   const seguidos = lista.filter((e) => e.seguido);
+  const direccion = enlace ? `${negocio.web}/existencias/${enlace}` : null;
+  const mensaje = direccion
+    ? `Hola, este es el enlace para ver lo que hay en la tienda, al día con las ventas: ${direccion}\nGuárdalo en la pantalla de inicio del teléfono y ábrelo antes de ofrecer.`
+    : "";
   const avisan = seguidos.filter((e) => e.estado === "sin" || e.estado === "poco");
 
   return (
@@ -33,6 +38,20 @@ export default async function PaginaInventario({ searchParams }: { searchParams:
         Entra con cada compra a un proveedor (sus kilos por producto), sale con cada venta y se corrige con un recuento o una merma. Un producto
         se empieza a seguir con su primera compra o su primer recuento.
       </p>
+      <div className={estilos.accionesFila} style={{ flexWrap: "wrap", marginBottom: "var(--espacio-4)" }}>
+        <Link href="/admin/inventario/contar" className="boton">
+          Contar todo
+        </Link>
+        <a href="#vendedora" className="boton boton--secundario">
+          Lo que ve la vendedora
+        </a>
+      </div>
+      {seguidos.length === 0 && (
+        <p className="aviso aviso--aviso">
+          Todavía no se ha contado nada: el inventario no sabe lo que hay. Empieza por «Contar todo» (cuenta la cava y los estantes y escribe cada
+          cosa); desde ahí, las ventas lo descuentan solas y las compras lo suben.
+        </p>
+      )}
       <form action={ponerStockNegativo} className={`${estilos.accionesFila} ${estilos.noImprimir}`} style={{ flexWrap: "wrap", alignItems: "center", marginBottom: "var(--espacio-4)" }}>
         <input type="hidden" name="permitir" value={sinTope ? "0" : "1"} />
         <span className="ayuda">
@@ -103,6 +122,46 @@ export default async function PaginaInventario({ searchParams }: { searchParams:
           Las compras con sus kilos se anotan en la ficha de cada <Link href="/admin/proveedores">proveedor</Link>. «Dura» sale de lo vendido en los
           últimos 30 días.
         </p>
+      </section>
+
+      <section className="tarjeta" id="vendedora" style={{ marginBottom: "var(--espacio-4)" }}>
+        <h2 className={estilos.subtitulo}>Lo que ve la vendedora</h2>
+        {direccion ? (
+          <>
+            <p className={estilos.ayuda}>
+              Con este enlace ve desde su teléfono, sin clave, lo que hay de cada producto de la web, al día con las ventas: cuánto hay, si queda
+              poco, si se acabó o si no se ha contado. Sin costos ni nada más del panel.
+            </p>
+            <p>
+              <a href={`/existencias/${enlace}`} target="_blank" rel="noopener" style={{ overflowWrap: "anywhere" }}>
+                {direccion}
+              </a>
+            </p>
+            <div className={estilos.accionesFila} style={{ flexWrap: "wrap" }}>
+              <a href={`https://wa.me/?text=${encodeURIComponent(mensaje)}`} className="boton" target="_blank" rel="noopener">
+                Mandarlo por WhatsApp
+              </a>
+              <form action={crearEnlaceDeExistencias}>
+                <input type="hidden" name="renovar" value="1" />
+                <button type="submit" className="boton boton--secundario">
+                  Renovar el enlace
+                </button>
+              </form>
+            </div>
+            <p className={estilos.ayuda}>
+              Puesto en la pantalla de inicio es una app, «Lo que hay». Si se compartió de más, «Renovar» pone otro y el anterior deja de funcionar.
+            </p>
+          </>
+        ) : (
+          <form action={crearEnlaceDeExistencias}>
+            <p className={estilos.ayuda}>
+              Crea el enlace y mándaselo a la vendedora: con él ve en su teléfono lo que hay para ofrecer, sin clave y sin costos.
+            </p>
+            <button type="submit" className="boton">
+              Crear el enlace
+            </button>
+          </form>
+        )}
       </section>
 
       <div className={estilos.dosColumnas}>

@@ -1697,6 +1697,30 @@ async function probarInventario() {
   comprobar("vender más de lo que hay en inventario avisa y pide confirmar", r.destino.includes("anotaste 30 kilos y en el inventario hay 14") && r.destino.includes("confirmar=1"), r.destino);
   comprobar("el formulario de venta dice lo que hay", legible((await pagina("/admin/ventas/clasica")).html).includes("Hay 14 kg"));
 
+  // «Contar todo»: el recuento general de una vez (solo las casillas rellenas), y lo que ve la vendedora con su enlace.
+  const contar = legible((await pagina("/admin/inventario/contar")).html);
+  comprobar("«Contar todo» enseña cada artículo con lo que dice el sistema", contar.includes("Contar todo") && contar.includes("El sistema dice") && contar.includes("14 kg"));
+  r = await enviar("/admin/inventario/contar", 'name="contado_2"', { contado_2: "15,5", motivo: "Recuento general de prueba" });
+  comprobar("el recuento general guarda lo contado y no toca lo vacío", r.destino.includes("Recuento guardado: 1 artículo contado, 1 corregido"), r.destino);
+  const [general] = await consultar("select cantidad, motivo from inventario_ajustes order by id desc limit 1");
+  comprobar("su ajuste es lo contado menos lo que había", general && cerca(general.cantidad, 1.5) && general.motivo === "Recuento general de prueba", JSON.stringify(general));
+  r = await enviar("/admin/inventario/contar", 'name="contado_2"', { contado_2: "doce" });
+  comprobar("lo que no es un número no se guarda y se dice", r.destino.includes("No entendí lo escrito en") && r.destino.includes("doce"), r.destino);
+  existencia = 15.5;
+  r = await enviar("/admin/inventario", "Crea el enlace y mándaselo a la vendedora", {});
+  comprobar("se crea el enlace de la vendedora", r.destino.includes("Enlace creado"), r.destino);
+  const [{ valor: enlaceVendedora }] = await consultar("select valor from ajustes where clave = 'enlace_existencias'");
+  const loQueHay = await pagina(`/existencias/${enlaceVendedora}`, "");
+  const textoQueHay = legible(loQueHay.html);
+  comprobar(
+    "la vendedora ve lo que hay, sin clave y sin costos",
+    loQueHay.status === 200 && textoQueHay.includes("Lo que hay") && textoQueHay.includes("15,5 kg") && !textoQueHay.includes("Costo"),
+    String(loQueHay.status),
+  );
+  comprobar("con otro enlace no se ve nada", (await pagina("/existencias/abcdefghjkmnpq", "")).status === 404);
+  const manifiestoVendedora = await pagina(`/existencias/${enlaceVendedora}/manifest.webmanifest`, "", true);
+  comprobar("«Lo que hay» se pone en el teléfono como app", manifiestoVendedora.status === 200 && manifiestoVendedora.html.includes('"short_name":"Lo que hay"'));
+
   // Recordatorios de cobro: la nota del 1 de septiembre ya pasó su semana.
   let resumen = legible((await pagina("/admin")).html);
   comprobar(

@@ -262,6 +262,15 @@ export async function ponerEnlaceDeMisPrecios(enlace: string): Promise<void> {
   await guardar("enlace_mis_precios", enlace);
 }
 
+/** El enlace con el que la vendedora ve lo que hay en inventario, sin clave ni costos (`/existencias/abcdefghjkmnpq`), o null si no se ha creado. */
+export async function enlaceDeExistencias(): Promise<string | null> {
+  return (await leer("enlace_existencias")).get("enlace_existencias")?.valor ?? null;
+}
+
+export async function ponerEnlaceDeExistencias(enlace: string): Promise<void> {
+  await guardar("enlace_existencias", enlace);
+}
+
 /** Las tarifas del delivery de la web (`/admin/delivery`): sin poner, todo por confirmar. */
 export async function ajustesDelDelivery(): Promise<AjustesDeDelivery> {
   return leerAjustesDeDelivery((await leer("delivery")).get("delivery")?.valor);

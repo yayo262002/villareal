@@ -1,5 +1,5 @@
 import "server-only";
-import { ejecutar, fila, filas } from "./db";
+import { ejecutar, fila, filas, transaccion } from "./db";
 import { listarProductos } from "./productos";
 import { listarVariantes } from "./variantes";
 import { claveDe, nombreDeVenta, vendiblesDe } from "./catalogo";
@@ -95,6 +95,22 @@ export async function registrarAjuste(datos: { fecha: string; producto_id: numbe
     datos.motivo,
   ]);
   return r.ultimoId;
+}
+
+/**
+ * El recuento general: un ajuste por cada artículo contado, todos o ninguno.
+ * Un cambio de cero también se anota: deja dicho que ese día se contó y el
+ * artículo pasa a seguirse.
+ */
+export async function registrarRecuento(fecha: string, motivo: string, cambios: { producto_id: number; variante_id: number | null; cambio: number }[]): Promise<void> {
+  await transaccion(async (tx) => {
+    for (const c of cambios) {
+      await tx.execute({
+        sql: "insert into inventario_ajustes (fecha, producto_id, variante_id, cantidad, motivo) values (?, ?, ?, ?, ?)",
+        args: [fecha, c.producto_id, c.variante_id, c.cambio, motivo],
+      });
+    }
+  });
 }
 
 /** Los últimos recuentos y mermas, del más nuevo al más viejo. */

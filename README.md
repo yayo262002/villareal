@@ -221,7 +221,10 @@ src/lib/vencimientos.ts   Cada cliente y cada proveedor con lo que tiene vencido
 src/lib/proveedores.ts    Proveedores, sus compras (con sus líneas de producto) y los pagos que se les hacen
 src/lib/stock.ts          El inventario: lo comprado menos lo vendido, más los ajustes; cuánto dura
 src/lib/piezas.ts         Lo que suele pesar una pieza, aprendido de las notas
-src/lib/inventario.ts     Las existencias desde la base, y los recuentos y mermas
+src/lib/inventario.ts     Las existencias desde la base, y los recuentos y mermas (también el recuento general, de una vez)
+src/lib/existencias-por-familia.ts  El inventario por familias, para «Contar todo» y para la vendedora; leer lo contado (puro, con pruebas)
+src/app/admin/(panel)/inventario/contar/  «Contar todo»: el recuento general, una casilla por artículo
+src/app/existencias/      «Lo que hay», lo que ve la vendedora desde su teléfono, con su enlace y sin clave (se crea y se renueva en Inventario)
 src/lib/recordatorios.ts  Cuándo se le recordó la deuda a cada cliente
 src/components/fila-de-producto.tsx  La fila de un producto en la venta y en la compra
 src/lib/caja.ts           El cierre del día: vendido, entrado por método y salido
@@ -1509,6 +1512,30 @@ Binance y otro.
   piezas y los kilos de una nota se alejan más de un 15 % de eso, avisa:
   «cada pieza suele pesar 2,5 kg … y hoy anotaste 2 piezas y 8 kg». Nada
   se corrige solo.
+- **Contar todo** (`/admin/inventario/contar`, el botón de arriba en
+  Inventario; el dueño, 25/11/2026: «necesito perfeccionar mucho lo del
+  inventario… por lo menos dejar el sistema ya integrado»). El recuento
+  general de una vez: todo lo que está en la web, por familias como el
+  catálogo, y al final lo que no está en ella pero tiene existencia o se
+  ha vendido («Fuera de la web»). Cada artículo dice lo que cree el
+  sistema y tiene su casilla («12,5» o «12.5»): lo contado entra con la
+  fecha de hoy como un recuento (lo contado menos lo que había; un cero
+  también, para que quede dicho que se contó y el artículo se empiece a
+  seguir), todo en una sola escritura. Lo vacío no se toca, y si una
+  casilla no se entiende se guarda lo demás y se dice cuál falta (no se
+  pierde lo escrito en las otras cuarenta). Mientras no se haya contado
+  nada, Inventario lo avisa arriba. Las cuentas, con pruebas, en
+  `src/lib/existencias-por-familia.ts`.
+- **Lo que ve la vendedora** (`/existencias/abcdefghjkmnpq`; en
+  Inventario, «Lo que ve la vendedora»: crear, mandar por WhatsApp y
+  renovar el enlace). Desde su teléfono, sin clave, lo publicado en la web
+  por familias con lo que hay de cada artículo, al día con las ventas:
+  cuánto (y unas cuántas piezas, si se sabe lo que pesa una), «Queda
+  poco», «Agotado» o «Pregunta» (aún no se ha contado), con un resumen
+  arriba y el buscador. Sin costos, sin precios y sin nada más del panel.
+  Puesta en la pantalla de inicio es su app, «Lo que hay» (su manifiesto,
+  solo con el enlace vigente). Fuera de los buscadores; «Renovar el
+  enlace» pone otro y el anterior deja de funcionar.
 
 ## Catálogo: familias, productos y ofertas
 

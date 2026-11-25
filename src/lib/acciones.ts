@@ -78,6 +78,7 @@ import {
   ponerAvisoTasa,
   ponerEnlaceDeLaLista,
   ponerEnlaceDeMisPrecios,
+  ponerEnlaceDeExistencias,
   ponerNumeracionDeFacturasDesde,
   ponerReglasDelDetal,
   ponerTasaAutomatica,
@@ -109,7 +110,8 @@ import {
 } from "./intentos";
 import { buscarVenta, buscarVentaPorClavePos, crearVenta, eliminarVenta, lineasDeVenta, marcarEntrega, ultimoPrecioAlCliente, ventaRepetidaReciente, type LineaVenta, type Venta } from "./ventas";
 import { KILOS_MAXIMOS, PRECIO_MAXIMO, lineaRellena, revisarFecha, revisarVenta, type LineaEscrita } from "./venta-sensata";
-import { existenciaSinMarca, existenciasPorClave, registrarAjuste } from "./inventario";
+import { existenciaSinMarca, existenciasPorClave, registrarAjuste, registrarRecuento } from "./inventario";
+import { leerRecuento } from "./existencias-por-familia";
 import { ajustePorRecuento } from "./stock";
 import { listarProductos } from "./productos";
 import {
@@ -882,6 +884,41 @@ export async function guardarAjusteDeInventario(datos: FormData): Promise<void> 
   }
   await registrarAjuste({ fecha: hoy(), producto_id: e.producto_id, variante_id: e.variante_id, cantidad: cambio, motivo });
   volverConExito(volverA, mensaje);
+}
+
+/**
+ * El recuento general (`/admin/inventario/contar`): lo contado de cada artículo,
+ * de una vez. Cada casilla rellena deja su ajuste (lo contado menos lo que
+ * decía el sistema), con la fecha de hoy; las vacías no se tocan. Si alguna
+ * no se entiende, se guarda lo demás y se dice cuál falta.
+ */
+export async function guardarRecuentoGeneral(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const existencias = await existenciasPorClave();
+  const entradas: [string, string][] = [];
+  for (const [campo, valor] of datos.entries()) {
+    if (campo.startsWith("contado_") && typeof valor === "string") entradas.push([campo.slice("contado_".length), valor]);
+  }
+  const { cambios, errores } = leerRecuento(entradas, existencias);
+  if (cambios.length === 0) {
+    volverConError("/admin/inventario/contar", errores.length ? `No entendí lo escrito en: ${errores.join(", ")}.` : "No escribiste ninguna cantidad.");
+  }
+  await registrarRecuento(hoy(), texto(datos, "motivo").slice(0, 120) || "Recuento general", cambios);
+  const corregidos = cambios.filter((c) => c.cambio !== 0).length;
+  const hecho = `Recuento guardado: ${cambios.length} ${cambios.length === 1 ? "artículo contado" : "artículos contados"}, ${corregidos} ${corregidos === 1 ? "corregido" : "corregidos"}.`;
+  if (errores.length) volverConError("/admin/inventario/contar", `${hecho} No entendí lo escrito en: ${errores.join(", ")}. Escríbelo otra vez.`);
+  volverConExito("/admin/inventario", hecho);
+}
+
+/** Crea (o renueva) el enlace con el que la vendedora ve lo que hay, desde su teléfono y sin clave. */
+export async function crearEnlaceDeExistencias(datos: FormData): Promise<void> {
+  await exigirSesion();
+  const renovar = texto(datos, "renovar") === "1";
+  await ponerEnlaceDeExistencias(nuevoEnlace());
+  volverConExito(
+    "/admin/inventario#vendedora",
+    renovar ? "Enlace renovado: el anterior ya no funciona. Manda el nuevo." : "Enlace creado. Mándaselo por WhatsApp: con él ve lo que hay, sin clave y sin costos.",
+  );
 }
 
 /** La confirmación está en `/admin/compras/[id]/eliminar`. */
