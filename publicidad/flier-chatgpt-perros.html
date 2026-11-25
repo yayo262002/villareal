@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Flier de perros (sobre el de ChatGPT) · Villa Real</title>
+<style>
+  /* El flier de perros calientes, igual al de hamburguesas que el dueño hizo con ChatGPT (25/11/2026: «me gustó, hazme
+     el de perros igual»): de su imagen salen tal cual el fondo, «COMBOS», la cinta de VILLA REAL, las tarjetas, el
+     WhatsApp y el delivery. Debajo de «COMBOS» va lo de perros (el subtítulo, la madera y los productos de verdad) y en
+     las tarjetas se cambian los textos y los precios, cada uno sobre un parche del color de lo que tapa. Todo va en las
+     medidas de la imagen de ChatGPT (941 × 1672) y se agranda a 1080 × 1920. */
+  @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
+  @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
+  @font-face { font-family: "Kaushan Script"; src: url("fuentes/KaushanScript-Regular.ttf"); }
+  html, body { margin: 0; padding: 0; background: #5a0507; }
+  .lienzo { width: 1080px; height: 1920px; overflow: hidden; }
+  .flier { position: relative; width: 941px; height: 1672px; transform: scale(1.14772); transform-origin: 0 0; background: url("fondos/chatgpt-hamburguesas-base.png") 0 0 / 941px 1672px no-repeat; font-family: "Open Sans", Arial, sans-serif; }
+  .flier > * { position: absolute; }
+  .p { display: block; filter: drop-shadow(0 10px 10px rgba(40, 0, 0, 0.55)); }
+
+  /* Debajo de «COMBOS»: el fondo rojo con sus rayos, de nuevo, fundido por arriba, y la tabla de madera. */
+  .fondo-nuevo {
+    left: 0; top: 191px; width: 941px; height: 469px; z-index: 0;
+    background:
+      repeating-conic-gradient(from 0deg at 50% -20%, rgba(255, 150, 90, 0.13) 0deg 5deg, transparent 5deg 13deg),
+      radial-gradient(ellipse 75% 70% at 50% 30%, #e8261f 0%, #c8121a 45%, #98080f 80%, #700509 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 5px); mask-image: linear-gradient(180deg, transparent 0, #000 5px);
+  }
+  .madera {
+    left: 0; top: 572px; width: 941px; height: 92px; z-index: 0; background: url("fondos/madera.jpg") center / cover; filter: saturate(1.1) brightness(0.8);
+    box-shadow: inset 0 14px 18px rgba(40, 10, 0, 0.6); -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px); mask-image: linear-gradient(180deg, transparent 0, #000 14px);
+  }
+  .subtitulo {
+    left: 0; width: 941px; top: 196px; z-index: 2; text-align: center; padding-left: 40px; font-family: "Kaushan Script", cursive; font-size: 88px; line-height: 1.15;
+    color: #ffd21a; background: linear-gradient(180deg, #fff27a 0%, #ffd21a 45%, #f4a50c 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 0 #5a0505) drop-shadow(3px 0 0 #5a0505) drop-shadow(-3px 0 0 #5a0505) drop-shadow(0 3px 0 #5a0505) drop-shadow(0 -3px 0 #5a0505) drop-shadow(0 6px 0 #5a0505) drop-shadow(0 10px 8px rgba(30, 0, 0, 0.55));
+    transform: rotate(-3deg);
+  }
+  .subrayado { left: 330px; top: 300px; width: 480px; height: 34px; z-index: 2; }
+  .destellos { left: 0; top: 300px; width: 941px; height: 120px; z-index: 1; }
+
+  .nombre-combo { left: 86px; top: 672px; width: 214px; height: 44px; z-index: 4; border-radius: 8px; background: linear-gradient(180deg, rgb(241, 24, 20), rgb(229, 10, 10)); box-shadow: 0 0 6px 3px rgb(236, 16, 14); display: grid; place-items: center; }
+  .nombre-combo span { font-family: "Archivo Black"; font-size: 35px; line-height: 1; color: #ffffff; letter-spacing: 0.03em; transform: skewX(-9deg); text-shadow: 0 2px 0 rgba(120, 0, 0, 0.45); }
+  .cinta { left: 278px; top: 544px; width: 366px; z-index: 5; }
+  .brillo { left: -10px; top: -45px; width: 264px; height: 345px; z-index: 5; border-radius: 50%; background: radial-gradient(closest-side, rgb(166, 8, 7) 72%, rgba(166, 8, 7, 0) 100%); }
+  .leon { left: 40px; top: 18px; width: 158px; z-index: 6; filter: drop-shadow(0 6px 8px rgba(40, 0, 0, 0.6)); }
+
+  /* Las tarjetas: parches del color de lo que tapan, y encima lo de perros. */
+  .crema { z-index: 3; background: rgb(250, 246, 240); box-shadow: 0 0 6px 5px rgb(250, 246, 240); border-radius: 6px; }
+  .rojo { z-index: 3; border-radius: 10px; background: radial-gradient(ellipse at 50% 40%, rgb(242, 18, 16) 0%, rgb(226, 10, 10) 60%, rgb(200, 6, 6) 100%); box-shadow: 0 0 5px 4px rgb(228, 10, 10); }
+  .amarillo { z-index: 3; border-radius: 999px; background: linear-gradient(180deg, rgb(255, 217, 37) 0%, rgb(254, 204, 2) 50%, rgb(250, 182, 2) 100%); box-shadow: 0 0 4px 3px rgb(254, 204, 2); }
+  .titulo {
+    z-index: 4; font-family: "Archivo Black"; font-size: 62px; line-height: 1; color: #e3141c; white-space: nowrap; transform: skewX(-8deg);
+    -webkit-text-stroke: 9px #ffffff; paint-order: stroke fill; text-shadow: 0 5px 0 #7d080d, 0 8px 8px rgba(60, 0, 0, 0.35);
+  }
+  .lista { z-index: 4; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 378px 1fr; gap: 6px 10px; width: 800px; }
+  .lista li { position: relative; padding-left: 44px; font-weight: 700; font-size: 25px; line-height: 1.25; color: #1d1a18; white-space: nowrap; }
+  .lista li::before {
+    content: "✓"; position: absolute; left: 0; top: 1px; width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(180deg, #ffe45a, #f6b40b);
+    color: #2a1405; font-weight: 800; font-size: 21px; line-height: 30px; text-align: center; box-shadow: 0 2px 0 #b97a06;
+  }
+  .lista li.salsas { grid-column: 1 / -1; color: #a50f15; font-weight: 800; }
+  .sale { z-index: 4; width: 755px; text-align: center; font-weight: 800; font-size: 27px; line-height: 1; color: #1d1a18; white-space: nowrap; }
+  .sale b {
+    font-family: "Archivo Black"; font-weight: 400; font-size: 36px; color: #e3141c; -webkit-text-stroke: 5px #ffffff; paint-order: stroke fill; text-shadow: 0 3px 0 #7d080d;
+    margin: 0 4px;
+  }
+  .precio {
+    z-index: 4; width: 300px; text-align: center; font-family: "Archivo Black"; font-size: 80px; line-height: 1; color: #ffffff; white-space: nowrap; letter-spacing: -0.02em;
+    -webkit-text-stroke: 11px #4a0202; paint-order: stroke fill; text-shadow: 0 7px 0 #300101; transform: skewX(-6deg);
+  }
+  .precio span { font-size: 58px; }
+</style>
+</head>
+<body>
+<div class="lienzo">
+  <div class="flier">
+    <div class="fondo-nuevo"></div>
+    <div class="madera"></div>
+    <svg class="destellos" viewBox="0 0 941 120"><g stroke="#ffffff" stroke-width="9" stroke-linecap="round"><path d="M60 40 95 70M40 92 88 96M98 10 112 52"/><path d="M880 40 845 70M900 92 852 96M842 10 828 52"/></g></svg>
+    <div class="subtitulo">de Perros Calientes</div>
+    <svg class="subrayado" viewBox="0 0 480 34"><path d="M8 26 C 140 6, 330 2, 472 12" stroke="#5a0505" stroke-width="16" fill="none" stroke-linecap="round"/><path d="M8 24 C 140 4, 330 0, 472 10" stroke="#ffd21a" stroke-width="9" fill="none" stroke-linecap="round"/></svg>
+
+    <!-- Los productos de los perros, de pie sobre la madera. -->
+    <img class="p" src="fotos/salchichas.png" alt="" style="left: 40px; top: 372px; height: 236px; transform: rotate(-7deg); z-index: 2">
+    <img class="p" src="fotos/pan-perro.png" alt="" style="left: 318px; top: 300px; height: 300px; z-index: 2">
+    <img class="p" src="fotos/papas-ralladas.png" alt="" style="left: 508px; top: 372px; height: 232px; transform: rotate(5deg); z-index: 3">
+    <img class="p" src="fotos/big-cola.png" alt="" style="left: 700px; top: 276px; height: 338px; z-index: 2">
+    <img class="p" src="fotos/pepsi.png" alt="" style="left: 812px; top: 292px; height: 326px; z-index: 2">
+    <img class="cinta" src="fondos/chatgpt-hamburguesas-cinta.png" alt="">
+    <div class="brillo"></div>
+    <img class="leon" src="../public/marca/leon.svg" alt="">
+
+    <!-- El combo clásico. -->
+    <div class="nombre-combo"><span>CLÁSICO</span></div>
+    <div class="crema" style="left: 300px; top: 710px; width: 268px; height: 84px"></div>
+    <div class="crema" style="left: 64px; top: 730px; width: 300px; height: 64px"></div>
+    <div class="crema" style="left: 64px; top: 798px; width: 830px; height: 134px"></div>
+    <div class="rojo" style="left: 612px; top: 708px; width: 284px; height: 80px"></div>
+    <div class="amarillo" style="left: 118px; top: 946px; width: 716px; height: 38px"></div>
+    <div class="titulo" style="left: 72px; top: 728px">20 perros</div>
+    <div class="precio" style="left: 604px; top: 704px">13,61<span> $</span></div>
+    <ul class="lista" style="left: 76px; top: 806px">
+      <li>20 salchichas tipo wieners</li><li>20 panes artesanales</li>
+      <li>2 papas ralladas (150 g)</li><li>2 Big Cola de 2 L</li>
+      <li class="salsas">Salsas aparte: mayonesa, ketchup y mostaza</li>
+    </ul>
+    <div class="sale" style="left: 98px; top: 948px">Sale a <b>0,68 $</b> cada perro con papas y refresco</div>
+
+    <!-- El combo premium. -->
+    <div class="crema" style="left: 350px; top: 1074px; width: 218px; height: 116px"></div>
+    <div class="crema" style="left: 64px; top: 1090px; width: 300px; height: 100px"></div>
+    <div class="crema" style="left: 64px; top: 1190px; width: 830px; height: 134px"></div>
+    <div class="rojo" style="left: 612px; top: 1066px; width: 284px; height: 80px"></div>
+    <div class="amarillo" style="left: 118px; top: 1334px; width: 716px; height: 38px"></div>
+    <div class="titulo" style="left: 72px; top: 1092px">20 perros</div>
+    <div class="precio" style="left: 604px; top: 1062px">21,89<span> $</span></div>
+    <ul class="lista" style="left: 76px; top: 1176px">
+      <li>20 salchichas tipo Viena</li><li>20 panes grandes con ajonjolí</li>
+      <li>2 papas ralladas (150 g)</li><li>2 Pepsi de 1,5 L</li>
+      <li class="salsas">Salsas aparte: mayonesa, ketchup, mostaza y maíz</li>
+    </ul>
+    <div class="sale" style="left: 98px; top: 1336px">Sale a <b>1,09 $</b> cada perro con papas y refresco</div>
+  </div>
+</div>
+</body>
+</html>
