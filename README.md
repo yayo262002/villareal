@@ -1718,10 +1718,17 @@ Binance y otro.
   debajo de la etiqueta del precio, para que quepa todo y nada quede tapado.
   Si aun así no cabe (con las salsas aparte, un combo lleva hasta nueve
   cosas), el afiche crece hacia abajo en vez de cortar la última.
-  Los combos del burger (25/11/2026) son seis: el clásico y el premium de
-  10 hamburguesas (8 en el premium), de 20 perros y de 10 perros (los de
-  10, con la salchicha Alimex, que viene de 10); «clásico», no
-  «artesanal», que al dueño no le gusta como nombre.
+  Los combos del burger son seis: el clásico de 10 hamburguesas y el
+  premium de 8 (25/11/2026; «clásico», no «artesanal», que al dueño no le
+  gusta como nombre de combo), y cuatro de perros (26/11/2026), que se
+  llaman por el perro y el pan. El **perro grande** lleva la salchicha
+  wieners de Purolomo (medio paquete de 20: 10 perros) y el pan grande:
+  el artesanal (bolsa de 10) o el Fresco con ajonjolí. El **perro
+  pequeño** lleva la Alimex (de 10) y el pan pequeño: el artesanal (bolsa
+  de 20, 20 perros) o el Fresco junior. El pan Fresco va con Pepsi y el
+  artesanal con Big Cola. En la lista del burger en PDF
+  (`publicidad/lista-burger.mjs`) cada combo va con lo que lleva en
+  corto; la descripción entera, en la web.
 
 ## La vitrina y el carrito
 

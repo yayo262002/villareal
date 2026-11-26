@@ -31,7 +31,10 @@ const grupos = filasDeMisPrecios(productos, variantes, familias, tasa)
     articulos: g.filas.filter((f) => f.precio !== null).map((f) => ({ nombre: f.detalle ? `${f.tipo} · ${f.detalle}` : f.tipo, unidad: f.porKilo ? "kg" : "unidad", usd: f.precio, bs: bsDe(f.precio) })),
   }))
   .filter((g) => g.articulos.length > 0);
-if (ofertas.length) grupos.push({ nombre: "Combos", articulos: ofertas.map((o) => ({ nombre: `${o.nombre}: ${o.descripcion.replace(/\.$/, "")}`, unidad: "unidad", usd: o.precio_usd, bs: bsDe(o.precio_usd) })) });
+// Lo que lleva cada combo, en corto: sin lo que va entre paréntesis y con las salsas resumidas. Con la descripción entera
+// de la web, cada combo llenaba una pantalla del teléfono (26/11/2026). En la web sigue entera.
+const enCorto = (d) => String(d).replace(/\s*\([^)]*\)/g, "").replace(/\.?\s*Con las salsas aparte[\s\S]*$/, ", con salsas aparte").replace(/\.$/, "");
+if (ofertas.length) grupos.push({ nombre: "Combos", articulos: ofertas.map((o) => ({ nombre: `${o.nombre}: ${enCorto(o.descripcion)}`, unidad: "unidad", usd: o.precio_usd, bs: bsDe(o.precio_usd) })) });
 
 const ahora = new Date(Date.now() - 4 * 3600 * 1000);
 const dia = ahora.toISOString().slice(0, 10);
@@ -57,6 +60,9 @@ if (r.status !== 0) throw new Error("No se pudo dibujar la lista.");
 const destino = path.join(raiz, "listas", "precios", dia);
 fs.mkdirSync(destino, { recursive: true });
 const hechos = [];
+// Lo de una vuelta anterior del mismo día se quita: si ahora salen menos pantallas, las de más quedarían viejas.
+const deHoy = new RegExp(`^lista-burger-${dia}(-\\d+)?\\.(pdf|jpg)$`);
+for (const f of fs.readdirSync(destino).filter((f) => deHoy.test(f))) fs.rmSync(path.join(destino, f));
 for (const f of fs.readdirSync(publicidad).filter((f) => /^lista-burger(-\d+)?\.(pdf|jpg)$/.test(f)).sort()) {
   const nuevo = f.replace("lista-burger", `lista-burger-${dia}`);
   fs.renameSync(path.join(publicidad, f), path.join(destino, nuevo));
