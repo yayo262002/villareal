@@ -10,8 +10,8 @@
      las tarjetas se cambian los textos y los precios, cada uno sobre un parche del color de lo que tapa. Todo va en las
      medidas de la imagen de ChatGPT (941 × 1672) y se agranda a 1080 × 1920.
      Desde el 26/11/2026 son dos fliers, como los combos de la web: ?perro=grande (las wieners con el pan grande) y
-     ?perro=pequeno (la Alimex con el pan pequeño), cada uno con su combo de pan artesanal y Big Cola y el de pan Fresco y
-     Pepsi. Los textos y los precios están en DATOS, abajo: los de la web ese día; si cambian, hay que rehacer la imagen.
+     ?perro=pequeno (la Alimex con el pan pequeño), cada uno con su combo clásico (pan artesanal y Big Cola) y el premium (pan
+     Fresco y Pepsi). Los textos y los precios están en DATOS, abajo: los de la web ese día; si cambian, hay que rehacer la imagen.
      Arriba solo van los productos que tienen foto de verdad (la del pan Fresco es la del pequeño; la de la Alimex la mandó
      el dueño el 26/11; aún no hay del pan grande). */
   @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
@@ -45,11 +45,9 @@
   .destellos { left: 0; top: 300px; width: 941px; height: 120px; z-index: 1; }
 
   .nombre-combo { left: 86px; top: 672px; width: 214px; height: 44px; z-index: 4; border-radius: 8px; background: linear-gradient(180deg, rgb(241, 24, 20), rgb(229, 10, 10)); box-shadow: 0 0 6px 3px rgb(236, 16, 14); display: grid; place-items: center; }
-  .nombre-combo span { font-family: "Archivo Black"; font-size: 28px; line-height: 1; color: #ffffff; letter-spacing: 0.03em; transform: skewX(-9deg); text-shadow: 0 2px 0 rgba(120, 0, 0, 0.45); }
-  /* «PAN ARTESANAL», más largo que el «ARTESANAL» que tapa; «PAN FRESCO», sobre el «PREMIUM» de la segunda tarjeta (la
-     estrella se queda). */
-  #e1 { left: 58px; width: 292px; }
-  #e2 { left: 112px; top: 1033px; width: 238px; height: 48px; background: linear-gradient(180deg, rgb(227, 40, 38), rgb(196, 10, 8)); box-shadow: 0 0 6px 3px rgb(212, 20, 18); }
+  .nombre-combo span { font-family: "Archivo Black"; font-size: 35px; line-height: 1; color: #ffffff; letter-spacing: 0.03em; transform: skewX(-9deg); text-shadow: 0 2px 0 rgba(120, 0, 0, 0.45); }
+  /* Las etiquetas, como en el de hamburguesas (el dueño, 26/11/2026: «que no diga artesanal, que uno diga clásico y el otro
+     premium»): «CLÁSICO» sobre el «ARTESANAL» de la primera tarjeta; la segunda deja el «★ PREMIUM» de la imagen. */
   .cinta { left: 278px; top: 544px; width: 366px; z-index: 5; }
   .brillo { left: -10px; top: -45px; width: 264px; height: 345px; z-index: 5; border-radius: 50%; background: radial-gradient(closest-side, rgb(166, 8, 7) 72%, rgba(166, 8, 7, 0) 100%); }
   .leon { left: 40px; top: 18px; width: 158px; z-index: 6; filter: drop-shadow(0 6px 8px rgba(40, 0, 0, 0.6)); }
@@ -107,7 +105,6 @@
     <div class="sale" id="s1" style="left: 98px; top: 948px"></div>
 
     <!-- La segunda: pan Fresco y Pepsi. -->
-    <div class="nombre-combo" id="e2"><span></span></div>
     <div class="crema" style="left: 350px; top: 1074px; width: 218px; height: 116px"></div>
     <div class="crema" style="left: 64px; top: 1090px; width: 300px; height: 100px"></div>
     <div class="crema" style="left: 64px; top: 1190px; width: 830px; height: 134px"></div>
@@ -126,9 +123,9 @@
       subtitulo: "de Perro Grande",
       productos: [["salchichas.png", 112, 372, 236, -7], ["papas-ralladas.png", 437, 372, 232, 5], ["big-cola.png", 625, 276, 338, 0], ["pepsi.png", 738, 292, 326, 0]],
       combos: [
-        { etiqueta: "PAN ARTESANAL", titulo: "10 perros", precio: "7,53", cada: "0,75", salsas: "mayonesa, ketchup y mostaza",
+        { etiqueta: "CLÁSICO", titulo: "10 perros", precio: "7,53", cada: "0,75", salsas: "mayonesa, ketchup y mostaza",
           lleva: ["10 salchichas tipo wieners", "10 panes artesanales grandes", "1 papas ralladas (150 g)", "1 Big Cola de 2 L"] },
-        { etiqueta: "PAN FRESCO", titulo: "10 perros", precio: "9,40", cada: "0,94", salsas: "mayonesa, ketchup, mostaza y maíz",
+        { titulo: "10 perros", precio: "9,40", cada: "0,94", salsas: "mayonesa, ketchup, mostaza y maíz",
           lleva: ["10 salchichas tipo wieners", "10 panes Fresco grandes", "1 papas ralladas (150 g)", "1 Pepsi de 1,5 L"] },
       ],
     },
@@ -136,9 +133,9 @@
       subtitulo: "de Perro Pequeño",
       productos: [["salchichas-alimex.png", 36, 380, 218, -6], ["pan-perro.png", 318, 300, 300, 0], ["papas-ralladas.png", 508, 372, 232, 5], ["big-cola.png", 700, 276, 338, 0], ["pepsi.png", 812, 292, 326, 0]],
       combos: [
-        { etiqueta: "PAN ARTESANAL", titulo: "20 perros", precio: "17,03", cada: "0,85", salsas: "mayonesa, ketchup y mostaza",
+        { etiqueta: "CLÁSICO", titulo: "20 perros", precio: "17,03", cada: "0,85", salsas: "mayonesa, ketchup y mostaza",
           lleva: ["20 salchichas tipo Viena", "20 panes artesanales pequeños", "2 papas ralladas (150 g)", "2 Big Cola de 2 L"] },
-        { etiqueta: "PAN FRESCO", titulo: "10 perros", precio: "10,11", cada: "1,01", salsas: "mayonesa, ketchup, mostaza y maíz",
+        { titulo: "10 perros", precio: "10,11", cada: "1,01", salsas: "mayonesa, ketchup, mostaza y maíz",
           lleva: ["10 salchichas tipo Viena", "10 panes Fresco pequeños", "1 papas ralladas (150 g)", "1 Pepsi de 1,5 L"] },
       ],
     },
@@ -157,7 +154,7 @@
   }
   d.combos.forEach((c, i) => {
     const n = i + 1;
-    document.querySelector(`#e${n} span`).textContent = c.etiqueta;
+    if (c.etiqueta) document.querySelector(`#e${n} span`).textContent = c.etiqueta;
     document.getElementById("t" + n).textContent = c.titulo;
     document.getElementById("p" + n).innerHTML = `${c.precio}<span> $</span>`;
     const ul = document.getElementById("l" + n);

@@ -4,39 +4,49 @@
 <meta charset="utf-8">
 <title>Flier de hamburguesas (el de ChatGPT, con los productos de verdad) · Villa Real</title>
 <style>
-  /* El flier de hamburguesas que el dueño hizo con ChatGPT (25/11/2026), tal cual, con tres cambios: cada producto de
-     verdad encima del que dibujó ChatGPT (el queso, las papas, la Big Cola y la Pepsi), el pan Brioche y la carne Hot
-     Burger que faltaban, y el león de la marca en vez del dibujado. El fondo y la cinta los saca
-     flier-chatgpt-base.mjs. Todo va en las medidas de la imagen de ChatGPT (941 × 1672) y se agranda a 1080 × 1920.
-     Los precios son los de la imagen: si cambian, hay que rehacer la imagen. */
+  /* El flier de hamburguesas que el dueño hizo con ChatGPT (25/11/2026), tal cual, con los productos de verdad y el león de
+     la marca en vez del dibujado. El fondo y la cinta los saca flier-chatgpt-base.mjs. Todo va en las medidas de la imagen
+     de ChatGPT (941 × 1672) y se agranda a 1080 × 1920. Los precios son los de la imagen: si cambian, hay que rehacerla.
+     26/11/2026 (el dueño: «el pan de hamburguesa mucho más grande, que sea todo bien proporcionado con las medidas de la
+     vida real», y después «el pan Fresco un poco más grande»): los productos que dibujó ChatGPT se borran del fondo
+     (flier-chatgpt-base-limpia.mjs: fondos/chatgpt-hamburguesas-limpia.png), encima va una tabla de madera, y encima van los de
+     verdad, todos a la misma escala, unos 8 px por centímetro: el queso de 29 cm, el pan Brioche de 8 (21 cm de ancho; 28
+     de alto, algo más que en la vida real, como pidió), las papas de 150 g de 27 cm, la Big Cola de 2 L de 33 cm, la Pepsi
+     de 1,5 L de 31 cm y la carne Hot Burger de 11 cm. */
   html, body { margin: 0; padding: 0; background: #5a0507; }
   .lienzo { width: 1080px; height: 1920px; overflow: hidden; }
-  .flier { position: relative; width: 941px; height: 1672px; transform: scale(1.14772); transform-origin: 0 0; background: url("fondos/chatgpt-hamburguesas-base.png") 0 0 / 941px 1672px no-repeat; }
-  .flier img { position: absolute; display: block; }
+  .flier { position: relative; width: 941px; height: 1672px; transform: scale(1.14772); transform-origin: 0 0; background: url("fondos/chatgpt-hamburguesas-limpia.png") 0 0 / 941px 1672px no-repeat; }
+  .flier > * { position: absolute; }
+  .flier img { display: block; }
   .p { filter: drop-shadow(0 10px 10px rgba(40, 0, 0, 0.55)); }
-  /* Tapa el queso que dibujó ChatGPT (el de verdad va más pequeño): el rojo del fondo arriba y la tabla de madera abajo, con el borde suave. */
-  .tapa { position: absolute; left: 200px; top: 282px; width: 166px; height: 352px; z-index: 0; background: linear-gradient(180deg, rgb(178, 22, 8) 0%, rgb(150, 14, 6) 40%, rgb(120, 9, 4) 66%, rgb(112, 52, 28) 76%, rgb(98, 44, 18) 100%); -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%), linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 10px), transparent 100%); -webkit-mask-composite: source-in; mask-composite: intersect; }
+  .madera {
+    left: 198px; top: 598px; width: 560px; height: 57px; z-index: 0; background: url("fondos/madera.jpg") center / cover; filter: saturate(1.1) brightness(0.8);
+    box-shadow: inset 0 12px 16px rgba(40, 10, 0, 0.6);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 16px), transparent 100%), linear-gradient(180deg, transparent 0, #000 10px);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 16px), transparent 100%), linear-gradient(180deg, transparent 0, #000 10px);
+    mask-composite: intersect;
+  }
   /* «ARTESANAL» no le gusta al dueño (25/11/2026): encima, el mismo rojo de la pincelada y «CLÁSICO». */
   @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
-  .nombre-combo { position: absolute; left: 86px; top: 672px; width: 214px; height: 44px; z-index: 4; border-radius: 8px; background: linear-gradient(180deg, rgb(241, 24, 20), rgb(229, 10, 10)); box-shadow: 0 0 6px 3px rgb(236, 16, 14); display: grid; place-items: center; }
+  .nombre-combo { left: 86px; top: 672px; width: 214px; height: 44px; z-index: 4; border-radius: 8px; background: linear-gradient(180deg, rgb(241, 24, 20), rgb(229, 10, 10)); box-shadow: 0 0 6px 3px rgb(236, 16, 14); display: grid; place-items: center; }
   .nombre-combo span { font-family: "Archivo Black"; font-size: 35px; line-height: 1; color: #ffffff; letter-spacing: 0.03em; transform: skewX(-9deg); text-shadow: 0 2px 0 rgba(120, 0, 0, 0.45); }
   .cinta { left: 278px; top: 544px; width: 366px; z-index: 5; }
-  .brillo { position: absolute; left: -10px; top: -45px; width: 264px; height: 345px; z-index: 5; border-radius: 50%; background: radial-gradient(closest-side, rgb(166, 8, 7) 72%, rgba(166, 8, 7, 0) 100%); }
+  .brillo { left: -10px; top: -45px; width: 264px; height: 345px; z-index: 5; border-radius: 50%; background: radial-gradient(closest-side, rgb(166, 8, 7) 72%, rgba(166, 8, 7, 0) 100%); }
   .leon { left: 40px; top: 18px; width: 158px; z-index: 6; filter: drop-shadow(0 6px 8px rgba(40, 0, 0, 0.6)); }
 </style>
 </head>
 <body>
 <div class="lienzo">
   <div class="flier">
-    <!-- Atrás, cada uno encima del que dibujó ChatGPT. -->
-    <div class="tapa"></div>
-    <img class="p" src="fotos/queso-amarillo.png" alt="" style="left: 207px; top: 338px; height: 290px; z-index: 1">
-    <img class="p" src="fotos/papas-ralladas.png" alt="" style="left: 362px; top: 362px; height: 236px; z-index: 1">
-    <img class="p" src="fotos/big-cola.png" alt="" style="left: 551px; top: 286px; height: 334px; z-index: 1">
-    <img class="p" src="fotos/pepsi.png" alt="" style="left: 664px; top: 300px; height: 322px; z-index: 1">
-    <!-- Delante, sobre la cinta: el pan Brioche y la carne Hot Burger. -->
-    <img class="p" src="fotos/pan-hamburguesa.png" alt="" style="left: 318px; top: 398px; height: 176px; z-index: 3">
-    <img class="p" src="fotos/carne-hot-burger.png" alt="" style="left: 468px; top: 452px; height: 124px; z-index: 3; transform: rotate(-6deg)">
+    <div class="madera"></div>
+    <!-- Los productos, a escala (alto en px ≈ 8 × cm), de pie sobre la tabla. -->
+    <img class="p" src="fotos/queso-amarillo.png" alt="" style="left: 206px; top: 390px; height: 232px; z-index: 1">
+    <img class="p" src="fotos/papas-ralladas.png" alt="" style="left: 476px; top: 402px; height: 216px; z-index: 1">
+    <img class="p" src="fotos/big-cola.png" alt="" style="left: 628px; top: 356px; height: 264px; z-index: 1">
+    <img class="p" src="fotos/pepsi.png" alt="" style="left: 702px; top: 372px; height: 248px; z-index: 1">
+    <img class="p" src="fotos/pan-hamburguesa.png" alt="" style="left: 296px; top: 392px; height: 224px; z-index: 2">
+    <img class="p" src="fotos/carne-hot-burger.png" alt="" style="left: 214px; top: 552px; height: 69px; z-index: 3; transform: rotate(-6deg)">
     <div class="nombre-combo"><span>CLÁSICO</span></div>
     <img class="cinta" src="fondos/chatgpt-hamburguesas-cinta.png" alt="">
     <div class="brillo"></div>
