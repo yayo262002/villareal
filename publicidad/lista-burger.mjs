@@ -31,10 +31,20 @@ const grupos = filasDeMisPrecios(productos, variantes, familias, tasa)
     articulos: g.filas.filter((f) => f.precio !== null).map((f) => ({ nombre: f.detalle ? `${f.tipo} · ${f.detalle}` : f.tipo, unidad: f.porKilo ? "kg" : "unidad", usd: f.precio, bs: bsDe(f.precio) })),
   }))
   .filter((g) => g.articulos.length > 0);
-// Lo que lleva cada combo, en corto: sin lo que va entre paréntesis y con las salsas resumidas. Con la descripción entera
-// de la web, cada combo llenaba una pantalla del teléfono (26/11/2026). En la web sigue entera.
-const enCorto = (d) => String(d).replace(/\s*\([^)]*\)/g, "").replace(/\.?\s*Con las salsas aparte[\s\S]*$/, ", con salsas aparte").replace(/\.$/, "");
-if (ofertas.length) grupos.push({ nombre: "Combos", articulos: ofertas.map((o) => ({ nombre: `${o.nombre}: ${enCorto(o.descripcion)}`, unidad: "unidad", usd: o.precio_usd, bs: bsDe(o.precio_usd) })) });
+// Lo que lleva cada combo, en corto: sin lo que va entre paréntesis y sin la salsa adicional, que va en su propia línea al
+// final (26/11/2026: los combos no llevan salsa; cada pote es un adicional de 0,50 $ y el cliente elige cuál). Con la
+// descripción entera de la web, cada combo llenaba una pantalla del teléfono. En la web sigue entera.
+const ADICIONAL = /\s*Salsa adicional: ([\d,]+) \$ cada pote[^:]*: ([\s\S]*?)\.?$/;
+const enCorto = (d) => String(d).replace(ADICIONAL, "").replace(/\s*\([^)]*\)/g, "").replace(/\.$/, "");
+if (ofertas.length) {
+  const articulos = ofertas.map((o) => ({ nombre: `${o.nombre}: ${enCorto(o.descripcion)}`, unidad: "unidad", usd: o.precio_usd, bs: bsDe(o.precio_usd) }));
+  const salsa = ofertas.map((o) => String(o.descripcion).match(ADICIONAL)).find(Boolean);
+  if (salsa) {
+    const usd = Number(salsa[1].replace(",", "."));
+    articulos.push({ nombre: `Salsa adicional para el combo, la que elijas: ${salsa[2]}`, unidad: "pote", usd, bs: bsDe(usd) });
+  }
+  grupos.push({ nombre: "Combos", articulos });
+}
 
 const ahora = new Date(Date.now() - 4 * 3600 * 1000);
 const dia = ahora.toISOString().slice(0, 10);

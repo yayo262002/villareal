@@ -1716,8 +1716,8 @@ Binance y otro.
   cantidad (los combos de 10 hamburguesas o de 20 perros, 24/11/2026), el
   afiche es cuadrado (4:5 en un teléfono estrecho) y lo que lleva empieza
   debajo de la etiqueta del precio, para que quepa todo y nada quede tapado.
-  Si aun así no cabe (con las salsas aparte, un combo lleva hasta nueve
-  cosas), el afiche crece hacia abajo en vez de cortar la última.
+  Si aun así no cabe (cuando llevaban las salsas, un combo tenía hasta
+  nueve cosas), el afiche crece hacia abajo en vez de cortar la última.
   Los combos del burger son seis: el clásico de 10 hamburguesas y el
   premium de 8 (25/11/2026; «clásico», no «artesanal», que al dueño no le
   gusta como nombre de combo), y cuatro de perros (26/11/2026), que se
@@ -1726,9 +1726,14 @@ Binance y otro.
   el artesanal (bolsa de 10) o el Fresco con ajonjolí. El **perro
   pequeño** lleva la Alimex (de 10) y el pan pequeño: el artesanal (bolsa
   de 20, 20 perros) o el Fresco junior. El pan Fresco va con Pepsi y el
-  artesanal con Big Cola. En la lista del burger en PDF
+  artesanal con Big Cola. **Los combos no llevan salsa** (26/11/2026):
+  su precio es lo que suman sus productos, y cada salsa es un adicional
+  de 0,50 $ el pote T5, la que elija el cliente (de cada bolsa Gustossa
+  salen 6 potes: 150 g de la de 900 g, unos 165 g de la de 1 kg); lo
+  dice la descripción de cada combo. En la lista del burger en PDF
   (`publicidad/lista-burger.mjs`) cada combo va con lo que lleva en
-  corto; la descripción entera, en la web.
+  corto, y la salsa adicional en su propia línea al final; la
+  descripción entera, en la web.
 
 ## La vitrina y el carrito
 
