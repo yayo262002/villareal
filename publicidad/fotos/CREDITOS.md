@@ -14,6 +14,9 @@ Las que no son suyas:
   `PRODUCTOS EN PNG/` el 18/11/2026; aquí, recortadas al paquete.
 - `salchichas-alimex.png`: la foto del paquete de salchichas Alimex tipo Viena que mandó el dueño el
   26/11/2026 (parece la de la propia marca); aquí, sin el blanco de alrededor.
+- `pan-perro-artesanal.png` y `pan-hamburguesa-artesanal.png`: las fotos de pan de perro y de pan de
+  hamburguesa con ajonjolí que mandó el dueño el 26/11/2026 para su pan artesanal (parecen de un banco de
+  fotos: no son de su pan); aquí, sin el fondo blanco y, en la de perro, sin el aviso negro de la captura.
 - `pepperoni-la-vega.png`: la foto del pepperoni de la web de La Vega Alimentos
   (https://lavegaalimentos.com/productos/), sin la bandeja; el dueño pidió «una foto que sí» tenga
   etiqueta para el pepperoni estándar, que sale de producción sin ella.

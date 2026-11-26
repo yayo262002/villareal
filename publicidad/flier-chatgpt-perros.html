@@ -12,8 +12,10 @@
      Desde el 26/11/2026 son dos fliers, como los combos de la web: ?perro=grande (las wieners con el pan grande) y
      ?perro=pequeno (la Alimex con el pan pequeño), cada uno con su combo clásico (pan artesanal y Big Cola) y el premium (pan
      Fresco y Pepsi). Los textos y los precios están en DATOS, abajo: los de la web ese día; si cambian, hay que rehacer la imagen.
-     Arriba solo van los productos que tienen foto de verdad (la del pan Fresco es la del pequeño; la de la Alimex la mandó
-     el dueño el 26/11; aún no hay del pan grande). */
+     Arriba solo van los productos que tienen foto de verdad (la del pan Fresco es la del pequeño, y el dueño quiere la
+     misma para el grande; la de la Alimex y la del pan artesanal, la misma para el grande y el pequeño, las mandó el 26/11).
+     Desde el 26/11/2026 los combos no llevan salsa: cada pote es un adicional de 0,50 $ que elige el cliente. La cinta
+     ya no dice «CON SALSAS» (flier-cinta-sin-salsas.mjs) sino «PARA TU NEGOCIO». */
   @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
   @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
   @font-face { font-family: "Kaushan Script"; src: url("fuentes/KaushanScript-Regular.ttf"); }
@@ -49,6 +51,7 @@
   /* Las etiquetas, como en el de hamburguesas (el dueño, 26/11/2026: «que no diga artesanal, que uno diga clásico y el otro
      premium»): «CLÁSICO» sobre el «ARTESANAL» de la primera tarjeta; la segunda deja el «★ PREMIUM» de la imagen. */
   .cinta { left: 278px; top: 544px; width: 366px; z-index: 5; }
+  .cinta-texto { left: 282px; top: 562px; width: 330px; z-index: 5; text-align: center; font-family: "Archivo Black"; font-size: 26px; line-height: 1; color: #111111; white-space: nowrap; transform: rotate(-6deg); }
   .brillo { left: -10px; top: -45px; width: 264px; height: 345px; z-index: 5; border-radius: 50%; background: radial-gradient(closest-side, rgb(166, 8, 7) 72%, rgba(166, 8, 7, 0) 100%); }
   .leon { left: 40px; top: 18px; width: 158px; z-index: 6; filter: drop-shadow(0 6px 8px rgba(40, 0, 0, 0.6)); }
 
@@ -88,7 +91,8 @@
     <div class="subtitulo" id="subtitulo"></div>
     <svg class="subrayado" viewBox="0 0 480 34"><path d="M8 26 C 140 6, 330 2, 472 12" stroke="#5a0505" stroke-width="16" fill="none" stroke-linecap="round"/><path d="M8 24 C 140 4, 330 0, 472 10" stroke="#ffd21a" stroke-width="9" fill="none" stroke-linecap="round"/></svg>
     <!-- Aquí van los productos, de pie sobre la madera (los pone el guion de abajo, delante de la cinta). -->
-    <img class="cinta" src="fondos/chatgpt-hamburguesas-cinta.png" alt="">
+    <img class="cinta" src="fondos/chatgpt-cinta-sin-salsas.png" alt="">
+    <div class="cinta-texto">PARA TU NEGOCIO</div>
     <div class="brillo"></div>
     <img class="leon" src="../public/marca/leon.svg" alt="">
 
@@ -117,29 +121,33 @@
   </div>
 </div>
 <script>
-  // Los combos de perros de la web el 26/11/2026 (ofertas 7 a 10). Cada producto: [foto, left, top, alto, giro].
+  // Los combos de perros de la web el 26/11/2026 (ofertas 7 a 10), sin salsa. Cada producto: [foto, left, top, alto, giro].
+  // Las papas en el medio (su marca va arriba) y el pan Fresco a la derecha, fuera de la cinta (su marca va abajo).
+  const PANES = [["pan-perro-artesanal.png", 282, 414, 192, 0], ["papas-ralladas.png", 440, 388, 220, 5], ["pan-perro.png", 600, 352, 250, 0]];
+  const BEBIDAS = [["big-cola.png", 772, 318, 290, 0], ["pepsi.png", 852, 334, 274, 0]];
   const DATOS = {
     grande: {
       subtitulo: "de Perro Grande",
-      productos: [["salchichas.png", 112, 372, 236, -7], ["papas-ralladas.png", 437, 372, 232, 5], ["big-cola.png", 625, 276, 338, 0], ["pepsi.png", 738, 292, 326, 0]],
+      productos: [["salchichas.png", 24, 406, 200, -6], ...PANES, ...BEBIDAS],
       combos: [
-        { etiqueta: "CLÁSICO", titulo: "10 perros", precio: "7,53", cada: "0,75", salsas: "mayonesa, ketchup y mostaza",
+        { etiqueta: "CLÁSICO", titulo: "10 perros", precio: "6,72", cada: "0,67",
           lleva: ["10 salchichas tipo wieners", "10 panes artesanales grandes", "1 papas ralladas (150 g)", "1 Big Cola de 2 L"] },
-        { titulo: "10 perros", precio: "9,40", cada: "0,94", salsas: "mayonesa, ketchup, mostaza y maíz",
+        { titulo: "10 perros", precio: "8,28", cada: "0,83",
           lleva: ["10 salchichas tipo wieners", "10 panes Fresco grandes", "1 papas ralladas (150 g)", "1 Pepsi de 1,5 L"] },
       ],
     },
     pequeno: {
       subtitulo: "de Perro Pequeño",
-      productos: [["salchichas-alimex.png", 36, 380, 218, -6], ["pan-perro.png", 318, 300, 300, 0], ["papas-ralladas.png", 508, 372, 232, 5], ["big-cola.png", 700, 276, 338, 0], ["pepsi.png", 812, 292, 326, 0]],
+      productos: [["salchichas-alimex.png", 24, 426, 180, -6], ...PANES, ...BEBIDAS],
       combos: [
-        { etiqueta: "CLÁSICO", titulo: "20 perros", precio: "17,03", cada: "0,85", salsas: "mayonesa, ketchup y mostaza",
+        { etiqueta: "CLÁSICO", titulo: "20 perros", precio: "15,64", cada: "0,78",
           lleva: ["20 salchichas tipo Viena", "20 panes artesanales pequeños", "2 papas ralladas (150 g)", "2 Big Cola de 2 L"] },
-        { titulo: "10 perros", precio: "10,11", cada: "1,01", salsas: "mayonesa, ketchup, mostaza y maíz",
+        { titulo: "10 perros", precio: "8,99", cada: "0,90",
           lleva: ["10 salchichas tipo Viena", "10 panes Fresco pequeños", "1 papas ralladas (150 g)", "1 Pepsi de 1,5 L"] },
       ],
     },
   };
+  const SALSA = "Salsa adicional: 0,50 $ el pote, la que elijas";
   const d = DATOS[new URLSearchParams(location.search).get("perro")] ?? DATOS.grande;
   const flier = document.querySelector(".flier");
   const cinta = document.querySelector(".cinta");
@@ -159,7 +167,7 @@
     document.getElementById("p" + n).innerHTML = `${c.precio}<span> $</span>`;
     const ul = document.getElementById("l" + n);
     for (const que of c.lleva) ul.append(Object.assign(document.createElement("li"), { textContent: que }));
-    ul.append(Object.assign(document.createElement("li"), { className: "salsas", textContent: "Salsas aparte: " + c.salsas }));
+    ul.append(Object.assign(document.createElement("li"), { className: "salsas", textContent: SALSA }));
     document.getElementById("s" + n).innerHTML = `Sale a <b>${c.cada} $</b> cada perro con papas y refresco`;
   });
 </script>
