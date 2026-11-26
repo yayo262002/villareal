@@ -1716,6 +1716,12 @@ Binance y otro.
   cantidad (los combos de 10 hamburguesas o de 20 perros, 24/11/2026), el
   afiche es cuadrado (4:5 en un teléfono estrecho) y lo que lleva empieza
   debajo de la etiqueta del precio, para que quepa todo y nada quede tapado.
+  Si aun así no cabe (con las salsas aparte, un combo lleva hasta nueve
+  cosas), el afiche crece hacia abajo en vez de cortar la última.
+  Los combos del burger (25/11/2026) son seis: el clásico y el premium de
+  10 hamburguesas (8 en el premium), de 20 perros y de 10 perros (los de
+  10, con la salchicha Alimex, que viene de 10); «clásico», no
+  «artesanal», que al dueño no le gusta como nombre.
 
 ## La vitrina y el carrito
 

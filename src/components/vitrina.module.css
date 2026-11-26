@@ -1497,19 +1497,27 @@
 }
 /* Cuatro productos o más, todos con letra (los combos de 10 hamburguesas o de 20 perros): en 16:10 no cabían y la
    etiqueta del precio tapaba uno. El afiche se hace cuadrado, como un volante, lo que lleva empieza debajo de la
-   etiqueta y cada casilla es algo más pequeña. */
+   etiqueta y cada casilla es algo más pequeña. Con las salsas aparte (25/11/2026) un combo lleva hasta nueve cosas y
+   ni el cuadrado bastaba: la última se cortaba y las de arriba subían bajo la etiqueta. Por eso el afiche va en el
+   flujo de la tarjeta y el cuadrado es solo su medida mínima: si lo que lleva no cabe, crece hacia abajo (con
+   «overflow: clip», que no es una caja con barra, la proporción deja crecer la caja hasta su contenido). */
 .ofertaFoto:has(.aficheMuchas) {
+  aspect-ratio: auto;
+}
+.aficheMuchas {
+  position: relative;
+  inset: auto;
   aspect-ratio: 1;
+  overflow: hidden;
+  overflow: clip;
+  padding-top: 98px;
+  align-content: center;
 }
 /* En un teléfono estrecho los nombres se parten en dos renglones: el afiche, un poco más alto que ancho. */
 @media (max-width: 380px) {
-  .ofertaFoto:has(.aficheMuchas) {
+  .aficheMuchas {
     aspect-ratio: 4 / 5;
   }
-}
-.aficheMuchas {
-  padding-top: 98px;
-  align-content: center;
 }
 .aficheMuchas .aficheLetras {
   gap: 8px;
