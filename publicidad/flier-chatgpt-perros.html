@@ -82,11 +82,11 @@
     <svg class="subrayado" viewBox="0 0 480 34"><path d="M8 26 C 140 6, 330 2, 472 12" stroke="#5a0505" stroke-width="16" fill="none" stroke-linecap="round"/><path d="M8 24 C 140 4, 330 0, 472 10" stroke="#ffd21a" stroke-width="9" fill="none" stroke-linecap="round"/></svg>
 
     <!-- Los productos de los perros, de pie sobre la madera. -->
-    <img class="p" src="fotos/salchichas.png" alt="" style="left: 40px; top: 372px; height: 236px; transform: rotate(-7deg); z-index: 2">
-    <img class="p" src="fotos/pan-perro.png" alt="" style="left: 318px; top: 300px; height: 300px; z-index: 2">
-    <img class="p" src="fotos/papas-ralladas.png" alt="" style="left: 508px; top: 372px; height: 232px; transform: rotate(5deg); z-index: 3">
-    <img class="p" src="fotos/big-cola.png" alt="" style="left: 700px; top: 276px; height: 338px; z-index: 2">
-    <img class="p" src="fotos/pepsi.png" alt="" style="left: 812px; top: 292px; height: 326px; z-index: 2">
+    <img class="p" id="f-salchichas" src="fotos/salchichas.png" alt="" style="left: 40px; top: 372px; height: 236px; transform: rotate(-7deg); z-index: 2">
+    <img class="p" id="f-pan" src="fotos/pan-perro.png" alt="" style="left: 318px; top: 300px; height: 300px; z-index: 2">
+    <img class="p" id="f-papas" src="fotos/papas-ralladas.png" alt="" style="left: 508px; top: 372px; height: 232px; transform: rotate(5deg); z-index: 3">
+    <img class="p" id="f-cola" src="fotos/big-cola.png" alt="" style="left: 700px; top: 276px; height: 338px; z-index: 2">
+    <img class="p" id="f-pepsi" src="fotos/pepsi.png" alt="" style="left: 812px; top: 292px; height: 326px; z-index: 2">
     <img class="cinta" src="fondos/chatgpt-hamburguesas-cinta.png" alt="">
     <div class="brillo"></div>
     <img class="leon" src="../public/marca/leon.svg" alt="">
@@ -98,14 +98,14 @@
     <div class="crema" style="left: 64px; top: 798px; width: 830px; height: 134px"></div>
     <div class="rojo" style="left: 612px; top: 708px; width: 284px; height: 80px"></div>
     <div class="amarillo" style="left: 118px; top: 946px; width: 716px; height: 38px"></div>
-    <div class="titulo" style="left: 72px; top: 728px">20 perros</div>
-    <div class="precio" style="left: 604px; top: 704px">13,61<span> $</span></div>
-    <ul class="lista" style="left: 76px; top: 806px">
+    <div class="titulo" id="t1" style="left: 72px; top: 728px">20 perros</div>
+    <div class="precio" id="p1" style="left: 604px; top: 704px">13,61<span> $</span></div>
+    <ul class="lista" id="l1" style="left: 76px; top: 806px">
       <li>20 salchichas tipo wieners</li><li>20 panes artesanales</li>
       <li>2 papas ralladas (150 g)</li><li>2 Big Cola de 2 L</li>
       <li class="salsas">Salsas aparte: mayonesa, ketchup y mostaza</li>
     </ul>
-    <div class="sale" style="left: 98px; top: 948px">Sale a <b>0,68 $</b> cada perro con papas y refresco</div>
+    <div class="sale" id="s1" style="left: 98px; top: 948px">Sale a <b>0,68 $</b> cada perro con papas y refresco</div>
 
     <!-- El combo premium. -->
     <div class="crema" style="left: 350px; top: 1074px; width: 218px; height: 116px"></div>
@@ -113,15 +113,36 @@
     <div class="crema" style="left: 64px; top: 1190px; width: 830px; height: 134px"></div>
     <div class="rojo" style="left: 612px; top: 1066px; width: 284px; height: 80px"></div>
     <div class="amarillo" style="left: 118px; top: 1334px; width: 716px; height: 38px"></div>
-    <div class="titulo" style="left: 72px; top: 1092px">20 perros</div>
-    <div class="precio" style="left: 604px; top: 1062px">21,89<span> $</span></div>
-    <ul class="lista" style="left: 76px; top: 1176px">
+    <div class="titulo" id="t2" style="left: 72px; top: 1092px">20 perros</div>
+    <div class="precio" id="p2" style="left: 604px; top: 1062px">21,89<span> $</span></div>
+    <ul class="lista" id="l2" style="left: 76px; top: 1176px">
       <li>20 salchichas tipo Viena</li><li>20 panes grandes con ajonjolí</li>
       <li>2 papas ralladas (150 g)</li><li>2 Pepsi de 1,5 L</li>
       <li class="salsas">Salsas aparte: mayonesa, ketchup, mostaza y maíz</li>
     </ul>
-    <div class="sale" style="left: 98px; top: 1336px">Sale a <b>1,09 $</b> cada perro con papas y refresco</div>
+    <div class="sale" id="s2" style="left: 98px; top: 1336px">Sale a <b>1,09 $</b> cada perro con papas y refresco</div>
   </div>
 </div>
+<script>
+  // ?perros=10: los combos de 10 perros (25/11/2026), en el mismo flier. Los dos llevan la salchicha Alimex, que viene
+  // de 10; aún no hay foto suya, y la de la Purolomo sería de otra marca: arriba van el pan, las papas y los refrescos.
+  // Los precios son los de la web ese día (ofertas 9 y 10): si cambian, hay que rehacer la imagen.
+  if (new URLSearchParams(location.search).get("perros") === "10") {
+    const poner = (id, html) => { document.getElementById(id).innerHTML = html; };
+    poner("t1", "10 perros"); poner("t2", "10 perros");
+    poner("p1", "9,24<span> $</span>"); poner("p2", "11,11<span> $</span>");
+    poner("l1", "<li>10 salchichas tipo Viena</li><li>10 panes artesanales</li><li>1 papas ralladas (150 g)</li><li>1 Big Cola de 2 L</li><li class=\"salsas\">Salsas aparte: mayonesa, ketchup y mostaza</li>");
+    poner("l2", "<li>10 salchichas tipo Viena</li><li>10 panes grandes con ajonjolí</li><li>1 papas ralladas (150 g)</li><li>1 Pepsi de 1,5 L</li><li class=\"salsas\">Salsas aparte: mayonesa, ketchup, mostaza y maíz</li>");
+    poner("s1", "Sale a <b>0,92 $</b> cada perro con papas y refresco");
+    poner("s2", "Sale a <b>1,11 $</b> cada perro con papas y refresco");
+    document.getElementById("f-salchichas").remove();
+    const mover = (id, estilo) => { document.getElementById(id).style.cssText += estilo; };
+    mover("f-pan", "left: 157px; top: 300px; height: 300px");
+    mover("f-papas", "left: 391px; top: 372px; height: 232px");
+    mover("f-cola", "left: 579px; top: 276px; height: 338px");
+    mover("f-pepsi", "left: 692px; top: 292px; height: 326px");
+    document.title = "Flier de 10 perros (sobre el de ChatGPT) · Villa Real";
+  }
+</script>
 </body>
 </html>
