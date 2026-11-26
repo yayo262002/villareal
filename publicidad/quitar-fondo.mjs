@@ -25,7 +25,7 @@ const argumentos = process.argv.slice(2);
 const SOLO_LO_BLANCO = new Set(["mozzarella"]);
 /** Fotos en que el recortador toma el envoltorio por fondo (un paquete rosado, translúcido): el fondo es lo que
  *  se toca desde los bordes de la foto y no tiene color (gris, blanco o negro); lo demás es producto. */
-const DESDE_LOS_BORDES = new Set(["pechuga-de-pavo", "tocineta-cumbre-fresca"]);
+const DESDE_LOS_BORDES = new Set(["pechuga-de-pavo", "tocineta-cumbre-fresca", "salchichas-alimex"]);
 /** Fotos que ya vienen bien recortadas (de un banco de fotos, o el pan, la mortadela extra, el queso paisa y las pechugas de pavo Drago, que el dueño mandó sin fondo): se respeta su transparencia. */
 const CON_SU_RECORTE = new Set(["huevos", "pan-de-sandwich", "mortadela-extra", "queso-paisa", "pechuga-de-pavo-drago", "pechuga-de-pavo-ahumada"]);
 /** Fotos con un tinte azul o lila en el envoltorio (reflejos del fondo azul en que se fotografió): los píxeles
