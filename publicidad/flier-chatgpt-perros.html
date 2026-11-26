@@ -2,13 +2,18 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Flier de perros (sobre el de ChatGPT) · Villa Real</title>
+<title>Flier de los combos de perros (sobre el de ChatGPT) · Villa Real</title>
 <style>
   /* El flier de perros calientes, igual al de hamburguesas que el dueño hizo con ChatGPT (25/11/2026: «me gustó, hazme
      el de perros igual»): de su imagen salen tal cual el fondo, «COMBOS», la cinta de VILLA REAL, las tarjetas, el
      WhatsApp y el delivery. Debajo de «COMBOS» va lo de perros (el subtítulo, la madera y los productos de verdad) y en
      las tarjetas se cambian los textos y los precios, cada uno sobre un parche del color de lo que tapa. Todo va en las
-     medidas de la imagen de ChatGPT (941 × 1672) y se agranda a 1080 × 1920. */
+     medidas de la imagen de ChatGPT (941 × 1672) y se agranda a 1080 × 1920.
+     Desde el 26/11/2026 son dos fliers, como los combos de la web: ?perro=grande (las wieners con el pan grande) y
+     ?perro=pequeno (la Alimex con el pan pequeño), cada uno con su combo de pan artesanal y Big Cola y el de pan Fresco y
+     Pepsi. Los textos y los precios están en DATOS, abajo: los de la web ese día; si cambian, hay que rehacer la imagen.
+     Arriba solo van los productos que tienen foto de verdad (la del pan Fresco es la del pequeño; no hay del pan grande ni
+     de la Alimex). */
   @font-face { font-family: "Archivo Black"; src: url("../src/assets/fuentes/ArchivoBlack-Regular.ttf"); }
   @font-face { font-family: "Open Sans"; src: url("fuentes/OpenSans.ttf"); font-weight: 300 800; font-stretch: 75% 100%; font-style: normal; }
   @font-face { font-family: "Kaushan Script"; src: url("fuentes/KaushanScript-Regular.ttf"); }
@@ -40,7 +45,11 @@
   .destellos { left: 0; top: 300px; width: 941px; height: 120px; z-index: 1; }
 
   .nombre-combo { left: 86px; top: 672px; width: 214px; height: 44px; z-index: 4; border-radius: 8px; background: linear-gradient(180deg, rgb(241, 24, 20), rgb(229, 10, 10)); box-shadow: 0 0 6px 3px rgb(236, 16, 14); display: grid; place-items: center; }
-  .nombre-combo span { font-family: "Archivo Black"; font-size: 35px; line-height: 1; color: #ffffff; letter-spacing: 0.03em; transform: skewX(-9deg); text-shadow: 0 2px 0 rgba(120, 0, 0, 0.45); }
+  .nombre-combo span { font-family: "Archivo Black"; font-size: 28px; line-height: 1; color: #ffffff; letter-spacing: 0.03em; transform: skewX(-9deg); text-shadow: 0 2px 0 rgba(120, 0, 0, 0.45); }
+  /* «PAN ARTESANAL», más largo que el «ARTESANAL» que tapa; «PAN FRESCO», sobre el «PREMIUM» de la segunda tarjeta (la
+     estrella se queda). */
+  #e1 { left: 58px; width: 292px; }
+  #e2 { left: 112px; top: 1033px; width: 238px; height: 48px; background: linear-gradient(180deg, rgb(227, 40, 38), rgb(196, 10, 8)); box-shadow: 0 0 6px 3px rgb(212, 20, 18); }
   .cinta { left: 278px; top: 544px; width: 366px; z-index: 5; }
   .brillo { left: -10px; top: -45px; width: 264px; height: 345px; z-index: 5; border-radius: 50%; background: radial-gradient(closest-side, rgb(166, 8, 7) 72%, rgba(166, 8, 7, 0) 100%); }
   .leon { left: 40px; top: 18px; width: 158px; z-index: 6; filter: drop-shadow(0 6px 8px rgba(40, 0, 0, 0.6)); }
@@ -78,71 +87,84 @@
     <div class="fondo-nuevo"></div>
     <div class="madera"></div>
     <svg class="destellos" viewBox="0 0 941 120"><g stroke="#ffffff" stroke-width="9" stroke-linecap="round"><path d="M60 40 95 70M40 92 88 96M98 10 112 52"/><path d="M880 40 845 70M900 92 852 96M842 10 828 52"/></g></svg>
-    <div class="subtitulo">de Perros Calientes</div>
+    <div class="subtitulo" id="subtitulo"></div>
     <svg class="subrayado" viewBox="0 0 480 34"><path d="M8 26 C 140 6, 330 2, 472 12" stroke="#5a0505" stroke-width="16" fill="none" stroke-linecap="round"/><path d="M8 24 C 140 4, 330 0, 472 10" stroke="#ffd21a" stroke-width="9" fill="none" stroke-linecap="round"/></svg>
-
-    <!-- Los productos de los perros, de pie sobre la madera. -->
-    <img class="p" id="f-salchichas" src="fotos/salchichas.png" alt="" style="left: 40px; top: 372px; height: 236px; transform: rotate(-7deg); z-index: 2">
-    <img class="p" id="f-pan" src="fotos/pan-perro.png" alt="" style="left: 318px; top: 300px; height: 300px; z-index: 2">
-    <img class="p" id="f-papas" src="fotos/papas-ralladas.png" alt="" style="left: 508px; top: 372px; height: 232px; transform: rotate(5deg); z-index: 3">
-    <img class="p" id="f-cola" src="fotos/big-cola.png" alt="" style="left: 700px; top: 276px; height: 338px; z-index: 2">
-    <img class="p" id="f-pepsi" src="fotos/pepsi.png" alt="" style="left: 812px; top: 292px; height: 326px; z-index: 2">
+    <!-- Aquí van los productos, de pie sobre la madera (los pone el guion de abajo, delante de la cinta). -->
     <img class="cinta" src="fondos/chatgpt-hamburguesas-cinta.png" alt="">
     <div class="brillo"></div>
     <img class="leon" src="../public/marca/leon.svg" alt="">
 
-    <!-- El combo clásico. -->
-    <div class="nombre-combo"><span>CLÁSICO</span></div>
+    <!-- La primera tarjeta: pan artesanal y Big Cola. -->
+    <div class="nombre-combo" id="e1"><span></span></div>
     <div class="crema" style="left: 300px; top: 710px; width: 268px; height: 84px"></div>
-    <div class="crema" style="left: 64px; top: 730px; width: 300px; height: 64px"></div>
+    <div class="crema" style="left: 64px; top: 719px; width: 300px; height: 75px"></div>
     <div class="crema" style="left: 64px; top: 798px; width: 830px; height: 134px"></div>
     <div class="rojo" style="left: 612px; top: 708px; width: 284px; height: 80px"></div>
     <div class="amarillo" style="left: 118px; top: 946px; width: 716px; height: 38px"></div>
-    <div class="titulo" id="t1" style="left: 72px; top: 728px">20 perros</div>
-    <div class="precio" id="p1" style="left: 604px; top: 704px">13,61<span> $</span></div>
-    <ul class="lista" id="l1" style="left: 76px; top: 806px">
-      <li>20 salchichas tipo wieners</li><li>20 panes artesanales</li>
-      <li>2 papas ralladas (150 g)</li><li>2 Big Cola de 2 L</li>
-      <li class="salsas">Salsas aparte: mayonesa, ketchup y mostaza</li>
-    </ul>
-    <div class="sale" id="s1" style="left: 98px; top: 948px">Sale a <b>0,68 $</b> cada perro con papas y refresco</div>
+    <div class="titulo" id="t1" style="left: 72px; top: 728px"></div>
+    <div class="precio" id="p1" style="left: 604px; top: 704px"></div>
+    <ul class="lista" id="l1" style="left: 76px; top: 806px"></ul>
+    <div class="sale" id="s1" style="left: 98px; top: 948px"></div>
 
-    <!-- El combo premium. -->
+    <!-- La segunda: pan Fresco y Pepsi. -->
+    <div class="nombre-combo" id="e2"><span></span></div>
     <div class="crema" style="left: 350px; top: 1074px; width: 218px; height: 116px"></div>
     <div class="crema" style="left: 64px; top: 1090px; width: 300px; height: 100px"></div>
     <div class="crema" style="left: 64px; top: 1190px; width: 830px; height: 134px"></div>
     <div class="rojo" style="left: 612px; top: 1066px; width: 284px; height: 80px"></div>
     <div class="amarillo" style="left: 118px; top: 1334px; width: 716px; height: 38px"></div>
-    <div class="titulo" id="t2" style="left: 72px; top: 1092px">20 perros</div>
-    <div class="precio" id="p2" style="left: 604px; top: 1062px">21,89<span> $</span></div>
-    <ul class="lista" id="l2" style="left: 76px; top: 1176px">
-      <li>20 salchichas tipo Viena</li><li>20 panes grandes con ajonjolí</li>
-      <li>2 papas ralladas (150 g)</li><li>2 Pepsi de 1,5 L</li>
-      <li class="salsas">Salsas aparte: mayonesa, ketchup, mostaza y maíz</li>
-    </ul>
-    <div class="sale" id="s2" style="left: 98px; top: 1336px">Sale a <b>1,09 $</b> cada perro con papas y refresco</div>
+    <div class="titulo" id="t2" style="left: 72px; top: 1092px"></div>
+    <div class="precio" id="p2" style="left: 604px; top: 1062px"></div>
+    <ul class="lista" id="l2" style="left: 76px; top: 1176px"></ul>
+    <div class="sale" id="s2" style="left: 98px; top: 1336px"></div>
   </div>
 </div>
 <script>
-  // ?perros=10: los combos de 10 perros (25/11/2026), en el mismo flier. Los dos llevan la salchicha Alimex, que viene
-  // de 10; aún no hay foto suya, y la de la Purolomo sería de otra marca: arriba van el pan, las papas y los refrescos.
-  // Los precios son los de la web ese día (ofertas 9 y 10): si cambian, hay que rehacer la imagen.
-  if (new URLSearchParams(location.search).get("perros") === "10") {
-    const poner = (id, html) => { document.getElementById(id).innerHTML = html; };
-    poner("t1", "10 perros"); poner("t2", "10 perros");
-    poner("p1", "9,24<span> $</span>"); poner("p2", "11,11<span> $</span>");
-    poner("l1", "<li>10 salchichas tipo Viena</li><li>10 panes artesanales</li><li>1 papas ralladas (150 g)</li><li>1 Big Cola de 2 L</li><li class=\"salsas\">Salsas aparte: mayonesa, ketchup y mostaza</li>");
-    poner("l2", "<li>10 salchichas tipo Viena</li><li>10 panes grandes con ajonjolí</li><li>1 papas ralladas (150 g)</li><li>1 Pepsi de 1,5 L</li><li class=\"salsas\">Salsas aparte: mayonesa, ketchup, mostaza y maíz</li>");
-    poner("s1", "Sale a <b>0,92 $</b> cada perro con papas y refresco");
-    poner("s2", "Sale a <b>1,11 $</b> cada perro con papas y refresco");
-    document.getElementById("f-salchichas").remove();
-    const mover = (id, estilo) => { document.getElementById(id).style.cssText += estilo; };
-    mover("f-pan", "left: 157px; top: 300px; height: 300px");
-    mover("f-papas", "left: 391px; top: 372px; height: 232px");
-    mover("f-cola", "left: 579px; top: 276px; height: 338px");
-    mover("f-pepsi", "left: 692px; top: 292px; height: 326px");
-    document.title = "Flier de 10 perros (sobre el de ChatGPT) · Villa Real";
+  // Los combos de perros de la web el 26/11/2026 (ofertas 7 a 10). Cada producto: [foto, left, top, alto, giro].
+  const DATOS = {
+    grande: {
+      subtitulo: "de Perro Grande",
+      productos: [["salchichas.png", 112, 372, 236, -7], ["papas-ralladas.png", 437, 372, 232, 5], ["big-cola.png", 625, 276, 338, 0], ["pepsi.png", 738, 292, 326, 0]],
+      combos: [
+        { etiqueta: "PAN ARTESANAL", titulo: "10 perros", precio: "7,53", cada: "0,75", salsas: "mayonesa, ketchup y mostaza",
+          lleva: ["10 salchichas tipo wieners", "10 panes artesanales grandes", "1 papas ralladas (150 g)", "1 Big Cola de 2 L"] },
+        { etiqueta: "PAN FRESCO", titulo: "10 perros", precio: "9,40", cada: "0,94", salsas: "mayonesa, ketchup, mostaza y maíz",
+          lleva: ["10 salchichas tipo wieners", "10 panes Fresco grandes", "1 papas ralladas (150 g)", "1 Pepsi de 1,5 L"] },
+      ],
+    },
+    pequeno: {
+      subtitulo: "de Perro Pequeño",
+      productos: [["pan-perro.png", 157, 300, 300, 0], ["papas-ralladas.png", 391, 372, 232, 5], ["big-cola.png", 579, 276, 338, 0], ["pepsi.png", 692, 292, 326, 0]],
+      combos: [
+        { etiqueta: "PAN ARTESANAL", titulo: "20 perros", precio: "17,03", cada: "0,85", salsas: "mayonesa, ketchup y mostaza",
+          lleva: ["20 salchichas tipo Viena", "20 panes artesanales pequeños", "2 papas ralladas (150 g)", "2 Big Cola de 2 L"] },
+        { etiqueta: "PAN FRESCO", titulo: "10 perros", precio: "10,11", cada: "1,01", salsas: "mayonesa, ketchup, mostaza y maíz",
+          lleva: ["10 salchichas tipo Viena", "10 panes Fresco pequeños", "1 papas ralladas (150 g)", "1 Pepsi de 1,5 L"] },
+      ],
+    },
+  };
+  const d = DATOS[new URLSearchParams(location.search).get("perro")] ?? DATOS.grande;
+  const flier = document.querySelector(".flier");
+  const cinta = document.querySelector(".cinta");
+  document.getElementById("subtitulo").textContent = d.subtitulo;
+  for (const [foto, left, top, alto, giro] of d.productos) {
+    const img = document.createElement("img");
+    img.className = "p";
+    img.src = "fotos/" + foto;
+    img.alt = "";
+    img.style.cssText = `left: ${left}px; top: ${top}px; height: ${alto}px; z-index: ${foto.startsWith("papas") ? 3 : 2}` + (giro ? `; transform: rotate(${giro}deg)` : "");
+    flier.insertBefore(img, cinta);
   }
+  d.combos.forEach((c, i) => {
+    const n = i + 1;
+    document.querySelector(`#e${n} span`).textContent = c.etiqueta;
+    document.getElementById("t" + n).textContent = c.titulo;
+    document.getElementById("p" + n).innerHTML = `${c.precio}<span> $</span>`;
+    const ul = document.getElementById("l" + n);
+    for (const que of c.lleva) ul.append(Object.assign(document.createElement("li"), { textContent: que }));
+    ul.append(Object.assign(document.createElement("li"), { className: "salsas", textContent: "Salsas aparte: " + c.salsas }));
+    document.getElementById("s" + n).innerHTML = `Sale a <b>${c.cada} $</b> cada perro con papas y refresco`;
+  });
 </script>
 </body>
 </html>
