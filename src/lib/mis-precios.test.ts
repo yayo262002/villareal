@@ -22,14 +22,14 @@ const familias = [
 
 test("un tipo con artículos da una fila por artículo publicado, con lo que deja", () => {
   const variantes: VarianteDeMisPrecios[] = [
-    { id: 7, producto_id: 34, nombre: "Minco paquete de 5 × 56 g", costo_usd: 1.464, precio_usd: 1.61, activo: 1 },
+    { id: 7, producto_id: 34, nombre: "Hot Burger paquete de 5 × 56 g", costo_usd: 1.464, precio_usd: 1.61, activo: 1 },
     { id: 8, producto_id: 34, nombre: "Escondido", costo_usd: 1, precio_usd: 2, activo: 0 },
   ];
   const [grupo] = filasDeMisPrecios([producto({ id: 34, nombre: "Carne para hamburguesa" })], variantes, familias, 900);
   assert.equal(grupo.familia, "Burger");
   assert.equal(grupo.filas.length, 1);
   const f = grupo.filas[0];
-  assert.equal(f.detalle, "Minco paquete de 5 × 56 g");
+  assert.equal(f.detalle, "Hot Burger paquete de 5 × 56 g");
   assert.equal(f.bs, 1449);
   assert.equal(f.deja, 0.15);
   assert.equal(f.margenPct, 10);

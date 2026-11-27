@@ -41,7 +41,7 @@ export type FilaDeMisPrecios = {
   clave: string;
   /** El tipo: «Carne para hamburguesa». */
   tipo: string;
-  /** El artículo o la presentación: «Minco paquete de 5 × 56 g»; vacío si no hay nada que decir. */
+  /** El artículo o la presentación: «Hot Burger paquete de 5 × 56 g»; vacío si no hay nada que decir. */
   detalle: string;
   porKilo: boolean;
   costo: number | null;

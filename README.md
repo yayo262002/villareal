@@ -1665,8 +1665,9 @@ Binance y otro.
 - **Lo comprado para el burger** (desde el 19/11/2026: él manda las facturas y
   las notas): todo a costo + 10 % («a todo el burger le voy a meter un 10
   porciento»). Las salsas Gustossa (bulto de 15) y las papas fritas (bolsas de
-  150 g y de 1 kg) se venden por unidad; la carne para hamburguesa Minco (Hot
-  Burger) por unidad de 5 carnes; los refrescos (Big Cola, Pepsi, Golden) por
+  150 g y de 1 kg) se venden por unidad; la carne para hamburguesa Hot Burger
+  (la hace Minco; desde el 27/11/2026 la marca dice Hot Burger, que es la que
+  conocen los clientes) por unidad de 5 carnes; los refrescos (Big Cola, Pepsi, Golden) por
   bulto; los desechables, en la familia **Desechables** (también en Burger),
   por paquete como vienen, y las cajas térmicas y la bandeja C1 en paquetes de
   20 que arma él. Los costos, con su factura, en `listas/compras/costos-burger.txt`.
