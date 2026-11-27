@@ -2,6 +2,8 @@
 // (el dueño, 20/11/2026: «dame un pdf con todos los precios burger»). Lo publicado en la web con precio, por familias, más los
 // combos activos. Sin costos (es para los clientes) y sin los huevos mientras su precio sea de ejemplo. Desde la carpeta del
 // proyecto: node publicidad/lista-burger.mjs. Deja los archivos en listas/precios/<fecha>/lista-burger-<fecha>*.
+// Con --dolares, solo los precios en dólares (el dueño, 27/11/2026: «un PDF para enviar por WhatsApp, solo precio en
+// dólares»): sin bolívares ni tasa, y vale más de un día. Esos archivos son lista-burger-dolares-<fecha>*.
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -24,7 +26,9 @@ const familias = await filas("select id, nombre, orden from familias");
 const ofertas = await filas("select nombre, descripcion, precio_usd from ofertas where estado = 'activa' and precio_usd is not null and (desde is null or desde <= date('now','-4 hours')) and (hasta is null or hasta >= date('now','-4 hours')) order by orden, id");
 db.close();
 
-const bsDe = (usd) => Math.round(usd * tasa * 100) / 100;
+const dolares = process.argv.includes("--dolares");
+const PREFIJO = dolares ? "lista-burger-dolares" : "lista-burger";
+const bsDe = (usd) => (dolares ? null : Math.round(usd * tasa * 100) / 100);
 const grupos = filasDeMisPrecios(productos, variantes, familias, tasa)
   .map((g) => ({
     nombre: g.familia,
@@ -53,15 +57,18 @@ const [a, m, d] = dia.split("-");
 const lista = {
   fecha: dia,
   fechaLarga: `${dias[ahora.getUTCDay()]} ${d}/${m}/${a}`,
-  tasa,
+  tasa: dolares ? null : tasa,
+  soloDolares: dolares,
   redondeo: 5,
-  prefijo: "lista-burger",
-  destino: "lista-burger",
+  prefijo: PREFIJO,
+  destino: PREFIJO,
   mayor: true,
   antetitulo: "Villa Real · al mayor",
   titulo: "Lista de precios",
   grupos,
-  nota: "Precios al mayor de hoy, en bolívares a la tasa del BCV y en dólares. Pide por WhatsApp: 0424-6343236 · www.comercializadoravillareal.com",
+  nota: dolares
+    ? "Precios al mayor en dólares. Se pagan también en bolívares a la tasa del BCV del día. Pide por WhatsApp: 0424-6343236 · www.comercializadoravillareal.com"
+    : "Precios al mayor de hoy, en bolívares a la tasa del BCV y en dólares. Pide por WhatsApp: 0424-6343236 · www.comercializadoravillareal.com",
 };
 const publicidad = path.join(raiz, "publicidad");
 fs.writeFileSync(path.join(publicidad, "lista-precios-datos.js"), `// Lo escribe el guion de la lista del burger. No va al repositorio.\nglobalThis.LISTAS = ${JSON.stringify([lista], null, 1)};\n`);
@@ -71,10 +78,11 @@ const destino = path.join(raiz, "listas", "precios", dia);
 fs.mkdirSync(destino, { recursive: true });
 const hechos = [];
 // Lo de una vuelta anterior del mismo día se quita: si ahora salen menos pantallas, las de más quedarían viejas.
-const deHoy = new RegExp(`^lista-burger-${dia}(-\\d+)?\\.(pdf|jpg)$`);
+const deHoy = new RegExp(`^${PREFIJO}-${dia}(-\\d+)?\\.(pdf|jpg)$`);
 for (const f of fs.readdirSync(destino).filter((f) => deHoy.test(f))) fs.rmSync(path.join(destino, f));
-for (const f of fs.readdirSync(publicidad).filter((f) => /^lista-burger(-\d+)?\.(pdf|jpg)$/.test(f)).sort()) {
-  const nuevo = f.replace("lista-burger", `lista-burger-${dia}`);
+const recienHechos = new RegExp(`^${PREFIJO}(-\\d+)?\\.(pdf|jpg)$`);
+for (const f of fs.readdirSync(publicidad).filter((f) => recienHechos.test(f)).sort()) {
+  const nuevo = f.replace(PREFIJO, `${PREFIJO}-${dia}`);
   fs.renameSync(path.join(publicidad, f), path.join(destino, nuevo));
   hechos.push(nuevo);
 }

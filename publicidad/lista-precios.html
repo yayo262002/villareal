@@ -80,7 +80,7 @@
           <div class="antetitulo">${L.antetitulo} ${extra}</div>
           <h1>${L.titulo}</h1>
           <p class="fecha">${L.fechaLarga}</p>
-          <p class="tasa">${tasa ? `Tasa BCV: <b>${tasa}</b> Bs por dólar` : "Sin tasa: precios en dólares"}</p>
+          <p class="tasa">${L.soloDolares ? "Precios en <b>dólares</b>" : tasa ? `Tasa BCV: <b>${tasa}</b> Bs por dólar` : "Sin tasa: precios en dólares"}</p>
         </div>
       </header>`;
     // Una lista puede traer su propia nota (la del burger: sus bolívares son los de la web, al céntimo).
